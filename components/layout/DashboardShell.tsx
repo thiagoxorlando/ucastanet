@@ -15,10 +15,11 @@ export default function DashboardShell({
     <div className="min-h-screen bg-zinc-50">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Content — offset on desktop to clear the fixed sidebar */}
       <div className="lg:ml-64 flex flex-col min-h-screen">
         <Topbar onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 px-6 py-8 lg:px-8">{children}</main>
+        <main className="flex-1 px-6 py-10 lg:px-10 max-w-[1400px]">
+          {children}
+        </main>
       </div>
     </div>
   );

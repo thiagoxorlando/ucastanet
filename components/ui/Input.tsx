@@ -12,8 +12,13 @@ type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   hint?: string;
 };
 
-const inputBaseClasses =
-  "w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent transition-shadow";
+const baseClasses =
+  "w-full rounded-xl border bg-white px-4 py-3 text-[15px] text-zinc-900 placeholder:text-zinc-400 hover:border-zinc-300 focus:border-zinc-900 focus:outline-none transition-colors duration-150";
+
+const stateClasses = (error?: string) =>
+  error ? "border-rose-300 hover:border-rose-400 focus:border-rose-500" : "border-zinc-200";
+
+const labelClass = "text-[13px] font-medium text-zinc-600";
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { label, error, hint, className = "", ...props },
@@ -21,22 +26,14 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
 ) {
   return (
     <div className="flex flex-col gap-1.5">
-      {label && (
-        <label className="text-sm font-medium text-zinc-700">{label}</label>
-      )}
+      {label && <label className={labelClass}>{label}</label>}
       <input
         ref={ref}
-        className={[
-          inputBaseClasses,
-          error ? "border-red-500 focus:ring-red-500" : "",
-          className,
-        ]
-          .filter(Boolean)
-          .join(" ")}
+        className={[baseClasses, stateClasses(error), className].filter(Boolean).join(" ")}
         {...props}
       />
-      {hint && !error && <p className="text-xs text-zinc-500">{hint}</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {hint && !error && <p className="text-[12px] text-zinc-400 leading-snug">{hint}</p>}
+      {error && <p className="text-[12px] text-rose-500">{error}</p>}
     </div>
   );
 });
@@ -45,24 +42,17 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   function Textarea({ label, error, hint, className = "", ...props }, ref) {
     return (
       <div className="flex flex-col gap-1.5">
-        {label && (
-          <label className="text-sm font-medium text-zinc-700">{label}</label>
-        )}
+        {label && <label className={labelClass}>{label}</label>}
         <textarea
           ref={ref}
           rows={4}
-          className={[
-            inputBaseClasses,
-            "resize-none",
-            error ? "border-red-500 focus:ring-red-500" : "",
-            className,
-          ]
+          className={[baseClasses, stateClasses(error), "resize-none leading-relaxed", className]
             .filter(Boolean)
             .join(" ")}
           {...props}
         />
-        {hint && !error && <p className="text-xs text-zinc-500">{hint}</p>}
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        {hint && !error && <p className="text-[12px] text-zinc-400 leading-snug">{hint}</p>}
+        {error && <p className="text-[12px] text-rose-500">{error}</p>}
       </div>
     );
   }
