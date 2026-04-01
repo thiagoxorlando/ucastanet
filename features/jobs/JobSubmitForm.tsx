@@ -53,7 +53,7 @@ function NotFound() {
   );
 }
 
-function SuccessScreen({ jobTitle, mode }: { jobTitle: string; mode: Mode }) {
+function SuccessScreen({ jobTitle }: { jobTitle: string }) {
   return (
     <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-6">
       <div className="text-center max-w-sm">
@@ -66,12 +66,10 @@ function SuccessScreen({ jobTitle, mode }: { jobTitle: string; mode: Mode }) {
           </span>
         </div>
         <p className="text-[13px] font-semibold uppercase tracking-widest text-emerald-600 mb-2">Submission Received</p>
-        <h2 className="text-[1.5rem] font-semibold tracking-tight text-zinc-900 mb-2">
-          {mode === "self" ? "You've been submitted!" : "Talent submitted!"}
-        </h2>
+        <h2 className="text-[1.5rem] font-semibold tracking-tight text-zinc-900 mb-2">Talent submitted!</h2>
         <p className="text-[15px] text-zinc-500 mb-8">
           Your submission for <span className="font-medium text-zinc-700">"{jobTitle}"</span> is under review.
-          {mode === "other" && " If selected, you'll earn your referral commission."}
+          {" If selected, you'll earn your referral commission."}
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link href="/agency/jobs" className="inline-flex items-center justify-center gap-2 bg-zinc-900 text-white text-[13px] font-medium px-5 py-2.5 rounded-xl hover:bg-zinc-800 transition-colors">
@@ -89,7 +87,7 @@ function SuccessScreen({ jobTitle, mode }: { jobTitle: string; mode: Mode }) {
 // ── Main component ───────────────────────────────────────────────────────────
 
 export default function JobSubmitForm({ job }: { job: Job | null }) {
-  const [mode, setMode] = useState<Mode>("self");
+  const mode: Mode = "other";
   const [form, setForm] = useState({ talentName: "", contactInfo: "", bio: "", referrerName: "" });
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -98,7 +96,7 @@ export default function JobSubmitForm({ job }: { job: Job | null }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!job) return <NotFound />;
-  if (submitted) return <SuccessScreen jobTitle={job.title} mode={mode} />;
+  if (submitted) return <SuccessScreen jobTitle={job.title} />;
 
   function validate() {
     const e: Record<string, string> = {};
@@ -106,7 +104,7 @@ export default function JobSubmitForm({ job }: { job: Job | null }) {
     if (!form.contactInfo.trim()) e.contactInfo = "Email is required";
     else if (!/\S+@\S+\.\S+/.test(form.contactInfo)) e.contactInfo = "Enter a valid email address";
     if (!form.bio.trim()) e.bio = "Bio is required";
-    if (mode === "other" && !form.referrerName.trim()) e.referrerName = "Your name is required";
+    if (!form.referrerName.trim()) e.referrerName = "Your name is required";
     return e;
   }
 
@@ -127,11 +125,11 @@ export default function JobSubmitForm({ job }: { job: Job | null }) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        job_id:        job.id,
+        job_id:        job!.id,
         talent_name:   form.talentName.trim(),
         email:         form.contactInfo.trim(),
         bio:           form.bio.trim(),
-        referrer_name: mode === "other" ? form.referrerName.trim() : null,
+        referrer_name: form.referrerName.trim(),
         mode,
       }),
     });
@@ -209,42 +207,16 @@ export default function JobSubmitForm({ job }: { job: Job | null }) {
           </p>
         </div>
 
-        {/* Mode Toggle */}
-        <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] p-6">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-4">Who are you submitting?</p>
-          <div className="grid grid-cols-2 gap-3">
-            {(["self", "other"] as Mode[]).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className={`flex flex-col items-start gap-1 rounded-xl border px-4 py-4 text-left transition-all duration-150 cursor-pointer ${
-                  mode === m
-                    ? "border-zinc-900 bg-zinc-900 text-white shadow-sm"
-                    : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-zinc-300 hover:bg-white"
-                }`}
-              >
-                <span className="text-[14px] font-semibold">
-                  {m === "self" ? "Submit myself" : "Submit someone else"}
-                </span>
-                <span className={`text-[12px] leading-snug ${mode === m ? "text-zinc-300" : "text-zinc-400"}`}>
-                  {m === "self" ? "You are the talent" : "Refer a creator & earn commission"}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Form */}
         <form onSubmit={handleSubmit} noValidate>
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] p-6 space-y-5">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Submission Details</p>
 
             <div>
-              <label className={labelClass}>{mode === "self" ? "Your Name" : "Talent Name"}</label>
+              <label className={labelClass}>Talent Name</label>
               <input
                 type="text"
-                placeholder={mode === "self" ? "e.g. Sofia Mendes" : "e.g. Lucas Ferreira"}
+                placeholder="e.g. Lucas Ferreira"
                 value={form.talentName}
                 onChange={(e) => field("talentName", e.target.value)}
                 className={inputClass(errors.talentName)}
@@ -253,7 +225,7 @@ export default function JobSubmitForm({ job }: { job: Job | null }) {
             </div>
 
             <div>
-              <label className={labelClass}>{mode === "self" ? "Your Email" : "Talent's Email"}</label>
+              <label className={labelClass}>Talent's Email</label>
               <input
                 type="email"
                 placeholder="hello@example.com"
@@ -265,7 +237,7 @@ export default function JobSubmitForm({ job }: { job: Job | null }) {
             </div>
 
             <div>
-              <label className={labelClass}>{mode === "self" ? "Your Bio" : "Talent Bio"}</label>
+              <label className={labelClass}>Talent Bio</label>
               <textarea
                 rows={4}
                 placeholder="Tell the brand about this creator — niche, style, audience, and why they're a great fit for this campaign."
@@ -276,8 +248,7 @@ export default function JobSubmitForm({ job }: { job: Job | null }) {
               {errors.bio && <p className="text-[12px] text-rose-500 mt-1">{errors.bio}</p>}
             </div>
 
-            {mode === "other" && (
-              <div>
+            <div>
                 <label className={labelClass}>Your Name (Referrer)</label>
                 <input
                   type="text"
@@ -287,8 +258,7 @@ export default function JobSubmitForm({ job }: { job: Job | null }) {
                   className={inputClass(errors.referrerName)}
                 />
                 {errors.referrerName && <p className="text-[12px] text-rose-500 mt-1">{errors.referrerName}</p>}
-              </div>
-            )}
+            </div>
 
             {/* Video Upload */}
             <div>
@@ -364,7 +334,7 @@ export default function JobSubmitForm({ job }: { job: Job | null }) {
                 Submitting…
               </span>
             ) : (
-              mode === "self" ? "Submit My Profile" : "Submit Talent"
+              "Submit Talent"
             )}
           </button>
           <p className="text-center text-[12px] text-zinc-400 mt-3">

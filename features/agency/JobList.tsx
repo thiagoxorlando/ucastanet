@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Job } from "@/lib/mockData";
 
+type JobStatus = "open" | "closed" | "draft" | "inactive" | "deleted";
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatBudget(n: number) {
@@ -54,9 +56,36 @@ function stripe(category: string) {
 
 // ─── Job Card ─────────────────────────────────────────────────────────────────
 
-function JobCard({ job }: { job: Job }) {
+function JobCard({ job, onUpdate, onDelete }: {
+  job: Job;
+  onUpdate: (id: string, patch: Partial<Job>) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [menuOpen, setMenuOpen]     = useState(false);
+  const [deleting, setDeleting]     = useState(false);
+  const [statusBusy, setStatusBusy] = useState(false);
+
   const days = daysUntil(job.deadline);
   const urgent = days <= 7 && days > 0 && job.status === "open";
+
+  async function handleStatusChange(newStatus: Job["status"]) {
+    setMenuOpen(false);
+    setStatusBusy(true);
+    const res = await fetch(`/api/jobs/${job.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    setStatusBusy(false);
+    if (res.ok) onUpdate(job.id, { status: newStatus });
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    const res = await fetch(`/api/jobs/${job.id}`, { method: "DELETE" });
+    setDeleting(false);
+    if (res.ok) onDelete(job.id);
+  }
 
   return (
     <div className="group bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden flex flex-col hover:shadow-[0_4px_12px_rgba(0,0,0,0.07),0_12px_32px_rgba(0,0,0,0.05)] transition-shadow duration-200">
@@ -116,16 +145,71 @@ function JobCard({ job }: { job: Job }) {
           )}
         </div>
 
-        {/* CTA */}
-        <Link
-          href={`/agency/jobs/${job.id}`}
-          className="mt-1 inline-flex items-center justify-center gap-2 w-full bg-zinc-900 hover:bg-zinc-800 active:scale-[0.98] text-white text-[13px] font-medium px-4 py-2.5 rounded-xl transition-all duration-150"
-        >
-          View Details
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </Link>
+        {/* Actions row */}
+        <div className="flex items-center gap-2 mt-1">
+          <Link
+            href={`/agency/jobs/${job.id}`}
+            className="flex-1 inline-flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 active:scale-[0.98] text-white text-[13px] font-medium px-4 py-2.5 rounded-xl transition-all duration-150"
+          >
+            View
+          </Link>
+
+          {/* Status dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              disabled={statusBusy}
+              className="w-9 h-9 flex items-center justify-center rounded-xl border border-zinc-200 hover:border-zinc-300 text-zinc-500 hover:text-zinc-800 transition-colors cursor-pointer disabled:opacity-40"
+              title="Change status"
+            >
+              {statusBusy ? (
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
+            </button>
+            {menuOpen && (
+              <div className="absolute bottom-full right-0 mb-1.5 w-36 bg-white rounded-xl border border-zinc-100 shadow-[0_4px_16px_rgba(0,0,0,0.1)] z-10 overflow-hidden">
+                {(["open", "inactive", "closed", "draft"] as Job["status"][]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => handleStatusChange(s)}
+                    className={[
+                      "w-full text-left px-3.5 py-2.5 text-[12px] font-medium hover:bg-zinc-50 transition-colors cursor-pointer capitalize",
+                      job.status === s ? "text-zinc-900 bg-zinc-50" : "text-zinc-600",
+                    ].join(" ")}
+                  >
+                    {s === job.status ? `✓ ${s}` : s}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Delete */}
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="w-9 h-9 flex items-center justify-center rounded-xl border border-zinc-200 hover:border-rose-200 hover:bg-rose-50 text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer disabled:opacity-40"
+            title="Delete job"
+          >
+            {deleting ? (
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -137,9 +221,18 @@ const STATUS_OPTIONS = ["All", "Open", "Draft", "Closed"] as const;
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function JobList({ jobs }: { jobs: Job[] }) {
+export default function JobList({ jobs: initial }: { jobs: Job[] }) {
+  const [jobs, setJobs]     = useState(initial);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<typeof STATUS_OPTIONS[number]>("All");
+
+  function handleUpdate(id: string, patch: Partial<Job>) {
+    setJobs((prev) => prev.map((j) => j.id === id ? { ...j, ...patch } : j));
+  }
+
+  function handleDelete(id: string) {
+    setJobs((prev) => prev.filter((j) => j.id !== id));
+  }
 
   const filtered = jobs.filter((j) => {
     const matchSearch =
@@ -212,7 +305,7 @@ export default function JobList({ jobs }: { jobs: Job[] }) {
       {filtered.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
           {filtered.map((job) => (
-            <JobCard key={job.id} job={job} />
+            <JobCard key={job.id} job={job} onUpdate={handleUpdate} onDelete={handleDelete} />
           ))}
         </div>
       ) : (

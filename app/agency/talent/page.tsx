@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import TalentList from "@/features/agency/TalentList";
+import TalentGrid from "@/features/agency/TalentGrid";
 
 export const metadata: Metadata = { title: "Talent — ucastanet" };
 
 export default function AgencyTalentPage() {
-  return <TalentList />;
+  return <TalentGrid />;
 }

@@ -3,6 +3,12 @@ import Badge from "@/components/ui/Badge";
 import Avatar from "@/components/ui/Avatar";
 import { mockTalent } from "@/lib/mockData";
 
+const STAT_LINKS: Record<string, string> = {
+  "Active Jobs":  "/agency/jobs",
+  "Submissions":  "/agency/jobs",
+  "Bookings":     "/agency/bookings",
+};
+
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
 const stats = [
@@ -79,8 +85,9 @@ const activityMeta: Record<ActivityType, { dot: string; badge: React.ReactNode }
 function StatCard({
   label, value, trend, trendLabel, positive, stripe, icon,
 }: (typeof stats)[number]) {
-  return (
-    <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden">
+  const href = STAT_LINKS[label];
+  const inner = (
+    <>
       <div className={`h-[3px] bg-gradient-to-r ${stripe}`} />
       <div className="p-6">
         <div className="flex items-start justify-between mb-5">
@@ -104,6 +111,19 @@ function StatCard({
           <p className="text-[12px] text-zinc-400">{trendLabel}</p>
         </div>
       </div>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className="block bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden hover:shadow-[0_4px_12px_rgba(0,0,0,0.07)] transition-shadow duration-150">
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden">
+      {inner}
     </div>
   );
 }
@@ -161,15 +181,6 @@ export default function AgencyDashboardOverview() {
             Monday, March 30, 2026
           </p>
         </div>
-        <Link
-          href="/agency/create"
-          className="hidden sm:inline-flex flex-shrink-0 items-center gap-2 bg-zinc-900 hover:bg-zinc-800 active:scale-[0.98] text-white text-[13px] font-medium px-4 py-2.5 rounded-xl transition-all duration-150 shadow-sm"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Talent
-        </Link>
       </div>
 
       {/* ── Stats ── */}

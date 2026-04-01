@@ -1,0 +1,123 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+
+const ROLE_HOME: Record<string, string> = {
+  agency: "/agency/dashboard",
+  talent: "/talent/dashboard",
+  admin:  "/admin/dashboard",
+};
+
+export default function LoginPage() {
+  const router = useRouter();
+
+  const [email,    setEmail]    = useState("");
+  const [password, setPassword] = useState("");
+  const [error,    setError]    = useState("");
+  const [loading,  setLoading]  = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (authError || !data.user) {
+      setError(authError?.message ?? "Login failed.");
+      setLoading(false);
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .single();
+
+    const destination = profile?.role ? ROLE_HOME[profile.role] : "/onboarding/role";
+    router.push(destination);
+  }
+
+  return (
+    <div className="min-h-screen bg-zinc-50 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+
+        {/* Logo */}
+        <div className="flex items-center justify-center gap-3 mb-10">
+          <div className="w-9 h-9 bg-zinc-900 rounded-xl flex items-center justify-center">
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M15 10l4.553-2.069A1 1 0 0121 8.845v6.31a1 1 0 01-1.447.894L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+            </svg>
+          </div>
+          <span className="text-[18px] font-semibold tracking-tight text-zinc-900">ucastanet</span>
+        </div>
+
+        {/* Card */}
+        <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] p-8">
+          <h1 className="text-[1.25rem] font-semibold tracking-tight text-zinc-900 mb-1">
+            Sign in
+          </h1>
+          <p className="text-[13px] text-zinc-400 mb-7">
+            Enter your credentials to continue.
+          </p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-[12px] font-medium text-zinc-600 mb-1.5">
+                Email
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full px-4 py-3 text-[14px] rounded-xl border border-zinc-200 hover:border-zinc-300 focus:border-zinc-900 focus:outline-none transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[12px] font-medium text-zinc-600 mb-1.5">
+                Password
+              </label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-4 py-3 text-[14px] rounded-xl border border-zinc-200 hover:border-zinc-300 focus:border-zinc-900 focus:outline-none transition-colors"
+              />
+            </div>
+
+            {error && (
+              <p className="text-[13px] text-rose-500 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">
+                {error}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-300 text-white text-[14px] font-medium py-3 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed active:scale-[0.99]"
+            >
+              {loading ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
+        </div>
+
+        <p className="text-center text-[13px] text-zinc-400 mt-5">
+          Don't have an account?{" "}
+          <a href="/" className="text-zinc-700 font-medium hover:text-zinc-900 transition-colors">
+            Sign up
+          </a>
+        </p>
+
+      </div>
+    </div>
+  );
+}

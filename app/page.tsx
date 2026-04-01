@@ -1,6 +1,30 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getUserRole } from "@/lib/getUserRole";
 
 export default function Home() {
+  const router = useRouter();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    getUserRole().then((role) => {
+      if (role === "agency") router.replace("/agency/dashboard");
+      else if (role === "talent") router.replace("/talent/dashboard");
+      else setChecking(false);
+    });
+  }, [router]);
+
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-5 h-5 rounded-full border-2 border-zinc-200 border-t-zinc-900 animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-white flex flex-col">
 
@@ -15,20 +39,12 @@ export default function Home() {
           </div>
           <span className="text-[15px] font-semibold text-zinc-900 tracking-tight">ucastanet</span>
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/agency/dashboard"
-            className="text-[13px] font-medium text-zinc-500 hover:text-zinc-900 transition-colors px-3 py-2 rounded-lg hover:bg-zinc-50"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/agency/dashboard"
-            className="text-[13px] font-medium bg-zinc-900 text-white px-4 py-2 rounded-xl hover:bg-zinc-800 transition-all duration-150 active:scale-[0.98]"
-          >
-            Get started
-          </Link>
-        </div>
+        <Link
+          href="/login"
+          className="text-[13px] font-medium text-zinc-500 hover:text-zinc-900 transition-colors px-3 py-2 rounded-lg hover:bg-zinc-50"
+        >
+          Sign in
+        </Link>
       </nav>
 
       {/* ── Hero ── */}
@@ -48,15 +64,17 @@ export default function Home() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3 items-center">
-          <Link href="/agency/dashboard">
-            <button className="bg-zinc-900 text-white px-6 py-3.5 rounded-xl text-[14px] font-semibold hover:bg-zinc-800 transition-all duration-150 active:scale-[0.98] w-full sm:w-auto shadow-sm">
-              Create Agency Account
-            </button>
+          <Link
+            href="/signup?role=agency"
+            className="bg-zinc-900 text-white px-6 py-3.5 rounded-xl text-[14px] font-semibold hover:bg-zinc-800 transition-all duration-150 active:scale-[0.98] shadow-sm"
+          >
+            Create Agency Account
           </Link>
-          <Link href="/talent/create-profile">
-            <button className="bg-white text-zinc-800 border border-zinc-200 px-6 py-3.5 rounded-xl text-[14px] font-semibold hover:bg-zinc-50 hover:border-zinc-300 transition-all duration-150 active:scale-[0.98] w-full sm:w-auto">
-              Join as Talent
-            </button>
+          <Link
+            href="/signup?role=talent"
+            className="bg-white text-zinc-800 border border-zinc-200 px-6 py-3.5 rounded-xl text-[14px] font-semibold hover:bg-zinc-50 hover:border-zinc-300 transition-all duration-150 active:scale-[0.98]"
+          >
+            Join as Talent
           </Link>
         </div>
 

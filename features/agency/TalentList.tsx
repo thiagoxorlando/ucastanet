@@ -45,15 +45,6 @@ export default function TalentList() {
             {mockTalent.length} total
           </p>
         </div>
-        <Link
-          href="/agency/create"
-          className="flex-shrink-0 hidden sm:inline-flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 active:scale-[0.98] text-white text-[13px] font-medium px-4 py-2.5 rounded-xl transition-all duration-150 shadow-sm"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Talent
-        </Link>
       </div>
 
       {/* ── Filter bar ── */}

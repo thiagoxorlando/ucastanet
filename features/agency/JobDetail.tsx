@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { useRole } from "@/lib/RoleProvider";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -120,11 +123,15 @@ function SubmissionCard({
   submission,
   jobCategory,
   isSelected,
+  isLoading,
+  isAgency,
   onSelect,
 }: {
   submission: Submission;
   jobCategory: string;
   isSelected: boolean;
+  isLoading: boolean;
+  isAgency: boolean;
   onSelect: () => void;
 }) {
   const statusCls = SUBMISSION_STATUS[submission.status] ?? SUBMISSION_STATUS["pending"];
@@ -170,24 +177,32 @@ function SubmissionCard({
           <p className="text-[11px] text-zinc-400">
             {formatDate(submission.submittedAt)}
           </p>
-          <button
+          {isAgency && <button
             onClick={onSelect}
+            disabled={isLoading || isSelected}
             className={[
-              "inline-flex items-center gap-1.5 text-[12px] font-medium px-4 py-2 rounded-xl transition-all duration-150 active:scale-[0.97] cursor-pointer",
+              "inline-flex items-center gap-1.5 text-[12px] font-medium px-4 py-2 rounded-xl transition-all duration-150 active:scale-[0.97]",
               isSelected
-                ? "bg-emerald-500 hover:bg-emerald-600 text-white"
-                : "bg-zinc-900 hover:bg-zinc-800 text-white",
+                ? "bg-emerald-500 text-white cursor-default"
+                : isLoading
+                  ? "bg-zinc-200 text-zinc-400 cursor-not-allowed"
+                  : "bg-zinc-900 hover:bg-zinc-800 text-white cursor-pointer",
             ].join(" ")}
           >
-            {isSelected ? (
+            {isLoading ? (
+              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
+              </svg>
+            ) : isSelected ? (
               <>
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
-                Selected
+                Booked
               </>
             ) : "Select"}
-          </button>
+          </button>}
         </div>
       </div>
     </div>
@@ -229,21 +244,46 @@ export default function JobDetail({
   submissions,
 }: {
   job: Job | null;
-  submissions: Submission[];
+  submissions?: Submission[];
 }) {
+  const router = useRouter();
+  const { role } = useRole();
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState<Set<string>>(new Set());
 
-  if (!job) return <NotFound />;
+  console.log(job);
+
+  if (!job) return <div className="p-8 text-zinc-400 text-sm">Loading...</div>;
+
+  const safeSubmissions = submissions ?? [];
 
   const days = daysUntil(job.deadline);
   const urgent = days <= 7 && days > 0 && job.status === "open";
 
-  function toggleSelect(sid: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(sid) ? next.delete(sid) : next.add(sid);
-      return next;
-    });
+  async function toggleSelect(sid: string, talentName: string) {
+    if (selected.has(sid)) return;
+
+    setLoading((prev) => new Set(prev).add(sid));
+
+    const { data, error } = await supabase.from("bookings").insert([
+      {
+        job_id:      job!.id,
+        agency_id:   "22222222-2222-2222-2222-222222222222",
+        talent_name: talentName,
+        status:      "pending",
+        price:       1000,
+      },
+    ]);
+
+    if (error) {
+      console.error("Booking insert failed:", error.message, error.details, error.hint);
+      alert(`Booking failed: ${error.message}`);
+      setLoading((prev) => { const next = new Set(prev); next.delete(sid); return next; });
+      return;
+    }
+
+    console.log("booking created", data);
+    router.push("/agency/bookings");
   }
 
   return (
@@ -277,7 +317,7 @@ export default function JobDetail({
             </div>
           </div>
 
-          {job.status !== "closed" && (
+          {role === "agency" && job.status !== "closed" && (
             <div className="flex items-center gap-3 flex-shrink-0">
               <Link
                 href={`/job/${job.id}`}
@@ -329,7 +369,7 @@ export default function JobDetail({
             highlight={urgent}
             icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>}
           />
-          <DetailRow label="Submissions" value={`${submissions.length} received`}
+          <DetailRow label="Submissions" value={`${safeSubmissions.length} received`}
             icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2h5M12 12a4 4 0 100-8 4 4 0 000 8z" /></svg>}
           />
           <DetailRow label="Status" value={job.status.charAt(0).toUpperCase() + job.status.slice(1)}
@@ -346,7 +386,7 @@ export default function JobDetail({
               Submissions
             </p>
             <p className="text-lg font-semibold tracking-tight text-zinc-900">
-              {submissions.length > 0 ? `${submissions.length} talent applied` : "No submissions yet"}
+              {safeSubmissions.length > 0 ? `${safeSubmissions.length} talent applied` : "No submissions yet"}
             </p>
           </div>
           {selected.size > 0 && (
@@ -357,15 +397,17 @@ export default function JobDetail({
           )}
         </div>
 
-        {submissions.length > 0 ? (
+        {safeSubmissions.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-            {submissions.map((s) => (
+            {safeSubmissions.map((s) => (
               <SubmissionCard
                 key={s.id}
                 submission={s}
                 jobCategory={job.category}
                 isSelected={selected.has(s.id)}
-                onSelect={() => toggleSelect(s.id)}
+                isLoading={loading.has(s.id)}
+                isAgency={role === "agency"}
+                onSelect={() => toggleSelect(s.id, s.talentName)}
               />
             ))}
           </div>
