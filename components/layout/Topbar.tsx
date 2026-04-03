@@ -24,6 +24,7 @@ const pageMeta: Record<string, { title: string; description: string }> = {
   "/admin/finances":   { title: "Finances",   description: "Platform revenue and commissions" },
   "/admin/contracts":  { title: "Contracts",  description: "All platform contracts" },
   "/agency/contracts": { title: "Contracts",  description: "Manage your talent contracts" },
+  "/agency/profile":   { title: "Profile",    description: "Manage your agency profile" },
   "/talent/contracts": { title: "Contracts",  description: "Your contracts and agreements" },
 };
 

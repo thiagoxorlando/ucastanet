@@ -12,14 +12,18 @@ export default async function AgencyFinancesPage() {
 
   const supabase = createServerClient({ useServiceRole: true });
 
-  let query = supabase
-    .from("bookings")
-    .select("id, talent_user_id, job_title, price, status, created_at")
-    .order("created_at", { ascending: false });
-
-  if (user) query = query.eq("agency_id", user.id);
-
-  const { data: bookings } = await query;
+  const [{ data: bookings }, { data: agency }] = await Promise.all([
+    supabase
+      .from("bookings")
+      .select("id, talent_user_id, job_title, price, status, created_at")
+      .eq("agency_id", user?.id ?? "")
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("agencies")
+      .select("subscription_status, updated_at")
+      .eq("id", user?.id ?? "")
+      .single(),
+  ]);
 
   const rows = bookings ?? [];
 
@@ -43,8 +47,8 @@ export default async function AgencyFinancesPage() {
     date:   b.created_at,
   }));
 
-  const completed = transactions.filter((t) => t.status === "confirmed");
-  const pending   = transactions.filter((t) => t.status === "pending");
+  const completed = transactions.filter((t) => t.status === "paid" || t.status === "confirmed");
+  const pending   = transactions.filter((t) => t.status === "pending_payment");
 
   const completedTotal = completed.reduce((sum, t) => sum + t.amount, 0);
   const pendingTotal   = pending.reduce((sum, t) => sum + t.amount, 0);
@@ -55,5 +59,15 @@ export default async function AgencyFinancesPage() {
     completedPayments: completedTotal,
   };
 
-  return <AgencyFinances summary={summary} transactions={transactions} />;
+  // Last payment date = most recent paid booking date
+  const lastPaid = completed.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+  return (
+    <AgencyFinances
+      summary={summary}
+      transactions={transactions}
+      subscriptionStatus={(agency?.subscription_status ?? "active") as "active" | "inactive"}
+      lastPaymentDate={lastPaid?.date ?? null}
+    />
+  );
 }

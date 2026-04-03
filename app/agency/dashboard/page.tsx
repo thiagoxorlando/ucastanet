@@ -1,38 +1,40 @@
 import type { Metadata } from "next";
 import AgencyDashboardOverview from "@/features/agency/AgencyDashboardOverview";
 import { createServerClient } from "@/lib/supabase";
+import { createSessionClient } from "@/lib/supabase.server";
 
 export const metadata: Metadata = { title: "Dashboard — ucastanet" };
 
 export default async function AgencyDashboardPage() {
+  const session = await createSessionClient();
+  const { data: { user } } = await session.auth.getUser();
+  const agencyId = user?.id;
+
   const supabase = createServerClient({ useServiceRole: true });
 
   const [
     { count: activeJobs },
     { count: submissionsCount },
     { count: bookingsCount },
-    { data: recentTalentData },
     { data: recentBookingsData },
     { data: recentSubmissionsData },
   ] = await Promise.all([
-    supabase.from("jobs").select("id", { count: "exact", head: true }),
-    supabase.from("submissions").select("id", { count: "exact", head: true }),
-    supabase.from("bookings").select("id", { count: "exact", head: true }),
-    supabase.from("talent_profiles")
-      .select("id, full_name, avatar_url, categories, city, country")
-      .order("created_at", { ascending: false })
-      .limit(4),
+    supabase.from("jobs").select("id", { count: "exact", head: true }).eq("agency_id", agencyId ?? ""),
+    supabase.from("submissions").select("id", { count: "exact", head: true }).eq("agency_id", agencyId ?? ""),
+    supabase.from("bookings").select("id", { count: "exact", head: true }).eq("agency_id", agencyId ?? ""),
     supabase.from("bookings")
       .select("id, job_title, talent_user_id, status, created_at")
+      .eq("agency_id", agencyId ?? "")
       .order("created_at", { ascending: false })
       .limit(4),
     supabase.from("submissions")
       .select("id, job_id, talent_user_id, created_at")
+      .eq("agency_id", agencyId ?? "")
       .order("created_at", { ascending: false })
       .limit(4),
   ]);
 
-  // Resolve talent names for recent bookings + submissions
+  // Resolve talent profiles for recent bookings + submissions
   const talentIds = [
     ...new Set([
       ...(recentBookingsData ?? []).map((b) => b.talent_user_id),
@@ -41,12 +43,15 @@ export default async function AgencyDashboardPage() {
   ];
 
   const profileMap = new Map<string, string>();
+  let recentTalentData: { id: string; full_name: string | null; avatar_url: string | null; categories: string[] | null; city: string | null; country: string | null }[] = [];
   if (talentIds.length) {
     const { data: profiles } = await supabase
       .from("talent_profiles")
-      .select("id, full_name")
-      .in("id", talentIds);
-    for (const p of profiles ?? []) profileMap.set(p.id, p.full_name ?? "Unknown");
+      .select("id, full_name, avatar_url, categories, city, country")
+      .in("id", talentIds)
+      .limit(4);
+    recentTalentData = profiles ?? [];
+    for (const p of recentTalentData) profileMap.set(p.id, p.full_name ?? "Unknown");
   }
 
   // Resolve job titles for recent submissions

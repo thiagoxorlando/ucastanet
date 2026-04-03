@@ -1,0 +1,145 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+type Props = {
+  companyName: string;
+  avatarUrl: string | null;
+  email: string;
+  subscriptionStatus: string;
+};
+
+export default function AgencyProfile({ companyName, avatarUrl, email, subscriptionStatus }: Props) {
+  const router = useRouter();
+  const [name, setName]       = useState(companyName);
+  const [avatar, setAvatar]   = useState(avatarUrl ?? "");
+  const [saving, setSaving]   = useState(false);
+  const [toast, setToast]     = useState<{ msg: string; ok: boolean } | null>(null);
+
+  const initials = name
+    ? name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()
+    : "?";
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+
+    const res = await fetch("/api/agencies/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        company_name: name.trim(),
+        avatar_url:   avatar.trim() || null,
+      }),
+    });
+
+    if (res.ok) {
+      setToast({ msg: "Profile updated.", ok: true });
+      router.refresh();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setToast({ msg: d.error ?? "Failed to save.", ok: false });
+    }
+
+    setSaving(false);
+    setTimeout(() => setToast(null), 4000);
+  }
+
+  return (
+    <div className="max-w-2xl space-y-8">
+      {/* Toast */}
+      {toast && (
+        <div className={[
+          "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl shadow-lg text-[13px] font-medium text-white",
+          toast.ok ? "bg-emerald-600" : "bg-rose-600",
+        ].join(" ")}>
+          {toast.msg}
+        </div>
+      )}
+
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Agency</p>
+        <h1 className="text-[1.75rem] font-semibold tracking-tight text-zinc-900 leading-tight">Profile</h1>
+      </div>
+
+      {/* Avatar preview */}
+      <div className="flex items-center gap-5">
+        <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center">
+          {avatar ? (
+            <img src={avatar} alt={name} className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-[20px] font-bold text-white">{initials}</span>
+          )}
+        </div>
+        <div>
+          <p className="text-[14px] font-semibold text-zinc-900">{name || "Your Agency"}</p>
+          <p className="text-[12px] text-zinc-400">{email}</p>
+          <span className={[
+            "inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full",
+            subscriptionStatus === "active"
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-zinc-100 text-zinc-500",
+          ].join(" ")}>
+            {subscriptionStatus === "active" ? "Pro Plan · Active" : "Pro Plan · Inactive"}
+          </span>
+        </div>
+      </div>
+
+      {/* Form */}
+      <form onSubmit={handleSave} className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] p-8 space-y-6">
+
+        <div>
+          <label className="block text-[12px] font-medium text-zinc-600 mb-1.5">
+            Agency Name
+          </label>
+          <input
+            type="text"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your company name"
+            className="w-full px-4 py-3 text-[14px] rounded-xl border border-zinc-200 hover:border-zinc-300 focus:border-zinc-900 focus:outline-none transition-colors"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[12px] font-medium text-zinc-600 mb-1.5">
+            Avatar URL
+          </label>
+          <input
+            type="url"
+            value={avatar}
+            onChange={(e) => setAvatar(e.target.value)}
+            placeholder="https://example.com/logo.png"
+            className="w-full px-4 py-3 text-[14px] rounded-xl border border-zinc-200 hover:border-zinc-300 focus:border-zinc-900 focus:outline-none transition-colors"
+          />
+          <p className="text-[11px] text-zinc-400 mt-1.5">
+            Paste a direct link to your logo or profile image.
+          </p>
+        </div>
+
+        <div>
+          <label className="block text-[12px] font-medium text-zinc-600 mb-1.5">
+            Email
+          </label>
+          <input
+            type="email"
+            value={email}
+            disabled
+            className="w-full px-4 py-3 text-[14px] rounded-xl border border-zinc-100 bg-zinc-50 text-zinc-400 cursor-not-allowed"
+          />
+          <p className="text-[11px] text-zinc-400 mt-1.5">Email cannot be changed here.</p>
+        </div>
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="w-full bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-300 disabled:cursor-not-allowed text-white text-[14px] font-medium py-3 rounded-xl transition-colors cursor-pointer"
+        >
+          {saving ? "Saving…" : "Save Changes"}
+        </button>
+      </form>
+    </div>
+  );
+}

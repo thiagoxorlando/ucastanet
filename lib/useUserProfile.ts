@@ -37,10 +37,11 @@ export function useUserProfile(): UserProfile {
       } else if (role === "agency") {
         const { data } = await supabase
           .from("agencies")
-          .select("company_name")
+          .select("company_name, avatar_url")
           .eq("id", user.id)
           .single();
         setDisplayName(data?.company_name ?? user.email ?? "");
+        setAvatarUrl((data as { avatar_url?: string | null })?.avatar_url ?? null);
       } else {
         setDisplayName(user.email ?? "");
       }

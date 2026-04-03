@@ -111,9 +111,10 @@ export default function TalentDashboard() {
     });
   }, []);
 
+  const TALENT_RATE = 0.85;
   const earnings = bookings
-    .filter((b) => b.status === "confirmed")
-    .reduce((sum, b) => sum + b.price, 0);
+    .filter((b) => b.status === "paid" || b.status === "confirmed")
+    .reduce((sum, b) => sum + Math.round(b.price * TALENT_RATE), 0);
 
   if (loading) {
     return (
