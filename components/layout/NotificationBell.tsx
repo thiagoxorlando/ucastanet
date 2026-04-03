@@ -82,49 +82,52 @@ function TypeIcon({ type }: { type: NotifType }) {
 
 export default function NotificationBell() {
   const router = useRouter();
-  const [open, setOpen]   = useState(false);
-  const [items, setItems] = useState<Notification[]>([]);
+  const [open, setOpen]     = useState(false);
+  const [items, setItems]   = useState<Notification[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
-  async function fetchNotifications(userId: string) {
-    const { data } = await supabase
+  // Resolve user ID once on mount
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setUserId(user.id);
+    });
+  }, []);
+
+  // Fetch initial notifications + subscribe to realtime, keyed on userId
+  useEffect(() => {
+    if (!userId) return;
+
+    // Initial fetch
+    supabase
       .from("notifications")
       .select("id, type, message, is_read, created_at, link")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
-      .limit(30);
-    setItems(data ?? []);
-  }
+      .limit(30)
+      .then(({ data }) => setItems(data ?? []));
 
-  useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      fetchNotifications(user.id);
-
-      // Real-time: push new notifications instantly
-      channel = supabase
-        .channel(`notifications:${user.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "notifications",
-            filter: `user_id=eq.${user.id}`,
-          },
-          (payload) => {
-            setItems((prev) => [payload.new as Notification, ...prev]);
-          }
-        )
-        .subscribe();
-    });
+    // Realtime subscription — .on() must come before .subscribe()
+    const channel = supabase
+      .channel(`notifications:${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          setItems((prev) => [payload.new as Notification, ...prev]);
+        }
+      )
+      .subscribe();
 
     return () => {
-      if (channel) supabase.removeChannel(channel);
+      supabase.removeChannel(channel);
     };
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
