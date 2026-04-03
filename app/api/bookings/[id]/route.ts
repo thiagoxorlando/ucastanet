@@ -40,7 +40,7 @@ export async function PATCH(
     await notify(
       booking.talent_user_id,
       "payment",
-      "You received payment",
+      "Your payment has been completed",
       "/talent/finances"
     );
   }

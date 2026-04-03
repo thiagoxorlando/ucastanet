@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 
 export type AdminBooking = {
   id: string;
@@ -170,9 +170,8 @@ export default function AdminBookings({ bookings }: { bookings: AdminBooking[] }
                   : "bg-amber-50 text-amber-700";
 
                 return (
-                  <>
+                  <React.Fragment key={b.id}>
                     <tr
-                      key={b.id}
                       onClick={() => setExpanded(isExp ? null : b.id)}
                       className="hover:bg-zinc-50/60 transition-colors cursor-pointer"
                     >
@@ -274,7 +273,7 @@ export default function AdminBookings({ bookings }: { bookings: AdminBooking[] }
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 );
               })}
               {filtered.length === 0 && (

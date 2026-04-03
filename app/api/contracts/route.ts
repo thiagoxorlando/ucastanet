@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
   });
 
   // Notify talent — contract received
-  await notify(talent_id, "contract", "You received a contract", "/talent/contracts");
+  await notify(talent_id, "contract", "You received a new contract", "/talent/contracts");
 
   return NextResponse.json({ contract }, { status: 201 });
 }
