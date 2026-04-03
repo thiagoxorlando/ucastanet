@@ -15,15 +15,14 @@ const AGENCY_MONTHLY_FEE  = 2500;
 export default async function AdminFinancesPage() {
   const supabase = createServerClient({ useServiceRole: true });
 
-  const [{ data: bookingsData }, { data: agencyProfiles }] = await Promise.all([
+  const [{ data: bookingsData }, { data: agenciesData }] = await Promise.all([
     supabase
       .from("bookings")
       .select("id, job_title, talent_user_id, price, status, created_at")
       .order("created_at", { ascending: false }),
     supabase
-      .from("profiles")
-      .select("id, full_name, created_at")
-      .eq("role", "agency")
+      .from("agencies")
+      .select("id, company_name, subscription_status, created_at")
       .order("created_at", { ascending: false }),
   ]);
 
@@ -68,11 +67,12 @@ export default async function AdminFinancesPage() {
     confirmedBookings:   confirmed.length,
   };
 
-  const agencies: AgencyEntry[] = (agencyProfiles ?? []).map((a) => ({
-    id:         a.id,
-    name:       a.full_name ?? `Agency ${a.id.slice(0, 8)}`,
-    joinedAt:   a.created_at ?? "",
-    monthlyFee: AGENCY_MONTHLY_FEE,
+  const agencies: AgencyEntry[] = (agenciesData ?? []).map((a) => ({
+    id:                 a.id,
+    name:               a.company_name ?? `Agency ${a.id.slice(0, 8)}`,
+    joinedAt:           a.created_at   ?? "",
+    monthlyFee:         AGENCY_MONTHLY_FEE,
+    subscriptionStatus: a.subscription_status ?? "active",
   }));
 
   return <AdminFinances summary={summary} bookings={bookings} agencies={agencies} />;
