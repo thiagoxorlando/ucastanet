@@ -17,9 +17,20 @@ export default async function TalentJobDetailPage({ params }: Props) {
 
   const { data } = await supabase
     .from("jobs")
-    .select("id, title, description, category, budget, deadline")
+    .select("id, title, description, category, budget, deadline, agency_id, location, gender, age_min, age_max")
     .eq("id", id)
     .single();
+
+  // Fetch agency name
+  let agencyName = "";
+  if (data?.agency_id) {
+    const { data: agency } = await supabase
+      .from("agencies")
+      .select("company_name")
+      .eq("id", data.agency_id)
+      .single();
+    agencyName = agency?.company_name ?? "";
+  }
 
   const job = data
     ? {
@@ -29,6 +40,11 @@ export default async function TalentJobDetailPage({ params }: Props) {
         category:    data.category    ?? "",
         budget:      data.budget      ?? 0,
         deadline:    data.deadline    ?? "",
+        agencyName,
+        location:    data.location    ?? "",
+        gender:      data.gender      ?? "",
+        ageMin:      data.age_min     ?? null,
+        ageMax:      data.age_max     ?? null,
       }
     : null;
 

@@ -12,6 +12,11 @@ export type TalentJobDetailProps = {
   category: string;
   budget: number;
   deadline: string;
+  agencyName: string;
+  location: string;
+  gender: string;
+  ageMin: number | null;
+  ageMax: number | null;
 };
 
 function usd(n: number) {
@@ -568,6 +573,12 @@ export default function TalentJobDetail({ job }: { job: TalentJobDetailProps | n
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-50">
+            {job.agencyName && (
+              <div className="col-span-2">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Agency</p>
+                <p className="text-[14px] font-semibold text-zinc-900">{job.agencyName}</p>
+              </div>
+            )}
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Budget</p>
               <p className="text-[16px] font-semibold text-zinc-900">{usd(job.budget)}</p>
@@ -576,6 +587,30 @@ export default function TalentJobDetail({ job }: { job: TalentJobDetailProps | n
               <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Deadline</p>
               <p className="text-[16px] font-semibold text-zinc-900">{formatDate(job.deadline)}</p>
             </div>
+            {job.location && (
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Location</p>
+                <p className="text-[14px] font-semibold text-zinc-900">{job.location}</p>
+              </div>
+            )}
+            {job.gender && (
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Gender</p>
+                <p className="text-[14px] font-semibold text-zinc-900">{job.gender}</p>
+              </div>
+            )}
+            {(job.ageMin !== null || job.ageMax !== null) && (
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Age</p>
+                <p className="text-[14px] font-semibold text-zinc-900">
+                  {job.ageMin !== null && job.ageMax !== null
+                    ? `${job.ageMin}–${job.ageMax} years`
+                    : job.ageMin !== null
+                    ? `${job.ageMin}+ years`
+                    : `Up to ${job.ageMax} years`}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
