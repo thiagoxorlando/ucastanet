@@ -369,7 +369,24 @@ function AgencySetup({ userId, onDone }: { userId: string; onDone: () => void })
     setServerError("");
     setLoading(true);
 
-    const { error: dbError } = await supabase.from("agencies").upsert({
+    // Upload logo if selected
+    let logoUrl: string | undefined;
+    if (logo) {
+      const ext = logo.name.split(".").pop();
+      const formData = new FormData();
+      formData.append("file", logo);
+      formData.append("path", `agency-avatars/${userId}.${ext}`);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const json = await res.json();
+      if (!res.ok) {
+        setServerError("Logo upload failed: " + (json.error ?? "Unknown error"));
+        setLoading(false);
+        return;
+      }
+      logoUrl = json.url;
+    }
+
+    const payload: Record<string, unknown> = {
       id:           userId,
       company_name: form.companyName.trim(),
       contact_name: form.contactName.trim(),
@@ -378,7 +395,10 @@ function AgencySetup({ userId, onDone }: { userId: string; onDone: () => void })
       city:         form.city.trim(),
       description:  form.description.trim(),
       website:      form.website.trim(),
-    }, { onConflict: "id" });
+    };
+    if (logoUrl) payload.avatar_url = logoUrl;
+
+    const { error: dbError } = await supabase.from("agencies").upsert(payload, { onConflict: "id" });
 
     if (dbError) {
       setServerError(dbError.message);
