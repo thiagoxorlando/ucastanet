@@ -18,8 +18,8 @@ export default async function AdminUsersPage() {
   ] = await Promise.all([
     supabase.auth.admin.listUsers({ perPage: 1000 }),
     supabase.from("profiles").select("id, role"),
-    supabase.from("talent_profiles").select("id, full_name"),
-    supabase.from("agencies").select("id, company_name"),
+    supabase.from("talent_profiles").select("id, full_name").is("deleted_at", null),
+    supabase.from("agencies").select("id, company_name").is("deleted_at", null),
     supabase.from("bookings").select("talent_user_id, agency_id, price, status"),
   ]);
 

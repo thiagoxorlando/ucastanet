@@ -10,6 +10,7 @@ export default async function AdminBookingsPage() {
   const { data: bookingsData } = await supabase
     .from("bookings")
     .select("id, job_id, job_title, talent_user_id, agency_id, price, status, created_at")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   const rows = bookingsData ?? [];

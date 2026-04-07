@@ -11,6 +11,7 @@ export default async function AdminJobsPage() {
     supabase
       .from("jobs")
       .select("id, title, category, budget, deadline, created_at, agency_id, status, description, location, gender, age_min, age_max, job_date")
+      .is("deleted_at", null)
       .order("created_at", { ascending: false }),
     supabase.from("agencies").select("id, company_name"),
     supabase.from("submissions").select("job_id"),

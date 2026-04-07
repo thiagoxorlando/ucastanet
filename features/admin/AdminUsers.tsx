@@ -49,6 +49,7 @@ export default function AdminUsers({ users: initial }: { users: AdminUser[] }) {
   const [roleFilter, setRoleFilter] = useState("all");
   const [sortKey, setSortKey] = useState<SortKey>("none");
   const [updating, setUpdating] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [error, setError]     = useState("");
 
   const filtered = users
@@ -89,13 +90,48 @@ export default function AdminUsers({ users: initial }: { users: AdminUser[] }) {
     setUpdating(null);
   }
 
+  async function handleDelete(u: AdminUser) {
+    const table = u.role === "agency" ? "agencies" : "talent_profiles";
+    const res = await fetch(`/api/admin/users/${u.id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ table }),
+    });
+    if (res.ok) {
+      setUsers((prev) => prev.filter((x) => x.id !== u.id));
+    }
+    setDeleting(null);
+  }
+
   function handleRowClick(u: AdminUser, e: React.MouseEvent) {
-    if ((e.target as HTMLElement).closest("select")) return;
+    if ((e.target as HTMLElement).closest("select, button")) return;
     router.push(`/admin/users/${u.id}`);
   }
 
+  const userToDelete = deleting ? users.find((u) => u.id === deleting) : null;
+
   return (
     <div className="max-w-7xl space-y-6">
+
+      {userToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4">
+            <p className="text-[14px] text-zinc-700 font-medium">
+              Move <strong>{userToDelete.name || userToDelete.email}</strong> to trash?
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleting(null)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-200 text-[13px] font-medium text-zinc-600 hover:border-zinc-300 transition-colors cursor-pointer">
+                Cancel
+              </button>
+              <button onClick={() => handleDelete(userToDelete)}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-[13px] font-semibold transition-colors cursor-pointer">
+                Move to Trash
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div>
@@ -184,6 +220,7 @@ export default function AdminUsers({ users: initial }: { users: AdminUser[] }) {
                 <th className="text-right px-4 py-3.5 text-[11px] font-semibold uppercase tracking-widest text-zinc-400 hidden lg:table-cell">Spent</th>
                 <th className="text-right px-4 py-3.5 text-[11px] font-semibold uppercase tracking-widest text-zinc-400 hidden xl:table-cell">Commission</th>
                 <th className="text-left px-6 py-3.5 text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Role</th>
+                <th className="px-4 py-3.5 w-16" />
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-50">
@@ -252,12 +289,18 @@ export default function AdminUsers({ users: initial }: { users: AdminUser[] }) {
                         <span className="ml-2 text-[11px] text-zinc-400">Saving…</span>
                       )}
                     </td>
+                    <td className="px-4 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <button onClick={() => setDeleting(u.id)}
+                        className="text-[11px] font-medium text-rose-400 hover:text-rose-600 transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-rose-50">
+                        Delete
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-6 py-16 text-center">
+                  <td colSpan={9} className="px-6 py-16 text-center">
                     <p className="text-[14px] font-medium text-zinc-500">No users found</p>
                     <p className="text-[13px] text-zinc-400 mt-1">Try adjusting your search or filter.</p>
                   </td>

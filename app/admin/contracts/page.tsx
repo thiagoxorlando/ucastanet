@@ -11,6 +11,7 @@ export default async function AdminContractsPage() {
   const { data: rows } = await supabase
     .from("contracts")
     .select("id, agency_id, talent_id, job_date, location, job_description, payment_amount, status, created_at")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   const contracts_data = rows ?? [];
