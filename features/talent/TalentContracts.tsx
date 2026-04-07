@@ -25,6 +25,36 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 };
 const STATUS_FALLBACK = { label: "Unknown", cls: "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200" };
 
+function downloadContract(c: TalentContract) {
+  const lines = [
+    "CONTRACT DETAILS",
+    "================",
+    `Agency:           ${c.agencyName}`,
+    `Status:           ${c.status}`,
+    `Payment Amount:   ${usd(c.paymentAmount)}`,
+    `Payment Method:   ${c.paymentMethod ?? "—"}`,
+    `Job Date:         ${c.jobDate ? fmtJobDate(c.jobDate) : "TBD"}`,
+    `Job Time:         ${c.jobTime ?? "—"}`,
+    `Location:         ${c.location ?? "—"}`,
+    `Received:         ${fmtDate(c.createdAt)}`,
+    "",
+    "JOB DESCRIPTION",
+    "---------------",
+    c.jobDescription ?? "No description provided.",
+    "",
+    "ADDITIONAL NOTES",
+    "----------------",
+    c.additionalNotes ?? "None.",
+  ];
+  const blob = new Blob([lines.join("\n")], { type: "text/plain" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `contract-${c.agencyName.replace(/\s+/g, "-").toLowerCase()}-${c.id.slice(0, 8)}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function usd(n: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
 }
@@ -91,6 +121,19 @@ function ContractRow({
         <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap flex-shrink-0 ${st.cls}`}>
           {st.label}
         </span>
+
+        {/* Download */}
+        <button
+          onClick={(e) => { e.stopPropagation(); downloadContract(c); }}
+          className="flex-shrink-0 text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer"
+          aria-label="Download contract"
+          title="Download contract"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+        </button>
       </button>
 
       {/* Expanded details */}

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { notify } from "@/lib/notify";
+import { createClient } from "@supabase/supabase-js";
 
 export async function POST(req: NextRequest) {
   const { job_id, talent_ids } = await req.json();
@@ -8,9 +8,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "job_id and talent_ids are required" }, { status: 400 });
   }
 
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  );
+
   for (const talent_id of talent_ids) {
-    console.log("Creating job_invite notification", { talent_id, job_id });
-    await notify(talent_id, "job_invite", "You were invited to apply for a job", `/talent/jobs/${job_id}`);
+    if (!talent_id) continue;
+
+    const { error } = await supabase.from("notifications").insert({
+      user_id: talent_id,
+      type: "job_invite",
+      message: "You were invited to apply for a job",
+      link: `/talent/jobs/${job_id}`,
+    });
+
+    if (error) console.error("[invite] Insert failed:", error.message, { talent_id, job_id });
   }
 
   return NextResponse.json({ ok: true });

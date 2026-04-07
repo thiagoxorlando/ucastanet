@@ -31,12 +31,12 @@ export async function PATCH(
   // "accept" means talent signed the contract → status = "signed"
   const newStatus = action === "accept" ? "signed" : "rejected";
 
+  const updatePayload: Record<string, unknown> = { status: newStatus };
+  if (action === "accept") updatePayload.signed_at = new Date().toISOString();
+
   const { error: updateErr } = await supabase
     .from("contracts")
-    .update({
-      status:    newStatus,
-      signed_at: action === "accept" ? new Date().toISOString() : null,
-    })
+    .update(updatePayload)
     .eq("id", id);
 
   if (updateErr) {
@@ -45,12 +45,20 @@ export async function PATCH(
 
   if (action === "accept") {
     // Upgrade the pending booking to pending_payment (awaiting agency to pay)
-    const upgraded = await supabase
+    let bookingQuery = supabase
       .from("bookings")
       .update({ status: "pending_payment" })
       .eq("talent_user_id", contract.talent_id)
-      .eq("status", "pending")
-      .eq("job_id", contract.job_id ?? "");
+      .eq("agency_id", contract.agency_id)
+      .eq("status", "pending");
+
+    if (contract.job_id) {
+      bookingQuery = bookingQuery.eq("job_id", contract.job_id);
+    } else {
+      bookingQuery = bookingQuery.is("job_id", null);
+    }
+
+    const upgraded = await bookingQuery;
 
     if (upgraded.error || upgraded.count === 0) {
       // Fallback: create booking if the pending one was not found
@@ -70,14 +78,20 @@ export async function PATCH(
     await notify(contract.talent_id, "booking", "You were booked", "/talent/bookings");
   } else {
     // Remove the pending booking created when the contract was sent
+    let deleteQuery = supabase
+      .from("bookings")
+      .delete()
+      .eq("talent_user_id", contract.talent_id)
+      .eq("agency_id", contract.agency_id)
+      .eq("status", "pending");
+
     if (contract.job_id) {
-      await supabase
-        .from("bookings")
-        .delete()
-        .eq("talent_user_id", contract.talent_id)
-        .eq("job_id", contract.job_id)
-        .eq("status", "pending");
+      deleteQuery = deleteQuery.eq("job_id", contract.job_id);
+    } else {
+      deleteQuery = deleteQuery.is("job_id", null);
     }
+
+    await deleteQuery;
 
     await notify(contract.agency_id, "contract", "Talent rejected your contract", "/agency/contracts");
   }

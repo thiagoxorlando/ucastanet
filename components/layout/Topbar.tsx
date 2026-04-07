@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUserProfile } from "@/lib/useUserProfile";
 import NotificationBell from "@/components/layout/NotificationBell";
+import Logo from "@/components/Logo";
 
 const pageMeta: Record<string, { title: string; description: string }> = {
   "/agency/dashboard": { title: "Dashboard", description: "Overview of your agency and talent roster" },
@@ -38,10 +40,18 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
 
   const meta = pageMeta[pathname] ?? { title: "", description: "" };
 
+  const dashboardHref =
+    pathname.startsWith("/talent") ? "/talent/dashboard" :
+    pathname.startsWith("/admin")  ? "/admin/dashboard"  :
+    "/agency/dashboard";
+
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between h-16 px-6 lg:px-8 bg-white border-b border-zinc-100 flex-shrink-0">
-      {/* Left — hamburger (mobile) + page title */}
+      {/* Left — logo + hamburger (mobile) + page title */}
       <div className="flex items-center gap-4 min-w-0">
+        <Link href={dashboardHref} className="flex-shrink-0 hidden lg:flex items-center">
+          <Logo size="md" src="/logo1.png" className="mix-blend-multiply" />
+        </Link>
         <button
           onClick={onMenuClick}
           className="lg:hidden w-8 h-8 flex items-center justify-center rounded-xl text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition-colors flex-shrink-0"

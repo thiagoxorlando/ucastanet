@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "ucastanet — Connect talent with agencies",
   description:
     "A modern platform for agencies to discover and manage creators, and for talent to get found.",
+  icons: { icon: "/logo.png" },
 };
 
 export default function RootLayout({
