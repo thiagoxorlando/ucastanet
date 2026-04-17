@@ -15,19 +15,32 @@ export default async function AdminUsersPage() {
     { data: talentProfiles },
     { data: agencies },
     { data: bookingsData },
+    { data: frozenProfiles },
   ] = await Promise.all([
     supabase.auth.admin.listUsers({ perPage: 1000 }),
-    supabase.from("profiles").select("id, role"),
+    supabase.from("profiles").select("id, role, full_name, wallet_balance"),
     supabase.from("talent_profiles").select("id, full_name").is("deleted_at", null),
     supabase.from("agencies").select("id, company_name").is("deleted_at", null),
     supabase.from("bookings").select("talent_user_id, agency_id, price, status"),
+    // Separate query so a missing/stale is_frozen column never breaks the role data
+    supabase.from("profiles").select("id, is_frozen"),
   ]);
 
-  const roleMap   = new Map<string, string>();
-  const talentMap = new Map<string, string>();
-  const agencyMap = new Map<string, string>();
+  const roleMap    = new Map<string, string>();
+  const profileMap = new Map<string, string>(); // full_name for admin-role users
+  const frozenMap  = new Map<string, boolean>();
+  const walletMap  = new Map<string, number>();
+  const talentMap  = new Map<string, string>();
+  const agencyMap  = new Map<string, string>();
 
-  for (const p of profiles      ?? []) roleMap.set(p.id, p.role ?? "");
+  for (const p of profiles ?? []) {
+    roleMap.set(p.id, p.role ?? "");
+    if (p.full_name) profileMap.set(p.id, p.full_name);
+    walletMap.set(p.id, Number((p as any).wallet_balance ?? 0));
+  }
+  for (const p of frozenProfiles ?? []) {
+    frozenMap.set(p.id, (p as { id: string; is_frozen?: boolean }).is_frozen ?? false);
+  }
   for (const t of talentProfiles ?? []) talentMap.set(t.id, t.full_name ?? "");
   for (const a of agencies       ?? []) agencyMap.set(a.id, a.company_name ?? "");
 
@@ -50,20 +63,24 @@ export default async function AdminUsersPage() {
   }
 
   const users = (authUsers ?? []).map((u) => {
-    const role = roleMap.get(u.id) ?? "talent";
+    const role = roleMap.get(u.id) ?? "";
     const name =
       role === "agency"
-        ? (agencyMap.get(u.id) || talentMap.get(u.id) || "")
+        ? (agencyMap.get(u.id) || talentMap.get(u.id) || profileMap.get(u.id) || "")
+        : role === "admin"
+        ? (profileMap.get(u.id) || "")
         : (talentMap.get(u.id) || "");
     return {
       id:                  u.id,
       email:               u.email ?? "",
       name,
       role,
+      isFrozen:            frozenMap.get(u.id) ?? false,
       created_at:          u.created_at ?? "",
       totalEarned:         earnedMap.get(u.id) ?? 0,
       totalSpent:          spentMap.get(u.id) ?? 0,
       commissionGenerated: commissionMap.get(u.id) ?? 0,
+      walletBalance:       walletMap.get(u.id) ?? 0,
     };
   });
 
