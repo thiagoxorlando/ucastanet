@@ -19,7 +19,7 @@ export default async function BillingPage() {
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("plan, wallet_balance")
+      .select("plan, plan_status, plan_expires_at, wallet_balance")
       .eq("id", userId)
       .single(),
 
@@ -31,7 +31,7 @@ export default async function BillingPage() {
 
     supabase
       .from("wallet_transactions")
-      .select("id, type, amount, description, reference_id, payment_id, created_at")
+      .select("id, type, amount, description, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50),
@@ -41,8 +41,8 @@ export default async function BillingPage() {
     <BillingDashboard
       userId={userId}
       plan={profile?.plan ?? "free"}
-      planStatus={null}
-      planExpiresAt={null}
+      planStatus={profile?.plan_status ?? null}
+      planExpiresAt={profile?.plan_expires_at ?? null}
       walletBalance={Number(profile?.wallet_balance ?? 0)}
       savedCards={savedCards ?? []}
       transactions={transactions ?? []}

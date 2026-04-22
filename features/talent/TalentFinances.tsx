@@ -582,17 +582,16 @@ export default function TalentFinances() {
             </div>
           )}
 
-          {/* Commission info */}
+          {/* Finance info */}
           <div className="flex items-center gap-2 text-[12px] text-zinc-400 bg-zinc-50 border border-zinc-100 rounded-xl px-4 py-2.5">
             <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Taxa da plataforma: <strong className="text-zinc-600 mx-1">15%</strong>
-            <span className="mx-1">·</span>
-            Talento recebe: <strong className="text-zinc-600 mx-1">85% do valor combinado</strong>
-            <span className="mx-1">·</span>
-            <strong className="text-violet-600">+2% taxa de indicação (se aplicável)</strong>
+            <span>
+              Os valores exibidos refletem reservas, contratos pagos e indicações registradas.
+              Taxas e repasses podem variar conforme o plano da agência e o contexto da contratação.
+            </span>
           </div>
 
           {/* PIX account setup */}

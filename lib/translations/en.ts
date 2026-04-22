@@ -8,7 +8,6 @@ export const en = {
   nav_finances:    "Finances",
   nav_contracts:   "Contracts",
   nav_billing:     "Billing",
-  nav_profile:     "Profile",
   nav_referrals:   "Referrals",
   nav_trash:       "Trash",
   nav_profile:     "My Profile",
@@ -57,6 +56,7 @@ export const en = {
   status_draft:        "Draft",
   status_inactive:     "Inactive",
   status_pending:      "Pending",
+  status_approved:     "Approved",
   status_confirmed:    "Confirmed",
   status_paid:         "Paid",
   status_cancelled:    "Cancelled",
@@ -306,6 +306,11 @@ export const en = {
   submissions_selected:    "Selected",
   submissions_reject:      "Reject",
   submissions_view:        "View",
+  submission_referral_fallback_name: "Referred talent",
+  submission_badge_referral:         "Referral",
+  submission_status_signup_pending:  "Signup pending",
+  submission_source_self:            "Self-applied",
+  submission_source_referred:        "Referred",
 
   // ── General ───────────────────────────────────────────────────────────────────
   general_no_results:  "No results found.",

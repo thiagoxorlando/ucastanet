@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { createSessionClient } from "@/lib/supabase.server";
 import { syncBooking } from "@/lib/syncBooking";
-import { notify } from "@/lib/notify";
+import { notify, notifyAdmins } from "@/lib/notify";
 import { getUnifiedBookingStatus } from "@/lib/bookingStatus";
 
 const ALLOWED_ACTIONS = [
@@ -27,8 +28,40 @@ export async function PATCH(
   }
 
   const supabase = createServerClient({ useServiceRole: true });
+  const session = await createSessionClient();
+  const { data: { user } } = await session.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // ── Agency: attach/update original contract file URL ─────────────────────
+  // Fetch contract before authorizing any mutation.
+  const { data: contract, error: fetchErr } = await supabase
+    .from("contracts")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (fetchErr || !contract) {
+    return NextResponse.json({ error: "Contract not found" }, { status: 404 });
+  }
+
+  const { data: caller } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const isAgencyOwner = caller?.role === "agency" && contract.agency_id === user.id;
+  const isTalentOwner = caller?.role === "talent" && contract.talent_id === user.id;
+  const agencyActions = ["set_file_url", "agency_sign", "pay", "cancel_job"];
+  const talentActions = ["reject", "talent_cancel", "withdraw"];
+
+  if (agencyActions.includes(action) && !isAgencyOwner) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (talentActions.includes(action) && !isTalentOwner) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // Agency-owned file attachment is allowed only after ownership is verified.
   if (action === "set_file_url") {
     if (!contract_file_url) {
       return NextResponse.json({ error: "contract_file_url is required" }, { status: 400 });
@@ -39,17 +72,6 @@ export async function PATCH(
       .eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ ok: true });
-  }
-
-  // ── Fetch contract for all remaining actions ──────────────────────────────
-  const { data: contract, error: fetchErr } = await supabase
-    .from("contracts")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (fetchErr || !contract) {
-    return NextResponse.json({ error: "Contract not found" }, { status: 404 });
   }
 
   const now = new Date().toISOString();
@@ -155,6 +177,17 @@ export async function PATCH(
     // already_processed: RPC was a no-op (idempotent retry) — skip side effects
     if (!r.already_processed) {
       await syncBooking(supabase, contract, "confirmed");
+      const brl = new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        maximumFractionDigits: 0,
+      }).format(required);
+      await notifyAdmins(
+        "payment",
+        `Escrow bloqueado: ${brl} em garantia`,
+        "/admin/finances",
+        `admin-escrow-locked:${id}`,
+      );
     }
 
     // Notify talent about the confirmation + escrow deposit.
@@ -230,6 +263,17 @@ export async function PATCH(
 
     if (!r.already_processed) {
       await syncBooking(supabase, contract, "paid");
+      const brl = new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        maximumFractionDigits: 0,
+      }).format(amount);
+      await notifyAdmins(
+        "payment",
+        `Pagamento liberado ao talento: ${brl}`,
+        "/admin/finances",
+        `admin-payment-released:${id}`,
+      );
       // Talent payment notification is inserted inside the RPC atomically — do not re-send here.
     }
 
@@ -339,6 +383,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const session = await createSessionClient();
+  const { data: { user } } = await session.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const supabase = createServerClient({ useServiceRole: true });
 
   const { data, error } = await supabase
@@ -348,5 +396,19 @@ export async function GET(
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 404 });
+
+  const { data: caller } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const canRead =
+    caller?.role === "admin" ||
+    (caller?.role === "agency" && data.agency_id === user.id) ||
+    (caller?.role === "talent" && data.talent_id === user.id);
+
+  if (!canRead) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   return NextResponse.json({ contract: data });
 }

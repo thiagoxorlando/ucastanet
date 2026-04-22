@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment, CardToken } from "mercadopago";
 import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
+import { notifyAdmins } from "@/lib/notify";
 
 // POST /api/payments/wallet-deposit-card
 // Body: { card_id: string (DB uuid), amount: number }
@@ -23,6 +24,15 @@ export async function POST(req: NextRequest) {
   if (!numAmount || numAmount <= 0) return NextResponse.json({ error: "Valor inválido."           }, { status: 400 });
 
   const supabase = createServerClient({ useServiceRole: true });
+  const { data: caller } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (caller?.role !== "agency") {
+    return NextResponse.json({ error: "Apenas agencias podem depositar na carteira da plataforma." }, { status: 403 });
+  }
 
   // Verify the card belongs to this user
   const { data: card, error: cardErr } = await supabase
@@ -89,6 +99,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (result.status !== "approved") {
+    return NextResponse.json(
+      {
+        error: "Pagamento ainda nao aprovado. A carteira nao foi creditada.",
+        paymentStatus: result.status,
+        paymentId: result.id,
+      },
+      { status: 409 },
+    );
+  }
+
   // Credit wallet balance atomically via RPC
   await supabase.rpc("increment_wallet_balance", {
     p_user_id: user.id,
@@ -96,13 +117,25 @@ export async function POST(req: NextRequest) {
   });
 
   // Record the deposit
-  await supabase.from("wallet_transactions").insert({
+  const { data: txRecord } = await supabase.from("wallet_transactions").insert({
     user_id:     user.id,
     type:        "deposit",
     amount:      numAmount,
     description: `Depósito via cartão ${card.brand?.toUpperCase() ?? ""} •••• ${card.last_four ?? ""}`.trim(),
     payment_id:  String(result.id),
-  });
+  }).select("id").single();
+
+  const brl = new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  }).format(numAmount);
+  await notifyAdmins(
+    "payment",
+    `Depósito de carteira confirmado: ${brl}`,
+    "/admin/finances",
+    `admin-wallet-deposit-card:${result.id ?? txRecord?.id ?? user.id}`,
+  );
 
   return NextResponse.json({ success: true, amount: numAmount });
 }

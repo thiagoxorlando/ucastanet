@@ -21,6 +21,32 @@ export async function PATCH(
   }
 
   const supabase = createServerClient({ useServiceRole: true });
+  const session = await createSessionClient();
+  const { data: { user } } = await session.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: caller } = await supabase
+    .from("profiles")
+    .select("role, plan")
+    .eq("id", user.id)
+    .single();
+
+  if (caller?.role !== "agency") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { data: existingJob } = await supabase
+    .from("jobs")
+    .select("agency_id")
+    .eq("id", id)
+    .single();
+
+  if (!existingJob) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  if (existingJob.agency_id !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  if (update.visibility === "private" && caller.plan !== "premium") {
+    return NextResponse.json({ error: "Premium plan required for private jobs" }, { status: 403 });
+  }
 
   const { data, error } = await supabase
     .from("jobs")
@@ -58,6 +84,26 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const { data: job } = await supabase
+    .from("jobs")
+    .select("agency_id")
+    .eq("id", id)
+    .single();
+
+  if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+
+  const isAdmin = profile?.role === "admin";
+  const isOwnerAgency = profile?.role === "agency" && job.agency_id === user.id;
+  if (!isAdmin && !isOwnerAgency) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   if (!hard) {
     // Soft delete: set status = 'inactive'
     const { error } = await supabase
@@ -70,28 +116,6 @@ export async function DELETE(
     }
 
     return NextResponse.json({ ok: true, deleted: false });
-  }
-
-  // Hard delete: allowed for admin OR the agency that owns the job
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  const isAdmin = profile?.role === "admin";
-
-  if (!isAdmin) {
-    // Check the agency owns this job
-    const { data: job } = await supabase
-      .from("jobs")
-      .select("agency_id")
-      .eq("id", id)
-      .single();
-
-    if (!job || job.agency_id !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
   }
 
   // Cascade: delete submissions first, then the job

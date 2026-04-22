@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { createSessionClient } from "@/lib/supabase.server";
 import { notify } from "@/lib/notify";
 import { requireJobLimit } from "@/lib/requireActiveSubscription";
 import { getJobSuggestions } from "@/lib/getJobSuggestions";
@@ -16,14 +17,32 @@ export async function POST(req: NextRequest) {
     application_requirements,
   } = body;
 
-  const limited = await requireJobLimit(agency_id);
-  if (limited) return limited;
+  const session = await createSessionClient();
+  const { data: { user } } = await session.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = createServerClient({ useServiceRole: true });
+  const { data: caller } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (caller?.role !== "agency") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+  if (agency_id && agency_id !== user.id) {
+    return NextResponse.json({ error: "Cannot create jobs for another agency" }, { status: 403 });
+  }
+
+  const agencyId = user.id;
+  const limited = await requireJobLimit(agencyId);
+  if (limited) return limited;
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("plan")
-    .eq("id", agency_id)
+    .eq("id", agencyId)
     .single();
   const planInfo = resolvePlanInfo(profile);
 
@@ -32,14 +51,14 @@ export async function POST(req: NextRequest) {
   const visibility = isPremium && rawVisibility === "private" ? "private" : "public";
 
   console.log("[plan] create_job", {
-    agencyId: agency_id,
+    agencyId,
     plan: planInfo.plan,
     visibility,
     maxActiveJobs: planInfo.maxActiveJobs,
   });
 
   const baseInsert = {
-    title, description, category, budget, deadline, agency_id,
+    title, description, category, budget, deadline, agency_id: agencyId,
     visibility,
     job_date:                   job_date  ?? null,
     job_time:                   job_time  ?? null,
@@ -77,7 +96,7 @@ export async function POST(req: NextRequest) {
   // Auto-invite — for private jobs, only invite from agency history + existing invitees
   if (auto_invite && isPublished) {
     const supabaseInvite = createServerClient({ useServiceRole: true });
-    const { suggestions, job_date: jDate } = await getJobSuggestions(data.id, agency_id, 5, visibility === "private");
+    const { suggestions, job_date: jDate } = await getJobSuggestions(data.id, agencyId, 5, visibility === "private");
     const toInvite = suggestions.filter((s) => !s.is_unavailable);
 
     if (toInvite.length > 0) {
@@ -85,7 +104,7 @@ export async function POST(req: NextRequest) {
         toInvite.map((t) => ({
           job_id:    data.id,
           talent_id: t.id,
-          agency_id,
+          agency_id: agencyId,
           status:    "pending",
         })),
       );

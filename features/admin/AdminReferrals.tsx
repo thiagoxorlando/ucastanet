@@ -44,15 +44,29 @@ export default function AdminReferrals({ referrals: initial }: { referrals: Admi
 
   async function handleResend(r: AdminReferral) {
     setResending(r.id);
-    const res = await fetch("/api/admin/referrals/resend-invite", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ invite_id: r.inviteId, submission_id: r.submissionId }),
-    });
-    setResending(null);
-    const d = await res.json().catch(() => ({}));
-    setToast({ msg: res.ok ? "Convite reenviado com sucesso." : (d.error ?? "Erro ao reenviar."), ok: res.ok });
-    setTimeout(() => setToast(null), 4000);
+    try {
+      const res = await fetch("/api/admin/referrals/resend-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invite_id: r.inviteId, submission_id: r.submissionId }),
+      });
+      const d = await res.json().catch(() => ({}));
+      const emailFailed = d?.emailSent === false;
+      setToast({
+        msg: res.ok
+          ? "Convite reenviado com sucesso."
+          : emailFailed
+            ? "O convite nao foi reenviado por email. Verifique o provedor e tente novamente."
+            : (d.error ?? "Erro ao reenviar."),
+        ok: res.ok,
+      });
+    } catch (error) {
+      console.error("[AdminReferrals] resend failed:", error);
+      setToast({ msg: "Nao foi possivel reenviar o convite agora.", ok: false });
+    } finally {
+      setResending(null);
+      setTimeout(() => setToast(null), 4000);
+    }
   }
 
   const bookedCount     = referrals.filter((r) => r.booked).length;

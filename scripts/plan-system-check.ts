@@ -3,7 +3,7 @@ import {
   calculateNetAmount,
   getPlanDefinition,
   resolvePlanInfo,
-} from "../lib/plans.ts";
+} from "../lib/plans";
 
 function assert(condition: unknown, message: string) {
   if (!condition) {

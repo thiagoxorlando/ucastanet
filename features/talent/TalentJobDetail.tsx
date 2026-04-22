@@ -595,10 +595,8 @@ export default function TalentJobDetail({
     );
   }
 
-  // Compute ordered active steps from job requirements (default to photos + video)
-  const activeReqs = job.applicationRequirements && job.applicationRequirements.length > 0
-    ? job.applicationRequirements
-    : ["photos", "video"];
+  // Empty requirements means the agency did not request extra uploads.
+  const activeReqs = job.applicationRequirements ?? [];
   const orderedSteps = ALL_STEP_ORDER.filter((s) => activeReqs.includes(s));
 
   const getStepLabel = (s: ActiveStep) => {
@@ -649,6 +647,11 @@ export default function TalentJobDetail({
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.push("/login"); return; }
+    if (!job) {
+      setError("Vaga nao encontrada.");
+      setSubmitting(false);
+      return;
+    }
 
     try {
       const uid = user.id;
@@ -732,7 +735,7 @@ export default function TalentJobDetail({
         <h2 className="text-[1.25rem] font-semibold tracking-tight text-zinc-900 mb-2">Indicação enviada!</h2>
         <p className="text-[14px] text-zinc-400 mb-7">
           Você ganhará <strong className="text-zinc-700">2%</strong> se eles forem reservados para{" "}
-          <span className="font-medium text-zinc-700">"{job!.title}"</span>.
+          <span className="font-medium text-zinc-700">&quot;{job!.title}&quot;</span>.
         </p>
         <Link
           href="/talent/dashboard"
@@ -754,7 +757,7 @@ export default function TalentJobDetail({
         </div>
         <h2 className="text-[1.25rem] font-semibold tracking-tight text-zinc-900 mb-2">Candidatura enviada!</h2>
         <p className="text-[14px] text-zinc-400 mb-7">
-          Sua candidatura para <span className="font-medium text-zinc-700">"{job.title}"</span> está em análise.
+          Sua candidatura para <span className="font-medium text-zinc-700">&quot;{job.title}&quot;</span> está em análise.
         </p>
         <div className="flex flex-col gap-3">
           <Link
@@ -898,7 +901,9 @@ export default function TalentJobDetail({
             <div>
               <h2 className="text-[1rem] font-semibold text-zinc-900 mb-1">Candidatar-se a esta vaga</h2>
               <p className="text-[13px] text-zinc-400">
-                Para se candidatar você precisará enviar os seguintes itens:
+                {orderedSteps.length > 0
+                  ? "Para se candidatar você precisará enviar os seguintes itens:"
+                  : "Esta vaga não solicita fotos, vídeo, currículo ou portfólio."}
               </p>
             </div>
             {blocked ? (
@@ -909,27 +914,39 @@ export default function TalentJobDetail({
                 ))}
               </div>
             ) : (
-              <ul className="space-y-2">
-                {checklist.map((item, i) => (
-                  <li key={i} className="flex items-center gap-2 text-[13px] text-zinc-600">
-                    <span className="w-5 h-5 rounded-full bg-zinc-100 text-zinc-500 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                      {i + 1}
-                    </span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
+              orderedSteps.length > 0 ? (
+                <ul className="space-y-2">
+                  {checklist.map((item, i) => (
+                    <li key={i} className="flex items-center gap-2 text-[13px] text-zinc-600">
+                      <span className="w-5 h-5 rounded-full bg-zinc-100 text-zinc-500 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                        {i + 1}
+                      </span>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-[13px] text-zinc-500 bg-zinc-50 border border-zinc-100 rounded-xl px-4 py-3">
+                  Você pode enviar a candidatura diretamente.
+                </p>
+              )
             )}
             <div className="flex flex-col gap-3">
               <button
-                onClick={() => setStep(orderedSteps[0] as StepId)}
-                disabled={blocked}
+                onClick={() => {
+                  if (orderedSteps.length === 0) {
+                    void handleSubmit();
+                    return;
+                  }
+                  setStep(orderedSteps[0] as StepId);
+                }}
+                disabled={blocked || submitting}
                 className="w-full bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-200 disabled:text-zinc-400 disabled:cursor-not-allowed text-white text-[14px] font-semibold py-3.5 rounded-xl transition-all duration-150 active:scale-[0.99] cursor-pointer"
               >
-                Iniciar Candidatura
+                {submitting ? "Enviando…" : orderedSteps.length === 0 ? "Enviar Candidatura" : "Iniciar Candidatura"}
               </button>
               <button
-                onClick={() => setShowReferral(true)}
+                onClick={() => router.push(`/job/${job.id}`)}
                 className="w-full bg-white border border-zinc-200 hover:border-violet-300 hover:bg-violet-50 text-zinc-700 hover:text-violet-700 text-[14px] font-semibold py-3.5 rounded-xl transition-all duration-150 active:scale-[0.99] cursor-pointer"
               >
                 Indicar um Talento — ganhe 2%

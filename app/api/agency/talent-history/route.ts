@@ -1,16 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { createSessionClient } from "@/lib/supabase.server";
 
 export async function GET(req: NextRequest) {
-  const agencyId = new URL(req.url).searchParams.get("agency_id");
-  if (!agencyId) return NextResponse.json({ error: "agency_id required" }, { status: 400 });
+  const queryAgencyId = new URL(req.url).searchParams.get("agency_id");
+  const session = await createSessionClient();
+  const { data: { user } } = await session.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = createServerClient({ useServiceRole: true });
+  const { data: caller } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (caller?.role !== "agency") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (queryAgencyId && queryAgencyId !== user.id) {
+    return NextResponse.json({ error: "Cannot view another agency's history" }, { status: 403 });
+  }
 
   const { data: history, error } = await supabase
     .from("agency_talent_history")
     .select("*")
-    .eq("agency_id", agencyId)
+    .eq("agency_id", user.id)
     .order("is_favorite", { ascending: false })
     .order("last_worked_at", { ascending: false });
 
@@ -38,16 +54,30 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "id and is_favorite required" }, { status: 400 });
   }
 
+  const session = await createSessionClient();
+  const { data: { user } } = await session.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const supabase = createServerClient({ useServiceRole: true });
+  const { data: caller } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (caller?.role !== "agency") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { data, error } = await supabase
     .from("agency_talent_history")
     .update({ is_favorite })
     .eq("id", id)
+    .eq("agency_id", user.id)
     .select()
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (error) return NextResponse.json({ error: error.message }, { status: 404 });
 
   return NextResponse.json({ history: data });
 }

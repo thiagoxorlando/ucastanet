@@ -45,8 +45,6 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "Cancelado",
 };
 
-const CONTRACT_STATUSES = ["sent", "signed", "confirmed", "paid", "rejected", "cancelled"];
-
 function brl(n: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(n);
 }
@@ -114,13 +112,13 @@ function ContractRow({ contract: c, onDelete }: { contract: AdminContractRow; on
   const [editing, setEditing]         = useState(false);
   const [confirm, setConfirm]         = useState(false);
   const [saving, setSaving]           = useState(false);
-  const [editStatus, setEditStatus]   = useState(c.status);
   const [editAmount, setEditAmount]   = useState(String(c.paymentAmount));
   const [editLocation, setEditLocation] = useState(c.location ?? "");
   const [editJobDate, setEditJobDate] = useState(c.jobDate ?? "");
   const [local, setLocal]             = useState(c);
 
   const isPaid  = local.paymentStatus === "paid";
+  const amountLocked = local.status === "confirmed";
   const stCls   = STATUS_STYLES[local.status] ?? "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200";
   const stLabel = STATUS_LABELS[local.status] ?? local.status;
 
@@ -130,7 +128,6 @@ function ContractRow({ contract: c, onDelete }: { contract: AdminContractRow; on
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        status:         editStatus,
         payment_amount: Number(editAmount),
         location:       editLocation || null,
         job_date:       editJobDate || null,
@@ -138,7 +135,7 @@ function ContractRow({ contract: c, onDelete }: { contract: AdminContractRow; on
     });
     setSaving(false);
     if (res.ok) {
-      setLocal((v) => ({ ...v, status: editStatus, paymentAmount: Number(editAmount), location: editLocation || null, jobDate: editJobDate || null }));
+      setLocal((v) => ({ ...v, paymentAmount: Number(editAmount), location: editLocation || null, jobDate: editJobDate || null }));
       setEditing(false);
     }
   }
@@ -243,15 +240,18 @@ function ContractRow({ contract: c, onDelete }: { contract: AdminContractRow; on
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-1 block">Status</label>
-                    <select value={editStatus} onChange={(e) => setEditStatus(e.target.value)}
-                      className="w-full px-3 py-2 text-[13px] rounded-xl border border-zinc-200 focus:border-zinc-900 focus:outline-none bg-white">
-                      {CONTRACT_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABELS[s] ?? s}</option>)}
-                    </select>
+                    <div className="w-full px-3 py-2 text-[13px] rounded-xl border border-zinc-100 bg-zinc-50 text-zinc-500">
+                      {stLabel}
+                    </div>
+                    <p className="mt-1 text-[11px] text-zinc-400">Use o fluxo normal para escrow, pagamento ou cancelamento.</p>
                   </div>
                   <div>
                     <label className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-1 block">Pagamento (R$)</label>
-                    <input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)}
-                      className="w-full px-3 py-2 text-[13px] rounded-xl border border-zinc-200 focus:border-zinc-900 focus:outline-none bg-white" />
+                    <input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} disabled={amountLocked}
+                      className="w-full px-3 py-2 text-[13px] rounded-xl border border-zinc-200 focus:border-zinc-900 focus:outline-none bg-white disabled:bg-zinc-50 disabled:text-zinc-400" />
+                    {amountLocked && (
+                      <p className="mt-1 text-[11px] text-zinc-400">Valor bloqueado porque o escrow ja foi reservado.</p>
+                    )}
                   </div>
                   <div>
                     <label className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-1 block">Data da Vaga</label>

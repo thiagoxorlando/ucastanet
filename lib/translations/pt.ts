@@ -10,7 +10,6 @@ export const pt: Record<TranslationKey, string> = {
   nav_finances:    "Financeiro",
   nav_contracts:   "Contratos",
   nav_billing:     "Plano",
-  nav_profile:     "Perfil",
   nav_referrals:   "Indicações",
   nav_trash:       "Lixeira",
   nav_profile:     "Meu Perfil",
@@ -59,6 +58,7 @@ export const pt: Record<TranslationKey, string> = {
   status_draft:        "Rascunho",
   status_inactive:     "Inativa",
   status_pending:      "Pendente",
+  status_approved:     "Aprovado",
   status_confirmed:    "Confirmado",
   status_paid:         "Pago",
   status_cancelled:    "Cancelado",
@@ -308,6 +308,11 @@ export const pt: Record<TranslationKey, string> = {
   submissions_selected:    "Selecionado",
   submissions_reject:      "Rejeitar",
   submissions_view:        "Ver",
+  submission_referral_fallback_name: "Talento indicado",
+  submission_badge_referral:         "Indicação",
+  submission_status_signup_pending:  "Cadastro pendente",
+  submission_source_self:            "Candidatura propria",
+  submission_source_referred:        "Indicado",
 
   // ── General ───────────────────────────────────────────────────────────────────
   general_no_results:  "Nenhum resultado encontrado.",

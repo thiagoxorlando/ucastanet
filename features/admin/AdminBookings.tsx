@@ -3,8 +3,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  VALID_TRANSITIONS,
-  normaliseStatus,
   statusInfo,
   unifiedStatusInfo,
   type UnifiedBookingStatus,
@@ -63,7 +61,6 @@ function BookingRow({ booking: b, onDelete }: { booking: AdminBooking; onDelete:
   const [editing, setEditing]       = useState(false);
   const [confirm, setConfirm]       = useState(false);
   const [saving, setSaving]         = useState(false);
-  const [editStatus, setEditStatus] = useState(b.status);
   const [editPrice, setEditPrice]   = useState(String(b.price));
   const [local, setLocal]           = useState(b);
 
@@ -72,21 +69,17 @@ function BookingRow({ booking: b, onDelete }: { booking: AdminBooking; onDelete:
   const isPaid = derivedStatus === "pago";
   const paymentCls   = isPaid ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700";
   const paymentLabel = isPaid ? "Pago" : "Pendente";
-  // Edit form: valid transitions are still driven by the raw booking status
-  const validNext = VALID_TRANSITIONS[normaliseStatus(local.status)] ?? [];
-  const statusOptions: string[] = [normaliseStatus(local.status), ...validNext];
 
   async function handleSave() {
     setSaving(true);
     const res = await fetch(`/api/admin/bookings/${b.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: editStatus, price: Number(editPrice) }),
+      body: JSON.stringify({ price: Number(editPrice) }),
     });
     setSaving(false);
     if (res.ok) {
-      const d = await res.json().catch(() => ({}));
-      setLocal((v) => ({ ...v, status: editStatus, price: Number(editPrice), derivedStatus: d.derived_status ?? v.derivedStatus }));
+      setLocal((v) => ({ ...v, price: Number(editPrice) }));
       setEditing(false);
     }
   }
@@ -153,10 +146,10 @@ function BookingRow({ booking: b, onDelete }: { booking: AdminBooking; onDelete:
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-1 block">Status</label>
-                    <select value={editStatus} onChange={(e) => setEditStatus(e.target.value)}
-                      className="w-full px-3 py-2 text-[13px] rounded-xl border border-zinc-200 focus:border-zinc-900 focus:outline-none bg-white">
-                      {statusOptions.map((s) => <option key={s} value={s}>{statusInfo(s).label}</option>)}
-                    </select>
+                    <div className="w-full px-3 py-2 text-[13px] rounded-xl border border-zinc-100 bg-zinc-50 text-zinc-500">
+                      {statusInfo(local.status).label}
+                    </div>
+                    <p className="mt-1 text-[11px] text-zinc-400">Use o fluxo do contrato para escrow, pagamento ou cancelamento.</p>
                   </div>
                   <div>
                     <label className="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mb-1 block">Valor (R$)</label>

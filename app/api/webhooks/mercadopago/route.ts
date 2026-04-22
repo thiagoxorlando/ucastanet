@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import { createServerClient } from "@/lib/supabase";
+import { notifyAdmins } from "@/lib/notify";
 
 // POST /api/webhooks/mercadopago
 //
@@ -20,6 +21,8 @@ function log(level: LogLevel, msg: string, ctx?: Record<string, unknown>) {
   // eslint-disable-next-line no-console
   console[level === "info" ? "log" : level](JSON.stringify(entry));
 }
+
+const SUBSCRIPTION_TX_DESCRIPTION = "Assinatura Pro — Brisa Digital";
 
 // ── Signature validation ──────────────────────────────────────────────────────
 // Header: x-signature: ts=<ts>,v1=<hmac>
@@ -129,11 +132,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Idempotency: skip if plan already active for this payment
+    const recentCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
     const { data: existingTx } = await supabase
       .from("wallet_transactions")
       .select("id")
-      .eq("payment_id", dataId)
-      .eq("reference_id", "subscription")
+      .eq("user_id", userId)
+      .eq("type", "payment")
+      .eq("description", SUBSCRIPTION_TX_DESCRIPTION)
+      .gte("created_at", recentCutoff)
       .maybeSingle();
 
     if (existingTx) {
@@ -157,9 +163,7 @@ export async function POST(req: NextRequest) {
       user_id:      userId,
       type:         "payment",
       amount:       payment.transaction_amount ?? 0,
-      description:  "Assinatura Pro — Brisa Digital",
-      payment_id:   dataId,
-      reference_id: "subscription",
+      description:  SUBSCRIPTION_TX_DESCRIPTION,
     });
 
     log("info", "Subscription activated", { userId, paymentId: dataId, expiresAt: expiresAt.toISOString() });
@@ -193,6 +197,17 @@ export async function POST(req: NextRequest) {
 
     if (credited) {
       log("info", "Wallet deposit credited", { userId, amount: depositAmount, paymentId: dataId });
+      const brl = new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        maximumFractionDigits: 0,
+      }).format(depositAmount);
+      await notifyAdmins(
+        "payment",
+        `Depósito de carteira confirmado: ${brl}`,
+        "/admin/finances",
+        `admin-wallet-deposit:${dataId}`,
+      );
     } else {
       log("info", "Wallet deposit already credited — skipping", { paymentId: dataId, userId });
     }
@@ -393,7 +408,7 @@ export async function POST(req: NextRequest) {
           ? await supabase.from("jobs").select("title").eq("id", job_id).single()
           : { data: null };
 
-        const { error: bookingErr } = await supabase
+        const { data: createdBooking, error: bookingErr } = await supabase
           .from("bookings")
           .insert({
             job_id:         job_id ?? null,
@@ -402,12 +417,20 @@ export async function POST(req: NextRequest) {
             job_title:      jobRow?.title ?? contract.job_description?.slice(0, 100) ?? "Contract Job",
             price:          contractAmount,
             status:         "confirmed",
-          });
+          })
+          .select("id, job_title")
+          .single();
 
         if (bookingErr) {
           log("error", "Failed to create booking", { contractId, err: bookingErr.message });
         } else {
           log("info", "Booking created", { contractId });
+          await notifyAdmins(
+            "booking",
+            `Nova reserva criada: ${createdBooking.job_title ?? "sem titulo"}`,
+            "/admin/bookings",
+            `admin-booking-created:${createdBooking.id}`,
+          );
         }
       } else {
         log("info", "Duplicate booking skipped", { contractId, talentId: talent_id });

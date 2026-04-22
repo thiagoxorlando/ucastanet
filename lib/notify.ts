@@ -52,3 +52,41 @@ export async function notify(
     console.log("[notify] inserted ok:", inserted);
   }
 }
+
+export async function notifyAdmins(
+  type: string,
+  message: string,
+  link: string,
+  idempotencyKey?: string,
+) {
+  const url    = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !svcKey) {
+    console.error("[notifyAdmins] Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+    return;
+  }
+
+  const supabase = createClient(url, svcKey, { auth: { persistSession: false } });
+  const { data: admins, error } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("role", "admin");
+
+  if (error) {
+    console.error("[notifyAdmins] Could not load admins:", error.message);
+    return;
+  }
+
+  await Promise.all(
+    (admins ?? []).map((admin) =>
+      notify(
+        admin.id,
+        type,
+        message,
+        link,
+        idempotencyKey ? `${idempotencyKey}:admin:${admin.id}` : undefined,
+      )
+    )
+  );
+}

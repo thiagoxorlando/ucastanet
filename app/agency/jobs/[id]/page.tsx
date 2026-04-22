@@ -26,7 +26,7 @@ export default async function JobDetailPage({ params }: Props) {
       .single(),
     supabase
       .from("submissions")
-      .select("id, talent_user_id, bio, status, mode, created_at, photo_front_url, photo_left_url, photo_right_url, video_url")
+      .select("id, talent_user_id, talent_name, referrer_id, bio, status, mode, created_at, photo_front_url, photo_left_url, photo_right_url, video_url")
       .eq("job_id", id)
       .order("created_at", { ascending: false }),
     supabase
@@ -81,11 +81,12 @@ export default async function JobDetailPage({ params }: Props) {
     return {
       id:             String(s.id),
       talentId:       s.talent_user_id ?? null,
-      talentName:     profile?.full_name ?? "External Referral",
+      talentName:     profile?.full_name ?? s.talent_name ?? "",
       avatarUrl:      profile?.avatar_url ?? null,
       bio:            s.bio              ?? "",
       status:         s.status           ?? "pending",
       mode:           s.mode             ?? "other",
+      isReferral:     Boolean(s.referrer_id),
       submittedAt:    s.created_at       ?? "",
       photoFrontUrl:  s.photo_front_url  ?? null,
       photoLeftUrl:   s.photo_left_url   ?? null,

@@ -16,6 +16,11 @@ type Job = {
 };
 
 type Mode = "self" | "other";
+type SuccessVariant = "application" | "referral_sent" | "referral_warning";
+type SubmitResponse = {
+  error?: string;
+  emailSent?: boolean;
+};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -35,6 +40,21 @@ function formatBudget(n: number) {
 }
 function formatDate(s: string) {
   return new Date(s).toLocaleDateString("pt-BR", { month: "short", day: "numeric", year: "numeric" });
+}
+
+async function uploadFile(file: File, path: string): Promise<string> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("path", path);
+
+  const res = await fetch("/api/upload", { method: "POST", body: form });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.error ?? "Falha no upload do arquivo.");
+  }
+
+  const { url } = await res.json();
+  return url;
 }
 
 // ── Sub-components ───────────────────────────────────────────────────────────
@@ -87,23 +107,108 @@ function SuccessScreen({ jobTitle }: { jobTitle: string }) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
+function ReferralSuccessScreen({
+  jobTitle,
+  variant,
+}: {
+  jobTitle: string;
+  variant: Exclude<SuccessVariant, "application">;
+}) {
+  const isWarning = variant === "referral_warning";
+  const pulseClass = isWarning ? "bg-amber-400" : "bg-emerald-400";
+  const badgeClass = isWarning ? "text-amber-600" : "text-emerald-600";
+  const iconClass = isWarning ? "bg-amber-500" : "bg-emerald-500";
+
+  return (
+    <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-6">
+      <div className="text-center max-w-sm">
+        <div className="relative w-16 h-16 mx-auto mb-6">
+          <span className={`absolute inset-0 rounded-full ${pulseClass} animate-ping opacity-30`} />
+          <span className={`relative flex items-center justify-center w-16 h-16 rounded-full ${iconClass} text-white`}>
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </span>
+        </div>
+        <p className={`text-[13px] font-semibold uppercase tracking-widest ${badgeClass} mb-2`}>
+          {isWarning ? "Indicação Registrada" : "Indicação Enviada"}
+        </p>
+        <h2 className="text-[1.5rem] font-semibold tracking-tight text-zinc-900 mb-2">
+          {isWarning ? "Convite pendente" : "Indicação enviada!"}
+        </h2>
+        <p className="text-[15px] text-zinc-500 mb-8">
+          {isWarning
+            ? <>A indicação para <span className="font-medium text-zinc-700">"{jobTitle}"</span> foi salva, mas o email do convite não pôde ser enviado agora.</>
+            : <>O convite foi enviado por email para o talento indicado para <span className="font-medium text-zinc-700">"{jobTitle}"</span>.</>}
+        </p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link href="/talent/jobs" className="inline-flex items-center justify-center gap-2 bg-zinc-900 text-white text-[13px] font-medium px-5 py-2.5 rounded-xl hover:bg-zinc-800 transition-colors">
+            ← Voltar para Vagas
+          </Link>
+          <Link href="/talent/referrals" className="inline-flex items-center justify-center gap-2 bg-white border border-zinc-200 text-zinc-700 text-[13px] font-medium px-5 py-2.5 rounded-xl hover:border-zinc-300 transition-colors">
+            Minhas Indicações
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function JobSubmitForm({ job }: { job: Job | null }) {
   const mode: Mode = "other";
   const [form, setForm] = useState({ talentName: "", contactInfo: "", bio: "", referrerName: "" });
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [referralSuccess, setReferralSuccess] = useState<Exclude<SuccessVariant, "application"> | null>(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [referrerId, setReferrerId] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setReferrerId(user.id);
-    });
+    let active = true;
+
+    async function loadReferrer() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user || !active) return;
+
+      const metadataName =
+        (user.user_metadata?.full_name as string | undefined) ??
+        (user.user_metadata?.name as string | undefined) ??
+        user.email?.split("@")[0] ??
+        "";
+
+      const [{ data: profile }, { data: talentProfile }] = await Promise.all([
+        supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
+        supabase.from("talent_profiles").select("full_name").eq("id", user.id).maybeSingle(),
+      ]);
+
+      if (!active || profile?.role !== "talent") return;
+
+      setReferrerId(user.id);
+
+      const resolvedName = talentProfile?.full_name ?? metadataName;
+      if (resolvedName) {
+        setForm((current) =>
+          current.referrerName
+            ? current
+            : { ...current, referrerName: resolvedName }
+        );
+      }
+    }
+
+    void loadReferrer();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   if (!job) return <NotFound />;
+  if (referralSuccess) return <ReferralSuccessScreen jobTitle={job.title} variant={referralSuccess} />;
   if (submitted) return <SuccessScreen jobTitle={job.title} />;
 
   function validate() {
@@ -129,41 +234,67 @@ export default function JobSubmitForm({ job }: { job: Job | null }) {
     setLoading(true);
     setSubmitError(null);
 
-    const endpoint = referrerId ? "/api/referrals/invite" : "/api/submissions";
-    const payload = referrerId
-      ? {
-          job_id:         job!.id,
-          referrer_id:    referrerId,
-          referred_email: form.contactInfo.trim(),
-          referred_name:  form.talentName.trim(),
-          bio:            form.bio.trim(),
-        }
-      : {
-          job_id:        job!.id,
-          talent_name:   form.talentName.trim(),
-          email:         form.contactInfo.trim(),
-          bio:           form.bio.trim(),
-          referrer_name: form.referrerName.trim(),
-          referrer_id:   null,
-          mode,
-        };
+    try {
+      const isReferral = Boolean(referrerId);
+      const endpoint = isReferral ? "/api/referrals/invite" : "/api/submissions";
 
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+      let videoUrl: string | null = null;
+      if (videoFile) {
+        const ownerId = referrerId ?? "public";
+        const extension = videoFile.name.split(".").pop()?.toLowerCase() ?? "mp4";
+        videoUrl = await uploadFile(
+          videoFile,
+          `submissions/${ownerId}/${Date.now()}_intro.${extension}`
+        );
+      }
 
-    setLoading(false);
+      const payload = isReferral
+        ? {
+            job_id:         job!.id,
+            referrer_id:    referrerId,
+            referred_email: form.contactInfo.trim(),
+            referred_name:  form.talentName.trim(),
+            bio:            form.bio.trim(),
+            video_url:      videoUrl,
+          }
+        : {
+            job_id:        job!.id,
+            talent_name:   form.talentName.trim(),
+            email:         form.contactInfo.trim(),
+            bio:           form.bio.trim(),
+            referrer_name: form.referrerName.trim(),
+            referrer_id:   null,
+            mode,
+            video_url:     videoUrl,
+          };
 
-    if (!res.ok) {
-      const { error } = await res.json();
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const response = (await res.json().catch(() => null)) as SubmitResponse | null;
+
+      if (!res.ok) {
+        const error = response?.error;
+        console.error("Submission failed:", error);
+        setSubmitError(error ?? "Algo deu errado. Tente novamente.");
+        return;
+      }
+
+      if (isReferral) {
+        setReferralSuccess(response?.emailSent === false ? "referral_warning" : "referral_sent");
+        return;
+      }
+
+      setSubmitted(true);
+    } catch (error) {
       console.error("Submission failed:", error);
-      setSubmitError(error ?? "Algo deu errado. Tente novamente.");
-      return;
+      setSubmitError(error instanceof Error ? error.message : "Algo deu errado. Tente novamente.");
+    } finally {
+      setLoading(false);
     }
-
-    setSubmitted(true);
   }
 
   const inputClass = (err?: string) =>

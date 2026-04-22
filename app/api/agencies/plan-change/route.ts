@@ -12,89 +12,114 @@ const PLAN_PRICES: Record<Plan, number> = Object.fromEntries(
 // Body: { plan, chargeImmediately, savedCardId }
 export async function POST(req: NextRequest) {
   const session = await createSessionClient();
-  const { data: { user } } = await session.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  const {
+    data: { user },
+  } = await session.auth.getUser();
 
-  const { plan, chargeImmediately, useWallet, savedCardId } = await req.json();
-
-  if (!plan || !PLAN_KEYS.includes(plan)) {
-    return NextResponse.json({ error: "Plano inválido" }, { status: 400 });
+  if (!user) {
+    return NextResponse.json({ error: "Nao autorizado" }, { status: 401 });
   }
 
+  const {
+    plan,
+    chargeImmediately,
+    useWallet,
+    savedCardId,
+  } = (await req.json()) as {
+    plan?: string;
+    chargeImmediately?: boolean;
+    useWallet?: boolean;
+    savedCardId?: string;
+  };
+
+  if (!plan || !PLAN_KEYS.includes(plan as Plan)) {
+    return NextResponse.json({ error: "Plano invalido" }, { status: 400 });
+  }
+
+  const selectedPlan = plan as Plan;
   const supabase = createServerClient({ useServiceRole: true });
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("plan, wallet_balance")
+    .select("role, plan, wallet_balance")
     .eq("id", user.id)
     .single();
 
-  const currentPlan = profile?.plan ?? "free";
-
-  if (currentPlan === plan) {
-    return NextResponse.json({ error: "Você já está neste plano" }, { status: 400 });
+  if (profile?.role !== "agency") {
+    return NextResponse.json({ error: "Apenas agencias podem alterar planos" }, { status: 403 });
   }
 
-  // Next billing date: always 30 days from now (can't read plan_expires_at safely)
+  const currentPlan = profile?.plan ?? "free";
+
+  if (currentPlan === selectedPlan) {
+    return NextResponse.json({ error: "Voce ja esta neste plano" }, { status: 400 });
+  }
+
   const nextBillingDate = (() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
     return d;
   })();
 
-  // ── Immediate charge via wallet ───────────────────────────────────────────
-  if (chargeImmediately && useWallet && plan !== "free") {
-    const amount  = PLAN_PRICES[plan as Plan];
+  if (!chargeImmediately && selectedPlan !== "free") {
+    return NextResponse.json(
+      { error: "Planos pagos precisam de pagamento aprovado para ativacao" },
+      { status: 403 },
+    );
+  }
+
+  if (chargeImmediately && useWallet && selectedPlan !== "free") {
+    const amount = PLAN_PRICES[selectedPlan];
     const balance = Number(profile?.wallet_balance ?? 0);
 
     if (balance < amount) {
       return NextResponse.json(
         { error: "Saldo insuficiente na carteira", available: balance, required: amount },
-        { status: 402 }
+        { status: 402 },
       );
     }
 
     const newExpiry = new Date();
     newExpiry.setDate(newExpiry.getDate() + 30);
 
-    // Deduct from wallet and update plan atomically
     const { error: walletErr } = await supabase
       .from("profiles")
       .update({
-        wallet_balance:  balance - amount,
-        plan,
-        plan_status:     "active",
+        wallet_balance: balance - amount,
+        plan: selectedPlan,
+        plan_status: "active",
         plan_expires_at: newExpiry.toISOString(),
       })
-      .eq("id", user.id);
+      .eq("id", user.id)
+      .gte("wallet_balance", amount)
+      .select("id")
+      .single();
 
     if (walletErr) {
-      return NextResponse.json({ error: walletErr.message }, { status: 500 });
+      return NextResponse.json({ error: "Saldo insuficiente na carteira" }, { status: 402 });
     }
 
     await supabase.from("wallet_transactions").insert({
-      user_id:     user.id,
-      type:        "payment",
-      amount:      -amount,
-      description: `Plano ${plan.charAt(0).toUpperCase() + plan.slice(1)} — debitado da carteira`,
+      user_id: user.id,
+      type: "payment",
+      amount: -amount,
+      description: `Plano ${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} - debitado da carteira`,
     });
 
     return NextResponse.json({
       ok: true,
-      plan,
+      plan: selectedPlan,
       effectiveAt: new Date().toISOString(),
-      expiresAt:   newExpiry.toISOString(),
-      paidVia:     "wallet",
+      expiresAt: newExpiry.toISOString(),
+      paidVia: "wallet",
     });
   }
 
-  // ── Immediate charge via card (free→paid, or paid→paid upgrade chosen now) ─
-  if (chargeImmediately && plan !== "free") {
+  if (chargeImmediately && selectedPlan !== "free") {
     if (!savedCardId) {
-      return NextResponse.json({ error: "Cartão obrigatório para cobrança imediata" }, { status: 400 });
+      return NextResponse.json({ error: "Cartao obrigatorio para cobranca imediata" }, { status: 400 });
     }
 
-    // Fetch saved card + verify ownership
     const { data: card } = await supabase
       .from("saved_cards")
       .select("id, mp_card_id, mp_customer_id, brand, last_four")
@@ -103,18 +128,17 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (!card) {
-      return NextResponse.json({ error: "Cartão não encontrado" }, { status: 404 });
+      return NextResponse.json({ error: "Cartao nao encontrado" }, { status: 404 });
     }
 
     const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN!;
     if (!accessToken) {
-      return NextResponse.json({ error: "Configuração de pagamento não encontrada" }, { status: 500 });
+      return NextResponse.json({ error: "Configuracao de pagamento nao encontrada" }, { status: 500 });
     }
 
     const mpClient = new MercadoPagoConfig({ accessToken });
-    const amount   = PLAN_PRICES[plan];
+    const amount = PLAN_PRICES[selectedPlan];
 
-    // Generate single-use token from saved card
     let token: string;
     try {
       const cardToken = await new CardToken(mpClient).create({
@@ -123,31 +147,29 @@ export async function POST(req: NextRequest) {
       token = cardToken.id!;
     } catch (err) {
       console.error("[plan-change] CardToken.create failed:", err);
-      return NextResponse.json({ error: "Falha ao processar cartão" }, { status: 502 });
+      return NextResponse.json({ error: "Falha ao processar cartao" }, { status: 502 });
     }
 
-    // Fetch payer email
     const { data: authUser } = await supabase.auth.admin.getUserById(user.id);
     const email = authUser?.user?.email ?? "pagador@brisadigital.com";
 
-    // Charge
     let result;
     try {
       result = await new Payment(mpClient).create({
         body: {
           transaction_amount: amount,
-          description:        `Plano ${plan.charAt(0).toUpperCase() + plan.slice(1)} — Brisa Digital`,
-          installments:       1,
+          description: `Plano ${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} - Brisa Digital`,
+          installments: 1,
           token,
-          payment_method_id:  card.brand ?? "visa",
+          payment_method_id: card.brand ?? "visa",
           payer: {
-            id:    card.mp_customer_id,
+            id: card.mp_customer_id,
             email,
-            type:  "customer",
+            type: "customer",
           },
-          metadata: { user_id: user.id, plan },
+          metadata: { user_id: user.id, plan: selectedPlan },
         },
-        requestOptions: { idempotencyKey: `plan-change-${user.id}-${plan}-${Date.now()}` },
+        requestOptions: { idempotencyKey: `plan-change-${user.id}-${selectedPlan}-${Date.now()}` },
       });
     } catch (err) {
       console.error("[plan-change] Payment.create failed:", err);
@@ -157,57 +179,68 @@ export async function POST(req: NextRequest) {
     if (result.status === "rejected") {
       return NextResponse.json(
         { error: "Pagamento rejeitado pelo banco", detail: result.status_detail },
-        { status: 402 }
+        { status: 402 },
       );
     }
 
-    // New expiry = now + 30 days
+    if (result.status !== "approved") {
+      return NextResponse.json(
+        {
+          error: "Pagamento ainda nao aprovado. O plano nao foi alterado.",
+          paymentStatus: result.status,
+          paymentId: result.id,
+        },
+        { status: 409 },
+      );
+    }
+
     const newExpiry = new Date();
     newExpiry.setDate(newExpiry.getDate() + 30);
 
-    // Update plan in profiles
-    await supabase.from("profiles").update({
-      plan,
-      plan_status:    "active",
-      plan_expires_at: newExpiry.toISOString(),
-    }).eq("id", user.id);
+    await supabase
+      .from("profiles")
+      .update({
+        plan: selectedPlan,
+        plan_status: "active",
+        plan_expires_at: newExpiry.toISOString(),
+      })
+      .eq("id", user.id);
 
-    // Record transaction
     await supabase.from("wallet_transactions").insert({
-      user_id:     user.id,
-      type:        "payment",
+      user_id: user.id,
+      type: "payment",
       amount,
-      description: `Plano ${plan.charAt(0).toUpperCase() + plan.slice(1)} — cobrança imediata`,
-      payment_id:  String(result.id),
+      description: `Plano ${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} - cobranca imediata`,
     });
 
     return NextResponse.json({
       ok: true,
-      plan,
+      plan: selectedPlan,
       effectiveAt: new Date().toISOString(),
-      expiresAt:   newExpiry.toISOString(),
-      paymentId:   result.id,
+      expiresAt: newExpiry.toISOString(),
+      paidVia: "card",
+      paymentId: result.id,
     });
   }
 
-  // ── Deferred change (next billing cycle) ──────────────────────────────────
-  // For downgrade or upgrade-later: update plan in DB now.
-  // plan_expires_at is preserved — the old plan features continue until then.
-  await supabase.from("profiles").update({ plan }).eq("id", user.id);
+  if (selectedPlan === "free") {
+    await supabase
+      .from("profiles")
+      .update({ plan: "free", plan_status: "inactive", plan_expires_at: null })
+      .eq("id", user.id);
 
-  // If downgrading to free, mark plan_status inactive at next cycle
-  if (plan === "free") {
-    // Keep plan_status active until expires; a cron/webhook would finalize.
-    // For now just mark the intent.
-    await supabase.from("agencies")
+    await supabase
+      .from("agencies")
       .update({ subscription_status: "cancelling" })
       .eq("id", user.id);
+
+    return NextResponse.json({
+      ok: true,
+      plan: selectedPlan,
+      effectiveAt: nextBillingDate.toISOString(),
+      deferred: true,
+    });
   }
 
-  return NextResponse.json({
-    ok: true,
-    plan,
-    effectiveAt: nextBillingDate.toISOString(),
-    deferred: true,
-  });
+  return NextResponse.json({ error: "Invalid plan change request" }, { status: 400 });
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Logo from "@/components/Logo";
@@ -54,7 +54,7 @@ const PLANS: { id: Plan; name: string; price: string; features: string[]; highli
   },
 ];
 
-export default function SignupPage() {
+function SignupPageContent() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const role         = (searchParams.get("role") ?? "agency") as Role;
@@ -242,5 +242,13 @@ export default function SignupPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignupPageContent />
+    </Suspense>
   );
 }

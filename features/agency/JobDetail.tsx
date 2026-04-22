@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useT } from "@/lib/LanguageContext";
 import { useRole } from "@/lib/RoleProvider";
 import { useSubscription } from "@/lib/SubscriptionContext";
 import PaywallModal from "@/components/agency/PaywallModal";
@@ -34,6 +35,7 @@ type Submission = {
   bio: string;
   status: string;
   mode: string;
+  isReferral?: boolean;
   submittedAt: string;
   photoFrontUrl: string | null;
   photoLeftUrl:  string | null;
@@ -623,12 +625,25 @@ function SubmissionCard({
   onToggleSelect?: () => void;
   onDelete?: () => void;
 }) {
+  const { t } = useT();
   const { isPro } = useSubscription();
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const statusCls = SUBMISSION_STATUS[submission.status] ?? SUBMISSION_STATUS["pending"];
   const hasMedia = !!(submission.photoFrontUrl || submission.photoLeftUrl || submission.photoRightUrl || submission.videoUrl);
   const photos = [submission.photoFrontUrl, submission.photoLeftUrl, submission.photoRightUrl].filter(Boolean) as string[];
+  const displayName =
+    submission.talentName || (submission.isReferral ? t("submission_referral_fallback_name") : t("general_unknown"));
+  const statusLabel =
+    submission.isReferral && !submission.talentId && submission.status === "pending"
+      ? t("submission_status_signup_pending")
+      : submission.status === "pending"
+        ? t("status_pending")
+        : submission.status === "approved"
+          ? t("status_approved")
+          : submission.status === "rejected"
+            ? t("status_rejected")
+            : submission.status;
 
   return (
     <div className={hasSentContract ? "border-l-2 border-emerald-400" : ""}>
@@ -639,17 +654,24 @@ function SubmissionCard({
       >
         {/* Avatar */}
         {submission.avatarUrl ? (
-          <img src={submission.avatarUrl} alt={submission.talentName}
+          <img src={submission.avatarUrl} alt={displayName}
             className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
         ) : (
-          <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarGradient(submission.talentName)} flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-white`}>
-            {initials(submission.talentName)}
+          <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarGradient(displayName)} flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-white`}>
+            {initials(displayName)}
           </div>
         )}
 
         {/* Name + meta */}
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold text-zinc-900 leading-snug truncate">{submission.talentName}</p>
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="text-[13px] font-semibold text-zinc-900 leading-snug truncate">{displayName}</p>
+            {submission.isReferral && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 ring-1 ring-violet-100 text-[10px] font-semibold tracking-wide flex-shrink-0">
+                {t("submission_badge_referral")}
+              </span>
+            )}
+          </div>
           <p className="text-[11px] text-zinc-400 mt-0.5">
             {submission.mode === "self" ? "Candidatura própria" : "Indicado"}
             {" · "}
@@ -667,7 +689,7 @@ function SubmissionCard({
         {/* Status + contract badge */}
         <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full capitalize ${statusCls}`}>
-            {submission.status}
+            {statusLabel}
           </span>
 
           {isAgency && onDelete && (

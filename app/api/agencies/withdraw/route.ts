@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
+import { notifyAdmins } from "@/lib/notify";
 
 export async function POST() {
   const session = await createSessionClient();
@@ -37,12 +38,28 @@ export async function POST() {
     return NextResponse.json({ error: "Erro ao processar saque." }, { status: 500 });
   }
 
-  await supabase.from("wallet_transactions").insert({
+  const { data: withdrawalTx, error: txError } = await supabase.from("wallet_transactions").insert({
     user_id:     user.id,
     type:        "withdrawal",
     amount:      balance,
     description: "Saque solicitado",
-  });
+  }).select("id").single();
+
+  if (txError) {
+    console.error("[POST /api/agencies/withdraw] wallet transaction insert failed:", txError.message);
+  }
+
+  const brl = new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  }).format(balance);
+  await notifyAdmins(
+    "payment",
+    `Novo pedido de saque: ${brl}`,
+    "/admin/finances",
+    `admin-withdrawal-request:${withdrawalTx?.id ?? `${user.id}:${balance}`}`,
+  );
 
   return NextResponse.json({ success: true, amount: balance });
 }

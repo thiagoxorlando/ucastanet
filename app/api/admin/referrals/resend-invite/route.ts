@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     ? `${appUrl}/signup?role=talent&ref=${inviteToken}`
     : `${appUrl}/signup?role=talent`;
 
-  await sendEmail({
+  const emailResult = await sendEmail({
     to: toEmail,
     subject: `Lembrete: Você foi indicado para "${jobTitle}" na Brisa Digital`,
     html: `
@@ -100,5 +100,18 @@ export async function POST(req: NextRequest) {
     `,
   });
 
-  return NextResponse.json({ ok: true });
+  if (!emailResult.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        emailSent: false,
+        emailStatus: emailResult.status,
+        error: "Convite encontrado, mas o email nao foi enviado.",
+        emailError: emailResult.error,
+      },
+      { status: emailResult.status === "missing_key" ? 500 : 502 }
+    );
+  }
+
+  return NextResponse.json({ ok: true, emailSent: true, emailStatus: emailResult.status });
 }

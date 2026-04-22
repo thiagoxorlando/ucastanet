@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 const TABLES = ["jobs", "bookings", "contracts", "talent_profiles", "agencies"] as const;
 type TrashTable = (typeof TABLES)[number];
 
 // GET — list all soft-deleted items
 export async function GET() {
+  const auth = await requireAdmin();
+  if (auth instanceof NextResponse) return auth;
+
   const supabase = createServerClient({ useServiceRole: true });
 
   const [jobs, bookings, contracts, talent, agencies] = await Promise.all([
@@ -27,6 +31,9 @@ export async function GET() {
 
 // DELETE — permanently delete an item
 export async function DELETE(req: NextRequest) {
+  const auth = await requireAdmin();
+  if (auth instanceof NextResponse) return auth;
+
   const { table, id } = await req.json();
 
   if (!TABLES.includes(table)) {
@@ -45,6 +52,9 @@ export async function DELETE(req: NextRequest) {
 
 // POST — restore an item (clear deleted_at)
 export async function POST(req: NextRequest) {
+  const auth = await requireAdmin();
+  if (auth instanceof NextResponse) return auth;
+
   const { table, id } = await req.json();
 
   if (!TABLES.includes(table)) {

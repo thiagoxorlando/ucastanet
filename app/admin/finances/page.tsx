@@ -30,6 +30,13 @@ type ContractRow = {
   withdrawn_at?: string | null;
 };
 
+type AgencyPlanProfileRow = {
+  id: string;
+  plan: string | null;
+  plan_status?: string | null;
+  plan_expires_at?: string | null;
+};
+
 async function fetchContracts(supabase: ReturnType<typeof createServerClient>) {
   const withAllColumns = await supabase
     .from("contracts")
@@ -94,7 +101,7 @@ export default async function AdminFinancesPage() {
       .eq("role", "agency"),
     supabase
       .from("profiles")
-      .select("id, plan")
+      .select("id, plan, plan_status, plan_expires_at")
       .eq("role", "agency"),
     supabase
       .from("wallet_transactions")
@@ -112,8 +119,10 @@ export default async function AdminFinancesPage() {
   const rows = bookingsData ?? [];
   const contractRows = contractsData ?? [];
 
+  const typedAgencyPlanProfiles = (agencyPlanProfiles ?? []) as AgencyPlanProfileRow[];
+
   const agencyPlanMap = new Map<string, ReturnType<typeof parsePlan>>();
-  for (const profile of agencyPlanProfiles ?? []) {
+  for (const profile of typedAgencyPlanProfiles) {
     agencyPlanMap.set(profile.id, parsePlan(profile.plan));
   }
 
@@ -283,16 +292,20 @@ export default async function AdminFinancesPage() {
   }
 
   const planOrder: Record<string, number> = { premium: 0, pro: 1, free: 2 };
-  const subscriptions: FinancesSubscription[] = (agencyPlanProfiles ?? [])
-    .map((profile) => ({
-      userId: profile.id,
-      agencyName: allAgencyNameMap.get(profile.id) ?? "Agencia sem nome",
-      plan: parsePlan(profile.plan),
-      planStatus: profile.plan_status ?? "inactive",
-      planExpiresAt: (profile as { plan_expires_at?: string | null }).plan_expires_at ?? null,
-      totalPaid: planPaymentsMap.get(profile.id)?.total ?? 0,
-      lastPayment: planPaymentsMap.get(profile.id)?.lastPayment ?? null,
-    }))
+  const subscriptions: FinancesSubscription[] = typedAgencyPlanProfiles
+    .map((profile) => {
+      const plan = parsePlan(profile.plan);
+
+      return {
+        userId: profile.id,
+        agencyName: allAgencyNameMap.get(profile.id) ?? "Agencia sem nome",
+        plan,
+        planStatus: profile.plan_status ?? (plan === "free" ? "inactive" : "active"),
+        planExpiresAt: profile.plan_expires_at ?? null,
+        totalPaid: planPaymentsMap.get(profile.id)?.total ?? 0,
+        lastPayment: planPaymentsMap.get(profile.id)?.lastPayment ?? null,
+      };
+    })
     .sort((left, right) => (planOrder[left.plan] ?? 2) - (planOrder[right.plan] ?? 2));
 
   const totalSubscriptionRevenue = (planPaymentsData ?? []).reduce((sum, payment) => sum + Math.abs(payment.amount ?? 0), 0);

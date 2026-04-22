@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
-import { notify } from "@/lib/notify";
+import { createSessionClient } from "@/lib/supabase.server";
+import { notify, notifyAdmins } from "@/lib/notify";
 import { requireJobLimit } from "@/lib/requireActiveSubscription";
 import { calculateCommission, calculateNetAmount, resolvePlanInfo } from "@/lib/plans";
 
@@ -11,16 +12,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "talent_id and agency_id are required" }, { status: 400 });
   }
 
-  const limited = await requireJobLimit(agency_id);
-  if (limited) return limited;
+  const session = await createSessionClient();
+  const { data: { user } } = await session.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = createServerClient({ useServiceRole: true });
+  const { data: caller } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (caller?.role !== "agency" || agency_id !== user.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const agencyId = user.id;
+  const limited = await requireJobLimit(agencyId);
+  if (limited) return limited;
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("plan")
-    .eq("id", agency_id)
+    .eq("id", agencyId)
     .single();
   const planInfo = resolvePlanInfo(profile);
+
+  const { data: history } = await supabase
+    .from("agency_talent_history")
+    .select("talent_id")
+    .eq("agency_id", agencyId)
+    .eq("talent_id", talent_id)
+    .maybeSingle();
+
+  if (!history) {
+    return NextResponse.json({ error: "Talent is not in this agency history" }, { status: 403 });
+  }
 
   // Fetch talent profile for role + name
   const { data: talent } = await supabase
@@ -33,7 +60,7 @@ export async function POST(req: NextRequest) {
   const { data: lastContract } = await supabase
     .from("contracts")
     .select("payment_amount")
-    .eq("agency_id", agency_id)
+    .eq("agency_id", agencyId)
     .eq("talent_id", talent_id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -56,7 +83,7 @@ export async function POST(req: NextRequest) {
       deadline:    today,
       job_date:    today,
       job_role:    role,
-      agency_id,
+      agency_id:   agencyId,
       status:      "open",
       number_of_talents_required: 1,
     })
@@ -73,7 +100,7 @@ export async function POST(req: NextRequest) {
     .from("bookings")
     .insert({
       job_id:         job.id,
-      agency_id,
+      agency_id:      agencyId,
       talent_user_id: talent_id,
       job_title:      job.title,
       price:          amount,
@@ -93,7 +120,7 @@ export async function POST(req: NextRequest) {
   const net_amount        = calculateNetAmount(amount, planInfo.plan);
 
   console.log("[plan] quick_hire_contract", {
-    agencyId: agency_id,
+    agencyId,
     plan: planInfo.plan,
     amount,
     commissionAmount: commission_amount,
@@ -106,7 +133,7 @@ export async function POST(req: NextRequest) {
       booking_id:       booking.id,
       job_id:           job.id,
       talent_id,
-      agency_id,
+      agency_id:        agencyId,
       job_date:         today,
       job_description:  `Job rápido: ${role}`,
       payment_amount:   amount,
@@ -128,7 +155,7 @@ export async function POST(req: NextRequest) {
   const { data: agencyProfile } = await supabase
     .from("profiles")
     .select("full_name")
-    .eq("id", agency_id)
+    .eq("id", agencyId)
     .single();
 
   const agencyName = agencyProfile?.full_name ?? "a agência";
@@ -137,6 +164,19 @@ export async function POST(req: NextRequest) {
     "rehire",
     `Você foi contratado novamente por ${agencyName}`,
     "/talent/contracts",
+  );
+
+  await notifyAdmins(
+    "booking",
+    `Nova reserva criada: ${job.title}`,
+    "/admin/bookings",
+    `admin-booking-created:${booking.id}`,
+  );
+  await notifyAdmins(
+    "contract",
+    `Novo contrato criado: ${job.title}`,
+    "/admin/contracts",
+    `admin-contract-created:${contract.id}`,
   );
 
   return NextResponse.json({ contract, booking, job }, { status: 201 });

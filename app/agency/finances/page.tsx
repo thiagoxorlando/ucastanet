@@ -6,13 +6,15 @@ import type { AgencyTransaction, AgencyFinanceSummary } from "@/features/agency/
 
 export const metadata: Metadata = { title: "Finances — Brisa Digital" };
 
+const ESCROW_MATCH_WINDOW_MS = 5 * 60 * 1000;
+
 export default async function AgencyFinancesPage() {
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
 
   const supabase = createServerClient({ useServiceRole: true });
 
-  const [{ data: bookings }, { data: walletTxs }, { data: savedCards }, { data: profile }] = await Promise.all([
+  const [{ data: bookings }, { data: walletTxs }, { data: savedCards }, { data: profile }, { data: contracts }] = await Promise.all([
     supabase
       .from("bookings")
       .select("id, talent_user_id, job_title, price, status, created_at")
@@ -20,7 +22,7 @@ export default async function AgencyFinancesPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("wallet_transactions")
-      .select("id, type, amount, description, created_at")
+      .select("id, type, amount, description, created_at, idempotency_key")
       .eq("user_id", user?.id ?? "")
       .order("created_at", { ascending: false })
       .limit(100),
@@ -34,6 +36,13 @@ export default async function AgencyFinancesPage() {
       .select("wallet_balance")
       .eq("id", user?.id ?? "")
       .single(),
+    supabase
+      .from("contracts")
+      .select("id, status, payment_amount, confirmed_at, agency_signed_at, deposit_paid_at")
+      .eq("agency_id", user?.id ?? "")
+      .in("status", ["confirmed", "paid", "cancelled"])
+      .order("created_at", { ascending: false })
+      .limit(200),
   ]);
 
   const rows = bookings ?? [];
@@ -59,21 +68,59 @@ export default async function AgencyFinancesPage() {
     date:   b.created_at,
   }));
 
-  const walletRows: AgencyTransaction[] = (walletTxs ?? []).map((w) => ({
-    id:          w.id,
-    kind:        "wallet" as const,
-    talent:      "",
-    job:         "",
-    amount:      w.amount ?? 0,
-    status:      w.type ?? "payment",
-    date:        w.created_at,
-    description: w.description ?? undefined,
-  }));
+  const contractRows = contracts ?? [];
+  const contractByEscrowKey = new Map(contractRows.map((c) => [`escrow_${c.id}`, c]));
+  const fallbackMatchedContracts = new Set<string>();
 
-  const transactions: AgencyTransaction[] = [
-    ...bookingTxs,
-    ...walletRows,
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  function findEscrowContract(w: { amount: number | null; created_at: string; idempotency_key?: string | null }) {
+    const keyed = w.idempotency_key ? contractByEscrowKey.get(w.idempotency_key) : null;
+    if (keyed) return keyed;
+
+    const txTime = new Date(w.created_at).getTime();
+    const matches = contractRows.filter((c) => {
+      if (fallbackMatchedContracts.has(c.id)) return false;
+      if (Math.abs(Number(c.payment_amount ?? 0) - Number(w.amount ?? 0)) > 0.01) return false;
+
+      const lockDate = c.confirmed_at ?? c.deposit_paid_at ?? c.agency_signed_at;
+      if (!lockDate) return false;
+
+      return Math.abs(new Date(lockDate).getTime() - txTime) <= ESCROW_MATCH_WINDOW_MS;
+    });
+
+    if (matches.length !== 1) return null;
+    fallbackMatchedContracts.add(matches[0].id);
+    return matches[0];
+  }
+
+  const walletRows: AgencyTransaction[] = (walletTxs ?? []).map((w) => {
+    let status = w.type ?? "payment";
+    let description = w.description ?? undefined;
+
+    if (status === "escrow_lock") {
+      const contract = findEscrowContract(w);
+      if (contract?.status === "paid") {
+        status = "escrow_released";
+        description = "Custódia liberada após pagamento";
+      } else if (contract?.status === "cancelled") {
+        status = "escrow_refunded";
+        description = "Custódia estornada após cancelamento";
+      }
+    }
+
+    return {
+      id:          w.id,
+      kind:        "wallet" as const,
+      talent:      "",
+      job:         "",
+      amount:      w.amount ?? 0,
+      status,
+      date:        w.created_at,
+      description,
+    };
+  });
+
+  const transactions: AgencyTransaction[] = walletRows
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const completed = bookingTxs.filter((t) => t.status === "paid" || t.status === "confirmed");
   const pending   = bookingTxs.filter((t) => t.status === "pending" || t.status === "pending_payment");

@@ -14,6 +14,7 @@ type NotifType =
 
 type Notification = {
   id: string;
+  user_id?: string;
   type: NotifType;
   message: string;
   is_read: boolean;

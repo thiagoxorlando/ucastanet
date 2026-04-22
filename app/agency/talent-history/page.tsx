@@ -9,9 +9,11 @@ export const metadata: Metadata = { title: "Minha Equipe — Brisa Digital" };
 export default async function TalentHistoryPage({
   searchParams,
 }: {
-  searchParams?: { job_id?: string };
+  searchParams?: Promise<{ job_id?: string | string[] }>;
 }) {
-  const defaultJobId = searchParams?.job_id;
+  const resolvedSearchParams = await searchParams;
+  const rawJobId = resolvedSearchParams?.job_id;
+  const defaultJobId = Array.isArray(rawJobId) ? rawJobId[0] : rawJobId;
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
   if (!user) redirect("/login");

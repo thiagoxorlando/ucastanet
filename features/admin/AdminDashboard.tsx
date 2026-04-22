@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { statusInfo } from "@/lib/bookingStatus";
 
 type Booking = {
   id: string;
@@ -39,6 +40,8 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   confirmed: { label: "Confirmado", cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" },
   completed: { label: "Concluído",  cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" },
   pending:   { label: "Pendente",   cls: "bg-amber-50  text-amber-700  ring-1 ring-amber-100"    },
+  pending_payment: { label: statusInfo("pending_payment").label, cls: statusInfo("pending_payment").badge },
+  paid:      { label: statusInfo("paid").label, cls: statusInfo("paid").badge },
   cancelled: { label: "Cancelado",  cls: "bg-zinc-100  text-zinc-500   ring-1 ring-zinc-200"     },
   disputed:  { label: "Em disputa", cls: "bg-rose-50   text-rose-600   ring-1 ring-rose-100"     },
 };
@@ -233,10 +236,10 @@ export default function AdminDashboard({ bookings, stats }: { bookings: Booking[
               />
             </div>
             <div className="flex items-center gap-1 bg-zinc-100 rounded-xl p-1">
-              {(["all", "confirmed", "pending", "cancelled", "disputed"] as const).map((s) => (
+              {(["all", "pending", "pending_payment", "confirmed", "paid", "cancelled", "disputed"] as const).map((s) => (
                 <button key={s} onClick={() => setStatusFilter(s)}
                   className={["px-3 py-1.5 text-[12px] font-medium rounded-lg transition-all capitalize cursor-pointer", statusFilter === s ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-700"].join(" ")}>
-                  {s}
+                  {s === "all" ? "Todos" : (STATUS[s]?.label ?? s)}
                 </button>
               ))}
             </div>

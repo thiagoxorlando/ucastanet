@@ -66,18 +66,29 @@ export default function TalentReferrals({ referrals: initial }: { referrals: Tal
   async function handleResend(r: TalentReferral) {
     if (!r.referralInviteId) return;
     setResending(r.id);
-    const res = await fetch("/api/referrals/resend-invite", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ invite_id: r.referralInviteId }),
-    });
-    const d = await res.json().catch(() => ({}));
-    setToast({
-      msg: res.ok ? "Convite reenviado com sucesso." : (d.error ?? "Erro ao reenviar convite."),
-      type: res.ok ? "success" : "error",
-    });
-    setResending(null);
-    setTimeout(() => setToast(null), 4000);
+    try {
+      const res = await fetch("/api/referrals/resend-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invite_id: r.referralInviteId }),
+      });
+      const d = await res.json().catch(() => ({}));
+      const emailFailed = d?.emailSent === false;
+      setToast({
+        msg: res.ok
+          ? "Convite reenviado com sucesso."
+          : emailFailed
+            ? "O convite nao foi reenviado por email. Tente novamente em instantes."
+            : (d.error ?? "Erro ao reenviar convite."),
+        type: res.ok ? "success" : "error",
+      });
+    } catch (error) {
+      console.error("[TalentReferrals] resend failed:", error);
+      setToast({ msg: "Nao foi possivel reenviar o convite agora.", type: "error" });
+    } finally {
+      setResending(null);
+      setTimeout(() => setToast(null), 4000);
+    }
   }
 
   return (

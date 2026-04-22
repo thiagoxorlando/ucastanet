@@ -2,11 +2,12 @@
  * POST /api/referrals/link
  *
  * Called after a new user signs up using a referral token (?ref=<token>).
- * Links the referral_invite to the new user's profile.
+ * Links the referral_invite to the authenticated user's profile.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { createSessionClient } from "@/lib/supabase.server";
 import { notify } from "@/lib/notify";
 
 export async function POST(req: NextRequest) {
@@ -17,9 +18,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "token e user_id são obrigatórios" }, { status: 400 });
   }
 
+  const session = await createSessionClient();
+  const { data: { user } } = await session.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
+  if (user_id !== user.id) {
+    return NextResponse.json({ error: "Não é possível vincular convite para outro usuário" }, { status: 403 });
+  }
+
   const supabase = createServerClient({ useServiceRole: true });
 
-  // Find the invite by token
   const { data: invite, error: fetchErr } = await supabase
     .from("referral_invites")
     .select("id, referrer_id, referred_email, submission_id, status")
@@ -34,26 +42,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Este convite já foi utilizado" }, { status: 409 });
   }
 
-  // Update the invite
+  if (
+    invite.referred_email &&
+    user.email &&
+    invite.referred_email.toLowerCase() !== user.email.toLowerCase()
+  ) {
+    return NextResponse.json({ error: "Este convite pertence a outro email" }, { status: 403 });
+  }
+
   await supabase
     .from("referral_invites")
-    .update({ referred_user_id: user_id, status: "signed_up" })
+    .update({ referred_user_id: user.id, status: "signed_up" })
     .eq("id", invite.id);
 
-  // Also link the submission to the new user
   if (invite.submission_id) {
     await supabase
       .from("submissions")
-      .update({ talent_user_id: user_id })
+      .update({ talent_user_id: user.id })
       .eq("id", invite.submission_id);
   }
 
-  // Notify referrer
   await notify(
     invite.referrer_id,
     "booking",
     "Seu indicado se cadastrou na plataforma!",
-    "/talent/referrals"
+    "/talent/referrals",
   );
 
   return NextResponse.json({ ok: true });

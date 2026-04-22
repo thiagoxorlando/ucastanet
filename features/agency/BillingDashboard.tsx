@@ -15,8 +15,6 @@ interface WalletTransaction {
   type:         string;
   amount:       number;
   description:  string | null;
-  reference_id: string | null;
-  payment_id:   string | null;
   created_at:   string;
 }
 
@@ -30,6 +28,12 @@ interface Props {
   transactions:  WalletTransaction[];
   mpPublicKey:   string;
 }
+
+type PlanChangeResponse = {
+  effectiveAt: string;
+  expiresAt?: string | null;
+  paidVia?: "wallet" | "card";
+};
 
 // ── Plan definitions ──────────────────────────────────────────────────────────
 
@@ -99,6 +103,52 @@ function fmtDate(s: string | Date) {
   return new Date(s).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function fmtDateTime(s: string | Date) {
+  return new Date(s).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getPlanDef(planKey: PlanKey) {
+  return PLANS.find((plan) => plan.key === planKey) ?? PLANS[0];
+}
+
+function getPlanChargeDescription(planKey: PlanKey, paidVia: "wallet" | "card") {
+  const planLabel = planKey.charAt(0).toUpperCase() + planKey.slice(1);
+  return paidVia === "wallet"
+    ? `Plano ${planLabel} - debitado da carteira`
+    : `Plano ${planLabel} - cobranca imediata`;
+}
+
+function isPlanChargeTransaction(tx: WalletTransaction) {
+  const description = (tx.description ?? "").toLowerCase();
+  return tx.type === "payment" && (
+    description.includes("assinatura pro") ||
+    description.includes("plano ")
+  );
+}
+
+function getPlanChargeMethod(tx: WalletTransaction) {
+  const description = (tx.description ?? "").toLowerCase();
+
+  if (description.includes("carteira")) {
+    return "Saldo da carteira";
+  }
+
+  if (
+    description.includes("cobranca imediata") ||
+    description.includes("assinatura pro")
+  ) {
+    return "Cartão de crédito";
+  }
+
+  return "Cobrança da plataforma";
+}
+
 const TX_ICON: Record<string, React.ReactNode> = {
   deposit: (
     <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,7 +195,7 @@ interface ModalProps {
   walletBalance:   number;
   savedCards:      SavedCard[];
   mpPublicKey:     string;
-  onSuccess:       (newPlan: PlanKey, immediate: boolean, effectiveAt: string) => void;
+  onSuccess:       (newPlan: PlanKey, immediate: boolean, result: PlanChangeResponse) => void;
   onClose:         () => void;
 }
 
@@ -210,7 +260,11 @@ function PlanChangeModal({
       setError(data.error ?? "Erro ao alterar plano. Tente novamente.");
       return;
     }
-    onSuccess(plan.key, timing === "immediate", data.effectiveAt ?? new Date().toISOString());
+    onSuccess(plan.key, timing === "immediate", {
+      effectiveAt: data.effectiveAt ?? new Date().toISOString(),
+      expiresAt: data.expiresAt ?? null,
+      paidVia: data.paidVia === "wallet" ? "wallet" : "card",
+    });
   }
 
   return (
@@ -476,12 +530,34 @@ export default function BillingDashboard({
   const [activePlan, setActivePlan]       = useState<PlanKey>(
     (isActivePaid ? initialPlan : "free") as PlanKey
   );
-  const [expiresAt, setExpiresAt]         = useState(planExpiresAt);
+  const [activePlanStatus, setActivePlanStatus] = useState(
+    planStatus ?? (isActivePaid ? "active" : "inactive")
+  );
+  const [expiresAt, setExpiresAt]               = useState(planExpiresAt);
+  const [currentWalletBalance, setCurrentWalletBalance] = useState(walletBalance);
+  const [billingTransactions, setBillingTransactions]   = useState(transactions);
   const [pendingChange, setPendingChange] = useState<{ plan: PlanKey; effectiveAt: string } | null>(null);
   const [changingTo, setChangingTo]       = useState<PlanDef | null>(null);
   const [toast, setToast]                 = useState<{ msg: string; ok: boolean } | null>(null);
 
-  const currentPlanDef = PLANS.find((p) => p.key === activePlan) ?? PLANS[0];
+  const currentPlanDef = getPlanDef(activePlan);
+  const planChargeTransactions = billingTransactions.filter(isPlanChargeTransaction);
+  const latestPlanCharge = planChargeTransactions[0] ?? null;
+  const upcomingPlanKey = pendingChange?.plan ?? activePlan;
+  const upcomingPlanDef = getPlanDef(upcomingPlanKey);
+  const upcomingChargeDate = pendingChange?.effectiveAt ?? expiresAt;
+  const upcomingCharge = upcomingPlanKey !== "free"
+    && upcomingPlanDef.price > 0
+    && Boolean(upcomingChargeDate)
+    && activePlanStatus !== "past_due"
+      ? {
+          amount: upcomingPlanDef.price,
+          chargeAt: upcomingChargeDate!,
+          label: pendingChange
+            ? `Mudança para ${upcomingPlanDef.name}`
+            : `Renovação do plano ${upcomingPlanDef.name}`,
+        }
+      : null;
 
   function showToast(msg: string, ok: boolean) {
     setToast({ msg, ok });
@@ -493,22 +569,47 @@ export default function BillingDashboard({
     setChangingTo(p);
   }
 
-  function handleSuccess(newPlan: PlanKey, immediate: boolean, effectiveAt: string) {
+  function handleSuccess(newPlan: PlanKey, immediate: boolean, result: PlanChangeResponse) {
     setChangingTo(null);
     if (immediate) {
+      const nextPlanDef = getPlanDef(newPlan);
+      const nextExpiresAt = result.expiresAt ?? (() => {
+        const d = new Date();
+        d.setDate(d.getDate() + 30);
+        return d.toISOString();
+      })();
+
       setActivePlan(newPlan);
-      setExpiresAt(effectiveAt);
-      // Advance expiry by 30 days from now
-      const d = new Date();
-      d.setDate(d.getDate() + 30);
-      setExpiresAt(d.toISOString());
+      setActivePlanStatus(newPlan === "free" ? "inactive" : "active");
+      setPendingChange(null);
+      setExpiresAt(nextExpiresAt);
+
+      if (nextPlanDef.price > 0) {
+        const paidVia = result.paidVia === "wallet" ? "wallet" : "card";
+
+        setBillingTransactions((prev) => [
+          {
+            id: `plan-charge-${Date.now()}`,
+            type: "payment",
+            amount: paidVia === "wallet" ? -nextPlanDef.price : nextPlanDef.price,
+            description: getPlanChargeDescription(newPlan, paidVia),
+            created_at: new Date().toISOString(),
+          },
+          ...prev,
+        ]);
+
+        if (paidVia === "wallet") {
+          setCurrentWalletBalance((prev) => Math.max(0, prev - nextPlanDef.price));
+        }
+      }
+
       showToast(`Plano ${newPlan.charAt(0).toUpperCase() + newPlan.slice(1)} ativado com sucesso!`, true);
     } else if (newPlan === "free") {
-      setPendingChange({ plan: newPlan, effectiveAt });
-      showToast(`Seu plano será cancelado em ${fmtDate(effectiveAt)}.`, true);
+      setPendingChange({ plan: newPlan, effectiveAt: result.effectiveAt });
+      showToast(`Seu plano será cancelado em ${fmtDate(result.effectiveAt)}.`, true);
     } else {
-      setPendingChange({ plan: newPlan, effectiveAt });
-      showToast(`Mudança para ${newPlan.charAt(0).toUpperCase() + newPlan.slice(1)} agendada para ${fmtDate(effectiveAt)}.`, true);
+      setPendingChange({ plan: newPlan, effectiveAt: result.effectiveAt });
+      showToast(`Mudança para ${newPlan.charAt(0).toUpperCase() + newPlan.slice(1)} agendada para ${fmtDate(result.effectiveAt)}.`, true);
     }
   }
 
@@ -532,7 +633,7 @@ export default function BillingDashboard({
           currentPlanKey={activePlan}
           currentPrice={currentPlanDef.price}
           planExpiresAt={expiresAt}
-          walletBalance={walletBalance}
+          walletBalance={currentWalletBalance}
           savedCards={savedCards}
           mpPublicKey={mpPublicKey}
           onSuccess={handleSuccess}
@@ -668,6 +769,45 @@ export default function BillingDashboard({
         </div>
       )}
 
+      {/* ── Billing summary ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] p-5">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-3">Última cobrança do plano</p>
+          {latestPlanCharge ? (
+            <div className="space-y-1">
+              <p className="text-[1.5rem] font-bold tracking-tight text-zinc-900">
+                {brl(Math.abs(latestPlanCharge.amount))}
+              </p>
+              <p className="text-[13px] text-zinc-600">{latestPlanCharge.description ?? "Cobrança de plano"}</p>
+              <p className="text-[12px] text-zinc-400">{fmtDate(latestPlanCharge.created_at)}</p>
+            </div>
+          ) : (
+            <p className="text-[13px] text-zinc-400">Nenhuma cobrança de plano registrada ainda.</p>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] p-5">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-3">Próxima cobrança</p>
+          {pendingChange?.plan === "free" ? (
+            <div className="space-y-1">
+              <p className="text-[15px] font-semibold text-zinc-900">Sem nova cobrança agendada</p>
+              <p className="text-[13px] text-zinc-600">O plano atual será encerrado no fim do ciclo.</p>
+              <p className="text-[12px] text-zinc-400">{fmtDate(pendingChange.effectiveAt)}</p>
+            </div>
+          ) : upcomingCharge ? (
+            <div className="space-y-1">
+              <p className="text-[1.5rem] font-bold tracking-tight text-zinc-900">
+                {brl(upcomingCharge.amount)}
+              </p>
+              <p className="text-[13px] text-zinc-600">{upcomingCharge.label}</p>
+              <p className="text-[12px] text-zinc-400">{fmtDate(upcomingCharge.chargeAt)}</p>
+            </div>
+          ) : (
+            <p className="text-[13px] text-zinc-400">Sem cobrança futura disponível no momento.</p>
+          )}
+        </div>
+      </div>
+
       {/* ── Saved cards ── */}
       <div className="space-y-3">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Cartões salvos</p>
@@ -676,34 +816,29 @@ export default function BillingDashboard({
 
       {/* ── Transaction history ── */}
       <div className="space-y-3">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Histórico de transações</p>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Histórico de cobranças</p>
 
-        {transactions.length === 0 ? (
+        {planChargeTransactions.length === 0 ? (
           <div className="bg-white rounded-2xl border border-zinc-100 py-10 text-center">
-            <p className="text-[13px] text-zinc-400">Nenhuma transação ainda.</p>
+            <p className="text-[13px] text-zinc-400">Nenhuma cobrança de plano ainda.</p>
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] divide-y divide-zinc-50 overflow-hidden">
-            {transactions.map((tx) => (
+            {planChargeTransactions.map((tx) => (
               <div key={tx.id} className="flex items-center gap-4 px-5 py-4">
                 <div className="w-8 h-8 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-center flex-shrink-0">
                   {TX_ICON[tx.type] ?? TX_ICON.payment}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-zinc-900 truncate leading-snug">
-                    {tx.description ?? tx.type}
+                    {tx.description ?? "Cobrança de plano"}
                   </p>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">{fmtDate(tx.created_at)}</p>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    {fmtDateTime(tx.created_at)} · {getPlanChargeMethod(tx)}
+                  </p>
                 </div>
-                <p className={[
-                  "text-[14px] font-bold tabular-nums flex-shrink-0",
-                  tx.type === "admin_grant"                          ? "text-violet-500" :
-                  tx.type === "deposit" || tx.type === "refund"      ? "text-emerald-600" :
-                                                                       "text-rose-500",
-                ].join(" ")}>
-                  {tx.type === "admin_grant"
-                    ? "R$0"
-                    : `${tx.type === "deposit" || tx.type === "refund" ? "+" : "-"}${brl(tx.amount)}`}
+                <p className="text-[14px] font-bold tabular-nums flex-shrink-0 text-rose-500">
+                  {brl(Math.abs(tx.amount))}
                 </p>
               </div>
             ))}
