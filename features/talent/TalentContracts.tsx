@@ -58,6 +58,73 @@ function fmtJobDate(s: string | null) {
   });
 }
 
+type PeriodFilter = "today" | "month" | "all";
+
+const LIST_PREVIEW_LIMIT = 5;
+
+function periodMatches(date: string | null | undefined, period: PeriodFilter) {
+  if (period === "all") return true;
+  if (!date) return false;
+  const value = new Date(date);
+  if (Number.isNaN(value.getTime())) return false;
+  const now = new Date();
+  if (period === "today") return value.toDateString() === now.toDateString();
+  return value.getFullYear() === now.getFullYear() && value.getMonth() === now.getMonth();
+}
+
+function FilterTabs({ value, onChange }: { value: PeriodFilter; onChange: (value: PeriodFilter) => void }) {
+  const options: Array<{ value: PeriodFilter; label: string }> = [
+    { value: "today", label: "Hoje" },
+    { value: "month", label: "Este mês" },
+    { value: "all", label: "Total" },
+  ];
+
+  return (
+    <div className="inline-flex rounded-full border border-zinc-200 bg-white p-1 shadow-sm">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => onChange(option.value)}
+          className={[
+            "rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors cursor-pointer",
+            value === option.value
+              ? "bg-zinc-950 text-white"
+              : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800",
+          ].join(" ")}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function visibleItems<T>(items: T[], expanded: boolean) {
+  return expanded ? items : items.slice(0, LIST_PREVIEW_LIMIT);
+}
+
+function ShowMoreButton({
+  total,
+  expanded,
+  onClick,
+}: {
+  total: number;
+  expanded: boolean;
+  onClick: () => void;
+}) {
+  if (total <= LIST_PREVIEW_LIMIT) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full rounded-xl border border-zinc-100 bg-white px-5 py-3 text-[12px] font-semibold text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 cursor-pointer"
+    >
+      {expanded ? "Ver menos" : `Ver mais ${total - LIST_PREVIEW_LIMIT}`}
+    </button>
+  );
+}
+
 // Returns the best URL to download: signed > original > null
 function latestFileUrl(c: TalentContract): string | null {
   return c.signedContractUrl ?? c.contractFileUrl ?? null;
@@ -460,6 +527,12 @@ export default function TalentContracts({
   const [acting, setActing]           = useState<string | null>(null);
   const [acceptingJob, setAcceptingJob] = useState<string | null>(null);
   const [toast, setToast]             = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [period, setPeriod]           = useState<PeriodFilter>("all");
+  const [showAllPendingSubs, setShowAllPendingSubs] = useState(false);
+  const [showAllPending, setShowAllPending] = useState(false);
+  const [showAllActive, setShowAllActive] = useState(false);
+  const [showAllDone, setShowAllDone] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   function showToast(msg: string, type: "success" | "error" = "success") {
     setToast({ msg, type });
@@ -545,22 +618,23 @@ export default function TalentContracts({
   }
 
   const now = new Date();
+  const filteredContracts = contracts.filter((c) => periodMatches(c.createdAt, period));
 
-  const pending = contracts.filter((c) => c.status === "sent");
-  const active  = contracts.filter((c) =>
+  const pending = filteredContracts.filter((c) => c.status === "sent");
+  const active  = filteredContracts.filter((c) =>
     c.status !== "sent" &&
     c.status !== "rejected" &&
     c.status !== "cancelled" &&
     !(c.jobDate && new Date(c.jobDate + "T23:59:59") < now)
   );
-  const done = contracts.filter((c) =>
+  const done = filteredContracts.filter((c) =>
     c.status !== "sent" &&
     c.status !== "rejected" &&
     c.status !== "cancelled" &&
     c.jobDate != null &&
     new Date(c.jobDate + "T23:59:59") < now
   );
-  const history = contracts.filter((c) => c.status === "rejected" || c.status === "cancelled");
+  const history = filteredContracts.filter((c) => c.status === "rejected" || c.status === "cancelled");
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -583,6 +657,10 @@ export default function TalentContracts({
           {contracts.length} contrato{contracts.length !== 1 ? "s" : ""}
         </p>
       </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[12px] text-zinc-400">Filtrar contratos por período</p>
+        <FilterTabs value={period} onChange={setPeriod} />
+      </div>
 
       {/* Approved submissions without a contract */}
       {pendingSubs.length > 0 && (
@@ -594,7 +672,7 @@ export default function TalentContracts({
             </span>
           </div>
           <div className="space-y-2">
-            {pendingSubs.map((sub) => (
+            {visibleItems(pendingSubs, showAllPendingSubs).map((sub) => (
               <div
                 key={sub.jobId}
                 className="bg-white rounded-2xl border border-violet-200 shadow-[0_0_0_3px_rgba(139,92,246,0.06)] overflow-hidden"
@@ -622,6 +700,11 @@ export default function TalentContracts({
                 </div>
               </div>
             ))}
+            <ShowMoreButton
+              total={pendingSubs.length}
+              expanded={showAllPendingSubs}
+              onClick={() => setShowAllPendingSubs((value) => !value)}
+            />
           </div>
         </section>
       )}
@@ -636,9 +719,14 @@ export default function TalentContracts({
         </div>
         {pending.length > 0 ? (
           <div className="space-y-2">
-            {pending.map((c) => (
+            {visibleItems(pending, showAllPending).map((c) => (
               <ContractRow key={c.id} contract={c} onAction={handleAction} acting={acting} />
             ))}
+            <ShowMoreButton
+              total={pending.length}
+              expanded={showAllPending}
+              onClick={() => setShowAllPending((value) => !value)}
+            />
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-zinc-100 py-8 text-center">
@@ -657,9 +745,14 @@ export default function TalentContracts({
             </span>
           </div>
           <div className="space-y-2">
-            {active.map((c) => (
+            {visibleItems(active, showAllActive).map((c) => (
               <ContractRow key={c.id} contract={c} onAction={handleAction} acting={acting} />
             ))}
+            <ShowMoreButton
+              total={active.length}
+              expanded={showAllActive}
+              onClick={() => setShowAllActive((value) => !value)}
+            />
           </div>
         </section>
       )}
@@ -674,9 +767,14 @@ export default function TalentContracts({
             </span>
           </div>
           <div className="space-y-2">
-            {done.map((c) => (
+            {visibleItems(done, showAllDone).map((c) => (
               <ContractRow key={c.id} contract={c} onAction={handleAction} acting={acting} />
             ))}
+            <ShowMoreButton
+              total={done.length}
+              expanded={showAllDone}
+              onClick={() => setShowAllDone((value) => !value)}
+            />
           </div>
         </section>
       )}
@@ -686,11 +784,23 @@ export default function TalentContracts({
         <section className="space-y-3">
           <h2 className="text-[13px] font-semibold text-zinc-500">Cancelados / Rejeitados</h2>
           <div className="space-y-2">
-            {history.map((c) => (
+            {visibleItems(history, showAllHistory).map((c) => (
               <ContractRow key={c.id} contract={c} onAction={handleAction} acting={acting} />
             ))}
+            <ShowMoreButton
+              total={history.length}
+              expanded={showAllHistory}
+              onClick={() => setShowAllHistory((value) => !value)}
+            />
           </div>
         </section>
+      )}
+
+      {contracts.length > 0 && filteredContracts.length === 0 && pendingSubs.length === 0 && (
+        <div className="bg-white rounded-2xl border border-zinc-100 py-12 text-center">
+          <p className="text-[14px] font-medium text-zinc-500">Nenhum contrato neste período</p>
+          <p className="text-[13px] text-zinc-400 mt-1">Ajuste o filtro para ver outros registros.</p>
+        </div>
       )}
 
       {contracts.length === 0 && pendingSubs.length === 0 && (

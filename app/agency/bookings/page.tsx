@@ -4,9 +4,17 @@ import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { getUnifiedBookingStatus } from "@/lib/bookingStatus";
 
-export const metadata: Metadata = { title: "Bookings — Brisa Digital" };
+export const metadata: Metadata = { title: "Reservas — BrisaHub" };
 
-export default async function BookingsPage() {
+export default async function BookingsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ booking_id?: string | string[] }>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const rawBookingId = resolvedSearchParams?.booking_id;
+  const focusBookingId = Array.isArray(rawBookingId) ? rawBookingId[0] : rawBookingId;
+
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
 
@@ -60,5 +68,5 @@ export default async function BookingsPage() {
     };
   });
 
-  return <BookingList bookings={bookings} />;
+  return <BookingList bookings={bookings} focusBookingId={focusBookingId} />;
 }

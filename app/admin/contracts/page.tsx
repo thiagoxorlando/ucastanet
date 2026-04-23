@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import AdminContracts from "@/features/admin/AdminContracts";
 import type { AdminContractRow } from "@/features/admin/AdminContracts";
 
-export const metadata: Metadata = { title: "Admin — Contracts — Brisa Digital" };
+export const metadata: Metadata = { title: "Administração — Contratos — BrisaHub" };
 
 export default async function AdminContractsPage() {
   const supabase = createServerClient({ useServiceRole: true });

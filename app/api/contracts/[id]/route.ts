@@ -308,9 +308,10 @@ export async function PATCH(
   }
 
   // ── Agency: cancel (ATOMIC) ───────────────────────────────────────────────
-  // Refunds escrow if contract was confirmed, then sets status = cancelled.
+  // Cancels pre-payment contracts safely. If escrow was already locked on a
+  // confirmed contract, the RPC refunds it atomically before cancelling.
   if (action === "cancel_job") {
-    if (!["signed", "confirmed"].includes(contract.status)) {
+    if (!["sent", "signed", "confirmed"].includes(contract.status)) {
       return NextResponse.json(
         { error: "Contract cannot be cancelled at this stage" },
         { status: 409 }

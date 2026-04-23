@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import AdminFinances, {
   type FinancesBooking,
   type FinancesContract,
+  type FinancesPlanPayment,
   type FinancesSubscription,
   type FinancesSummary,
 } from "@/features/admin/AdminFinances";
@@ -14,7 +15,7 @@ import {
   REFERRAL_RATE,
 } from "@/lib/plans";
 
-export const metadata: Metadata = { title: "Admin - Finances - Brisa Digital" };
+export const metadata: Metadata = { title: "Administração — Financeiro — BrisaHub" };
 
 type ContractRow = {
   id: string;
@@ -105,7 +106,7 @@ export default async function AdminFinancesPage() {
       .eq("role", "agency"),
     supabase
       .from("wallet_transactions")
-      .select("user_id, amount, created_at")
+      .select("id, user_id, amount, created_at")
       .eq("type", "payment")
       .ilike("description", "%Plano%")
       .order("created_at", { ascending: false }),
@@ -308,6 +309,15 @@ export default async function AdminFinancesPage() {
     })
     .sort((left, right) => (planOrder[left.plan] ?? 2) - (planOrder[right.plan] ?? 2));
 
+  const planPayments: FinancesPlanPayment[] = (planPaymentsData ?? []).map((payment) => ({
+    id: payment.id,
+    userId: payment.user_id,
+    agencyName: allAgencyNameMap.get(payment.user_id) ?? "Agencia sem nome",
+    plan: parsePlan(agencyPlanMap.get(payment.user_id)),
+    amount: Math.abs(payment.amount ?? 0),
+    createdAt: payment.created_at ?? "",
+  }));
+
   const totalSubscriptionRevenue = (planPaymentsData ?? []).reduce((sum, payment) => sum + Math.abs(payment.amount ?? 0), 0);
   const minimumRequired = contractsEscrowValue + contractsAwaitingValue + totalAgencyWalletBalance;
 
@@ -349,6 +359,7 @@ export default async function AdminFinancesPage() {
       summary={summary}
       bookings={bookings}
       contracts={contracts}
+      planPayments={planPayments}
       subscriptions={subscriptions}
     />
   );

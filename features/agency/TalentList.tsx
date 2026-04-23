@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { talentCategoryLabel } from "@/lib/talentCategories";
 
 export type TalentListItem = {
   id: string;
@@ -39,14 +40,16 @@ export default function TalentList({ talent }: { talent: TalentListItem[] }) {
       (t.full_name ?? "").toLowerCase().includes(q) ||
       (t.instagram  ?? "").toLowerCase().includes(q) ||
       (t.city       ?? "").toLowerCase().includes(q) ||
-      (t.categories ?? []).some((c: string) => c.toLowerCase().includes(q))
+      (t.categories ?? []).some((c: string) =>
+        c.toLowerCase().includes(q) || talentCategoryLabel(c).toLowerCase().includes(q)
+      )
     );
   });
 
   return (
     <div className="space-y-5">
       {/* ── Search ── */}
-      <div className="relative max-w-xs">
+      <div className="relative max-w-md">
         <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none"
           fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
@@ -56,12 +59,12 @@ export default function TalentList({ talent }: { talent: TalentListItem[] }) {
           placeholder="Buscar talento…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 text-[13px] bg-white border border-zinc-200 rounded-xl placeholder:text-zinc-400 hover:border-zinc-300 focus:border-zinc-900 focus:outline-none transition-colors"
+          className="w-full pl-10 pr-4 py-3 text-[13px] bg-white border border-zinc-200 rounded-2xl placeholder:text-zinc-400 hover:border-zinc-300 focus:border-[var(--brand-green)] focus:ring-2 focus:ring-[var(--brand-green)]/20 focus:outline-none transition-colors shadow-sm"
         />
       </div>
 
       {/* ── Table ── */}
-      <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden">
+      <div className="bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_14px_34px_rgba(7,17,13,0.06)] overflow-hidden">
         <table className="w-full">
           <thead>
             <tr className="border-b border-zinc-100">
@@ -76,19 +79,19 @@ export default function TalentList({ talent }: { talent: TalentListItem[] }) {
             {filtered.map((t) => {
               const name = t.full_name ?? "Sem nome";
               return (
-                <tr key={t.id} className="hover:bg-zinc-50/60 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
+                <tr key={t.id} className="hover:bg-[var(--brand-green-soft)]/35 transition-colors group">
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-4">
                       {t.avatar_url ? (
-                        <img src={t.avatar_url} alt={name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                        <img src={t.avatar_url} alt={name} className="w-12 h-12 rounded-2xl object-cover flex-shrink-0 shadow-sm ring-1 ring-zinc-100" />
                       ) : (
-                        <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarGradient(name)} flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0`}>
+                        <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${avatarGradient(name)} flex items-center justify-center text-[13px] font-black text-white flex-shrink-0 shadow-sm`}>
                           {initials(name)}
                         </div>
                       )}
-                      <p className="text-[13px] font-semibold text-zinc-900 truncate leading-none">
+                      <p className="text-[14px] font-black text-zinc-950 truncate leading-none">
                         {name}
-                        {t.age && <span className="ml-1.5 text-[11px] font-normal text-zinc-400">{t.age}y</span>}
+                        {t.age && <span className="ml-1.5 text-[11px] font-semibold text-zinc-400">{t.age} anos</span>}
                       </p>
                     </div>
                   </td>
@@ -100,7 +103,7 @@ export default function TalentList({ talent }: { talent: TalentListItem[] }) {
                   <td className="px-4 py-4 hidden md:table-cell">
                     <div className="flex flex-wrap gap-1">
                       {(t.categories ?? []).slice(0, 2).map((c: string) => (
-                        <span key={c} className="text-[10px] font-medium bg-zinc-100 text-zinc-500 px-2 py-0.5 rounded-full">{c}</span>
+                        <span key={c} className="text-[10px] font-bold bg-[var(--brand-green-soft)] text-emerald-800 px-2 py-0.5 rounded-full">{talentCategoryLabel(c)}</span>
                       ))}
                       {!t.categories?.length && <span className="text-[13px] text-zinc-400">—</span>}
                     </div>
@@ -113,9 +116,9 @@ export default function TalentList({ talent }: { talent: TalentListItem[] }) {
                   <td className="px-6 py-4 text-right">
                     <Link
                       href={`/agency/talent/${t.id}`}
-                      className="inline-flex items-center gap-1 text-[12px] font-medium text-zinc-400 hover:text-zinc-900 transition-colors opacity-0 group-hover:opacity-100"
+                      className="inline-flex items-center gap-1 rounded-full bg-zinc-950 px-3 py-1.5 text-[12px] font-bold text-white transition-all opacity-0 group-hover:opacity-100 hover:bg-zinc-800"
                     >
-                      View
+                      Ver
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>

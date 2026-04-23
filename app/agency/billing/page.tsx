@@ -3,7 +3,7 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import BillingDashboard from "@/features/agency/BillingDashboard";
 
-export const metadata: Metadata = { title: "Billing — Brisa Digital" };
+export const metadata: Metadata = { title: "Assinatura — BrisaHub" };
 
 export default async function BillingPage() {
   const session = await createSessionClient();

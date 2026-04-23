@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import AdminReferrals from "@/features/admin/AdminReferrals";
 import { createServerClient } from "@/lib/supabase";
 
-export const metadata: Metadata = { title: "Admin — Referrals — Brisa Digital" };
+export const metadata: Metadata = { title: "Administração — Indicações — BrisaHub" };
 
 const REFERRAL_RATE = 0.02;
 

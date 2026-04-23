@@ -3,13 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import PhoneInput from "@/components/ui/PhoneInput";
+import { TALENT_CATEGORY_LABELS, talentCategoryLabel } from "@/lib/talentCategories";
 
-const TALENT_CATEGORIES = [
-  "Actor", "Model", "Influencer", "Dancer", "Singer",
-  "Comedian", "Presenter", "Content Creator", "Photographer", "Athlete",
+const TALENT_CATEGORIES = TALENT_CATEGORY_LABELS;
+
+const GENDER_OPTIONS = [
+  { value: "male", label: "Masculino" },
+  { value: "female", label: "Feminino" },
+  { value: "other", label: "Outro" },
+  { value: "prefer_not_to_say", label: "Prefiro não informar" },
 ];
-
-const GENDER_OPTIONS = ["", "Male", "Female", "Non-binary", "Other", "Prefer not to say"];
 
 
 const inputBase =
@@ -35,7 +38,6 @@ type Form = {
   youtube:     string;
   xHandle:     string;
   website:     string;
-  imdb:        string;
 };
 
 type FormErrors = Partial<Record<keyof Form, string>>;
@@ -43,7 +45,7 @@ type FormErrors = Partial<Record<keyof Form, string>>;
 const DEFAULTS: Form = {
   fullName: "", phone: "", country: "", city: "",
   bio: "", categories: [], age: "", gender: "",
-  instagram: "", tiktok: "", youtube: "", xHandle: "", website: "", imdb: "",
+  instagram: "", tiktok: "", youtube: "", xHandle: "", website: "",
 };
 
 const BIO_MAX = 300;
@@ -88,6 +90,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+function normalizeGender(value: string | null | undefined) {
+  if (value === "Male") return "male";
+  if (value === "Female") return "female";
+  if (value === "Other" || value === "Non-binary") return "other";
+  if (value === "Prefer not to say") return "prefer_not_to_say";
+  return value ?? "";
+}
+
 export default function TalentProfileEdit() {
   const [form, setForm]       = useState<Form>(DEFAULTS);
   const [errors, setErrors]   = useState<FormErrors>({});
@@ -98,6 +108,7 @@ export default function TalentProfileEdit() {
   const [saving, setSaving]   = useState(false);
   const [success, setSuccess] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [customCategory, setCustomCategory] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -120,13 +131,12 @@ export default function TalentProfileEdit() {
           bio:        data.bio         ?? "",
           categories: data.categories  ?? [],
           age:        data.age != null ? String(data.age) : "",
-          gender:     data.gender      ?? "",
+          gender:     normalizeGender(data.gender),
           instagram:  data.instagram   ?? "",
           tiktok:     data.tiktok      ?? "",
           youtube:    data.youtube     ?? "",
           xHandle:    data.x_handle    ?? "",
           website:    data.website     ?? "",
-          imdb:       data.imdb        ?? "",
         });
         if (data.avatar_url) setPreview(data.avatar_url);
       }
@@ -145,10 +155,17 @@ export default function TalentProfileEdit() {
   function toggleCategory(cat: string) {
     setForm((f) => ({
       ...f,
-      categories: f.categories.includes(cat)
-        ? f.categories.filter((c) => c !== cat)
+      categories: f.categories.some((c) => talentCategoryLabel(c) === cat)
+        ? f.categories.filter((c) => talentCategoryLabel(c) !== cat)
         : [...f.categories, cat],
     }));
+  }
+
+  function addCustomCategory() {
+    const category = customCategory.trim();
+    if (!category || form.categories.some((c) => talentCategoryLabel(c).toLowerCase() === category.toLowerCase())) return;
+    setForm((f) => ({ ...f, categories: [...f.categories, category] }));
+    setCustomCategory("");
   }
 
   function handleAvatarChange(file: File) {
@@ -202,7 +219,6 @@ export default function TalentProfileEdit() {
       youtube:    form.youtube.trim()   || null,
       x_handle:   form.xHandle.trim()  || null,
       website:    form.website.trim()  || null,
-      imdb:       form.imdb.trim()     || null,
     };
     if (avatarUrl) payload.avatar_url = avatarUrl;
 
@@ -319,8 +335,8 @@ export default function TalentProfileEdit() {
                   className={selectCls}
                 >
                   <option value="">Selecione…</option>
-                  {GENDER_OPTIONS.filter(Boolean).map((g) => (
-                    <option key={g} value={g}>{g}</option>
+                  {GENDER_OPTIONS.map((g) => (
+                    <option key={g.value} value={g.value}>{g.label}</option>
                   ))}
                 </select>
                 <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-zinc-400">
@@ -350,9 +366,24 @@ export default function TalentProfileEdit() {
 
         {/* Categories */}
         <Section title="Categorias">
+          {form.categories.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {form.categories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => toggleCategory(talentCategoryLabel(cat))}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-zinc-950 px-3 py-1.5 text-[12px] font-semibold text-white"
+                >
+                  {talentCategoryLabel(cat)}
+                  <span className="text-white/60">×</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             {TALENT_CATEGORIES.map((cat) => {
-              const active = form.categories.includes(cat);
+              const active = form.categories.some((c) => talentCategoryLabel(c) === cat);
               return (
                 <button
                   key={cat} type="button" onClick={() => toggleCategory(cat)}
@@ -361,10 +392,31 @@ export default function TalentProfileEdit() {
                     active ? "bg-zinc-900 text-white" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200",
                   ].join(" ")}
                 >
-                  {cat}
+                  {cat === "Outro" ? "Outro / Personalizado" : cat}
                 </button>
               );
             })}
+          </div>
+          <div className="flex gap-2">
+            <input
+              className={inputCls(false)}
+              placeholder="Digite uma categoria personalizada"
+              value={customCategory}
+              onChange={(e) => setCustomCategory(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addCustomCategory();
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={addCustomCategory}
+              className="rounded-xl bg-zinc-950 px-4 text-[13px] font-semibold text-white transition-colors hover:bg-zinc-800"
+            >
+              Adicionar
+            </button>
           </div>
         </Section>
 
@@ -429,12 +481,6 @@ export default function TalentProfileEdit() {
               onChange={(e) => set("website", e.target.value)} />
           </div>
 
-          {/* IMDb */}
-          <div>
-            <label className={labelCls}>IMDb</label>
-            <input className={inputCls(false)} placeholder="https://imdb.com/name/nm..." value={form.imdb}
-              onChange={(e) => set("imdb", e.target.value)} />
-          </div>
         </Section>
 
         {serverError && (

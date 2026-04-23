@@ -8,7 +8,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const supabase = createServerClient({ useServiceRole: true });
   const { data } = await supabase.from("jobs").select("title").eq("id", id).single();
-  return { title: data ? `${data.title} — Admin — Brisa Digital` : "Job — Admin — Brisa Digital" };
+  return { title: data ? `${data.title} — Administração — BrisaHub` : "Vaga — Administração — BrisaHub" };
 }
 
 function usd(n: number) {
@@ -50,8 +50,8 @@ export default async function AdminJobDetailPage({ params }: Props) {
   if (!job) {
     return (
       <div className="max-w-2xl py-20 text-center">
-        <p className="text-[14px] text-zinc-500">Job not found.</p>
-        <Link href="/admin/jobs" className="mt-4 inline-block text-[13px] text-zinc-400 hover:text-zinc-700">← Back to Jobs</Link>
+        <p className="text-[14px] text-zinc-500">Vaga não encontrada.</p>
+        <Link href="/admin/jobs" className="mt-4 inline-block text-[13px] text-zinc-400 hover:text-zinc-700">← Voltar para vagas</Link>
       </div>
     );
   }
@@ -185,7 +185,7 @@ export default async function AdminJobDetailPage({ params }: Props) {
         {/* Right: metadata */}
         <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] p-5 space-y-4">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Info</p>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Informações</p>
             {[
               { label: "Agência",   value: agencyName },
               { label: "Categoria", value: job.category ?? "—" },

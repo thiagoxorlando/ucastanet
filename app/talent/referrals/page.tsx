@@ -3,7 +3,7 @@ import TalentReferrals from "@/features/talent/TalentReferrals";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 
-export const metadata: Metadata = { title: "Indicações — Brisa Digital" };
+export const metadata: Metadata = { title: "Indicações — BrisaHub" };
 
 export default async function TalentReferralsPage() {
   const session = await createSessionClient();

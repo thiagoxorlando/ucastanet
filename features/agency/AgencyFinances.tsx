@@ -17,6 +17,8 @@ function brl(n: number) {
 export type AgencyTransaction = {
   id: string;
   kind?: "booking" | "wallet";
+  bookingId?: string | null;
+  href?: string;
   talent: string;
   job: string;
   amount: number;
@@ -70,11 +72,11 @@ const STATUS_LABEL: Record<string, string> = {
 
 function StatCard({ label, value, sub, stripe }: { label: string; value: string; sub?: string; stripe: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden">
+    <div className="bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_14px_34px_rgba(7,17,13,0.06)] overflow-hidden">
       <div className={`h-[3px] bg-gradient-to-r ${stripe}`} />
       <div className="p-6">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">{label}</p>
-        <p className="text-[2rem] font-semibold tracking-tighter text-zinc-900 leading-none">{value}</p>
+        <p className="text-[2.05rem] font-black tracking-[-0.05em] text-zinc-950 leading-none">{value}</p>
         {sub && <p className="text-[12px] text-zinc-400 mt-1.5">{sub}</p>}
       </div>
     </div>
@@ -188,12 +190,12 @@ export default function AgencyFinances({
   }
 
   return (
-    <div className="max-w-5xl space-y-8">
+    <div className="max-w-6xl space-y-8">
 
       {/* Header */}
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Visão Geral</p>
-        <h1 className="text-[1.75rem] font-semibold tracking-tight text-zinc-900 leading-tight">Financeiro</h1>
+        <h1 className="text-[2rem] font-black tracking-[-0.04em] text-zinc-950 leading-tight">Financeiro</h1>
         <p className="text-[13px] text-zinc-400 mt-1">{transactions.length} transações no total</p>
       </div>
 
@@ -214,28 +216,27 @@ export default function AgencyFinances({
       )}
 
       {/* Wallet card */}
-      <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden">
-        <div className="h-[3px] bg-gradient-to-r from-emerald-400 to-teal-500" />
+      <div className="bg-white rounded-[1.75rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_18px_46px_rgba(7,17,13,0.08)] overflow-hidden">
 
         {/* Balance row */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-100">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between px-6 py-6 bg-[var(--brand-surface)] text-white">
           <div>
             <div className="flex items-center gap-2 mb-0.5">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Saldo na Plataforma</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--brand-green)]">Saldo na Plataforma</p>
               {walletRefreshing && (
                 <span className="flex items-center gap-1 text-[10px] text-zinc-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-green)] animate-pulse" />
                   Atualizando…
                 </span>
               )}
             </div>
-            <p className="text-[2rem] font-semibold tracking-tighter text-zinc-900 leading-none">{brl(walletBalance)}</p>
+            <p className="text-[3rem] font-black tracking-[-0.07em] text-white leading-none">{brl(walletBalance)}</p>
             <p className="text-[12px] text-zinc-400 mt-1.5">Disponível para confirmar reservas</p>
           </div>
           <button
             onClick={handleWithdraw}
             disabled={withdrawing || withdrawDone || walletBalance <= 0}
-            className="flex items-center gap-2 bg-zinc-100 hover:bg-zinc-200 disabled:opacity-40 text-zinc-700 text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 disabled:opacity-40 text-white border border-white/10 text-[13px] font-bold px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
           >
             {withdrawing ? (
               <>
@@ -298,7 +299,7 @@ export default function AgencyFinances({
                     className="w-full pl-9 pr-3.5 py-2.5 text-[13px] font-semibold bg-zinc-50 border border-zinc-200 rounded-xl placeholder:text-zinc-300 hover:border-zinc-300 focus:border-zinc-900 focus:bg-white focus:outline-none transition-colors" />
                 </div>
                 <button type="submit" disabled={depositLoading || !depositAmount || Number(depositAmount) <= 0}
-                  className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-zinc-100 disabled:text-zinc-400 text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed flex-shrink-0">
+                  className="flex items-center gap-2 bg-[var(--brand-green)] hover:bg-[var(--brand-green-strong)] disabled:bg-zinc-100 disabled:text-zinc-400 text-[var(--brand-surface)] text-[13px] font-black px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed flex-shrink-0">
                   {depositLoading ? <div className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" /> : "Gerar QR Code"}
                 </button>
               </div>
@@ -362,7 +363,7 @@ export default function AgencyFinances({
                         className="w-full pl-9 pr-3.5 py-2.5 text-[13px] font-semibold bg-zinc-50 border border-zinc-200 rounded-xl placeholder:text-zinc-300 hover:border-zinc-300 focus:border-zinc-900 focus:bg-white focus:outline-none transition-colors" />
                     </div>
                     <button type="submit" disabled={cardDepositLoading || !cardDepositAmount || Number(cardDepositAmount) <= 0 || !selectedCard}
-                      className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-100 disabled:text-zinc-400 text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed flex-shrink-0">
+                      className="flex items-center gap-2 bg-[var(--brand-green)] hover:bg-[var(--brand-green-strong)] disabled:bg-zinc-100 disabled:text-zinc-400 text-[var(--brand-surface)] text-[13px] font-black px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed flex-shrink-0">
                       {cardDepositLoading ? <div className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" /> : "Depositar"}
                     </button>
                   </div>
@@ -407,7 +408,13 @@ export default function AgencyFinances({
 
       {/* Transactions table */}
       <div className="space-y-4">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Transações</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400">Transações</p>
+            <p className="text-[12px] text-zinc-400 mt-1">Depósitos, custódia, pagamentos e movimentações da carteira.</p>
+          </div>
+          <span className="text-[12px] font-semibold text-zinc-400">{transactions.length} itens</span>
+        </div>
 
         {transactions.length === 0 ? (
           <div className="bg-white rounded-2xl border border-zinc-100 py-16 text-center">
@@ -415,7 +422,7 @@ export default function AgencyFinances({
             <p className="text-[13px] text-zinc-400 mt-1">Reservas e movimentações da carteira aparecerão aqui.</p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden">
+          <div className="bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_14px_34px_rgba(7,17,13,0.06)] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -432,7 +439,22 @@ export default function AgencyFinances({
                     const isWallet = t.kind === "wallet";
                     const label    = isWallet ? (t.description ?? STATUS_LABEL[t.status] ?? t.status) : t.talent;
                     return (
-                      <tr key={t.id} className="hover:bg-zinc-50/60 transition-colors">
+                      <tr
+                        key={t.id}
+                        role={t.href ? "link" : undefined}
+                        tabIndex={t.href ? 0 : undefined}
+                        onClick={() => { if (t.href) router.push(t.href); }}
+                        onKeyDown={(e) => {
+                          if (t.href && (e.key === "Enter" || e.key === " ")) {
+                            e.preventDefault();
+                            router.push(t.href);
+                          }
+                        }}
+                        className={[
+                          "hover:bg-zinc-50/60 transition-colors",
+                          t.href ? "cursor-pointer" : "",
+                        ].join(" ")}
+                      >
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             {isWallet && (
@@ -443,14 +465,14 @@ export default function AgencyFinances({
                                 </svg>
                               </span>
                             )}
-                            <p className="text-[13px] font-semibold text-zinc-900 truncate max-w-[200px]">{label}</p>
+                            <p className="text-[13px] font-bold text-zinc-950 truncate max-w-[220px]">{label}</p>
                           </div>
                         </td>
                         <td className="px-4 py-4 hidden md:table-cell">
                           <p className="text-[12px] text-zinc-500 truncate max-w-[200px]">{isWallet ? "—" : (t.job || "—")}</p>
                         </td>
                         <td className="px-4 py-4 text-right">
-                          <p className="text-[14px] font-semibold tabular-nums text-zinc-900">
+                          <p className="text-[14px] font-black tabular-nums text-zinc-950">
                             {brl(Math.abs(t.amount))}
                           </p>
                         </td>

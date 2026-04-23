@@ -46,30 +46,11 @@ function daysUntil(raw: string) {
 }
 
 const STATUS_STYLES: Record<Job["status"], string> = {
-  open:     "bg-emerald-50 text-emerald-600",
-  closed:   "bg-zinc-100 text-zinc-500",
-  draft:    "bg-amber-50 text-amber-600",
-  inactive: "bg-zinc-100 text-zinc-400",
+  open:     "bg-[var(--brand-green-soft)] text-emerald-800 ring-1 ring-emerald-200/70",
+  closed:   "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200",
+  draft:    "bg-zinc-50 text-zinc-500 ring-1 ring-zinc-200",
+  inactive: "bg-zinc-100 text-zinc-400 ring-1 ring-zinc-200",
 };
-
-const CATEGORY_STRIPES: Record<string, string> = {
-  "Lifestyle & Fashion": "from-rose-400 via-pink-400 to-fuchsia-400",
-  "Technology":          "from-sky-500 via-blue-500 to-indigo-500",
-  "Food & Cooking":      "from-amber-400 via-orange-400 to-red-400",
-  "Health & Fitness":    "from-emerald-400 via-teal-400 to-cyan-400",
-  "Travel":              "from-indigo-400 via-violet-400 to-purple-400",
-  "Beauty":              "from-pink-400 via-rose-400 to-red-300",
-  "Gaming":              "from-violet-500 via-purple-500 to-indigo-400",
-  "Music":               "from-yellow-400 via-amber-400 to-orange-400",
-  "Education":           "from-sky-400 via-cyan-400 to-teal-400",
-  "Sports":              "from-green-400 via-emerald-400 to-teal-400",
-  "Comedy":              "from-yellow-300 via-amber-400 to-orange-400",
-  "Other":               "from-zinc-300 via-zinc-400 to-zinc-500",
-};
-
-function stripe(category: string) {
-  return CATEGORY_STRIPES[category] ?? CATEGORY_STRIPES["Other"];
-}
 
 // ─── Job Card ─────────────────────────────────────────────────────────────────
 
@@ -125,43 +106,40 @@ function JobCard({ job, onUpdate, onRemove }: {
   }
 
   return (
-    <div className="group bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden flex flex-col hover:shadow-[0_4px_12px_rgba(0,0,0,0.07),0_12px_32px_rgba(0,0,0,0.05)] transition-shadow duration-200">
-      {/* Top stripe */}
-      <div className={`h-[3px] bg-gradient-to-r ${stripe(job.category)}`} />
-
-      <div className="p-6 flex flex-col gap-4 flex-1">
+    <div className="group bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_14px_34px_rgba(7,17,13,0.06)] flex flex-col hover:-translate-y-0.5 hover:border-zinc-200 hover:shadow-[0_18px_46px_rgba(7,17,13,0.10)] transition-all duration-200">
+      <div className="p-5 flex flex-col gap-4 flex-1">
         {/* Title row */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-1.5 min-w-0">
             {job.visibility === "private" && (
-              <svg className="w-3.5 h-3.5 text-violet-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             )}
-            <h3 className="text-[15px] font-semibold text-zinc-900 leading-snug group-hover:text-zinc-700 transition-colors truncate">
+            <h3 className="text-[16px] font-black text-zinc-950 leading-snug group-hover:text-zinc-700 transition-colors truncate">
               {job.title}
             </h3>
           </div>
-          <span className={`flex-shrink-0 text-[11px] font-medium px-2.5 py-1 rounded-full ${STATUS_STYLES[job.status]}`}>
+          <span className={`flex-shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${STATUS_STYLES[job.status]}`}>
             {lang === "en" ? job.status : (JOB_STATUS_LABEL[job.status] ?? job.status)}
           </span>
         </div>
 
         {/* Category */}
-        <span className="self-start text-[11px] font-medium bg-zinc-100 text-zinc-500 px-2.5 py-1 rounded-full">
+        <span className="self-start text-[11px] font-semibold bg-zinc-50 text-zinc-500 ring-1 ring-zinc-100 px-2.5 py-1 rounded-full">
           {job.category}
         </span>
 
         {/* Description excerpt */}
-        <p className="text-[13px] text-zinc-400 leading-relaxed line-clamp-2 flex-1">
+        <p className="text-[13px] text-zinc-500 leading-relaxed line-clamp-2 flex-1">
           {job.description}
         </p>
 
         {/* Meta row */}
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-3 border-t border-zinc-50 text-[13px]">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-3 border-t border-zinc-50 text-[12px]">
           {/* Budget */}
-          <div className="flex items-center gap-1.5 text-zinc-600 font-medium">
-            <svg className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center gap-1.5 text-emerald-800 font-black bg-[var(--brand-green-soft)] px-2.5 py-1 rounded-full">
+            <svg className="w-3.5 h-3.5 text-emerald-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -180,7 +158,7 @@ function JobCard({ job, onUpdate, onRemove }: {
 
           {/* Job date */}
           {job.jobDate && (
-            <div className="flex items-center gap-1.5 text-violet-500 font-medium">
+            <div className="flex items-center gap-1.5 text-zinc-500 font-medium">
               <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -191,7 +169,7 @@ function JobCard({ job, onUpdate, onRemove }: {
 
           {/* Applicants count */}
           {job.applicants > 0 && (
-            <div className="flex items-center gap-1.5 text-[12px] font-medium px-2 py-0.5 rounded-full bg-sky-50 text-sky-600">
+            <div className="flex items-center gap-1.5 text-[12px] font-medium px-2 py-0.5 rounded-full bg-zinc-50 text-zinc-500">
               <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -205,8 +183,8 @@ function JobCard({ job, onUpdate, onRemove }: {
             "flex items-center gap-1.5 ml-auto text-[12px] font-medium px-2 py-0.5 rounded-full",
             job.talentsSelected >= job.talentsNeeded
               ? "bg-emerald-50 text-emerald-600"
-              : job.talentsSelected > 0
-              ? "bg-amber-50 text-amber-600"
+            : job.talentsSelected > 0
+              ? "bg-zinc-50 text-zinc-500"
               : "bg-zinc-100 text-zinc-400",
           ].join(" ")}>
             <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,7 +199,7 @@ function JobCard({ job, onUpdate, onRemove }: {
         <div className="flex items-center gap-2 mt-1">
           <Link
             href={`/agency/jobs/${job.id}`}
-            className="flex-1 inline-flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 active:scale-[0.98] text-white text-[13px] font-medium px-4 py-2.5 rounded-xl transition-all duration-150"
+            className="flex-1 inline-flex items-center justify-center gap-2 bg-[var(--brand-green)] hover:bg-[var(--brand-green-strong)] active:scale-[0.98] text-[var(--brand-surface)] text-[13px] font-black px-4 py-2.5 rounded-xl transition-all duration-150 shadow-[0_10px_24px_rgba(72,242,154,0.22)]"
           >
             {t("action_view")}
           </Link>
@@ -303,6 +281,7 @@ export default function JobList({ jobs: initial }: { jobs: Job[] }) {
   const [jobs, setJobs]     = useState(initial);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<typeof STATUS_OPTIONS[number]>("All");
+  const [showSecondary, setShowSecondary] = useState(false);
   const { t } = useT();
 
   function handleUpdate(id: string, patch: Partial<Job>) {
@@ -313,10 +292,17 @@ export default function JobList({ jobs: initial }: { jobs: Job[] }) {
     setJobs((prev) => prev.filter((j) => j.id !== id));
   }
 
-const filtered = jobs.filter((j) => {
+  const matchesSearch = (j: Job) =>
+    j.title.toLowerCase().includes(search.toLowerCase()) ||
+    j.category.toLowerCase().includes(search.toLowerCase());
+
+  const searchedJobs = jobs.filter(matchesSearch);
+  const openJobs = searchedJobs.filter((j) => j.status === "open");
+  const secondaryJobs = searchedJobs.filter((j) => j.status !== "open");
+
+  const filtered = jobs.filter((j) => {
     const matchSearch =
-      j.title.toLowerCase().includes(search.toLowerCase()) ||
-      j.category.toLowerCase().includes(search.toLowerCase());
+      matchesSearch(j);
     const matchStatus =
       status === "All" || j.status === status.toLowerCase();
     return matchSearch && matchStatus;
@@ -328,14 +314,14 @@ const filtered = jobs.filter((j) => {
       {/* Page header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">{t("page_jobs")}</h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h1 className="text-3xl font-black tracking-[-0.04em] text-zinc-950">{t("page_jobs")}</h1>
+          <p className="text-sm text-zinc-500 mt-1">
             {jobs.filter((j) => j.status === "open").length} {t("jobs_open_positions")}
           </p>
         </div>
         <Link
           href="/agency/post-job"
-          className="flex-shrink-0 inline-flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 active:scale-[0.98] text-white text-[13px] font-medium px-4 py-2.5 rounded-xl transition-all duration-150"
+          className="flex-shrink-0 inline-flex items-center gap-2 bg-[var(--brand-green)] hover:bg-[var(--brand-green-strong)] active:scale-[0.98] text-[var(--brand-surface)] text-[13px] font-black px-4 py-2.5 rounded-xl transition-all duration-150 shadow-[0_10px_24px_rgba(72,242,154,0.22)]"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -357,7 +343,7 @@ const filtered = jobs.filter((j) => {
             placeholder="Buscar vagas…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-[14px] text-zinc-900 placeholder:text-zinc-400 hover:border-zinc-300 focus:border-zinc-900 focus:outline-none transition-colors duration-150"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-[14px] text-zinc-900 placeholder:text-zinc-400 hover:border-zinc-300 focus:border-[var(--brand-green)] focus:ring-2 focus:ring-[var(--brand-green)]/20 focus:outline-none transition-colors duration-150"
           />
         </div>
 
@@ -370,7 +356,7 @@ const filtered = jobs.filter((j) => {
               className={[
                 "px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-all duration-150",
                 status === s
-                  ? "bg-white text-zinc-900 shadow-sm"
+                  ? "bg-[var(--brand-surface)] text-white shadow-sm"
                   : "text-zinc-500 hover:text-zinc-700",
               ].join(" ")}
             >
@@ -381,8 +367,76 @@ const filtered = jobs.filter((j) => {
       </div>
 
       {/* Grid */}
-      {filtered.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+      {status === "All" ? (
+        searchedJobs.length > 0 ? (
+          <div className="space-y-6">
+            <section className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-[13px] font-black uppercase tracking-[0.18em] text-zinc-400">Vagas abertas</h2>
+                  <p className="mt-1 text-[13px] text-zinc-500">Prioridade para acompanhar candidaturas e ações ativas.</p>
+                </div>
+                <span className="rounded-full bg-[var(--brand-green-soft)] px-3 py-1 text-[12px] font-bold text-emerald-800">
+                  {openJobs.length}
+                </span>
+              </div>
+              {openJobs.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {openJobs.map((job) => (
+                    <JobCard key={job.id} job={job} onUpdate={handleUpdate} onRemove={handleRemove} />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-zinc-100 bg-white py-12 text-center">
+                  <p className="text-[14px] font-medium text-zinc-500">Nenhuma vaga aberta no momento</p>
+                </div>
+              )}
+            </section>
+
+            {secondaryJobs.length > 0 && (
+              <section className="rounded-[1.5rem] border border-zinc-100 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+                <button
+                  type="button"
+                  onClick={() => setShowSecondary((v) => !v)}
+                  className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+                >
+                  <div>
+                    <h2 className="text-[13px] font-black uppercase tracking-[0.18em] text-zinc-400">Outras vagas</h2>
+                    <p className="mt-1 text-[13px] text-zinc-500">Rascunhos, vagas fechadas e inativas ficam separadas para reduzir ruído.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full bg-zinc-100 px-3 py-1 text-[12px] font-bold text-zinc-600">
+                      {secondaryJobs.length}
+                    </span>
+                    <svg className={`h-4 w-4 text-zinc-400 transition-transform ${showSecondary ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
+                {showSecondary && (
+                  <div className="grid grid-cols-1 gap-4 border-t border-zinc-50 p-4 md:grid-cols-2 xl:grid-cols-3">
+                    {secondaryJobs.map((job) => (
+                      <JobCard key={job.id} job={job} onUpdate={handleUpdate} onRemove={handleRemove} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+          </div>
+        ) : (
+          <div className="py-20 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-zinc-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
+                  d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <p className="text-[14px] font-medium text-zinc-500">Nenhuma vaga encontrada</p>
+            <p className="text-[13px] text-zinc-400 mt-1">Tente uma busca diferente.</p>
+          </div>
+        )
+      ) : filtered.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map((job) => (
             <JobCard key={job.id} job={job} onUpdate={handleUpdate} onRemove={handleRemove} />
           ))}

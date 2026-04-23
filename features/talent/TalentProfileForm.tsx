@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { TALENT_CATEGORY_LABELS, talentCategoryLabel } from "@/lib/talentCategories";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,11 +30,7 @@ type Touched = { name?: boolean; username?: boolean; bio?: boolean };
 
 const BIO_MAX = 300;
 
-const CATEGORY_SUGGESTIONS = [
-  "Lifestyle & Fashion", "Technology", "Food & Cooking",
-  "Health & Fitness", "Travel", "Beauty", "Gaming",
-  "Music", "Comedy", "Education", "Sports", "Other",
-];
+const CATEGORY_SUGGESTIONS = TALENT_CATEGORY_LABELS;
 
 const PLATFORMS = [
   { id: "instagram", label: "Instagram", prefix: "@" },
@@ -54,15 +51,15 @@ const PLATFORM_META: Record<PlatformId, { label: string; prefix: string }> = {
 };
 
 const CATEGORY_STRIPES: Record<string, string> = {
-  "Lifestyle & Fashion": "from-rose-400 via-pink-400 to-fuchsia-400",
-  "Technology":          "from-sky-500 via-blue-500 to-indigo-500",
-  "Food & Cooking":      "from-amber-400 via-orange-400 to-red-400",
-  "Health & Fitness":    "from-emerald-400 via-teal-400 to-cyan-400",
-  "Travel":              "from-indigo-400 via-violet-400 to-purple-400",
-  "Beauty":              "from-pink-400 via-rose-400 to-red-300",
-  "Gaming":              "from-violet-500 via-purple-500 to-indigo-400",
-  "Music":               "from-yellow-400 via-amber-400 to-orange-400",
-  "Other":               "from-zinc-300 via-zinc-400 to-zinc-500",
+  "Lifestyle e Moda": "from-rose-400 via-pink-400 to-fuchsia-400",
+  "Tecnologia":       "from-sky-500 via-blue-500 to-indigo-500",
+  "Gastronomia":      "from-amber-400 via-orange-400 to-red-400",
+  "Saúde e Fitness":  "from-emerald-400 via-teal-400 to-cyan-400",
+  "Viagens":          "from-indigo-400 via-violet-400 to-purple-400",
+  "Beleza":           "from-pink-400 via-rose-400 to-red-300",
+  "Games":            "from-violet-500 via-purple-500 to-indigo-400",
+  "Música":           "from-yellow-400 via-amber-400 to-orange-400",
+  "Outro":            "from-zinc-300 via-zinc-400 to-zinc-500",
 };
 
 const AVATAR_GRADIENTS = [
@@ -85,7 +82,7 @@ function initials(name: string) {
 }
 
 function stripeFor(categories: string[]) {
-  const first = categories[0];
+  const first = talentCategoryLabel(categories[0]);
   return CATEGORY_STRIPES[first] ?? "from-zinc-200 via-zinc-300 to-zinc-400";
 }
 
@@ -243,7 +240,7 @@ function CategoriesEditor({ value, onChange }: { value: string[]; onChange: (v: 
         <div className="flex flex-wrap gap-2">
           {value.map((tag) => (
             <span key={tag} className="inline-flex items-center gap-1.5 text-[12px] font-medium bg-zinc-900 text-white pl-3 pr-2 py-1.5 rounded-full">
-              {tag}
+              {talentCategoryLabel(tag)}
               <button type="button" onClick={() => remove(tag)}
                 className="w-4 h-4 rounded-full hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer">
                 <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -265,7 +262,7 @@ function CategoriesEditor({ value, onChange }: { value: string[]; onChange: (v: 
             if (e.key === "Enter" || e.key === ",") { e.preventDefault(); add(input); }
             if (e.key === "Backspace" && !input && value.length) remove(value[value.length - 1]);
           }}
-          placeholder={value.length ? "Adicionar outra…" : "Digite uma categoria e pressione Enter…"}
+          placeholder={value.length ? "Adicionar outra categoria…" : "Digite uma categoria personalizada e pressione Enter…"}
           className={`${base} ${ring()} px-4 py-3`}
         />
       )}
@@ -501,7 +498,7 @@ function ProfilePreview({ form }: { form: FormData }) {
             </p>
             {form.categories.length > 0 && (
               <span className="inline-block text-[11px] font-medium bg-zinc-100 text-zinc-500 px-2.5 py-0.5 rounded-full mt-0.5">
-                {form.categories[0]}
+                {talentCategoryLabel(form.categories[0])}
               </span>
             )}
           </div>
@@ -521,7 +518,7 @@ function ProfilePreview({ form }: { form: FormData }) {
               <div className="flex flex-wrap gap-1.5">
                 {form.categories.map((c) => (
                   <span key={c} className="text-[11px] font-medium bg-zinc-100 hover:bg-zinc-200 text-zinc-600 px-2.5 py-1 rounded-full transition-colors">
-                    {c}
+                    {talentCategoryLabel(c)}
                   </span>
                 ))}
               </div>

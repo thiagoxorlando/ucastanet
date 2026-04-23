@@ -154,8 +154,8 @@ function DetailRow({
   icon: React.ReactNode; label: string; value: string; highlight?: boolean;
 }) {
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-zinc-50 last:border-0">
-      <div className="w-7 h-7 rounded-lg bg-zinc-50 flex items-center justify-center flex-shrink-0 text-zinc-400">
+    <div className="flex items-start gap-3 py-2.5 border-b border-zinc-50 last:border-0">
+      <div className="w-7 h-7 rounded-lg bg-zinc-50 flex items-center justify-center flex-shrink-0 text-zinc-400 ring-1 ring-zinc-100">
         {icon}
       </div>
       <div className="min-w-0">
@@ -1058,7 +1058,7 @@ export default function JobDetail({
   }
 
   return (
-    <div className="max-w-5xl space-y-8">
+    <div className="max-w-5xl space-y-6">
 
       {/* ── Contract modal ── */}
       {contractModal && agencyId && (
@@ -1072,10 +1072,10 @@ export default function JobDetail({
       )}
 
       {/* ── Header ── */}
-      <div>
+      <div className="rounded-[1.75rem] bg-[var(--brand-surface)] px-6 py-5 text-white shadow-[0_24px_70px_rgba(7,17,13,0.18)]">
         <Link
           href="/agency/jobs"
-          className="inline-flex items-center gap-1.5 text-[13px] text-zinc-400 hover:text-zinc-700 transition-colors mb-4"
+          className="inline-flex items-center gap-1.5 text-[13px] text-zinc-400 hover:text-white transition-colors mb-4"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -1085,7 +1085,7 @@ export default function JobDetail({
 
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="space-y-2.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">{job.title}</h1>
+            <h1 className="text-[1.85rem] font-black tracking-[-0.04em] leading-tight text-white">{job.title}</h1>
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-[12px] font-medium px-2.5 py-1 rounded-full ${STATUS_STYLES[job.status]}`}>
                 {{ open: "Aberta", closed: "Fechada", draft: "Rascunho", inactive: "Inativa" }[job.status] ?? job.status}
@@ -1098,10 +1098,24 @@ export default function JobDetail({
                   Privada
                 </span>
               )}
-              <span className="text-[12px] font-medium bg-zinc-100 text-zinc-500 px-2.5 py-1 rounded-full">
+              <span className="text-[12px] font-medium bg-white/10 text-zinc-200 border border-white/10 px-2.5 py-1 rounded-full">
                 {job.category}
               </span>
               <span className="text-[12px] text-zinc-400">Publicado em {formatDate(job.postedAt)}</span>
+            </div>
+            <div className="grid gap-3 pt-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400">Orçamento</p>
+                <p className="mt-1 text-xl font-black text-[var(--brand-green)]">{formatBudget(job.budget)}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400">Candidaturas</p>
+                <p className="mt-1 text-xl font-black text-white">{safeSubmissions.length}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400">Reservas</p>
+                <p className="mt-1 text-xl font-black text-white">{bookings.length}</p>
+              </div>
             </div>
           </div>
 
@@ -1109,7 +1123,7 @@ export default function JobDetail({
             <div className="flex items-center gap-3 flex-shrink-0">
               <Link
                 href={`/agency/jobs/${job.id}/edit`}
-                className="inline-flex items-center gap-2 bg-white border border-zinc-200 hover:border-zinc-300 text-zinc-700 text-[13px] font-medium px-5 py-2.5 rounded-xl transition-all duration-150"
+                className="inline-flex items-center gap-2 bg-white/10 border border-white/10 hover:bg-white/15 text-white text-[13px] font-bold px-5 py-2.5 rounded-xl transition-all duration-150"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -1123,16 +1137,15 @@ export default function JobDetail({
       </div>
 
       {/* ── Job details ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3 bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden">
-          <div className={`h-[3px] bg-gradient-to-r ${stripe(job.category)}`} />
-          <div className="p-7">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-5">Descrição da Vaga</p>
-            <p className="text-[15px] text-zinc-600 leading-relaxed">{job.description}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+        <div className="lg:col-span-3 bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden">
+          <div className="p-6">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-3">Descrição da Vaga</p>
+            <p className="text-[15px] text-zinc-700 leading-relaxed">{job.description}</p>
           </div>
         </div>
 
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] p-6">
+        <div className="lg:col-span-2 bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] p-5">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-4">Detalhes da Vaga</p>
           <DetailRow label="Categoria" value={job.category}
             icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>}

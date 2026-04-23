@@ -10,9 +10,9 @@ const PLANS = [
 ] as const;
 
 const ROLES = [
-  { key: "talent", label: "Talent", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  { key: "agency", label: "Agency", color: "bg-blue-50 text-blue-700 border-blue-200" },
-  { key: "admin",  label: "Admin",  color: "bg-violet-50 text-violet-700 border-violet-200" },
+  { key: "talent", label: "Talento", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  { key: "agency", label: "Agência", color: "bg-blue-50 text-blue-700 border-blue-200" },
+  { key: "admin",  label: "Administração", color: "bg-violet-50 text-violet-700 border-violet-200" },
 ] as const;
 
 type Plan = typeof PLANS[number]["key"];
@@ -43,7 +43,7 @@ export default function AdminPlanSelector({ userId, currentPlan, currentRole }: 
       if (body.plan) setActivePlan(body.plan);
       if (body.role) setActiveRole(body.role);
       const label = body.role
-        ? `Role → ${body.role}`
+        ? `Função → ${body.role}`
         : `Plano → ${body.plan}`;
       setToast({ msg: label, ok: true });
     } else {
@@ -59,7 +59,7 @@ export default function AdminPlanSelector({ userId, currentPlan, currentRole }: 
       <div className="p-5 space-y-4">
 
         <div className="flex items-center justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Admin</p>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Administração</p>
           {loading && (
             <svg className="w-3.5 h-3.5 text-zinc-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -70,7 +70,7 @@ export default function AdminPlanSelector({ userId, currentPlan, currentRole }: 
 
         {/* Role */}
         <div className="space-y-1.5">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">Role</p>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">Função</p>
           <div className="flex gap-1.5">
             {ROLES.map((r) => {
               const isActive = activeRole === r.key;

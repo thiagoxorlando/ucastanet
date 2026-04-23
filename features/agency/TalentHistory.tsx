@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import Link from "next/link";
 import RehireModal from "@/components/agency/RehireModal";
-import PaywallModal from "@/components/agency/PaywallModal";
 import ReliabilityBadge from "@/components/agency/ReliabilityBadge";
 import { reliabilitySortScore } from "@/lib/reliability";
+import { talentCategoryLabel } from "@/lib/talentCategories";
 
 type TalentProfile = {
   id: string;
@@ -40,7 +41,7 @@ interface Props {
 }
 
 function Avatar({ talent }: { talent: TalentProfile | null }) {
-  const name    = talent?.full_name ?? "?";
+  const name    = talent?.full_name ?? "Talento";
   const initials = name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
   const colors  = ["bg-violet-500", "bg-sky-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500"];
   const color   = colors[name.charCodeAt(0) % colors.length];
@@ -75,10 +76,6 @@ export default function TalentHistory({
   const [search, setSearch]             = useState("");
   const [rehireTarget, setRehireTarget] = useState<TalentProfile | null>(null);
   const [favoriteLoading, setFavLoading] = useState<string | null>(null);
-  const [quickHiring, setQuickHiring]   = useState<string | null>(null);
-  const [quickDone, setQuickDone]       = useState<string | null>(null);
-  const [quickError, setQuickError]     = useState<string | null>(null);
-  const [paywallOpen, setPaywallOpen]   = useState(false);
   const [filterDate, setFilterDate]     = useState(initialFilterDate ?? today);
   const [showOnlyAvailable, setShowOnlyAvailable] = useState(false);
   const [availMap, setAvailMap]         = useState<Record<string, AvailEntry>>(initialAvailability);
@@ -168,30 +165,6 @@ export default function TalentHistory({
     if (json.history) setHistory(json.history);
   }
 
-  async function quickHire(talentId: string) {
-    setQuickHiring(talentId);
-    setQuickError(null);
-
-    const res  = await fetch("/api/agency/quick-hire", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ talent_id: talentId, agency_id: agencyId }),
-    });
-
-    setQuickHiring(null);
-
-    if (!res.ok) {
-      const body = await res.json();
-      if (body.error === "plan_limit" || res.status === 402) { setPaywallOpen(true); return; }
-      setQuickError(body.error ?? "Erro ao contratar.");
-      return;
-    }
-
-    setQuickDone(talentId);
-    setTimeout(() => setQuickDone(null), 3000);
-    refreshHistory();
-  }
-
   function AvailBadge({ talentId }: { talentId: string }) {
     const a = availMap[talentId];
     if (a === undefined || a === null) return null;
@@ -215,12 +188,14 @@ export default function TalentHistory({
 
   function TalentCard({ entry }: { entry: HistoryEntry }) {
     const t        = entry.talent;
+    const name     = t?.full_name ?? "Talento sem perfil completo";
     const location = [t?.city, t?.country].filter(Boolean).join(", ");
+    const roleLine = [t?.main_role, location].filter(Boolean).join(" · ");
 
     return (
-      <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] p-5 flex gap-4 hover:shadow-[0_2px_8px_rgba(0,0,0,0.08)] transition-shadow">
+      <div className="bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_14px_34px_rgba(7,17,13,0.06)] p-5 flex flex-col gap-5 transition-all hover:-translate-y-0.5 hover:border-zinc-200 hover:shadow-[0_18px_46px_rgba(7,17,13,0.10)] lg:flex-row lg:items-center">
         {/* Avatar */}
-        <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
+        <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 ring-1 ring-zinc-100">
           <Avatar talent={t} />
         </div>
 
@@ -228,12 +203,16 @@ export default function TalentHistory({
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[14px] font-semibold text-zinc-900 truncate">
-                {t?.full_name ?? "—"}
+              <p className="text-[16px] font-black text-zinc-950 truncate">
+                {name}
               </p>
-              {(t?.main_role || location) && (
+              {roleLine ? (
                 <p className="text-[12px] text-zinc-500 truncate">
-                  {[t?.main_role, location].filter(Boolean).join(" · ")}
+                  {roleLine}
+                </p>
+              ) : (
+                <p className="text-[12px] text-zinc-400 truncate">
+                  Perfil incompleto, mas o histórico de contratação existe.
                 </p>
               )}
             </div>
@@ -272,7 +251,7 @@ export default function TalentHistory({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              {entry.jobs_count} {entry.jobs_count === 1 ? "job" : "jobs"}
+              {entry.jobs_count} {entry.jobs_count === 1 ? "contratação" : "contratações"}
             </span>
             <span className="text-zinc-200">·</span>
             <span className="text-[11px] text-zinc-400">
@@ -296,7 +275,7 @@ export default function TalentHistory({
             <div className="flex flex-wrap gap-1 pt-0.5">
               {t.categories.slice(0, 3).map((cat) => (
                 <span key={cat} className="px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-500 text-[10px] font-medium">
-                  {cat}
+                  {talentCategoryLabel(cat)}
                 </span>
               ))}
             </div>
@@ -304,49 +283,22 @@ export default function TalentHistory({
         </div>
 
         {/* CTAs */}
-        <div className="flex-shrink-0 flex flex-col gap-2 items-stretch justify-center">
-          {/* Quick Hire — 1 click */}
-          {quickDone === entry.talent_id ? (
-            <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 text-[13px] font-semibold whitespace-nowrap">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-              </svg>
-              Contrato enviado!
-            </div>
-          ) : (() => {
-            const avail = availMap[entry.talent_id];
-            const isAvailable = avail?.is_available === true;
-            return (
-              <button
-                onClick={() => quickHire(entry.talent_id)}
-                disabled={quickHiring === entry.talent_id}
-                className={[
-                  "px-4 py-2 rounded-xl text-[13px] font-semibold transition-all whitespace-nowrap disabled:opacity-50 flex items-center justify-center gap-1.5",
-                  isAvailable
-                    ? "bg-emerald-600 hover:bg-emerald-700 active:scale-[0.97] text-white"
-                    : "bg-zinc-900 hover:bg-zinc-800 active:scale-[0.97] text-white",
-                ].join(" ")}
-              >
-                {quickHiring === entry.talent_id ? (
-                  <>
-                    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4l3-3-3-3v4a8 8 0 00-8 8h4z" />
-                    </svg>
-                    Contratando…
-                  </>
-                ) : isAvailable ? "Contratar agora" : "Contratar para hoje"}
-              </button>
-            );
-          })()}
-
+        <div className="flex-shrink-0 flex flex-col gap-2 items-stretch justify-center sm:flex-row lg:flex-col">
           {/* Full modal — select job / amount */}
           <button
             onClick={() => setRehireTarget(t ? { ...t, id: entry.talent_id } : null)}
-            className="px-4 py-2 rounded-xl border border-zinc-200 hover:bg-zinc-50 active:scale-[0.97] text-zinc-600 text-[13px] font-medium transition-all whitespace-nowrap"
+            disabled={!t}
+            className="px-4 py-2 rounded-xl bg-[var(--brand-green)] hover:bg-[var(--brand-green-strong)] active:scale-[0.97] text-[var(--brand-surface)] text-[13px] font-black transition-all whitespace-nowrap disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 shadow-[0_10px_24px_rgba(72,242,154,0.20)]"
           >
-            Personalizar
+            Escolher vaga e valor
           </button>
+
+          <Link
+            href={`/agency/talent/${entry.talent_id}`}
+            className="px-4 py-2 rounded-xl border border-zinc-200 hover:bg-zinc-50 active:scale-[0.97] text-zinc-600 text-[13px] font-semibold transition-all whitespace-nowrap text-center"
+          >
+            Ver perfil
+          </Link>
         </div>
       </div>
     );
@@ -430,9 +382,9 @@ export default function TalentHistory({
           </div>
           {history.length === 0 ? (
             <>
-              <p className="text-[15px] font-semibold text-zinc-700">Nenhum talento ainda</p>
+              <p className="text-[15px] font-semibold text-zinc-700">Nenhum talento na equipe ainda</p>
               <p className="text-[13px] text-zinc-400 max-w-xs mx-auto">
-                Talentos aparecem aqui automaticamente após você pagar pelo primeiro job.
+                Talentos aparecem aqui automaticamente após uma contratação paga.
               </p>
             </>
           ) : (
@@ -487,22 +439,6 @@ export default function TalentHistory({
       )}
 
       {/* Rehire modal */}
-      {/* Quick-hire error toast */}
-      {quickError && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 bg-rose-600 text-white text-[13px] font-medium px-5 py-3 rounded-2xl shadow-lg">
-          <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          {quickError}
-          <button onClick={() => setQuickError(null)} className="ml-1 opacity-75 hover:opacity-100">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
-
       {rehireTarget && (
         <RehireModal
           talent={rehireTarget}
@@ -512,8 +448,6 @@ export default function TalentHistory({
           onSuccess={refreshHistory}
         />
       )}
-
-      {paywallOpen && <PaywallModal variant="hiring" onClose={() => setPaywallOpen(false)} />}
     </div>
   );
 }

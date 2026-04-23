@@ -13,9 +13,9 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    "bg-zinc-900 text-white hover:bg-zinc-800 active:scale-[0.98] border border-transparent shadow-sm",
+    "bg-[var(--brand-green)] text-[var(--brand-surface)] hover:bg-[var(--brand-green-strong)] active:scale-[0.98] border border-transparent shadow-[0_10px_24px_rgba(72,242,154,0.24)]",
   secondary:
-    "bg-white text-zinc-800 border border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300 active:scale-[0.98]",
+    "bg-white text-zinc-800 border border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300 active:scale-[0.98] shadow-sm",
   ghost:
     "bg-transparent text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 border border-transparent",
   danger:

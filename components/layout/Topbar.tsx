@@ -9,28 +9,50 @@ import NotificationBell from "@/components/layout/NotificationBell";
 import Logo from "@/components/Logo";
 
 const pageMeta: Record<string, { title: string; description: string }> = {
-  "/agency/dashboard": { title: "Dashboard", description: "Overview of your agency and talent roster" },
-  "/agency/talent":    { title: "Talent",    description: "Browse and manage all talent profiles" },
-  "/agency/create":    { title: "Create Talent", description: "Add a new talent profile to your roster" },
-  "/agency/post-job":  { title: "Post a Job", description: "Create a new job listing for your roster" },
-  "/agency/jobs":      { title: "Jobs",       description: "Manage your open positions and applicants" },
-  "/agency/bookings":  { title: "Bookings",   description: "View and manage your bookings" },
-  "/talent/dashboard": { title: "Dashboard",  description: "Your talent overview" },
-  "/talent/jobs":      { title: "Jobs",       description: "Browse available opportunities" },
-  "/talent/bookings":  { title: "My Bookings", description: "View your confirmed bookings" },
-  "/talent/profile":   { title: "Profile",    description: "Manage your talent profile" },
-  "/agency/finances":  { title: "Finances",   description: "Revenue, payments and commissions" },
-  "/talent/finances":  { title: "Finances",   description: "Your earnings and payment history" },
-  "/admin/dashboard":  { title: "Dashboard",  description: "Platform-wide overview" },
-  "/admin/jobs":       { title: "Jobs",       description: "All jobs across the platform" },
-  "/admin/users":      { title: "Users",      description: "Manage agencies and talent" },
-  "/admin/bookings":   { title: "Bookings",   description: "All bookings across the platform" },
-  "/admin/finances":   { title: "Finances",   description: "Platform revenue and commissions" },
-  "/admin/contracts":  { title: "Contracts",  description: "All platform contracts" },
-  "/agency/contracts": { title: "Contracts",  description: "Manage your talent contracts" },
-  "/agency/profile":   { title: "Profile",    description: "Manage your agency profile" },
-  "/talent/contracts": { title: "Contracts",  description: "Your contracts and agreements" },
+  "/agency/dashboard":      { title: "Painel",                description: "Visão geral da sua agência e dos talentos da sua equipe" },
+  "/agency/talent":         { title: "Talentos",             description: "Visualize e gerencie todos os perfis de talentos" },
+  "/agency/talent-history": { title: "Histórico de talentos", description: "Reveja talentos que já trabalharam com você e facilite novas contratações" },
+  "/agency/create":         { title: "Adicionar talento",    description: "Adicione um novo perfil de talento à sua equipe" },
+  "/agency/post-job":       { title: "Publicar vaga",        description: "Crie uma nova vaga para sua equipe" },
+  "/agency/first-job":      { title: "Primeira vaga",        description: "Configure e publique sua primeira vaga com segurança" },
+  "/agency/jobs":           { title: "Vagas",                description: "Gerencie suas vagas abertas e seus candidatos" },
+  "/agency/submissions":    { title: "Candidaturas",         description: "Acompanhe os talentos que se candidataram às suas vagas" },
+  "/agency/bookings":       { title: "Reservas",             description: "Visualize e gerencie suas reservas" },
+  "/agency/contracts":      { title: "Contratos",            description: "Gerencie os contratos dos seus talentos" },
+  "/agency/finances":       { title: "Financeiro",           description: "Receita, pagamentos e comissões da sua agência" },
+  "/agency/billing":        { title: "Assinatura",           description: "Gerencie o plano e a cobrança da sua agência" },
+  "/agency/referrals":      { title: "Indicações",           description: "Acompanhe convites, indicações e comissões" },
+  "/agency/profile":        { title: "Perfil",               description: "Gerencie o perfil da sua agência" },
+  "/talent/dashboard":      { title: "Painel",               description: "Visão geral da sua atividade como talento" },
+  "/talent/jobs":           { title: "Vagas",                description: "Explore oportunidades disponíveis" },
+  "/talent/bookings":       { title: "Minhas reservas",      description: "Visualize suas reservas confirmadas" },
+  "/talent/contracts":      { title: "Contratos",            description: "Acompanhe seus contratos e acordos" },
+  "/talent/profile":        { title: "Perfil",               description: "Gerencie seu perfil de talento" },
+  "/talent/finances":       { title: "Financeiro",           description: "Acompanhe seus ganhos e histórico de pagamentos" },
+  "/talent/availability":   { title: "Disponibilidade",      description: "Defina quando você está disponível para novas contratações" },
+  "/talent/referrals":      { title: "Indicações",           description: "Compartilhe seu link e acompanhe suas comissões" },
+  "/admin/dashboard":       { title: "Painel",               description: "Visão geral da plataforma" },
+  "/admin/jobs":            { title: "Vagas",                description: "Visualize todas as vagas da plataforma" },
+  "/admin/users":           { title: "Usuários",             description: "Gerencie agências e talentos" },
+  "/admin/bookings":        { title: "Reservas",             description: "Visualize todas as reservas da plataforma" },
+  "/admin/finances":        { title: "Financeiro",           description: "Receita e comissões da plataforma" },
+  "/admin/contracts":       { title: "Contratos",            description: "Visualize todos os contratos da plataforma" },
+  "/admin/referrals":       { title: "Indicações",           description: "Acompanhe indicações e comissões da plataforma" },
+  "/admin/trash":           { title: "Lixeira",              description: "Restaure ou exclua itens removidos da plataforma" },
+  "/admin/profile":         { title: "Perfil",               description: "Gerencie as informações da conta administrativa" },
 };
+
+function getPageMeta(pathname: string) {
+  const entries = Object.entries(pageMeta).sort((left, right) => right[0].length - left[0].length);
+
+  for (const [route, meta] of entries) {
+    if (pathname === route || pathname.startsWith(`${route}/`)) {
+      return meta;
+    }
+  }
+
+  return { title: "", description: "" };
+}
 
 type TopbarProps = {
   onMenuClick: () => void;
@@ -42,7 +64,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
   const { role } = useRole();
   const { plan } = useSubscription();
 
-  const meta = pageMeta[pathname] ?? { title: "", description: "" };
+  const meta = getPageMeta(pathname);
 
   const dashboardHref =
     pathname.startsWith("/talent") ? "/talent/dashboard" :

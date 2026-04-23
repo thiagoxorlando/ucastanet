@@ -22,19 +22,12 @@ export default async function OnboardingPage() {
 
   // Already completed — redirect to smart landing
   if (profile.onboarding_completed) {
-    const [{ count: paidCount }, { count: jobCount }] = await Promise.all([
-      supabase
-        .from("bookings")
-        .select("id", { count: "exact", head: true })
-        .eq("agency_id", user.id)
-        .eq("status", "paid"),
-      supabase
-        .from("jobs")
-        .select("id", { count: "exact", head: true })
-        .eq("agency_id", user.id),
-    ]);
-    if (paidCount && paidCount > 0) redirect("/agency/talent-history");
-    if (jobCount  && jobCount  > 0) redirect("/agency/dashboard");
+    const { count: jobCount } = await supabase
+      .from("jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("agency_id", user.id);
+
+    if (jobCount && jobCount > 0) redirect("/agency/dashboard");
     redirect("/agency/first-job");
   }
 

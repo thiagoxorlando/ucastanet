@@ -7,6 +7,13 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --brand-surface: #07110d;
+  --brand-surface-soft: #0d1b14;
+  --brand-surface-muted: #15241b;
+  --brand-green: #48f29a;
+  --brand-green-strong: #24d978;
+  --brand-green-soft: #e8fff1;
+  --brand-paper: #f7f8f2;
 }
 
 body {

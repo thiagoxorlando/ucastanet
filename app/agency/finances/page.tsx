@@ -4,7 +4,7 @@ import { createSessionClient } from "@/lib/supabase.server";
 import AgencyFinances from "@/features/agency/AgencyFinances";
 import type { AgencyTransaction, AgencyFinanceSummary } from "@/features/agency/AgencyFinances";
 
-export const metadata: Metadata = { title: "Finances — Brisa Digital" };
+export const metadata: Metadata = { title: "Financeiro — BrisaHub" };
 
 const ESCROW_MATCH_WINDOW_MS = 5 * 60 * 1000;
 
@@ -38,7 +38,7 @@ export default async function AgencyFinancesPage() {
       .single(),
     supabase
       .from("contracts")
-      .select("id, status, payment_amount, confirmed_at, agency_signed_at, deposit_paid_at")
+      .select("id, booking_id, status, payment_amount, confirmed_at, agency_signed_at, deposit_paid_at")
       .eq("agency_id", user?.id ?? "")
       .in("status", ["confirmed", "paid", "cancelled"])
       .order("created_at", { ascending: false })
@@ -95,9 +95,11 @@ export default async function AgencyFinancesPage() {
   const walletRows: AgencyTransaction[] = (walletTxs ?? []).map((w) => {
     let status = w.type ?? "payment";
     let description = w.description ?? undefined;
+    let bookingId: string | null = null;
 
     if (status === "escrow_lock") {
       const contract = findEscrowContract(w);
+      bookingId = contract?.booking_id ?? null;
       if (contract?.status === "paid") {
         status = "escrow_released";
         description = "Custódia liberada após pagamento";
@@ -116,6 +118,8 @@ export default async function AgencyFinancesPage() {
       status,
       date:        w.created_at,
       description,
+      bookingId,
+      href:        bookingId ? `/agency/bookings?booking_id=${bookingId}` : undefined,
     };
   });
 

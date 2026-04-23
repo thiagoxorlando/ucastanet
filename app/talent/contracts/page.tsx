@@ -4,7 +4,7 @@ import { createSessionClient } from "@/lib/supabase.server";
 import TalentContracts from "@/features/talent/TalentContracts";
 import type { TalentContract, ApprovedSubmission } from "@/features/talent/TalentContracts";
 
-export const metadata: Metadata = { title: "Contracts — Brisa Digital" };
+export const metadata: Metadata = { title: "Contratos — BrisaHub" };
 
 export default async function TalentContractsPage() {
   const session = await createSessionClient();

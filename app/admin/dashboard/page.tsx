@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import AdminDashboard from "@/features/admin/AdminDashboard";
 import { createServerClient } from "@/lib/supabase";
 
-export const metadata: Metadata = { title: "Admin Dashboard — Brisa Digital" };
+export const metadata: Metadata = { title: "Painel administrativo — BrisaHub" };
 
 const COMMISSION_RATE = 0.15;
 const REFERRAL_RATE   = 0.02;

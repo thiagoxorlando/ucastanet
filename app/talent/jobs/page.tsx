@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import TalentJobList from "@/features/talent/TalentJobList";
 
-export const metadata: Metadata = { title: "Jobs — Brisa Digital" };
+export const metadata: Metadata = { title: "Vagas — BrisaHub" };
 
 export default async function TalentJobsPage() {
   const supabase = createServerClient({ useServiceRole: true });

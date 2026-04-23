@@ -3,7 +3,7 @@ import AdminBookings from "@/features/admin/AdminBookings";
 import { createServerClient } from "@/lib/supabase";
 import { getUnifiedBookingStatus } from "@/lib/bookingStatus";
 
-export const metadata: Metadata = { title: "Admin — Bookings — Brisa Digital" };
+export const metadata: Metadata = { title: "Administração — Reservas — BrisaHub" };
 
 export default async function AdminBookingsPage() {
   const supabase = createServerClient({ useServiceRole: true });
@@ -21,23 +21,29 @@ export default async function AdminBookingsPage() {
     .order("created_at", { ascending: false });
 
   const rows = bookingsData ?? [];
+  const jobIds = [...new Set(rows.map((b) => b.job_id).filter((x): x is string => !!x))];
 
   const talentIds = [...new Set(rows.map((b) => b.talent_user_id).filter((x): x is string => !!x))];
   const agencyIds = [...new Set(rows.map((b) => b.agency_id).filter((x): x is string => !!x))];
 
-  const [talentData, agencyData] = await Promise.all([
+  const [talentData, agencyData, jobsData] = await Promise.all([
     talentIds.length
       ? supabase.from("talent_profiles").select("id, full_name").in("id", talentIds).then((r) => r.data ?? [])
       : Promise.resolve([]),
     agencyIds.length
       ? supabase.from("agencies").select("id, company_name").in("id", agencyIds).then((r) => r.data ?? [])
       : Promise.resolve([]),
+    jobIds.length
+      ? supabase.from("jobs").select("id, job_date").in("id", jobIds).then((r) => r.data ?? [])
+      : Promise.resolve([]),
   ]);
 
   const talentMap = new Map<string, string>();
   const agencyMap = new Map<string, string>();
+  const jobDateMap = new Map<string, string | null>();
   for (const t of talentData) talentMap.set(t.id, t.full_name ?? "Sem nome");
   for (const a of agencyData) agencyMap.set(a.id, a.company_name ?? "Sem nome");
+  for (const job of jobsData) jobDateMap.set(job.id, (job as { job_date?: string | null }).job_date ?? null);
 
   const bookings = rows.map((b) => {
     const contractArr = Array.isArray((b as any).contracts) ? (b as any).contracts : [];
@@ -54,6 +60,7 @@ export default async function AdminBookingsPage() {
       price:               b.price          ?? 0,
       contractAmount:      contract?.payment_amount ?? null,
       created_at:          b.created_at     ?? "",
+      jobDate:             b.job_id ? (jobDateMap.get(b.job_id) ?? null) : null,
       contractSentAt:      contract?.created_at     ?? null,
       contractSignedAt:    contract?.signed_at      ?? null,
       contractConfirmedAt: contract?.confirmed_at ?? contract?.agency_signed_at ?? null,

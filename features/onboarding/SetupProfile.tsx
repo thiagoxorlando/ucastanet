@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import PhoneInput from "@/components/ui/PhoneInput";
+import { TALENT_CATEGORY_LABELS, talentCategoryLabel } from "@/lib/talentCategories";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -16,16 +17,13 @@ type TalentForm = {
   city:       string;
   gender:     string;
   age:        string;
-  ethnicity:  string;
   bio:        string;
   categories: string[];
   instagram:  string;
   tiktok:     string;
   youtube:    string;
   linkedin:   string;
-  imdb:       string;
   website:    string;
-  cpf_or_id:  string;
   main_role:  string;
 };
 
@@ -41,18 +39,15 @@ type AgencyForm = {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const TALENT_CATEGORIES = [
-  "Actor", "Model", "Influencer", "Dancer", "Singer",
-  "Comedian", "Presenter", "Content Creator", "Photographer", "Athlete",
-];
+const TALENT_CATEGORIES = TALENT_CATEGORY_LABELS;
 
 const TALENT_DEFAULTS: TalentForm = {
   fullName: "", phone: "", country: "", city: "",
-  gender: "", age: "", ethnicity: "",
+  gender: "", age: "",
   bio: "", categories: [],
   instagram: "", tiktok: "", youtube: "",
-  linkedin: "", imdb: "", website: "",
-  cpf_or_id: "", main_role: "",
+  linkedin: "", website: "",
+  main_role: "",
 };
 
 const AGENCY_DEFAULTS: AgencyForm = {
@@ -259,14 +254,6 @@ function Step1({
             }}
           />
         </Field>
-        <Field label="CPF ou Documento">
-          <input
-            className={inputCls}
-            placeholder="000.000.000-00"
-            value={form.cpf_or_id}
-            onChange={(e) => onChange("cpf_or_id", e.target.value)}
-          />
-        </Field>
         <Field label="Função Principal">
           <input
             className={inputCls}
@@ -290,18 +277,27 @@ function Step2({
   form: TalentForm;
   onChange: (k: keyof TalentForm, v: string | string[]) => void;
 }) {
+  const [customCategory, setCustomCategory] = useState("");
+
   function toggleCategory(cat: string) {
     onChange(
       "categories",
-      form.categories.includes(cat)
-        ? form.categories.filter((c) => c !== cat)
+      form.categories.some((c) => talentCategoryLabel(c) === cat)
+        ? form.categories.filter((c) => talentCategoryLabel(c) !== cat)
         : [...form.categories, cat]
     );
   }
 
+  function addCustomCategory() {
+    const category = customCategory.trim();
+    if (!category || form.categories.some((c) => talentCategoryLabel(c).toLowerCase() === category.toLowerCase())) return;
+    onChange("categories", [...form.categories, category]);
+    setCustomCategory("");
+  }
+
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Field label="Gênero">
           <select className={inputCls} value={form.gender} onChange={(e) => onChange("gender", e.target.value)}>
             <option value="">Selecione</option>
@@ -317,16 +313,6 @@ function Step2({
             value={form.age}
             onChange={(e) => onChange("age", e.target.value)}
           />
-        </Field>
-        <Field label="Etnia" hint="Opcional — para vagas com perfil específico.">
-          <select className={inputCls} value={form.ethnicity} onChange={(e) => onChange("ethnicity", e.target.value)}>
-            <option value="">Prefiro não informar</option>
-            <option value="white">Branca</option>
-            <option value="black">Preta</option>
-            <option value="brown">Parda</option>
-            <option value="yellow">Amarela</option>
-            <option value="indigenous">Indígena</option>
-          </select>
         </Field>
       </div>
 
@@ -346,9 +332,24 @@ function Step2({
 
       <div>
         <p className={labelCls}>Categorias <span className="text-zinc-400 font-normal">(selecione todas que se aplicam)</span></p>
+        {form.categories.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-2">
+            {form.categories.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => toggleCategory(talentCategoryLabel(cat))}
+                className="inline-flex items-center gap-1.5 rounded-full bg-zinc-950 px-3 py-1.5 text-[12px] font-semibold text-white"
+              >
+                {talentCategoryLabel(cat)}
+                <span className="text-white/60">×</span>
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex flex-wrap gap-2 mt-1.5">
           {TALENT_CATEGORIES.map((cat) => {
-            const active = form.categories.includes(cat);
+            const active = form.categories.some((c) => talentCategoryLabel(c) === cat);
             return (
               <button
                 key={cat} type="button" onClick={() => toggleCategory(cat)}
@@ -359,10 +360,31 @@ function Step2({
                     : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200",
                 ].join(" ")}
               >
-                {cat}
+                {cat === "Outro" ? "Outro / Personalizado" : cat}
               </button>
             );
           })}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <input
+            className={inputCls}
+            placeholder="Digite uma categoria personalizada"
+            value={customCategory}
+            onChange={(e) => setCustomCategory(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addCustomCategory();
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={addCustomCategory}
+            className="rounded-xl bg-zinc-950 px-4 text-[13px] font-semibold text-white transition-colors hover:bg-zinc-800"
+          >
+            Adicionar
+          </button>
         </div>
       </div>
     </div>
@@ -439,12 +461,6 @@ function Step3({
           onChange={(v) => onChange("linkedin", v)}
         />
         <SocialInput
-          label="IMDB"
-          placeholder="https://imdb.com/name/nm0000000"
-          value={form.imdb}
-          onChange={(v) => onChange("imdb", v)}
-        />
-        <SocialInput
           label="Website"
           placeholder="https://seuperfil.com"
           value={form.website}
@@ -478,7 +494,6 @@ function Step4({
     form.tiktok    && `TikTok: @${form.tiktok}`,
     form.youtube   && `YouTube: ${form.youtube}`,
     form.linkedin  && `LinkedIn: ${form.linkedin}`,
-    form.imdb      && `IMDB: ${form.imdb}`,
     form.website   && `Website: ${form.website}`,
   ].filter(Boolean).join("\n");
 
@@ -506,15 +521,8 @@ function Step4({
           form.gender === "other" ? "Outro" : undefined
         } />
         <ReviewRow label="Idade"      value={form.age || undefined} />
-        <ReviewRow label="Etnia"      value={
-          form.ethnicity === "white" ? "Branca" :
-          form.ethnicity === "black" ? "Preta" :
-          form.ethnicity === "brown" ? "Parda" :
-          form.ethnicity === "yellow" ? "Amarela" :
-          form.ethnicity === "indigenous" ? "Indígena" : undefined
-        } />
         <ReviewRow label="Bio"        value={form.bio || undefined} />
-        <ReviewRow label="Categorias" value={form.categories.length ? form.categories.join(", ") : undefined} />
+        <ReviewRow label="Categorias" value={form.categories.length ? form.categories.map(talentCategoryLabel).join(", ") : undefined} />
         <ReviewRow label="Redes"      value={socials || undefined} />
       </div>
     </div>
@@ -590,16 +598,13 @@ function TalentSetup({ userId, onDone }: { userId: string; onDone: () => void })
       city:       form.city.trim(),
       gender:     form.gender   || null,
       age:        form.age      ? parseInt(form.age, 10) : null,
-      ethnicity:  form.ethnicity || null,
       bio:        form.bio.trim(),
       categories: form.categories,
       instagram:  form.instagram.trim() || null,
       tiktok:     form.tiktok.trim()    || null,
       youtube:    form.youtube.trim()   || null,
       linkedin:   form.linkedin.trim()  || null,
-      imdb:       form.imdb.trim()      || null,
       website:    form.website.trim()   || null,
-      cpf_or_id:  form.cpf_or_id.trim() || null,
       main_role:  form.main_role.trim()  || null,
     };
     if (avatarUrl) payload.avatar_url = avatarUrl;

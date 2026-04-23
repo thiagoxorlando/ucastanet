@@ -2,6 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  TALENT_CATEGORY_OPTIONS,
+  talentCategoryLabel,
+  talentCategoryMatches,
+} from "@/lib/talentCategories";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -16,42 +21,16 @@ type Talent = {
   photo_front_url: string | null;
   gender: string | null;
   age: number | null;
-  ethnicity: string | null;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CATEGORIES: { label: string; value: string }[] = [
-  { label: "Ator / Atriz",           value: "Actor" },
-  { label: "Modelo",                  value: "Model" },
-  { label: "Influenciador(a)",        value: "Influencer" },
-  { label: "Dançarino(a)",            value: "Dancer" },
-  { label: "Cantor(a)",               value: "Singer" },
-  { label: "Comediante",              value: "Comedian" },
-  { label: "Apresentador(a)",         value: "Presenter" },
-  { label: "Criador de Conteúdo",     value: "Content Creator" },
-  { label: "Fotógrafo(a)",            value: "Photographer" },
-  { label: "Atleta",                  value: "Athlete" },
-  { label: "Lifestyle & Moda",        value: "Lifestyle & Fashion" },
-  { label: "Tecnologia",              value: "Technology" },
-  { label: "Gastronomia",             value: "Food & Cooking" },
-  { label: "Saúde & Fitness",         value: "Health & Fitness" },
-  { label: "Viagens",                 value: "Travel" },
-  { label: "Beleza",                  value: "Beauty" },
-];
+const CATEGORIES = TALENT_CATEGORY_OPTIONS;
 
 const GENDERS: { label: string; value: string }[] = [
   { label: "Masculino", value: "male" },
   { label: "Feminino",  value: "female" },
   { label: "Outro",     value: "other" },
-];
-
-const ETHNICITIES: { label: string; value: string }[] = [
-  { label: "Branca",    value: "white" },
-  { label: "Preta",     value: "black" },
-  { label: "Parda",     value: "brown" },
-  { label: "Amarela",   value: "yellow" },
-  { label: "Indígena",  value: "indigenous" },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -84,7 +63,7 @@ function Pill({
       className={[
         "px-3 py-1.5 rounded-full text-[12px] font-medium transition-all duration-100 cursor-pointer whitespace-nowrap",
         active
-          ? "bg-zinc-900 text-white"
+          ? "bg-[var(--brand-green)] text-[var(--brand-surface)] font-bold shadow-[0_8px_18px_rgba(72,242,154,0.18)]"
           : "bg-white border border-zinc-200 text-zinc-500 hover:border-zinc-400 hover:text-zinc-800",
       ].join(" ")}
     >
@@ -102,7 +81,7 @@ function TalentCard({ talent, onClick }: { talent: Talent; onClick: () => void }
   return (
     <button
       onClick={onClick}
-      className="group text-left rounded-2xl overflow-hidden bg-zinc-100 relative cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900"
+      className="group text-left rounded-[1.45rem] overflow-hidden bg-zinc-100 relative cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-green)] shadow-[0_1px_4px_rgba(0,0,0,0.04),0_14px_34px_rgba(7,17,13,0.08)] ring-1 ring-zinc-100 hover:-translate-y-1 hover:shadow-[0_18px_46px_rgba(7,17,13,0.13)] transition-all duration-300"
     >
       {/* Portrait image */}
       <div className="aspect-[2/3] w-full overflow-hidden">
@@ -119,17 +98,17 @@ function TalentCard({ talent, onClick }: { talent: Talent; onClick: () => void }
         )}
 
         {/* Overlay on hover */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/78 via-black/10 to-black/0 opacity-90 group-hover:opacity-100 transition-opacity duration-200" />
       </div>
 
       {/* Bottom info strip */}
-      <div className="absolute bottom-0 left-0 right-0 px-3 py-2.5 bg-gradient-to-t from-black/70 to-transparent">
-        <p className="text-[13px] font-semibold text-white leading-snug truncate">
+      <div className="absolute bottom-0 left-0 right-0 px-3.5 py-3.5 bg-gradient-to-t from-black/88 to-transparent">
+        <p className="text-[14px] font-black text-white leading-snug truncate">
           {name}
-          {talent.age && <span className="ml-1.5 text-[11px] font-normal text-white/60">{talent.age}y</span>}
+          {talent.age && <span className="ml-1.5 text-[11px] font-semibold text-white/65">{talent.age} anos</span>}
         </p>
         {(talent.city || talent.country) && (
-          <p className="text-[11px] text-white/60 truncate mt-0.5">
+          <p className="text-[11px] font-medium text-white/65 truncate mt-0.5">
             {[talent.city, talent.country].filter(Boolean).join(", ")}
           </p>
         )}
@@ -138,8 +117,8 @@ function TalentCard({ talent, onClick }: { talent: Talent; onClick: () => void }
       {/* Category badge (top right) */}
       {talent.categories?.[0] && (
         <div className="absolute top-2.5 right-2.5">
-          <span className="text-[10px] font-semibold bg-black/40 backdrop-blur-sm text-white/90 px-2 py-0.5 rounded-full">
-            {talent.categories[0]}
+          <span className="text-[10px] font-black bg-[var(--brand-green)] backdrop-blur-sm text-[var(--brand-surface)] px-2.5 py-1 rounded-full shadow-sm">
+            {talentCategoryLabel(talent.categories[0])}
           </span>
         </div>
       )}
@@ -178,7 +157,6 @@ export default function TalentGrid({ talent: initialTalent }: { talent: Talent[]
   const [talent]                    = useState<Talent[]>(initialTalent);
   const [search, setSearch]         = useState("");
   const [gender, setGender]         = useState("");
-  const [ethnicity, setEthnicity]   = useState("");
   const [category, setCategory]     = useState("");
   const [ageMin, setAgeMin]         = useState("");
   const [ageMax, setAgeMax]         = useState("");
@@ -191,22 +169,23 @@ export default function TalentGrid({ talent: initialTalent }: { talent: Talent[]
         t.full_name.toLowerCase().includes(q) ||
         (t.city ?? "").toLowerCase().includes(q) ||
         (t.country ?? "").toLowerCase().includes(q) ||
-        (t.categories ?? []).some((c) => c.toLowerCase().includes(q));
+        (t.categories ?? []).some((c) =>
+          c.toLowerCase().includes(q) || talentCategoryLabel(c).toLowerCase().includes(q)
+        );
       if (!hit) return false;
     }
     if (gender    && (t.gender    ?? "") !== gender)    return false;
-    if (ethnicity && (t.ethnicity ?? "") !== ethnicity) return false;
-    if (category  && !(t.categories ?? []).some((c) => c === category)) return false;
+    if (category  && !(t.categories ?? []).some((c) => talentCategoryMatches(c, category))) return false;
     if (ageMin    && (t.age ?? 0)   < parseInt(ageMin)) return false;
     if (ageMax    && (t.age ?? 999) > parseInt(ageMax)) return false;
     return true;
   });
 
   function clearFilters() {
-    setGender(""); setEthnicity(""); setCategory(""); setAgeMin(""); setAgeMax("");
+    setGender(""); setCategory(""); setAgeMin(""); setAgeMax("");
   }
 
-  const activeFilters = [gender, ethnicity, category, ageMin, ageMax].filter(Boolean).length;
+  const activeFilters = [gender, category, ageMin, ageMax].filter(Boolean).length;
 
   return (
     <div className="max-w-7xl space-y-6">
@@ -223,7 +202,7 @@ export default function TalentGrid({ talent: initialTalent }: { talent: Talent[]
             placeholder="Buscar por nome, localização, categoria…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 text-[13px] bg-white border border-zinc-200 rounded-xl placeholder:text-zinc-400 hover:border-zinc-300 focus:border-zinc-900 focus:outline-none transition-colors"
+            className="w-full pl-10 pr-4 py-3 text-[13px] bg-white border border-zinc-200 rounded-2xl placeholder:text-zinc-400 hover:border-zinc-300 focus:border-[var(--brand-green)] focus:ring-2 focus:ring-[var(--brand-green)]/20 focus:outline-none transition-colors shadow-sm"
           />
         </div>
         <button
@@ -231,7 +210,7 @@ export default function TalentGrid({ talent: initialTalent }: { talent: Talent[]
           className={[
             "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-[13px] font-medium transition-colors cursor-pointer",
             showFilters || activeFilters > 0
-              ? "bg-zinc-900 text-white border-zinc-900"
+              ? "bg-[var(--brand-surface)] text-white border-[var(--brand-surface)]"
               : "bg-white text-zinc-700 border-zinc-200 hover:border-zinc-300",
           ].join(" ")}
         >
@@ -253,17 +232,6 @@ export default function TalentGrid({ talent: initialTalent }: { talent: Talent[]
               <Pill label="Todos" active={!gender} onClick={() => setGender("")} />
               {GENDERS.map((g) => (
                 <Pill key={g.value} label={g.label} active={gender === g.value} onClick={() => setGender(gender === g.value ? "" : g.value)} />
-              ))}
-            </div>
-          </div>
-
-          {/* Ethnicity pills */}
-          <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Etnia</p>
-            <div className="flex flex-wrap gap-2">
-              <Pill label="Todas" active={!ethnicity} onClick={() => setEthnicity("")} />
-              {ETHNICITIES.map((e) => (
-                <Pill key={e.value} label={e.label} active={ethnicity === e.value} onClick={() => setEthnicity(ethnicity === e.value ? "" : e.value)} />
               ))}
             </div>
           </div>
@@ -299,7 +267,6 @@ export default function TalentGrid({ talent: initialTalent }: { talent: Talent[]
       {activeFilters > 0 && !showFilters && (
         <div className="flex items-center gap-2 flex-wrap">
           {gender    && <span className="text-[12px] bg-zinc-900 text-white px-3 py-1 rounded-full">{GENDERS.find((g) => g.value === gender)?.label ?? gender}</span>}
-          {ethnicity && <span className="text-[12px] bg-zinc-900 text-white px-3 py-1 rounded-full">{ETHNICITIES.find((e) => e.value === ethnicity)?.label ?? ethnicity}</span>}
           {category  && <span className="text-[12px] bg-zinc-900 text-white px-3 py-1 rounded-full">{CATEGORIES.find((c) => c.value === category)?.label ?? category}</span>}
           {(ageMin || ageMax) && (
             <span className="text-[12px] bg-zinc-900 text-white px-3 py-1 rounded-full">
@@ -319,7 +286,7 @@ export default function TalentGrid({ talent: initialTalent }: { talent: Talent[]
           <p className="text-[13px] text-zinc-400 mt-1">Tente ajustar sua busca ou filtros.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
 
           {filtered.map((t) => (
             <TalentCard

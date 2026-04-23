@@ -4,7 +4,7 @@ import { createSessionClient } from "@/lib/supabase.server";
 import AgencyContracts from "@/features/agency/AgencyContracts";
 import type { AgencyContract } from "@/features/agency/AgencyContracts";
 
-export const metadata: Metadata = { title: "Contracts — Brisa Digital" };
+export const metadata: Metadata = { title: "Contratos — BrisaHub" };
 
 export default async function AgencyContractsPage() {
   const session = await createSessionClient();

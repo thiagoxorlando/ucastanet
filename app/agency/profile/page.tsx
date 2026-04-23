@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import AgencyProfile from "@/features/agency/AgencyProfile";
 
-export const metadata: Metadata = { title: "Profile — Brisa Digital" };
+export const metadata: Metadata = { title: "Perfil — BrisaHub" };
 
 export default async function AgencyProfilePage() {
   const session = await createSessionClient();

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useSubscription } from "@/lib/SubscriptionContext";
+import { talentCategoryLabel } from "@/lib/talentCategories";
 
 type TalentRow = {
   id: string;
@@ -149,7 +150,7 @@ export default function AgencyTalentProfile({
               <div className="flex flex-wrap gap-1.5">
                 {talent.categories.map((c) => (
                   <span key={c} className="text-[11px] font-medium bg-zinc-100 text-zinc-500 px-2.5 py-1 rounded-full">
-                    {c}
+                    {talentCategoryLabel(c)}
                   </span>
                 ))}
               </div>

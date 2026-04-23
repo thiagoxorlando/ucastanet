@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import Badge from "@/components/ui/Badge";
 import { useT } from "@/lib/LanguageContext";
+import { talentCategoryLabel } from "@/lib/talentCategories";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -14,6 +15,8 @@ type Stats = {
   pendingPayment: number;
   paidContracts:  number;
   totalSpent:     number;
+  walletBalance:  number;
+  activeEscrowTotal: number;
 };
 
 type TalentRow = {
@@ -118,6 +121,7 @@ const STAT_LINKS: Record<string, string> = {
   pendingPayment: "/agency/bookings",
   contractsPaid:  "/agency/contracts",
   totalSpent:     "/agency/finances",
+  activeEscrow:   "/agency/bookings",
 };
 
 const STAT_ICONS: Record<string, React.ReactNode> = {
@@ -139,6 +143,12 @@ const STAT_ICONS: Record<string, React.ReactNode> = {
         d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
+  submissions: (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
+        d="M9 12h6m-6 4h6M9 8h3m-5 13h10a2 2 0 002-2V7.5L14.5 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+    </svg>
+  ),
   contractsPaid: (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
@@ -151,14 +161,12 @@ const STAT_ICONS: Record<string, React.ReactNode> = {
         d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   ),
-};
-
-const STAT_STRIPES: Record<string, string> = {
-  totalJobs:      "from-zinc-400 to-zinc-500",
-  activeJobs:     "from-indigo-500 to-violet-500",
-  pendingPayment: "from-amber-400 to-orange-500",
-  contractsPaid:  "from-emerald-400 to-teal-500",
-  totalSpent:     "from-violet-500 to-purple-600",
+  activeEscrow: (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
+        d="M12 3l7 4v5c0 4.5-2.9 8.5-7 9-4.1-.5-7-4.5-7-9V7l7-4z" />
+    </svg>
+  ),
 };
 
 const ACTIVITY_DOT: Record<ActivityType, string> = {
@@ -172,33 +180,34 @@ const ACTIVITY_DOT: Record<ActivityType, string> = {
 
 function StatCard({ statKey, label, value, isCurrency }: { statKey: string; label: string; value: number; isCurrency?: boolean }) {
   const href   = STAT_LINKS[statKey];
-  const stripe = STAT_STRIPES[statKey];
   const icon   = STAT_ICONS[statKey];
 
   const inner = (
     <>
-      <div className={`h-[3px] bg-gradient-to-r ${stripe}`} />
-      <div className="p-6">
-        <div className="flex items-start justify-between mb-5">
-          <span className="text-zinc-400">{icon}</span>
+      <div className="p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-3 mb-5">
+          <span className="w-10 h-10 rounded-2xl flex items-center justify-center bg-zinc-50 text-zinc-500 ring-1 ring-zinc-100">{icon}</span>
+          {href && (
+            <span className="text-[11px] font-semibold text-zinc-300 group-hover:text-zinc-500 transition-colors">Ver</span>
+          )}
         </div>
-        <p className="text-[2.25rem] font-semibold tracking-tighter text-zinc-900 leading-none">
+        <p className={`text-[2.35rem] font-black tracking-[-0.06em] leading-none ${isCurrency ? "text-emerald-700" : "text-zinc-950"}`}>
           {isCurrency ? brl(value) : value}
         </p>
-        <p className="text-[13px] font-semibold text-zinc-700 mt-2">{label}</p>
+        <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-zinc-400 mt-3">{label}</p>
       </div>
     </>
   );
 
   if (href) {
     return (
-      <Link href={href} className="block bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden hover:shadow-[0_4px_12px_rgba(0,0,0,0.07)] transition-shadow duration-150">
+      <Link href={href} className="group block bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_14px_34px_rgba(7,17,13,0.06)] overflow-hidden hover:-translate-y-0.5 hover:shadow-[0_18px_46px_rgba(7,17,13,0.10)] transition-all duration-200">
         {inner}
       </Link>
     );
   }
   return (
-    <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden">
+    <div className="bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_14px_34px_rgba(7,17,13,0.06)] overflow-hidden">
       {inner}
     </div>
   );
@@ -334,28 +343,45 @@ export default function AgencyDashboardOverview({
   const { t, lang } = useT();
 
   const statEntries: { key: string; label: string; value: number; isCurrency?: boolean }[] = [
-    { key: "totalJobs",      label: "Total de vagas",                                   value: stats.totalJobs     },
-    { key: "activeJobs",     label: t("dashboard_active_jobs"),                        value: stats.activeJobs    },
-    { key: "pendingPayment", label: t("status_pending_payment"),                       value: stats.pendingPayment },
-    { key: "contractsPaid",  label: t("contracts_paid"),                               value: stats.paidContracts  },
-    { key: "totalSpent",     label: t("finances_total_gross"),                         value: stats.totalSpent,    isCurrency: true },
+    { key: "totalJobs",      label: "Vagas abertas",                   value: stats.totalJobs },
+    { key: "submissions",    label: "Candidaturas recebidas",          value: stats.submissions },
+    { key: "pendingPayment", label: "Reservas em andamento",           value: stats.pendingPayment },
+    { key: "contractsPaid",  label: "Contratos pagos",                 value: stats.paidContracts },
+    { key: "activeEscrow",   label: "Valor em andamento",              value: stats.activeEscrowTotal, isCurrency: true },
   ];
 
   return (
-    <div className="max-w-5xl space-y-10">
+    <div className="max-w-6xl space-y-10">
 
       {/* ── Page header ── */}
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">
-          {t("portal_agency")}
-        </p>
-        <h1 className="text-[1.75rem] font-semibold tracking-tight text-zinc-900 leading-tight">
-          {t("page_dashboard")}
-        </h1>
+      <div className="rounded-[1.75rem] bg-[var(--brand-surface)] px-6 py-6 text-white shadow-[0_24px_70px_rgba(7,17,13,0.18)]">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--brand-green)] mb-2">
+              {t("portal_agency")}
+            </p>
+            <h1 className="text-[2rem] font-black tracking-[-0.04em] leading-tight">
+              {t("page_dashboard")}
+            </h1>
+            <p className="text-[13px] text-zinc-400 mt-2">
+              Acompanhe vagas, pagamentos e talentos com visão rápida da operação.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Link href="/agency/finances" className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 transition-colors hover:bg-white/[0.09]">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400">Saldo na carteira</p>
+              <p className="mt-1 text-2xl font-black tracking-[-0.04em] text-[var(--brand-green)]">{brl(stats.walletBalance)}</p>
+            </Link>
+            <Link href="/agency/bookings" className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 transition-colors hover:bg-white/[0.09]">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400">Valor em andamento</p>
+              <p className="mt-1 text-2xl font-black tracking-[-0.04em] text-white">{brl(stats.activeEscrowTotal)}</p>
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* ── Stats ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {statEntries.map((s) => <StatCard key={s.key} statKey={s.key} label={s.label} value={s.value} isCurrency={s.isCurrency} />)}
       </div>
 
@@ -432,10 +458,10 @@ export default function AgencyDashboardOverview({
 
         {/* Recent talent — 2 cols */}
         <div className="xl:col-span-2">
-          <SectionHeader title={t("nav_talent")} href="/agency/talent" hrefLabel={t("dashboard_view_all")} />
+          <SectionHeader title="Equipe recente" href="/agency/talent-history" hrefLabel="Minha Equipe" />
           {recentTalent.length === 0 ? (
             <div className="bg-white rounded-2xl border border-zinc-100 py-14 text-center">
-              <p className="text-[14px] font-medium text-zinc-500">{t("talent_no_talent")}</p>
+              <p className="text-[14px] font-medium text-zinc-500">Talentos recentes aparecerão aqui após as primeiras reservas pagas.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
@@ -463,7 +489,7 @@ export default function AgencyDashboardOverview({
                       </div>
                       {talent.categories?.[0] && (
                         <span className="text-[10px] font-medium bg-zinc-100 text-zinc-500 px-2 py-0.5 rounded-full flex-shrink-0">
-                          {talent.categories[0]}
+                          {talentCategoryLabel(talent.categories[0])}
                         </span>
                       )}
                     </div>

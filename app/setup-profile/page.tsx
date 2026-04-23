@@ -4,7 +4,7 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import SetupProfile from "@/features/onboarding/SetupProfile";
 
-export const metadata: Metadata = { title: "Set Up Profile — Brisa Digital" };
+export const metadata: Metadata = { title: "Configurar perfil — BrisaHub" };
 
 export default async function SetupProfilePage() {
   const session = await createSessionClient();

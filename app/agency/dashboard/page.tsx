@@ -3,7 +3,7 @@ import AgencyDashboardOverview from "@/features/agency/AgencyDashboardOverview";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 
-export const metadata: Metadata = { title: "Dashboard — Brisa Digital" };
+export const metadata: Metadata = { title: "Painel — BrisaHub" };
 
 export default async function AgencyDashboardPage() {
   const session  = await createSessionClient();
@@ -23,12 +23,14 @@ export default async function AgencyDashboardPage() {
     { data: pendingContractsData },
     { data: activeJobsData },
     { data: confirmedContractsData },
+    { data: profile },
   ] = await Promise.all([
-    // All jobs (not just open)
+    // Open jobs only. Closed/draft jobs should not inflate the dashboard jobs metric.
     supabase
       .from("jobs")
       .select("id", { count: "exact", head: true })
       .eq("agency_id", agencyId)
+      .eq("status", "open")
       .is("deleted_at", null),
 
     // Open jobs count (stat card)
@@ -103,10 +105,20 @@ export default async function AgencyDashboardPage() {
       .is("deleted_at", null)
       .order("paid_at", { ascending: false })
       .limit(5),
+
+    supabase
+      .from("profiles")
+      .select("wallet_balance")
+      .eq("id", agencyId)
+      .single(),
   ]);
 
   const paidCount  = paidContracts?.length ?? 0;
   const totalSpent = (paidContracts ?? []).reduce(
+    (sum, c) => sum + Number(c.payment_amount ?? 0),
+    0
+  );
+  const activeEscrowTotal = (pendingContractsData ?? []).reduce(
     (sum, c) => sum + Number(c.payment_amount ?? 0),
     0
   );
@@ -240,6 +252,8 @@ export default async function AgencyDashboardPage() {
         pendingPayment: pendingPayment   ?? 0,
         paidContracts:  paidCount,
         totalSpent,
+        walletBalance:  Number(profile?.wallet_balance ?? 0),
+        activeEscrowTotal,
       }}
       recentTalent={recentTalentData}
       recentActivity={recentActivity}

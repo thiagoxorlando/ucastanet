@@ -33,6 +33,15 @@ export type FinancesContract = {
   withdrawn_at: string | null;
 };
 
+export type FinancesPlanPayment = {
+  id: string;
+  userId: string;
+  agencyName: string;
+  plan: "free" | "pro" | "premium";
+  amount: number;
+  createdAt: string;
+};
+
 export type FinancesSubscription = {
   userId: string;
   agencyName: string;
@@ -72,6 +81,8 @@ type PlatformBalanceState =
   | { status: "ok"; balance: number }
   | { status: "error" };
 
+type ProfitRange = "today" | "month" | "total";
+
 const PLAN_BADGES: Record<string, string> = {
   free: "bg-zinc-100 text-zinc-600",
   pro: "bg-blue-50 text-blue-700",
@@ -89,12 +100,12 @@ const STATUS_BADGES: Record<string, string> = {
   cancelling: "bg-amber-50 text-amber-700",
 };
 
-function brl(n: number) {
+function brl(value: number) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
     maximumFractionDigits: 0,
-  }).format(n);
+  }).format(value);
 }
 
 function fmt(value: string | null) {
@@ -110,6 +121,47 @@ function planLabel(plan: "free" | "pro" | "premium") {
   if (plan === "pro") return "Pro";
   if (plan === "premium") return "Premium";
   return "Free";
+}
+
+function isInRange(value: string | null, range: ProfitRange) {
+  if (!value) return false;
+  if (range === "total") return true;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return false;
+
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+  const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+
+  if (range === "today") {
+    return date >= todayStart && date < tomorrowStart;
+  }
+
+  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+}
+
+function ShowMoreButton({
+  total,
+  expanded,
+  onToggle,
+}: {
+  total: number;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  if (total <= 5) return null;
+
+  return (
+    <div className="flex justify-end">
+      <button
+        onClick={onToggle}
+        className="rounded-xl border border-zinc-200 px-3.5 py-2 text-[12px] font-medium text-zinc-600 transition-colors hover:border-zinc-300"
+      >
+        {expanded ? "Ver menos" : `Ver mais (${total - 5})`}
+      </button>
+    </div>
+  );
 }
 
 function Section({
@@ -174,49 +226,67 @@ function Td({ children, right = false }: { children: ReactNode; right?: boolean 
   return <td className={`px-4 py-3.5 text-sm text-zinc-600 ${right ? "text-right" : "text-left"}`}>{children}</td>;
 }
 
-function WithdrawalHistory({ contracts }: { contracts: FinancesContract[] }) {
-  const withdrawn = contracts
-    .filter((contract) => !!contract.withdrawn_at)
-    .sort((left, right) => new Date(right.withdrawn_at ?? "").getTime() - new Date(left.withdrawn_at ?? "").getTime());
+function ProfitSection({
+  bookings,
+  contracts,
+  planPayments,
+}: {
+  bookings: FinancesBooking[];
+  contracts: FinancesContract[];
+  planPayments: FinancesPlanPayment[];
+}) {
+  const [range, setRange] = useState<ProfitRange>("month");
 
-  if (withdrawn.length === 0) return null;
+  const filteredBookings = bookings.filter((booking) => isInRange(booking.created_at, range));
+  const filteredContracts = contracts.filter((contract) => isInRange(contract.paid_at ?? contract.created_at, range));
+  const filteredPlanPayments = planPayments.filter((payment) => isInRange(payment.createdAt, range));
 
-  const groups = new Map<string, FinancesContract[]>();
-  for (const contract of withdrawn) {
-    const day = (contract.withdrawn_at ?? "").slice(0, 10);
-    const key = `${contract.talentName}::${day}`;
-    const current = groups.get(key) ?? [];
-    current.push(contract);
-    groups.set(key, current);
-  }
-
-  const receipts = [...groups.values()];
-  const grandTotal = withdrawn.reduce((sum, contract) => sum + contract.netAmount, 0);
+  const bookingCommission = filteredBookings.reduce((sum, booking) => sum + booking.commissionAmount, 0);
+  const contractCommission = filteredContracts.reduce((sum, contract) => sum + contract.commissionAmount, 0);
+  const totalCommission = bookingCommission + contractCommission;
+  const planRevenue = filteredPlanPayments.reduce((sum, payment) => sum + payment.amount, 0);
+  const totalProfit = totalCommission + planRevenue;
 
   return (
-    <Section title="Historico de Saques" subtitle={`${receipts.length} saque(s) concluidos`}>
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <p className="text-sm font-medium text-zinc-600">Total pago aos talentos</p>
-          <p className="text-lg font-semibold text-zinc-900">{brl(grandTotal)}</p>
-        </div>
-        <div className="space-y-3">
-          {receipts.map((items) => {
-            const total = items.reduce((sum, contract) => sum + contract.netAmount, 0);
-            const reference = items[0];
-            return (
-              <div key={`${reference.talentName}-${reference.withdrawn_at}`} className="rounded-xl border border-zinc-100 bg-zinc-50 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-zinc-900">{reference.talentName}</p>
-                    <p className="text-sm text-zinc-500">{fmt(reference.withdrawn_at)}</p>
-                  </div>
-                  <p className="text-lg font-semibold text-emerald-700">{brl(total)}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+    <Section
+      title="Lucro da plataforma"
+      subtitle="Resumo filtravel de comissao e receita de planos para acompanhamento rapido."
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        {([
+          { key: "today" as ProfitRange, label: "Hoje" },
+          { key: "month" as ProfitRange, label: "Este mes" },
+          { key: "total" as ProfitRange, label: "Total" },
+        ]).map((option) => (
+          <button
+            key={option.key}
+            onClick={() => setRange(option.key)}
+            className={[
+              "rounded-xl px-3.5 py-2 text-[12px] font-medium transition-colors",
+              range === option.key ? "bg-zinc-900 text-white" : "border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300",
+            ].join(" ")}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard
+          label="Comissao da plataforma"
+          value={brl(totalCommission)}
+          sub={`Reservas: ${brl(bookingCommission)} | Contratos: ${brl(contractCommission)}`}
+        />
+        <StatCard
+          label="Receita de planos"
+          value={brl(planRevenue)}
+          sub={`${filteredPlanPayments.length} pagamento(s) de plano no periodo`}
+        />
+        <StatCard
+          label="Total de lucro"
+          value={brl(totalProfit)}
+          sub={`${filteredBookings.length} reservas + ${filteredContracts.length} contratos considerados`}
+        />
       </div>
     </Section>
   );
@@ -233,15 +303,12 @@ function SubscriptionsSection({
   const premiumCount = subscriptions.filter((subscription) => subscription.plan === "premium").length;
 
   return (
-    <Section
-      title="Planos de Agencias"
-      subtitle={`${subscriptions.length} agencias cadastradas`}
-    >
+    <Section title="Planos de agencias" subtitle={`${subscriptions.length} agencias cadastradas`}>
       <div className="grid gap-4 md:grid-cols-4">
-        <StatCard label="Receita de Assinaturas" value={brl(summary.subscriptionRevenue)} />
+        <StatCard label="Receita de assinaturas" value={brl(summary.subscriptionRevenue)} />
         <StatCard label="Agencias Pro" value={String(proCount)} sub={`${summary.planBreakdown.pro.priceLabel} cada`} />
         <StatCard label="Agencias Premium" value={String(premiumCount)} sub={`${summary.planBreakdown.premium.priceLabel} cada`} />
-        <StatCard label="Agencias Pagas" value={String(proCount + premiumCount)} />
+        <StatCard label="Agencias pagas" value={String(proCount + premiumCount)} />
       </div>
 
       <TableCard>
@@ -281,6 +348,7 @@ function ContractsSection({
 }) {
   const [rows, setRows] = useState<FinancesContract[]>(contracts);
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     setRows(contracts);
@@ -299,21 +367,21 @@ function ContractsSection({
       const payload = (await response.json()) as { withdrawn_at?: string | null };
       setRows((current) =>
         current.map((contract) =>
-          contract.id === id
-            ? { ...contract, withdrawn_at: payload.withdrawn_at ?? new Date().toISOString() }
-            : contract
-        )
+          contract.id === id ? { ...contract, withdrawn_at: payload.withdrawn_at ?? new Date().toISOString() } : contract,
+        ),
       );
     }
   }
 
+  const visibleRows = expanded ? rows : rows.slice(0, 5);
+
   return (
     <Section
-      title="Contratos Confirmados e Pagos"
+      title="Contratos confirmados e pagos"
       subtitle={`${rows.length} contratos | ${brl(summary.contractsCommission)} de comissao retida pela plataforma`}
     >
       <div className="grid gap-4 md:grid-cols-4">
-        <StatCard label="Em Escrow" value={brl(summary.contractsEscrowValue)} sub="Bruto retido em contratos confirmados (sem deducao de comissao)" />
+        <StatCard label="Em escrow" value={brl(summary.contractsEscrowValue)} sub="Bruto retido em contratos confirmados" />
         <StatCard label="Aguardando saque" value={brl(summary.contractsAwaitingValue)} sub="Liquido devido em contratos pagos ainda nao sacados" />
         <StatCard label="Ja sacado" value={brl(summary.contractsWithdrawnValue)} sub="Liquido que ja saiu para os talentos" />
         <StatCard label="Comissao ganha" value={brl(summary.contractsCommission)} sub="Retencao da plataforma por plano da agencia" />
@@ -335,7 +403,7 @@ function ContractsSection({
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-100">
-          {rows.map((contract) => {
+          {visibleRows.map((contract) => {
             const statusLabel = contract.withdrawn_at ? "sacado" : contract.status === "paid" ? "aguardando saque" : "escrow";
             const statusTone = contract.withdrawn_at
               ? STATUS_BADGES.cancelled
@@ -372,6 +440,59 @@ function ContractsSection({
           })}
         </tbody>
       </TableCard>
+
+      <ShowMoreButton total={rows.length} expanded={expanded} onToggle={() => setExpanded((current) => !current)} />
+    </Section>
+  );
+}
+
+function WithdrawalHistory({ contracts }: { contracts: FinancesContract[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const withdrawn = contracts
+    .filter((contract) => !!contract.withdrawn_at)
+    .sort((left, right) => new Date(right.withdrawn_at ?? "").getTime() - new Date(left.withdrawn_at ?? "").getTime());
+
+  if (withdrawn.length === 0) return null;
+
+  const groups = new Map<string, FinancesContract[]>();
+  for (const contract of withdrawn) {
+    const day = (contract.withdrawn_at ?? "").slice(0, 10);
+    const key = `${contract.talentName}::${day}`;
+    const current = groups.get(key) ?? [];
+    current.push(contract);
+    groups.set(key, current);
+  }
+
+  const receipts = [...groups.values()];
+  const visibleReceipts = expanded ? receipts : receipts.slice(0, 5);
+  const grandTotal = withdrawn.reduce((sum, contract) => sum + contract.netAmount, 0);
+
+  return (
+    <Section title="Historico de saques" subtitle={`${receipts.length} saque(s) concluidos`}>
+      <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="text-sm font-medium text-zinc-600">Total pago aos talentos</p>
+          <p className="text-lg font-semibold text-zinc-900">{brl(grandTotal)}</p>
+        </div>
+        <div className="space-y-3">
+          {visibleReceipts.map((items) => {
+            const total = items.reduce((sum, contract) => sum + contract.netAmount, 0);
+            const reference = items[0];
+            return (
+              <div key={`${reference.talentName}-${reference.withdrawn_at}`} className="rounded-xl border border-zinc-100 bg-zinc-50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium text-zinc-900">{reference.talentName}</p>
+                    <p className="text-sm text-zinc-500">{fmt(reference.withdrawn_at)}</p>
+                  </div>
+                  <p className="text-lg font-semibold text-emerald-700">{brl(total)}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <ShowMoreButton total={receipts.length} expanded={expanded} onToggle={() => setExpanded((current) => !current)} />
     </Section>
   );
 }
@@ -383,11 +504,11 @@ function BookingsSection({
   bookings: FinancesBooking[];
   summary: FinancesSummary;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const visibleBookings = expanded ? bookings : bookings.slice(0, 5);
+
   return (
-    <Section
-      title="Reservas"
-      subtitle={`${bookings.length} reservas | comissao dinamica por plano da agencia`}
-    >
+    <Section title="Reservas" subtitle={`${bookings.length} reservas | comissao dinamica por plano da agencia`}>
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="Bruto confirmado" value={brl(summary.confirmedGrossValue)} />
         <StatCard label="Comissao da plataforma" value={brl(summary.platformCommission)} sub="Free 20% | Pro 15% | Premium 10-12%" />
@@ -409,7 +530,7 @@ function BookingsSection({
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-100">
-          {bookings.map((booking) => (
+          {visibleBookings.map((booking) => (
             <tr key={booking.id}>
               <Td>
                 <div>
@@ -428,6 +549,8 @@ function BookingsSection({
           ))}
         </tbody>
       </TableCard>
+
+      <ShowMoreButton total={bookings.length} expanded={expanded} onToggle={() => setExpanded((current) => !current)} />
     </Section>
   );
 }
@@ -436,11 +559,13 @@ export default function AdminFinances({
   summary,
   bookings,
   contracts = [],
+  planPayments = [],
   subscriptions = [],
 }: {
   summary: FinancesSummary;
   bookings: FinancesBooking[];
   contracts?: FinancesContract[];
+  planPayments?: FinancesPlanPayment[];
   subscriptions?: FinancesSubscription[];
 }) {
   const [platformBalance, setPlatformBalance] = useState<PlatformBalanceState>({ status: "loading" });
@@ -464,7 +589,7 @@ export default function AdminFinances({
     <div className="mx-auto max-w-7xl space-y-10">
       <header className="space-y-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Admin da Plataforma</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400">Admin da plataforma</p>
           <h1 className="text-3xl font-semibold tracking-tight text-zinc-900">Financeiro</h1>
           <p className="mt-1 text-sm text-zinc-500">
             {summary.confirmedBookings} reservas confirmadas | {contracts.length} contratos confirmados ou pagos
@@ -473,26 +598,31 @@ export default function AdminFinances({
 
         <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600">
           <span>
-            Comissao por plano:
-            {" "}
+            Comissao por plano:{" "}
             <strong className="text-zinc-900">
               Free {summary.planBreakdown.free.commissionLabel} | Pro {summary.planBreakdown.pro.commissionLabel} | Premium {summary.planBreakdown.premium.commissionLabel}
             </strong>
           </span>
-          <span>Indicacao: <strong className="text-zinc-900">{REFERRAL_RATE * 100}%</strong></span>
-          <span>Plano Pro: <strong className="text-zinc-900">{summary.planBreakdown.pro.priceLabel}</strong></span>
-          <span>Plano Premium: <strong className="text-zinc-900">{summary.planBreakdown.premium.priceLabel}</strong></span>
+          <span>
+            Indicacao: <strong className="text-zinc-900">{REFERRAL_RATE * 100}%</strong>
+          </span>
+          <span>
+            Plano Pro: <strong className="text-zinc-900">{summary.planBreakdown.pro.priceLabel}</strong>
+          </span>
+          <span>
+            Plano Premium: <strong className="text-zinc-900">{summary.planBreakdown.premium.priceLabel}</strong>
+          </span>
         </div>
       </header>
 
       <Section
-        title="Obrigacoes Financeiras da Plataforma"
+        title="Obrigacoes financeiras da plataforma"
         subtitle="O minimo necessario considera apenas o que ainda precisa sair da plataforma para agencias e talentos."
       >
         <div className="grid gap-4 md:grid-cols-3">
-          <StatCard label="Escrow de contratos" value={brl(summary.contractsEscrowValue)} sub="Bruto em custódia (comissao ainda nao separada)" />
+          <StatCard label="Escrow de contratos" value={brl(summary.contractsEscrowValue)} sub="Bruto em custodia" />
           <StatCard label="Carteiras das agencias" value={brl(summary.agencyWalletTotal)} sub="Saldo que pertence as agencias" />
-          <StatCard label="Passivo com talentos" value={brl(summary.contractsAwaitingValue)} sub="Liquido de contratos pagos ainda nao sacados" />
+          <StatCard label="Passivo com talentos" value={brl(summary.contractsAwaitingValue)} sub="Liquido pago ainda nao sacado" />
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
@@ -523,9 +653,7 @@ export default function AdminFinances({
 
         {platformBalance.status === "ok" ? (
           <div className={`rounded-2xl border p-5 text-sm ${safe ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"}`}>
-            <p className="font-medium">
-              {safe ? "Plataforma solvente" : "Plataforma abaixo do minimo necessario"}
-            </p>
+            <p className="font-medium">{safe ? "Plataforma solvente" : "Plataforma abaixo do minimo necessario"}</p>
             <p className="mt-1">
               Saldo disponivel: <strong>{brl(platformBalance.balance)}</strong>
               {" | "}Minimo necessario: <strong>{brl(summary.minimumRequired)}</strong>
@@ -536,6 +664,7 @@ export default function AdminFinances({
         ) : null}
       </Section>
 
+      <ProfitSection bookings={bookings} contracts={contracts} planPayments={planPayments} />
       <SubscriptionsSection subscriptions={subscriptions} summary={summary} />
       <ContractsSection contracts={contracts} summary={summary} />
       <WithdrawalHistory contracts={contracts} />

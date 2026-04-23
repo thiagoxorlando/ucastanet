@@ -4,7 +4,7 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import TalentHistory from "@/features/agency/TalentHistory";
 
-export const metadata: Metadata = { title: "Minha Equipe — Brisa Digital" };
+export const metadata: Metadata = { title: "Histórico de talentos — BrisaHub" };
 
 export default async function TalentHistoryPage({
   searchParams,
@@ -66,34 +66,34 @@ export default async function TalentHistoryPage({
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <svg className="w-5 h-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
-              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <h1 className="text-[22px] font-semibold tracking-tight text-zinc-900">Minha Equipe</h1>
-        </div>
-        <p className="text-[14px] text-zinc-400">
-          Talentos que já trabalharam com você.
-          {combined.length > 0 && (
-            <span className="ml-1 font-medium text-zinc-600">
-              {combined.length} {combined.length === 1 ? "talento" : "talentos"}.
-            </span>
-          )}
+      <div className="rounded-[1.75rem] bg-[var(--brand-surface)] px-6 py-6 text-white shadow-[0_24px_70px_rgba(7,17,13,0.18)]">
+        <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--brand-green)] mb-2">
+          Histórico de contratações
         </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-[2rem] font-black tracking-[-0.04em] leading-tight">Minha Equipe</h1>
+            <p className="text-[13px] text-zinc-400 mt-2 max-w-2xl">
+              Talentos que já trabalharam com você, com histórico, disponibilidade e ações para recontratar com contexto.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400">Talentos no histórico</p>
+            <p className="mt-1 text-2xl font-black tracking-[-0.04em] text-[var(--brand-green)]">{combined.length}</p>
+          </div>
+        </div>
       </div>
 
       {defaultJobId && (
-        <div className="flex items-center gap-2.5 bg-violet-50 border border-violet-100 rounded-2xl px-5 py-3.5">
-          <svg className="w-4 h-4 text-violet-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex items-center gap-2.5 bg-[var(--brand-green-soft)] border border-emerald-200 rounded-2xl px-5 py-3.5">
+          <svg className="w-4 h-4 text-emerald-700 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
               d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="text-[13px] text-violet-700 font-medium">
-            Clique em "Contratar novamente" para convidar um talento diretamente para esta vaga.
+          <p className="text-[13px] text-emerald-900 font-semibold">
+            Use "Escolher vaga e valor" para convidar um talento deste histórico para a vaga selecionada.
           </p>
         </div>
       )}

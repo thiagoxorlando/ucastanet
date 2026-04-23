@@ -13,6 +13,75 @@ function brl(n: number) {
   }).format(n);
 }
 
+type PeriodFilter = "today" | "month" | "all";
+
+const LIST_PREVIEW_LIMIT = 5;
+
+function periodMatches(date: string | null | undefined, period: PeriodFilter) {
+  if (period === "all") return true;
+  if (!date) return false;
+  const value = new Date(date);
+  if (Number.isNaN(value.getTime())) return false;
+  const now = new Date();
+  if (period === "today") {
+    return value.toDateString() === now.toDateString();
+  }
+  return value.getFullYear() === now.getFullYear() && value.getMonth() === now.getMonth();
+}
+
+function FilterTabs({ value, onChange }: { value: PeriodFilter; onChange: (value: PeriodFilter) => void }) {
+  const options: Array<{ value: PeriodFilter; label: string }> = [
+    { value: "today", label: "Hoje" },
+    { value: "month", label: "Este mês" },
+    { value: "all", label: "Total" },
+  ];
+
+  return (
+    <div className="inline-flex rounded-full border border-zinc-200 bg-white p-1 shadow-sm">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => onChange(option.value)}
+          className={[
+            "rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors cursor-pointer",
+            value === option.value
+              ? "bg-zinc-950 text-white"
+              : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800",
+          ].join(" ")}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function visibleItems<T>(items: T[], expanded: boolean) {
+  return expanded ? items : items.slice(0, LIST_PREVIEW_LIMIT);
+}
+
+function ShowMoreButton({
+  total,
+  expanded,
+  onClick,
+}: {
+  total: number;
+  expanded: boolean;
+  onClick: () => void;
+}) {
+  if (total <= LIST_PREVIEW_LIMIT) return null;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full border-t border-zinc-50 px-5 py-3 text-[12px] font-semibold text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 cursor-pointer"
+    >
+      {expanded ? "Ver menos" : `Ver mais ${total - LIST_PREVIEW_LIMIT}`}
+    </button>
+  );
+}
+
 type PaidContract = {
   id: string;
   jobTitle: string;
@@ -260,6 +329,11 @@ export default function TalentFinances() {
   const [withdrawState, setWithdrawState] = useState<WithdrawState>("idle");
   const [withdrawMsg, setWithdrawMsg]   = useState("");
   const [hasPixKey, setHasPixKey]       = useState(false);
+  const [period, setPeriod]             = useState<PeriodFilter>("all");
+  const [showAllContracts, setShowAllContracts] = useState(false);
+  const [showAllBookings, setShowAllBookings]   = useState(false);
+  const [showAllWithdrawals, setShowAllWithdrawals] = useState(false);
+  const [showAllReferrals, setShowAllReferrals] = useState(false);
 
   async function load(initial = false) {
     if (initial) setLoading(true);
@@ -389,6 +463,10 @@ export default function TalentFinances() {
   const withdrawnContracts    = paidContracts.filter((c) => !!c.withdrawn_at);
   const availableToWithdraw   = withdrawableContracts.reduce((s, c) => s + c.earnings, 0);
   const alreadyWithdrawn      = withdrawnContracts.reduce((s, c) => s + c.earnings, 0);
+  const filteredPaidContracts = paidContracts.filter((c) => periodMatches(c.paid_at, period));
+  const filteredPayments = payments.filter((p) => periodMatches(p.date, period));
+  const filteredWithdrawnContracts = withdrawnContracts.filter((c) => periodMatches(c.withdrawn_at, period));
+  const filteredReferrals = referrals.filter((r) => periodMatches(r.date, period));
 
   async function handleWithdraw() {
     if (withdrawableContracts.length === 0) return;
@@ -442,6 +520,10 @@ export default function TalentFinances() {
             </span>
           )}
         </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[12px] text-zinc-400">Filtrar listas por período</p>
+        <FilterTabs value={period} onChange={setPeriod} />
       </div>
 
       {loading ? (
@@ -543,9 +625,9 @@ export default function TalentFinances() {
             )}
 
             {/* Per-contract breakdown */}
-            {paidContracts.length > 0 && (
+            {filteredPaidContracts.length > 0 && (
               <div className="border-t border-zinc-50 divide-y divide-zinc-50">
-                {paidContracts.map((c) => (
+                {visibleItems(filteredPaidContracts, showAllContracts).map((c) => (
                   <div key={c.id} className="flex items-center gap-4 px-6 py-3 hover:bg-zinc-50/60 transition-colors">
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-semibold text-zinc-900 truncate">{c.jobTitle}</p>
@@ -565,6 +647,11 @@ export default function TalentFinances() {
                     <p className="text-[14px] font-semibold text-zinc-900 tabular-nums flex-shrink-0">{brl(c.earnings)}</p>
                   </div>
                 ))}
+                <ShowMoreButton
+                  total={filteredPaidContracts.length}
+                  expanded={showAllContracts}
+                  onClick={() => setShowAllContracts((value) => !value)}
+                />
               </div>
             )}
           </div>
@@ -601,14 +688,14 @@ export default function TalentFinances() {
           <div className="space-y-3">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Minhas Reservas</p>
 
-            {payments.length === 0 ? (
+            {filteredPayments.length === 0 ? (
               <div className="bg-white rounded-2xl border border-zinc-100 py-12 text-center">
-                <p className="text-[14px] font-medium text-zinc-500">Nenhuma reserva ainda</p>
-                <p className="text-[13px] text-zinc-400 mt-1">Candidate-se a vagas para ser reservado.</p>
+                <p className="text-[14px] font-medium text-zinc-500">Nenhuma reserva neste período</p>
+                <p className="text-[13px] text-zinc-400 mt-1">Ajuste o filtro para ver outros registros.</p>
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] divide-y divide-zinc-50 overflow-hidden">
-                {payments.map((p) => (
+                {visibleItems(filteredPayments, showAllBookings).map((p) => (
                   <div key={p.id} className="flex items-center gap-4 px-6 py-4 hover:bg-zinc-50/60 transition-colors">
                     <div className="flex-1 min-w-0">
                       <p className="text-[14px] font-semibold text-zinc-900 truncate">{p.job}</p>
@@ -635,25 +722,31 @@ export default function TalentFinances() {
                     </div>
                   </div>
                 ))}
+                <ShowMoreButton
+                  total={filteredPayments.length}
+                  expanded={showAllBookings}
+                  onClick={() => setShowAllBookings((value) => !value)}
+                />
               </div>
             )}
           </div>
 
           {/* Withdrawal history */}
-          {withdrawnContracts.length > 0 && (() => {
+          {filteredWithdrawnContracts.length > 0 && (() => {
             // Group by day (YYYY-MM-DD) so each "Withdraw" click = one receipt
             const groups = new Map<string, PaidContract[]>();
-            for (const c of withdrawnContracts) {
+            for (const c of filteredWithdrawnContracts) {
               const day = c.withdrawn_at ? c.withdrawn_at.slice(0, 10) : "unknown";
               if (!groups.has(day)) groups.set(day, []);
               groups.get(day)!.push(c);
             }
             const receipts = [...groups.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+            const visibleReceipts = visibleItems(receipts, showAllWithdrawals);
             return (
               <div className="space-y-3">
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Histórico de Saques</p>
                 <div className="space-y-3">
-                  {receipts.map(([day, items], i) => {
+                  {visibleReceipts.map(([day, items], i) => {
                     const total = items.reduce((s, c) => s + c.earnings, 0);
                     const date  = new Date(day + "T12:00:00").toLocaleDateString("pt-BR", { weekday: "short", month: "long", day: "numeric", year: "numeric" });
                     return (
@@ -678,6 +771,11 @@ export default function TalentFinances() {
                       </div>
                     );
                   })}
+                  <ShowMoreButton
+                    total={receipts.length}
+                    expanded={showAllWithdrawals}
+                    onClick={() => setShowAllWithdrawals((value) => !value)}
+                  />
                 </div>
               </div>
             );
@@ -690,14 +788,14 @@ export default function TalentFinances() {
               <span className="text-[10px] font-semibold bg-violet-100 text-violet-600 px-2 py-0.5 rounded-full">2% por reserva</span>
             </div>
 
-            {referrals.length === 0 ? (
+            {filteredReferrals.length === 0 ? (
               <div className="bg-white rounded-2xl border border-zinc-100 py-12 text-center">
                 <p className="text-[14px] font-medium text-zinc-500">Nenhum ganho de indicação ainda</p>
                 <p className="text-[13px] text-zinc-400 mt-1">Indique talentos para vagas e ganhe quando forem reservados.</p>
               </div>
             ) : (
               <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] divide-y divide-zinc-50 overflow-hidden">
-                {referrals.map((r) => (
+                {visibleItems(filteredReferrals, showAllReferrals).map((r) => (
                   <div key={r.id} className="flex items-center gap-4 px-6 py-4 hover:bg-zinc-50/60 transition-colors">
                     <div className="flex-1 min-w-0">
                       <p className="text-[14px] font-semibold text-zinc-900 truncate">{r.talentName}</p>
@@ -712,6 +810,11 @@ export default function TalentFinances() {
                     </div>
                   </div>
                 ))}
+                <ShowMoreButton
+                  total={filteredReferrals.length}
+                  expanded={showAllReferrals}
+                  onClick={() => setShowAllReferrals((value) => !value)}
+                />
               </div>
             )}
           </div>

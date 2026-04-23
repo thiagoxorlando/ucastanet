@@ -3,7 +3,7 @@ import TalentDashboard from "@/features/talent/TalentDashboard";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 
-export const metadata: Metadata = { title: "Dashboard — Brisa Digital" };
+export const metadata: Metadata = { title: "Painel — BrisaHub" };
 
 export default async function TalentDashboardPage() {
   const session  = await createSessionClient();

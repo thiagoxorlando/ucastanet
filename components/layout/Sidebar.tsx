@@ -427,7 +427,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </p>
               {inferredRole === "agency" && !loading && agentName ? (
                 <p className="text-[10px] text-zinc-500 truncate mt-0.5">
-                  <span className="text-zinc-600 font-semibold uppercase tracking-wide">Agent</span>
+                  <span className="text-zinc-600 font-semibold uppercase tracking-wide">Agente</span>
                   {" · "}{agentName}
                 </p>
               ) : (

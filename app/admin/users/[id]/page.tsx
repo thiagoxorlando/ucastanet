@@ -5,7 +5,7 @@ import AdminPlanSelector from "@/components/admin/AdminPlanSelector";
 
 type Props = { params: Promise<{ id: string }> };
 
-export const metadata: Metadata = { title: "User Profile — Admin — Brisa Digital" };
+export const metadata: Metadata = { title: "Perfil do usuário — Admin — BrisaHub" };
 
 const COMMISSION_RATE = 0.15;
 

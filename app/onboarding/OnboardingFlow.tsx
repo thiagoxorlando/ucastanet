@@ -145,7 +145,7 @@ export default function OnboardingFlow() {
                 disabled={finishing}
                 className="w-full bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-300 text-white text-[14px] font-medium py-3 rounded-xl transition-colors disabled:cursor-not-allowed"
               >
-                {finishing ? "Carregando…" : "Ir para o Dashboard"}
+                {finishing ? "Carregando…" : "Ir para o painel"}
               </button>
             )}
 

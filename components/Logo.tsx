@@ -23,7 +23,7 @@ export default function Logo({
   return (
     <Image
       src={src}
-      alt="Brisa Digital"
+      alt="BrisaHub"
       width={px}
       height={px}
       className={`object-contain flex-shrink-0 ${className}`.trim()}

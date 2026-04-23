@@ -3,7 +3,7 @@ import AgencySubmissions, { type SubmissionEntry } from "@/features/agency/Agenc
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 
-export const metadata: Metadata = { title: "Submissions — Brisa Digital" };
+export const metadata: Metadata = { title: "Candidaturas — BrisaHub" };
 
 export default async function SubmissionsPage() {
   const session  = await createSessionClient();

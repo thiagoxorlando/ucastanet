@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import TalentFinances from "@/features/talent/TalentFinances";
 
-export const metadata: Metadata = { title: "Finances — Brisa Digital" };
+export const metadata: Metadata = { title: "Financeiro — BrisaHub" };
 
 export default function TalentFinancesPage() {
   return <TalentFinances />;

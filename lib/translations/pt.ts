@@ -22,7 +22,7 @@ export const pt: Record<TranslationKey, string> = {
   // ── Portal labels ────────────────────────────────────────────────────────────
   portal_talent:   "Portal do Talento",
   portal_agency:   "Portal da Agência",
-  portal_admin:    "Portal Admin",
+  portal_admin:    "Portal administrativo",
 
   // ── Common actions ───────────────────────────────────────────────────────────
   action_view:       "Ver",
@@ -217,7 +217,6 @@ export const pt: Record<TranslationKey, string> = {
   profile_instagram:       "Instagram",
   profile_tiktok:          "TikTok",
   profile_x_handle:        "X (Twitter)",
-  profile_imdb:            "IMDb",
   profile_phone:           "Telefone",
   profile_company_name:    "Nome da Empresa",
   profile_avatar:          "Foto de Perfil",
@@ -231,7 +230,6 @@ export const pt: Record<TranslationKey, string> = {
   profile_weight:          "Peso",
   profile_eye_color:       "Cor dos Olhos",
   profile_hair_color:      "Cor do Cabelo",
-  profile_ethnicity:       "Etnia",
   profile_languages:       "Idiomas",
   profile_skills:          "Habilidades",
   profile_categories:      "Categorias",

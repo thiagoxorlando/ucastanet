@@ -18,9 +18,9 @@ export default function TalentViewToggle({
       {/* Header */}
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Roster</p>
-          <h1 className="text-[1.75rem] font-semibold tracking-tight text-zinc-900 leading-tight">Talent</h1>
-          <p className="text-[13px] text-zinc-400 mt-1">{totalCount} profiles</p>
+          <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Equipe</p>
+          <h1 className="text-[1.75rem] font-semibold tracking-tight text-zinc-900 leading-tight">Talentos</h1>
+          <p className="mt-1 text-[13px] text-zinc-400">{totalCount} perfis</p>
         </div>
 
         {/* View toggle */}
@@ -38,7 +38,7 @@ export default function TalentViewToggle({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
             </svg>
-            Grid
+            Grade
           </button>
           <button
             onClick={() => setView("list")}
@@ -53,7 +53,7 @@ export default function TalentViewToggle({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                 d="M4 6h16M4 10h16M4 14h16M4 18h16" />
             </svg>
-            List
+            Lista
           </button>
         </div>
       </div>
