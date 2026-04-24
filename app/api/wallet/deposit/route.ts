@@ -31,6 +31,27 @@ export async function POST(req: NextRequest) {
   // ── Resolve payer email ───────────────────────────────────────────────────
   const email: string = body.email ?? user.email ?? "pagador@brisadigital.com";
 
+  const supabase = createServerClient({ useServiceRole: true });
+
+  // Pre-insert a pending transaction to get a stable idempotency key before
+  // calling Mercado Pago. Retries with the same key let MP deduplicate the
+  // PIX charge rather than issuing a second QR code.
+  const { data: txRecord, error: txErr } = await supabase
+    .from("wallet_transactions")
+    .insert({
+      user_id:     user.id,
+      type:        "deposit",
+      amount,
+      description: "Depósito via PIX (pendente)",
+    })
+    .select("id")
+    .single();
+
+  if (txErr || !txRecord) {
+    console.error("[wallet/deposit] Failed to log pending deposit:", txErr?.message);
+    return NextResponse.json({ error: "Could not create deposit record" }, { status: 500 });
+  }
+
   // ── Create PIX payment ────────────────────────────────────────────────────
   const client        = new MercadoPagoConfig({ accessToken });
   const paymentClient = new Payment(client);
@@ -44,13 +65,14 @@ export async function POST(req: NextRequest) {
         description:        "Depósito — Brisa Digital",
         payment_method_id:  "pix",
         payer:              { email },
-        metadata:           { type: "wallet_deposit", user_id: user.id },
+        metadata:           { type: "wallet_deposit", user_id: user.id, tx_id: txRecord.id },
         notification_url:   `${appUrl}/api/webhooks/mercadopago`,
       },
-      requestOptions: { idempotencyKey: `wallet-deposit-${user.id}-${Date.now()}` },
+      requestOptions: { idempotencyKey: `wallet-deposit:${txRecord.id}` },
     });
   } catch (err) {
     console.error("[wallet/deposit] Mercado Pago error:", err);
+    await supabase.from("wallet_transactions").delete().eq("id", txRecord.id);
     return NextResponse.json({ error: "Failed to create PIX payment" }, { status: 502 });
   }
 
@@ -59,22 +81,11 @@ export async function POST(req: NextRequest) {
   const qrCodeBase64 = txData.qr_code_base64 ?? null;
   const paymentId    = result.id!;
 
-  // ── Log pending deposit (idempotency token for webhook) ───────────────────
-  const supabase = createServerClient({ useServiceRole: true });
-  const { error: insertErr } = await supabase
+  // Attach the MP payment_id so the webhook can match this transaction later
+  await supabase
     .from("wallet_transactions")
-    .insert({
-      user_id:    user.id,
-      type:       "deposit",
-      amount,
-      description: "Depósito via PIX (pendente)",
-      payment_id:  String(paymentId),
-    });
-
-  if (insertErr) {
-    console.error("[wallet/deposit] Failed to log pending deposit:", insertErr.message);
-    // Non-fatal — webhook will still credit on approval
-  }
+    .update({ payment_id: String(paymentId) })
+    .eq("id", txRecord.id);
 
   return NextResponse.json({
     qr_code:        qrCode,

@@ -51,6 +51,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Pagamentos não configurados." }, { status: 500 });
   }
 
+  // Pre-insert a pending transaction to get a stable idempotency key before
+  // calling Mercado Pago. The same key on any retry ensures MP deduplicates the
+  // charge rather than creating a second one.
+  const { data: txRecord, error: txErr } = await supabase
+    .from("wallet_transactions")
+    .insert({
+      user_id:     user.id,
+      type:        "deposit",
+      amount:      numAmount,
+      description: "Depósito via cartão — aguardando confirmação",
+    })
+    .select("id")
+    .single();
+
+  if (txErr || !txRecord) {
+    console.error("[wallet-deposit-card] pre-insert tx error:", txErr);
+    return NextResponse.json({ error: "Erro ao criar registro de depósito." }, { status: 500 });
+  }
+
   const mpClient = new MercadoPagoConfig({ accessToken });
 
   // Generate a single-use token from the saved card
@@ -62,13 +81,16 @@ export async function POST(req: NextRequest) {
     token = cardToken.id!;
   } catch (err) {
     console.error("[wallet-deposit-card] CardToken.create failed:", err);
+    await supabase.from("wallet_transactions").delete().eq("id", txRecord.id);
     return NextResponse.json({ error: "Erro ao processar cartão." }, { status: 502 });
   }
 
   const { data: authUser } = await supabase.auth.admin.getUserById(user.id);
   const email = authUser?.user?.email ?? "pagador@brisadigital.com";
 
-  // Charge the card
+  // Charge the card using the pre-inserted transaction ID as the idempotency key.
+  // Retries of this exact request will hit the same key and MP will return the
+  // original result instead of creating a duplicate charge.
   let result;
   try {
     result = await new Payment(mpClient).create({
@@ -83,16 +105,18 @@ export async function POST(req: NextRequest) {
           email,
           type:  "customer",
         },
-        metadata: { type: "wallet_deposit_card", user_id: user.id },
+        metadata: { type: "wallet_deposit_card", user_id: user.id, tx_id: txRecord.id },
       },
-      requestOptions: { idempotencyKey: `wallet-deposit-card-${user.id}-${Date.now()}` },
+      requestOptions: { idempotencyKey: `wallet-deposit:${txRecord.id}` },
     });
   } catch (err) {
     console.error("[wallet-deposit-card] Payment.create failed:", err);
+    await supabase.from("wallet_transactions").delete().eq("id", txRecord.id);
     return NextResponse.json({ error: "Pagamento falhou. Tente novamente." }, { status: 502 });
   }
 
   if (result.status === "rejected") {
+    await supabase.from("wallet_transactions").delete().eq("id", txRecord.id);
     return NextResponse.json(
       { error: "Pagamento recusado pela operadora.", detail: result.status_detail },
       { status: 402 }
@@ -100,6 +124,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (result.status !== "approved") {
+    await supabase.from("wallet_transactions").delete().eq("id", txRecord.id);
     return NextResponse.json(
       {
         error: "Pagamento ainda nao aprovado. A carteira nao foi creditada.",
@@ -116,14 +141,14 @@ export async function POST(req: NextRequest) {
     p_amount:  numAmount,
   });
 
-  // Record the deposit
-  const { data: txRecord } = await supabase.from("wallet_transactions").insert({
-    user_id:     user.id,
-    type:        "deposit",
-    amount:      numAmount,
-    description: `Depósito via cartão ${card.brand?.toUpperCase() ?? ""} •••• ${card.last_four ?? ""}`.trim(),
-    payment_id:  String(result.id),
-  }).select("id").single();
+  // Update the pre-inserted record with the final payment details
+  await supabase
+    .from("wallet_transactions")
+    .update({
+      payment_id:  String(result.id),
+      description: `Depósito via cartão ${card.brand?.toUpperCase() ?? ""} •••• ${card.last_four ?? ""}`.trim(),
+    })
+    .eq("id", txRecord.id);
 
   const brl = new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -134,7 +159,7 @@ export async function POST(req: NextRequest) {
     "payment",
     `Depósito de carteira confirmado: ${brl}`,
     "/admin/finances",
-    `admin-wallet-deposit-card:${result.id ?? txRecord?.id ?? user.id}`,
+    `admin-wallet-deposit-card:${result.id ?? txRecord.id}`,
   );
 
   return NextResponse.json({ success: true, amount: numAmount });

@@ -158,6 +158,12 @@ export async function POST(req: NextRequest) {
     const { data: authUser } = await supabase.auth.admin.getUserById(user.id);
     const email = authUser?.user?.email ?? "pagador@brisadigital.com";
 
+    // Billing cycle = YYYYMM — stable within the same calendar month.
+    // Any retry for the same user+plan in the same month returns the original
+    // MP result instead of creating a duplicate charge.
+    const _now = new Date();
+    const billingCycle = `${_now.getUTCFullYear()}${String(_now.getUTCMonth() + 1).padStart(2, "0")}`;
+
     let result;
     try {
       result = await new Payment(mpClient).create({
@@ -174,7 +180,7 @@ export async function POST(req: NextRequest) {
           },
           metadata: { user_id: user.id, plan: selectedPlan },
         },
-        requestOptions: { idempotencyKey: `plan-change-${user.id}-${selectedPlan}-${Date.now()}` },
+        requestOptions: { idempotencyKey: `plan-change:${user.id}:${selectedPlan}:${billingCycle}` },
       });
     } catch (err) {
       console.error("[plan-change] Payment.create failed:", err);
