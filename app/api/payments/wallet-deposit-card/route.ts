@@ -3,11 +3,12 @@ import { MercadoPagoConfig, Payment, CardToken } from "mercadopago";
 import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import { notifyAdmins } from "@/lib/notify";
+import { calcFeeBreakdown, CARD_FEE_RATE } from "@/lib/mp-fees";
 
 // POST /api/payments/wallet-deposit-card
 // Body: { card_id: string (DB uuid), amount: number }
 // Charges a saved card and credits the agency's platform wallet balance.
-// Returns: { success: true, amount }
+// Returns: { success: true, amount, fee, totalCharged }
 
 export async function POST(req: NextRequest) {
   const session = await createSessionClient();
@@ -51,6 +52,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Pagamentos não configurados." }, { status: 500 });
   }
 
+  // Resolve agency name for better MP description
+  const { data: agency } = await supabase
+    .from("agencies")
+    .select("company_name")
+    .eq("id", user.id)
+    .single();
+  const agencyName = agency?.company_name ?? null;
+
+  // Fee breakdown: numAmount = desired wallet credit.
+  // When CARD_FEE_RATE = 0 (default), totalCharged = numAmount (no change).
+  // Set MERCADO_PAGO_CARD_FEE_RATE in .env.local to pass the fee to the payer.
+  const { creditAmount, fee, totalCharged } = calcFeeBreakdown(numAmount, CARD_FEE_RATE);
+
   // Pre-insert a pending transaction to get a stable idempotency key before
   // calling Mercado Pago. The same key on any retry ensures MP deduplicates the
   // charge rather than creating a second one.
@@ -59,7 +73,7 @@ export async function POST(req: NextRequest) {
     .insert({
       user_id:     user.id,
       type:        "deposit",
-      amount:      numAmount,
+      amount:      creditAmount,
       description: "Depósito via cartão — aguardando confirmação",
     })
     .select("id")
@@ -86,26 +100,34 @@ export async function POST(req: NextRequest) {
   }
 
   const { data: authUser } = await supabase.auth.admin.getUserById(user.id);
-  const email = authUser?.user?.email ?? "pagador@brisadigital.com";
+  const email = authUser?.user?.email ?? "deposito@brisahub.com.br";
 
   // Charge the card using the pre-inserted transaction ID as the idempotency key.
-  // Retries of this exact request will hit the same key and MP will return the
-  // original result instead of creating a duplicate charge.
+  // totalCharged = gross amount so that after MP deducts its fee the platform
+  // receives exactly creditAmount. When CARD_FEE_RATE = 0, totalCharged = creditAmount.
   let result;
   try {
     result = await new Payment(mpClient).create({
       body: {
-        transaction_amount: numAmount,
-        description:        "Depósito na plataforma Brisa Digital",
+        transaction_amount: totalCharged,
+        description:        agencyName
+          ? `BrisaHub — Depósito de Saldo (${agencyName})`
+          : "BrisaHub — Depósito de Saldo",
         installments:       1,
         token,
         payment_method_id:  card.brand ?? "visa",
         payer: {
-          id:    card.mp_customer_id,
+          id:         card.mp_customer_id,
           email,
-          type:  "customer",
+          type:       "customer",
+          first_name: agencyName ?? undefined,
         },
-        metadata: { type: "wallet_deposit_card", user_id: user.id, tx_id: txRecord.id },
+        metadata: {
+          type:      "wallet_deposit_card",
+          user_id:   user.id,
+          agency_id: user.id,
+          tx_id:     txRecord.id,
+        },
       },
       requestOptions: { idempotencyKey: `wallet-deposit:${txRecord.id}` },
     });
@@ -135,10 +157,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Credit wallet balance atomically via RPC
+  // Credit wallet balance atomically via RPC — creditAmount = what should be
+  // added to the wallet (fee already stripped if CARD_FEE_RATE > 0)
   await supabase.rpc("increment_wallet_balance", {
     p_user_id: user.id,
-    p_amount:  numAmount,
+    p_amount:  creditAmount,
   });
 
   // Update the pre-inserted record with the final payment details
@@ -154,7 +177,7 @@ export async function POST(req: NextRequest) {
     style: "currency",
     currency: "BRL",
     maximumFractionDigits: 0,
-  }).format(numAmount);
+  }).format(creditAmount);
   await notifyAdmins(
     "payment",
     `Depósito de carteira confirmado: ${brl}`,
@@ -162,5 +185,5 @@ export async function POST(req: NextRequest) {
     `admin-wallet-deposit-card:${result.id ?? txRecord.id}`,
   );
 
-  return NextResponse.json({ success: true, amount: numAmount });
+  return NextResponse.json({ success: true, amount: creditAmount, fee, totalCharged });
 }

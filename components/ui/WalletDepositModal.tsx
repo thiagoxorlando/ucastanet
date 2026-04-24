@@ -5,7 +5,9 @@ import { supabase } from "@/lib/supabase";
 
 interface WalletDepositModalProps {
   txId: string;
-  amount: number;
+  amount: number;        // total charged (what the payer sends)
+  creditAmount?: number; // amount credited to wallet (may differ when fee > 0)
+  fee?: number;          // processing fee shown to payer
   qrCode: string;
   qrCodeBase64: string | null;
   onConfirmed: () => void;
@@ -21,11 +23,14 @@ type ModalStatus = "pending" | "confirmed" | "expired";
 export default function WalletDepositModal({
   txId,
   amount,
+  creditAmount,
+  fee,
   qrCode,
   qrCodeBase64,
   onConfirmed,
   onClose,
 }: WalletDepositModalProps) {
+  const hasFee = fee != null && fee > 0;
   const [copied, setCopied] = useState(false);
   const [status, setStatus] = useState<ModalStatus>("pending");
   const [toast, setToast]   = useState(false);
@@ -160,8 +165,20 @@ export default function WalletDepositModal({
         {status === "pending" && (
           <div className="px-6 pb-6 space-y-4">
             <div className="bg-zinc-50 rounded-2xl px-4 py-3 text-center">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-0.5">Valor do depósito</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-0.5">
+                {hasFee ? "Total a pagar" : "Valor do depósito"}
+              </p>
               <p className="text-[28px] font-bold text-zinc-900 tabular-nums">{brl(amount)}</p>
+              {hasFee && creditAmount != null && (
+                <div className="mt-1.5 space-y-0.5">
+                  <p className="text-[11px] text-zinc-400">
+                    Crédito na carteira: <span className="font-semibold text-zinc-700">{brl(creditAmount)}</span>
+                  </p>
+                  <p className="text-[11px] text-zinc-400">
+                    Taxa de processamento: <span className="font-semibold text-zinc-500">{brl(fee!)}</span>
+                  </p>
+                </div>
+              )}
             </div>
 
             {qrCodeBase64 ? (

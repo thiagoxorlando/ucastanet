@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { calcFeeBreakdown, PIX_FEE_RATE } from "@/lib/mp-fees";
 
 // POST /api/payments/wallet-deposit
 // Body: { amount: number }
 // Creates a Mercado Pago PIX to top up the agency's platform wallet balance.
-// Returns: { qr_code, qr_code_base64, payment_id, tx_id }
+// Returns: { qr_code, qr_code_base64, payment_id, tx_id, creditAmount, fee, totalCharged }
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -27,13 +28,27 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServerClient({ useServiceRole: true });
 
-  // Pre-insert a pending transaction so the webhook can find it by payment_id later
+  // Resolve agency display name for MP description and payer metadata
+  const { data: agency } = await supabase
+    .from("agencies")
+    .select("company_name")
+    .eq("id", user.id)
+    .single();
+  const agencyName = agency?.company_name ?? null;
+
+  // Fee breakdown: when PIX_FEE_RATE = 0 (default), totalCharged = creditAmount
+  // and the platform silently absorbs the MP fee.
+  // Set MERCADO_PAGO_PIX_FEE_RATE in .env.local to pass the fee to the payer.
+  const { creditAmount, fee, totalCharged } = calcFeeBreakdown(numAmount, PIX_FEE_RATE);
+
+  // Pre-insert a pending transaction so the webhook can find it by payment_id later.
+  // amount = creditAmount so the wallet is credited the right value after approval.
   const { data: txRecord, error: txErr } = await supabase
     .from("wallet_transactions")
     .insert({
       user_id:     user.id,
       type:        "deposit",
-      amount:      numAmount,
+      amount:      creditAmount,
       description: "Depósito PIX — aguardando confirmação",
     })
     .select("id")
@@ -52,12 +67,28 @@ export async function POST(req: NextRequest) {
   try {
     result = await paymentClient.create({
       body: {
-        transaction_amount: numAmount,
-        description:        "Depósito na plataforma Brisa Digital",
+        // totalCharged = gross amount the payer sends so that after MP deducts
+        // its fee the platform receives exactly creditAmount.
+        // When PIX_FEE_RATE = 0, totalCharged = creditAmount (no change).
+        transaction_amount: totalCharged,
+        description:        agencyName
+          ? `BrisaHub — Depósito de Saldo (${agencyName})`
+          : "BrisaHub — Depósito de Saldo",
         payment_method_id:  "pix",
-        payer:              { email: user.email ?? "agency@brisadigital.com" },
-        metadata:           { type: "wallet_deposit", user_id: user.id, tx_id: txRecord.id },
-        notification_url:   `${appUrl}/api/webhooks/mercadopago`,
+        payer: {
+          email:      user.email ?? "deposito@brisahub.com.br",
+          first_name: agencyName ?? undefined,
+        },
+        metadata: {
+          type:                    "wallet_deposit",
+          user_id:                 user.id,
+          agency_id:               user.id,
+          tx_id:                   txRecord.id,
+          // intended_credit_amount lets the webhook credit the right value
+          // when fee pass-through is active (PIX_FEE_RATE > 0).
+          intended_credit_amount:  String(creditAmount),
+        },
+        notification_url: `${appUrl}/api/webhooks/mercadopago`,
       },
       requestOptions: { idempotencyKey: `wallet-deposit-${txRecord.id}` },
     });
@@ -80,5 +111,8 @@ export async function POST(req: NextRequest) {
     qr_code_base64: txData.qr_code_base64 ?? null,
     payment_id:     result.id,
     tx_id:          txRecord.id,
+    creditAmount,
+    fee,
+    totalCharged,
   });
 }

@@ -154,15 +154,23 @@ export async function POST(req: NextRequest) {
   const supabase   = createServerClient({ useServiceRole: true });
   const xRequestId = req.headers.get("x-request-id") ?? "";
 
+  // ts is guaranteed non-empty here: verifySignature already validated it.
+  const sigTs = (req.headers.get("x-signature") ?? "").match(/ts=([^,]+)/)?.[1] ?? "";
+
   // ── Insert webhook_event — deduplication gate ─────────────────────────────────
-  // Unique constraint on (provider, provider_event_id).
-  // PostgREST returns code "23505" on conflict → event already handled → return 200.
+  // Dedup key must be the webhook NOTIFICATION id, not the payment id.
+  // MP sends multiple notifications for the same payment as status changes
+  // (e.g. pending → approved). Using payment id here blocks approved updates.
+  // Primary:  x-request-id — unique per delivery from MP.
+  // Fallback: "paymentId:ts" — ts from the validated HMAC, stable per delivery.
+  const notificationId = xRequestId || `${dataId}:${sigTs}`;
+
   const { data: webhookEvent, error: weErr } = await supabase
     .from("webhook_events")
     .insert({
       provider:          "mercadopago",
       event_id:          xRequestId || dataId,
-      provider_event_id: dataId,
+      provider_event_id: notificationId,
       topic:             String(body.type ?? ""),
       raw_payload:       body,
       processed:         false,
@@ -273,7 +281,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    const depositAmount = payment.transaction_amount ?? 0;
+    // Use intended_credit_amount from metadata when set (fee pass-through mode).
+    // The creation route stores the net-to-wallet value so that even when the
+    // gross charged amount > creditAmount, the wallet receives the right value.
+    // Falls back to transaction_amount (platform fee-absorption mode, default).
+    const rawIntended = Number(meta?.intended_credit_amount);
+    const depositAmount = (rawIntended > 0 ? rawIntended : null) ?? payment.transaction_amount ?? 0;
 
     // credit_wallet_deposit is atomic and idempotent:
     //   - claims the pending tx row via UPDATE or INSERT

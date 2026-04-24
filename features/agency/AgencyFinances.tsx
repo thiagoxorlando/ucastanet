@@ -117,7 +117,7 @@ export default function AgencyFinances({
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositError,   setDepositError]   = useState("");
   const [depositModal,   setDepositModal]   = useState<{
-    txId: string; amount: number; qrCode: string; qrCodeBase64: string | null;
+    txId: string; amount: number; creditAmount: number; fee: number; qrCode: string; qrCodeBase64: string | null;
   } | null>(null);
 
   // Card deposit
@@ -155,8 +155,10 @@ export default function AgencyFinances({
     } else {
       setDepositModal({
         txId:         data.tx_id,
-        amount,
-        qrCode:       data.qr_code ?? "",
+        amount:       data.totalCharged  ?? amount,
+        creditAmount: data.creditAmount  ?? amount,
+        fee:          data.fee           ?? 0,
+        qrCode:       data.qr_code       ?? "",
         qrCodeBase64: data.qr_code_base64 ?? null,
       });
       setDepositAmount("");
@@ -180,7 +182,7 @@ export default function AgencyFinances({
     if (!res.ok) {
       setCardDepositError(data.error ?? "Erro ao processar pagamento. Tente novamente.");
     } else {
-      setWalletBalance((prev) => prev + amount);
+      setWalletBalance((prev) => prev + (data.amount ?? amount));
       setCardDepositAmount("");
       setCardDepositDone(true);
       setTimeout(() => setCardDepositDone(false), 4000);
@@ -204,11 +206,13 @@ export default function AgencyFinances({
         <WalletDepositModal
           txId={depositModal.txId}
           amount={depositModal.amount}
+          creditAmount={depositModal.creditAmount}
+          fee={depositModal.fee}
           qrCode={depositModal.qrCode}
           qrCodeBase64={depositModal.qrCodeBase64}
           onConfirmed={() => {
             setDepositModal(null);
-            setWalletBalance((prev) => prev + depositModal.amount);
+            setWalletBalance((prev) => prev + depositModal.creditAmount);
             router.refresh();
           }}
           onClose={() => setDepositModal(null)}
