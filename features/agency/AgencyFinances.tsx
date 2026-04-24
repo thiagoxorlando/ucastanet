@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
@@ -100,9 +100,22 @@ export default function AgencyFinances({
   const [withdrawing,  setWithdrawing]  = useState(false);
   const [withdrawDone, setWithdrawDone] = useState(false);
 
-  // Wallet balance (live) — syncs from server props on router.refresh()
-  const [walletBalance, setWalletBalance] = useState(summary.walletBalance ?? 0);
-  useEffect(() => { setWalletBalance(summary.walletBalance ?? 0); }, [summary.walletBalance]);
+  // Wallet balance (live) — uses server props unless a local optimistic update is active.
+  const serverWalletBalance = summary.walletBalance ?? 0;
+  const [walletBalanceOverride, setWalletBalanceOverride] = useState<{ base: number; value: number } | null>(null);
+  const walletBalance = walletBalanceOverride?.base === serverWalletBalance
+    ? walletBalanceOverride.value
+    : serverWalletBalance;
+
+  function setLocalWalletBalance(next: number | ((previous: number) => number)) {
+    setWalletBalanceOverride((current) => {
+      const currentValue = current?.base === serverWalletBalance ? current.value : serverWalletBalance;
+      return {
+        base:  serverWalletBalance,
+        value: typeof next === "function" ? next(currentValue) : next,
+      };
+    });
+  }
 
   const { refreshing: walletRefreshing } = useRealtimeRefresh(
     [{ table: "wallet_transactions" }, { table: "wallets" }],
@@ -120,8 +133,18 @@ export default function AgencyFinances({
     txId: string; amount: number; creditAmount: number; fee: number; qrCode: string; qrCodeBase64: string | null;
   } | null>(null);
 
-  // Card deposit
+  // Live cards state — shared between the deposit selector and the SavedCards widget
+  const [liveCards,          setLiveCards]          = useState(savedCards);
   const [selectedCard,       setSelectedCard]       = useState(savedCards[0]?.id ?? "");
+
+  function handleCardsChange(nextCards: typeof savedCards) {
+    setLiveCards(nextCards);
+    setSelectedCard((current) =>
+      nextCards.some((card) => card.id === current) ? current : nextCards[0]?.id ?? ""
+    );
+  }
+
+  // Card deposit
   const [cardDepositAmount,  setCardDepositAmount]  = useState("");
   const [cardDepositLoading, setCardDepositLoading] = useState(false);
   const [cardDepositError,   setCardDepositError]   = useState("");
@@ -132,7 +155,7 @@ export default function AgencyFinances({
     const res = await fetch("/api/agencies/withdraw", { method: "POST" });
     setWithdrawing(false);
     if (res.ok) {
-      setWalletBalance(0);
+      setLocalWalletBalance(0);
       setWithdrawDone(true);
       setTimeout(() => setWithdrawDone(false), 4000);
     }
@@ -182,7 +205,7 @@ export default function AgencyFinances({
     if (!res.ok) {
       setCardDepositError(data.error ?? "Erro ao processar pagamento. Tente novamente.");
     } else {
-      setWalletBalance((prev) => prev + (data.amount ?? amount));
+      setLocalWalletBalance((prev) => prev + (data.amount ?? amount));
       setCardDepositAmount("");
       setCardDepositDone(true);
       setTimeout(() => setCardDepositDone(false), 4000);
@@ -212,7 +235,7 @@ export default function AgencyFinances({
           qrCodeBase64={depositModal.qrCodeBase64}
           onConfirmed={() => {
             setDepositModal(null);
-            setWalletBalance((prev) => prev + depositModal.creditAmount);
+            setLocalWalletBalance((prev) => prev + depositModal.creditAmount);
             router.refresh();
           }}
           onClose={() => setDepositModal(null)}
@@ -320,7 +343,7 @@ export default function AgencyFinances({
 
           {depositMethod === "card" && (
             <div className="space-y-4">
-              {savedCards.length === 0 ? (
+              {liveCards.length === 0 ? (
                 <div className="bg-zinc-50 border border-zinc-100 rounded-2xl px-5 py-8 text-center space-y-2">
                   <svg className="w-8 h-8 text-zinc-300 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -332,7 +355,7 @@ export default function AgencyFinances({
               ) : (
                 <form onSubmit={handleCardDeposit} className="space-y-3">
                   <div className="space-y-2">
-                    {savedCards.map((card) => {
+                    {liveCards.map((card) => {
                       const expiry = card.expiry_month && card.expiry_year
                         ? `${String(card.expiry_month).padStart(2, "0")}/${String(card.expiry_year).slice(-2)}`
                         : null;
@@ -400,7 +423,7 @@ export default function AgencyFinances({
       {/* Saved cards */}
       <div className="space-y-3">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Métodos de Pagamento</p>
-        <SavedCardsWidget initialCards={savedCards} publicKey={mpPublicKey} />
+        <SavedCardsWidget initialCards={savedCards} publicKey={mpPublicKey} onCardsChange={handleCardsChange} />
       </div>
 
       {/* Stats */}
