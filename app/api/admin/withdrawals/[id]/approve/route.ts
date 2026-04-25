@@ -28,21 +28,31 @@ export async function POST(
   });
 
   if (rpcError) {
-    console.error("[approve-withdrawal] rpc error:", rpcError.message);
-    return NextResponse.json({ error: "Erro ao aprovar saque." }, { status: 500 });
+    console.error("[approve-withdrawal] rpc error:", {
+      message: rpcError.message,
+      code:    rpcError.code,
+      details: rpcError.details,
+      hint:    rpcError.hint,
+    });
+    return NextResponse.json({
+      error:   "Erro ao chamar RPC mark_agency_withdrawal_paid.",
+      details: rpcError.message,
+      code:    rpcError.code,
+    }, { status: 500 });
   }
 
   if (!result?.ok) {
+    console.error("[approve-withdrawal] rpc returned not-ok:", result);
     if (result?.error === "not_found") {
-      return NextResponse.json({ error: "Saque não encontrado." }, { status: 404 });
+      return NextResponse.json({ error: "Saque não encontrado.", details: `tx_id: ${id}` }, { status: 404 });
     }
     if (result?.error === "not_pending") {
-      return NextResponse.json(
-        { error: `Saque já está com status "${result.current_status}". Apenas saques pendentes podem ser aprovados.` },
-        { status: 409 },
-      );
+      return NextResponse.json({
+        error:   `Saque já está com status "${result.current_status}". Apenas saques pendentes podem ser aprovados.`,
+        details: result,
+      }, { status: 409 });
     }
-    return NextResponse.json({ error: "Erro ao aprovar saque." }, { status: 500 });
+    return NextResponse.json({ error: "RPC retornou erro desconhecido.", details: result }, { status: 500 });
   }
 
   console.log("[approve-withdrawal] paid:", id, "by admin:", auth.userId);

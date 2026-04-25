@@ -549,17 +549,21 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
     const res = await fetch(`/api/admin/withdrawals/${id}/approve`, {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note }),
     });
+    const data = await res.json().catch(() => ({})) as { error?: string; details?: unknown; code?: string };
     setApproveLoading(false);
-    if (res.ok) {
-      setRows((current) =>
-        current.map((w) => w.id === id ? { ...w, status: "paid", adminNote: note || null, processedAt: new Date().toISOString() } : w),
+    if (!res.ok) {
+      console.error("[handleApprove] failed:", { status: res.status, body: data });
+      setError(
+        typeof data.details === "string" ? data.details
+        : data.error ?? "Erro ao aprovar saque.",
       );
-      setApproving(null);
-      setApproveNote("");
-    } else {
-      const data = await res.json().catch(() => ({})) as { error?: string };
-      setError(data.error ?? "Erro ao aprovar saque.");
+      return;
     }
+    setRows((current) =>
+      current.map((w) => w.id === id ? { ...w, status: "paid", adminNote: note || null, processedAt: new Date().toISOString() } : w),
+    );
+    setApproving(null);
+    setApproveNote("");
   }
 
   async function handleCancel() {
