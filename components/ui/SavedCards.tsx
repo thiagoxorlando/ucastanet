@@ -250,9 +250,19 @@ export function AddCardForm({ publicKey, onSaved, onCancel }: AddCardFormProps) 
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Erro ao salvar cartão."); return; }
-      onSaved(data.card);
+      const text = await res.text();
+      if (!res.ok) {
+        console.error("[AddCardForm] card/save error:", res.status, text.slice(0, 300));
+      }
+      let data: Record<string, unknown> | null = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        setError(`Erro ao salvar cartão: resposta inválida (${res.status}).`);
+        return;
+      }
+      if (!res.ok) { setError((data?.error as string) ?? `Erro ao salvar cartão (${res.status}).`); return; }
+      onSaved((data as { card: SavedCard }).card);
     } catch (err) {
       console.error("[AddCardForm] tokenize error:", err);
       const msg = err instanceof Error ? err.message : String(err);

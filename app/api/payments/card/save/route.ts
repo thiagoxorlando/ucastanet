@@ -32,12 +32,19 @@ export async function POST(req: NextRequest) {
 
   if (!token) return NextResponse.json({ error: "token is required" }, { status: 400 });
 
-  const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN!;
-  const supabase    = createServerClient({ useServiceRole: true });
+  const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+  if (!accessToken) return NextResponse.json({ error: "Pagamentos não configurados." }, { status: 500 });
 
-  // Ensure MP customer exists
-  const email      = user.email ?? "user@brisadigital.com";
-  const customerId = await ensureMpCustomer(user.id, email);
+  const supabase = createServerClient({ useServiceRole: true });
+
+  const email = user.email ?? "user@brisadigital.com";
+  let customerId: string;
+  try {
+    customerId = await ensureMpCustomer(user.id, email);
+  } catch (err) {
+    console.error("[card/save] ensureMpCustomer failed:", err);
+    return NextResponse.json({ error: "Erro ao configurar cliente de pagamento." }, { status: 500 });
+  }
 
   // Associate card token with MP customer → creates a saved card
   const client     = new MercadoPagoConfig({ accessToken });
