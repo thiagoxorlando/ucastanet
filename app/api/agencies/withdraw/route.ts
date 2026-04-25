@@ -12,54 +12,47 @@ export async function POST() {
 
   const supabase = createServerClient({ useServiceRole: true });
 
-  // Read current balance
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile } = await supabase
     .from("profiles")
-    .select("wallet_balance")
+    .select("role")
     .eq("id", user.id)
     .single();
 
-  if (profileError || !profile) {
-    return NextResponse.json({ error: "Perfil não encontrado." }, { status: 404 });
+  if (profile?.role !== "agency") {
+    return NextResponse.json({ error: "Apenas agências podem solicitar saques." }, { status: 403 });
   }
 
-  const balance = Number(profile.wallet_balance ?? 0);
-  if (balance <= 0) {
-    return NextResponse.json({ error: "Saldo insuficiente para saque." }, { status: 400 });
-  }
+  const { data: result, error: rpcError } = await supabase.rpc("request_agency_withdrawal", {
+    p_user_id: user.id,
+  });
 
-  // Deduct full balance and record the withdrawal
-  const { error: updateError } = await supabase
-    .from("profiles")
-    .update({ wallet_balance: 0 })
-    .eq("id", user.id);
-
-  if (updateError) {
+  if (rpcError) {
+    console.error("[POST /api/agencies/withdraw] rpc error:", rpcError.message);
     return NextResponse.json({ error: "Erro ao processar saque." }, { status: 500 });
   }
 
-  const { data: withdrawalTx, error: txError } = await supabase.from("wallet_transactions").insert({
-    user_id:     user.id,
-    type:        "withdrawal",
-    amount:      balance,
-    description: "Saque solicitado",
-  }).select("id").single();
-
-  if (txError) {
-    console.error("[POST /api/agencies/withdraw] wallet transaction insert failed:", txError.message);
+  if (!result?.ok) {
+    if (result?.error === "insufficient_balance") {
+      return NextResponse.json({ error: "Saldo insuficiente para saque." }, { status: 400 });
+    }
+    if (result?.error === "profile_not_found") {
+      return NextResponse.json({ error: "Perfil não encontrado." }, { status: 404 });
+    }
+    return NextResponse.json({ error: "Erro ao processar saque." }, { status: 500 });
   }
 
+  const amount = Number(result.amount);
   const brl = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
     maximumFractionDigits: 0,
-  }).format(balance);
+  }).format(amount);
   await notifyAdmins(
     "payment",
     `Novo pedido de saque: ${brl}`,
     "/admin/finances",
-    `admin-withdrawal-request:${withdrawalTx?.id ?? `${user.id}:${balance}`}`,
+    `admin-withdrawal-request:${user.id}:${amount}`,
   );
 
-  return NextResponse.json({ success: true, amount: balance });
+  return NextResponse.json({ success: true, amount });
 }
