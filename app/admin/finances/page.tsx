@@ -114,12 +114,12 @@ export default async function AdminFinancesPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("agencies")
-      .select("id, company_name")
+      .select("id, company_name, pix_key_type, pix_key_value, pix_holder_name")
       .is("deleted_at", null),
     fetchContracts(supabase),
     supabase
       .from("wallet_transactions")
-      .select("id, user_id, amount, status, processed_at, created_at")
+      .select("id, user_id, amount, fee_amount, net_amount, status, processed_at, created_at")
       .eq("type", "withdrawal")
       .order("created_at", { ascending: false }),
   ]);
@@ -295,8 +295,14 @@ export default async function AdminFinancesPage() {
   }
 
   const allAgencyNameMap = new Map<string, string>();
+  const agencyPixMap     = new Map<string, { pix_key_type: string | null; pix_key_value: string | null; pix_holder_name: string | null }>();
   for (const agency of allAgenciesData ?? []) {
     allAgencyNameMap.set(agency.id, agency.company_name ?? "");
+    agencyPixMap.set(agency.id, {
+      pix_key_type:   (agency as Record<string, unknown>).pix_key_type   as string | null ?? null,
+      pix_key_value:  (agency as Record<string, unknown>).pix_key_value  as string | null ?? null,
+      pix_holder_name:(agency as Record<string, unknown>).pix_holder_name as string | null ?? null,
+    });
   }
 
   const planOrder: Record<string, number> = { premium: 0, pro: 1, free: 2 };
@@ -328,14 +334,23 @@ export default async function AdminFinancesPage() {
   const totalSubscriptionRevenue = (planPaymentsData ?? []).reduce((sum, payment) => sum + Math.abs(payment.amount ?? 0), 0);
   const minimumRequired = contractsEscrowValue + contractsAwaitingValue + totalAgencyWalletBalance;
 
-  const withdrawals: FinancesWithdrawal[] = (withdrawalTxs ?? []).map((w) => ({
-    id:          w.id,
-    agencyName:  allAgencyNameMap.get(w.user_id) ?? "Agência sem nome",
-    amount:      Math.abs(w.amount ?? 0),
-    status:      w.status ?? "paid",
-    createdAt:   w.created_at ?? "",
-    processedAt: w.processed_at ?? null,
-  }));
+  const withdrawals: FinancesWithdrawal[] = (withdrawalTxs ?? []).map((w) => {
+    const pix = agencyPixMap.get(w.user_id);
+    const raw = w as Record<string, unknown>;
+    return {
+      id:           w.id,
+      agencyName:   allAgencyNameMap.get(w.user_id) ?? "Agência sem nome",
+      amount:       Math.abs(w.amount ?? 0),
+      feeAmount:    typeof raw.fee_amount === "number" ? raw.fee_amount : 0,
+      netAmount:    typeof raw.net_amount === "number" ? raw.net_amount : Math.abs(w.amount ?? 0),
+      status:       w.status ?? "paid",
+      createdAt:    w.created_at ?? "",
+      processedAt:  w.processed_at ?? null,
+      pixKeyType:   pix?.pix_key_type   ?? null,
+      pixKeyValue:  pix?.pix_key_value  ?? null,
+      pixHolderName:pix?.pix_holder_name ?? null,
+    };
+  });
 
   const summary: FinancesSummary = {
     totalGrossValue: totalGross,

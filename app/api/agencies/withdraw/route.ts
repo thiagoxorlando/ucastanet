@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import { notifyAdmins } from "@/lib/notify";
+import { WITHDRAWAL_FEE_RATE } from "@/lib/withdrawal-fee";
 
 export async function POST() {
   const session = await createSessionClient();
@@ -23,7 +24,8 @@ export async function POST() {
   }
 
   const { data: result, error: rpcError } = await supabase.rpc("request_agency_withdrawal", {
-    p_user_id: user.id,
+    p_user_id:  user.id,
+    p_fee_rate: WITHDRAWAL_FEE_RATE,
   });
 
   if (rpcError) {
@@ -32,6 +34,9 @@ export async function POST() {
   }
 
   if (!result?.ok) {
+    if (result?.error === "pix_not_configured") {
+      return NextResponse.json({ error: "Configure sua chave PIX antes de solicitar saque." }, { status: 400 });
+    }
     if (result?.error === "insufficient_balance") {
       return NextResponse.json({ error: "Saldo insuficiente para saque." }, { status: 400 });
     }
@@ -54,5 +59,10 @@ export async function POST() {
     `admin-withdrawal-request:${user.id}:${amount}`,
   );
 
-  return NextResponse.json({ success: true, amount });
+  return NextResponse.json({
+    success:    true,
+    amount,
+    fee:        Number(result.fee ?? 0),
+    net_amount: Number(result.net_amount ?? amount),
+  });
 }

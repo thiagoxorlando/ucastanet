@@ -83,6 +83,14 @@ const STATUS_LABEL: Record<string, string> = {
   credit:          "Crédito",
 };
 
+const PIX_TYPE_LABELS: Record<string, string> = {
+  cpf:    "CPF",
+  cnpj:   "CNPJ",
+  email:  "E-mail",
+  phone:  "Telefone",
+  random: "Chave aleatória",
+};
+
 function StatCard({ label, value, sub, stripe }: { label: string; value: string; sub?: string; stripe: string }) {
   return (
     <div className="bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_14px_34px_rgba(7,17,13,0.06)] overflow-hidden">
@@ -101,17 +109,32 @@ export default function AgencyFinances({
   transactions,
   savedCards,
   mpPublicKey,
+  agencyPix,
+  withdrawalFeeRate,
 }: {
   summary: AgencyFinanceSummary;
   transactions: AgencyTransaction[];
   savedCards: import("@/components/ui/SavedCards").SavedCard[];
   mpPublicKey: string;
+  agencyPix?: { pix_key_type: string | null; pix_key_value: string | null; pix_holder_name: string | null } | null;
+  withdrawalFeeRate: number;
 }) {
   const router = useRouter();
 
   // Withdraw
-  const [withdrawing,  setWithdrawing]  = useState(false);
-  const [withdrawDone, setWithdrawDone] = useState(false);
+  const [withdrawing,     setWithdrawing]     = useState(false);
+  const [withdrawDone,    setWithdrawDone]    = useState(false);
+  const [withdrawConfirming, setWithdrawConfirming] = useState(false);
+
+  // Agency PIX key
+  const [savedPix,      setSavedPix]      = useState(agencyPix ?? null);
+  const [pixEditing,    setPixEditing]    = useState(false);
+  const [pixKeyType,    setPixKeyType]    = useState(agencyPix?.pix_key_type ?? "cpf");
+  const [pixKeyValue,   setPixKeyValue]   = useState(agencyPix?.pix_key_value ?? "");
+  const [pixHolderName, setPixHolderName] = useState(agencyPix?.pix_holder_name ?? "");
+  const [pixSaving,     setPixSaving]     = useState(false);
+  const [pixError,      setPixError]      = useState("");
+  const [pixSaved,      setPixSaved]      = useState(false);
 
   // Wallet balance (live) — uses server props unless a local optimistic update is active.
   const serverWalletBalance = summary.walletBalance ?? 0;
@@ -165,6 +188,7 @@ export default function AgencyFinances({
   const [cardCvv,            setCardCvv]            = useState("");
 
   async function handleWithdraw() {
+    setWithdrawConfirming(false);
     setWithdrawing(true);
     const res = await fetch("/api/agencies/withdraw", { method: "POST" });
     setWithdrawing(false);
@@ -174,6 +198,32 @@ export default function AgencyFinances({
       setTimeout(() => setWithdrawDone(false), 4000);
     }
   }
+
+  async function handlePixSave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!pixKeyType || !pixKeyValue.trim() || !pixHolderName.trim()) {
+      setPixError("Todos os campos são obrigatórios.");
+      return;
+    }
+    setPixSaving(true);
+    setPixError("");
+    const res = await fetch("/api/agencies/pix", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ pix_key_type: pixKeyType, pix_key_value: pixKeyValue.trim(), pix_holder_name: pixHolderName.trim() }),
+    });
+    const data = await res.json().catch(() => ({})) as { error?: string };
+    setPixSaving(false);
+    if (!res.ok) { setPixError(data.error ?? "Erro ao salvar chave PIX."); return; }
+    setSavedPix({ pix_key_type: pixKeyType, pix_key_value: pixKeyValue.trim(), pix_holder_name: pixHolderName.trim() });
+    setPixEditing(false);
+    setPixSaved(true);
+    setTimeout(() => setPixSaved(false), 3000);
+  }
+
+  const hasPix = !!(savedPix?.pix_key_type && savedPix?.pix_key_value?.trim());
+  const feeAmount = Math.round(walletBalance * withdrawalFeeRate * 100) / 100;
+  const netAmount = Math.round((walletBalance - feeAmount) * 100) / 100;
 
   async function handleDeposit(e: React.FormEvent) {
     e.preventDefault();
@@ -260,49 +310,90 @@ export default function AgencyFinances({
       {/* Wallet card */}
       <div className="bg-white rounded-[1.75rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_18px_46px_rgba(7,17,13,0.08)] overflow-hidden">
 
-        {/* Balance row */}
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between px-6 py-6 bg-[var(--brand-surface)] text-white">
-          <div>
-            <div className="flex items-center gap-2 mb-0.5">
-              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--brand-green)]">Saldo na Plataforma</p>
-              {walletRefreshing && (
-                <span className="flex items-center gap-1 text-[10px] text-zinc-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-green)] animate-pulse" />
-                  Atualizando…
-                </span>
+        {/* Balance row / withdrawal confirmation */}
+        {withdrawConfirming ? (
+          <div className="px-6 py-6 bg-[var(--brand-surface)] text-white space-y-4">
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--brand-green)]">Confirmar Saque</p>
+            <div className="space-y-2 text-[13px]">
+              <div className="flex justify-between">
+                <span className="text-zinc-400">Saldo disponível</span>
+                <span className="font-bold">{brl(walletBalance)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-400">Taxa de processamento ({(withdrawalFeeRate * 100).toFixed(0)}%)</span>
+                <span className="font-bold text-rose-400">−{brl(feeAmount)}</span>
+              </div>
+              <div className="flex justify-between border-t border-white/10 pt-2">
+                <span className="text-white font-semibold">Valor líquido a receber</span>
+                <span className="font-black text-[var(--brand-green)]">{brl(netAmount)}</span>
+              </div>
+              {savedPix && (
+                <div className="flex justify-between pt-1">
+                  <span className="text-zinc-400">Chave PIX</span>
+                  <span className="text-zinc-300 font-medium text-right">
+                    {PIX_TYPE_LABELS[savedPix.pix_key_type ?? ""] ?? savedPix.pix_key_type} · {savedPix.pix_key_value}
+                  </span>
+                </div>
               )}
             </div>
-            <p className="text-[3rem] font-black tracking-[-0.07em] text-white leading-none">{brl(walletBalance)}</p>
-            <p className="text-[12px] text-zinc-400 mt-1.5">Disponível para confirmar reservas</p>
+            <div className="flex gap-2 pt-1">
+              <button onClick={handleWithdraw} disabled={withdrawing}
+                className="flex-1 bg-[var(--brand-green)] hover:bg-[var(--brand-green-strong)] disabled:opacity-50 text-[var(--brand-surface)] text-[13px] font-black py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed">
+                {withdrawing ? "Processando…" : "Confirmar Saque"}
+              </button>
+              <button onClick={() => setWithdrawConfirming(false)}
+                className="px-5 bg-white/10 hover:bg-white/15 text-white text-[13px] font-semibold py-2.5 rounded-xl transition-colors cursor-pointer">
+                Cancelar
+              </button>
+            </div>
           </div>
-          <button
-            onClick={handleWithdraw}
-            disabled={withdrawing || withdrawDone || walletBalance <= 0}
-            className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 disabled:opacity-40 text-white border border-white/10 text-[13px] font-bold px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
-          >
-            {withdrawing ? (
-              <>
-                <div className="w-3.5 h-3.5 rounded-full border-2 border-zinc-400 border-t-zinc-800 animate-spin" />
-                Processando…
-              </>
-            ) : withdrawDone ? (
-              <>
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                </svg>
-                Solicitado
-              </>
-            ) : (
-              <>
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-                Solicitar Saque
-              </>
-            )}
-          </button>
-        </div>
+        ) : (
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between px-6 py-6 bg-[var(--brand-surface)] text-white">
+            <div>
+              <div className="flex items-center gap-2 mb-0.5">
+                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[var(--brand-green)]">Saldo na Plataforma</p>
+                {walletRefreshing && (
+                  <span className="flex items-center gap-1 text-[10px] text-zinc-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--brand-green)] animate-pulse" />
+                    Atualizando…
+                  </span>
+                )}
+              </div>
+              <p className="text-[3rem] font-black tracking-[-0.07em] text-white leading-none">{brl(walletBalance)}</p>
+              <p className="text-[12px] text-zinc-400 mt-1.5">Disponível para confirmar reservas</p>
+              {!hasPix && walletBalance > 0 && (
+                <p className="text-[11px] text-amber-400 mt-1">Configure sua chave PIX para habilitar saques.</p>
+              )}
+            </div>
+            <button
+              onClick={() => { if (hasPix && walletBalance > 0) setWithdrawConfirming(true); }}
+              disabled={withdrawing || withdrawDone || walletBalance <= 0 || !hasPix}
+              className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/15 disabled:opacity-40 text-white border border-white/10 text-[13px] font-bold px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
+            >
+              {withdrawing ? (
+                <>
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-zinc-400 border-t-zinc-800 animate-spin" />
+                  Processando…
+                </>
+              ) : withdrawDone ? (
+                <>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Solicitado
+                </>
+              ) : (
+                <>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                  Solicitar Saque
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Deposit section */}
         <div className="px-6 pt-5 pb-6 space-y-4">
@@ -329,7 +420,7 @@ export default function AgencyFinances({
 
           {depositMethod === "pix" && (
             <form onSubmit={handleDeposit} className="space-y-3">
-              <p className="text-[12px] text-zinc-400">Crédito imediato após confirmação do pagamento.</p>
+              <p className="text-[12px] text-zinc-400">Crédito imediato após confirmação do pagamento. Depósitos não têm taxa. Taxas podem ser aplicadas apenas em saques.</p>
               {depositError && (
                 <p className="text-[12px] text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{depositError}</p>
               )}
@@ -444,6 +535,85 @@ export default function AgencyFinances({
                 </form>
               )}
             </div>
+          )}
+        </div>
+      </div>
+
+      {/* PIX key for withdrawals */}
+      <div className="bg-white rounded-[1.75rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_18px_46px_rgba(7,17,13,0.08)] overflow-hidden">
+        <div className="px-6 py-5 border-b border-zinc-50 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Dados para Saque</p>
+            <p className="text-[12px] text-zinc-500 mt-0.5">Chave PIX para receber transferências manuais da equipe.</p>
+          </div>
+          {hasPix && !pixEditing && (
+            <button type="button" onClick={() => { setPixEditing(true); setPixError(""); }}
+              className="text-[12px] font-semibold text-zinc-500 hover:text-zinc-900 border border-zinc-200 rounded-xl px-3 py-1.5 transition-colors cursor-pointer">
+              Editar
+            </button>
+          )}
+        </div>
+        <div className="px-6 py-5">
+          {!pixEditing && hasPix ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-3 text-[13px]">
+                <span className="text-[11px] font-bold uppercase bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded">{PIX_TYPE_LABELS[savedPix?.pix_key_type ?? ""] ?? savedPix?.pix_key_type}</span>
+                <span className="font-semibold text-zinc-900">{savedPix?.pix_key_value}</span>
+              </div>
+              {savedPix?.pix_holder_name && (
+                <p className="text-[12px] text-zinc-400">Titular: {savedPix.pix_holder_name}</p>
+              )}
+              {pixSaved && (
+                <p className="text-[12px] text-emerald-600 mt-1">Chave PIX salva com sucesso.</p>
+              )}
+              <p className="text-[11px] text-zinc-400 pt-1">Depósitos não têm taxa. Saques possuem taxa de processamento de {(withdrawalFeeRate * 100).toFixed(0)}%.</p>
+            </div>
+          ) : (
+            <form onSubmit={handlePixSave} className="space-y-3">
+              {!hasPix && (
+                <p className="text-[12px] text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                  Configure sua chave PIX para habilitar saques.
+                </p>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-medium text-zinc-500">Tipo de chave</label>
+                  <select value={pixKeyType} onChange={(e) => setPixKeyType(e.target.value)}
+                    className="w-full h-10 border border-zinc-200 rounded-xl px-3 text-[13px] text-zinc-900 bg-white focus:outline-none focus:border-zinc-400 transition-colors">
+                    {Object.entries(PIX_TYPE_LABELS).map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="block text-[11px] font-medium text-zinc-500">Chave PIX</label>
+                  <input type="text" value={pixKeyValue} onChange={(e) => setPixKeyValue(e.target.value)}
+                    placeholder="Sua chave PIX"
+                    className="w-full h-10 border border-zinc-200 rounded-xl px-3 text-[13px] text-zinc-900 bg-zinc-50 placeholder:text-zinc-300 focus:outline-none focus:border-zinc-400 focus:bg-white transition-colors" />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label className="block text-[11px] font-medium text-zinc-500">Nome do titular</label>
+                <input type="text" value={pixHolderName} onChange={(e) => setPixHolderName(e.target.value)}
+                  placeholder="Nome completo ou razão social"
+                  className="w-full h-10 border border-zinc-200 rounded-xl px-3 text-[13px] text-zinc-900 bg-zinc-50 placeholder:text-zinc-300 focus:outline-none focus:border-zinc-400 focus:bg-white transition-colors" />
+              </div>
+              {pixError && (
+                <p className="text-[12px] text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{pixError}</p>
+              )}
+              <div className="flex gap-2 pt-1">
+                <button type="submit" disabled={pixSaving}
+                  className="flex items-center gap-2 bg-[var(--brand-green)] hover:bg-[var(--brand-green-strong)] disabled:opacity-50 text-[var(--brand-surface)] text-[13px] font-black px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed">
+                  {pixSaving ? "Salvando…" : "Salvar Chave PIX"}
+                </button>
+                {hasPix && (
+                  <button type="button" onClick={() => { setPixEditing(false); setPixError(""); }}
+                    className="text-[13px] font-semibold text-zinc-500 hover:text-zinc-900 border border-zinc-200 rounded-xl px-4 py-2.5 transition-colors cursor-pointer">
+                    Cancelar
+                  </button>
+                )}
+              </div>
+            </form>
           )}
         </div>
       </div>

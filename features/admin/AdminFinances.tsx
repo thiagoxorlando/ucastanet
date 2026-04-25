@@ -37,9 +37,14 @@ export type FinancesWithdrawal = {
   id: string;
   agencyName: string;
   amount: number;
+  feeAmount: number;
+  netAmount: number;
   status: string;
   createdAt: string;
   processedAt: string | null;
+  pixKeyType: string | null;
+  pixKeyValue: string | null;
+  pixHolderName: string | null;
 };
 
 export type FinancesPlanPayment = {
@@ -506,11 +511,16 @@ function WithdrawalHistory({ contracts }: { contracts: FinancesContract[] }) {
   );
 }
 
+const PIX_TYPE_LABELS_ADMIN: Record<string, string> = {
+  cpf: "CPF", cnpj: "CNPJ", email: "E-mail", phone: "Telefone", random: "Chave aleatória",
+};
+
 function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[] }) {
   const [rows, setRows] = useState<FinancesWithdrawal[]>(withdrawals);
   const [marking, setMarking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(() => { setRows(withdrawals); }, [withdrawals]);
 
@@ -522,21 +532,24 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
     setMarking(id);
     setError(null);
     const res = await fetch(`/api/admin/withdrawals/${id}/mark-paid`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({}),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}),
     });
     setMarking(null);
     if (res.ok) {
       setRows((current) =>
-        current.map((w) =>
-          w.id === id ? { ...w, status: "paid", processedAt: new Date().toISOString() } : w,
-        ),
+        current.map((w) => w.id === id ? { ...w, status: "paid", processedAt: new Date().toISOString() } : w),
       );
     } else {
       const data = await res.json().catch(() => ({})) as { error?: string };
       setError(data.error ?? "Erro ao marcar saque como pago.");
     }
+  }
+
+  function copyPix(value: string, id: string) {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(id);
+      setTimeout(() => setCopied(null), 2000);
+    }).catch(() => {});
   }
 
   return (
@@ -545,7 +558,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
       subtitle={`${pending.length} pendente(s) — pagamento manual necessário`}
     >
       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-800">
-        Confirme apenas após realizar o PIX/transferência fora da plataforma. Esta ação não envia dinheiro automaticamente.
+        Envie manualmente o valor líquido por PIX antes de marcar como pago. Esta ação não envia dinheiro automaticamente.
       </div>
 
       {error && (
@@ -561,9 +574,12 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
           <thead className="border-b border-zinc-200 bg-zinc-50">
             <tr>
               <Th>Agência</Th>
-              <Th right>Valor</Th>
+              <Th right>Total debitado</Th>
+              <Th right>Taxa</Th>
+              <Th right>Líquido a enviar</Th>
+              <Th>Chave PIX</Th>
+              <Th>Titular</Th>
               <Th>Solicitado em</Th>
-              <Th>Status</Th>
               <Th right>Ação</Th>
             </tr>
           </thead>
@@ -572,14 +588,31 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
               <tr key={w.id}>
                 <Td>{w.agencyName}</Td>
                 <Td right><strong>{brl(w.amount)}</strong></Td>
+                <Td right><span className="text-rose-600">{brl(w.feeAmount)}</span></Td>
+                <Td right><strong className="text-emerald-700">{brl(w.netAmount)}</strong></Td>
+                <Td>
+                  {w.pixKeyValue ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold uppercase bg-zinc-100 text-zinc-600 px-1.5 py-0.5 rounded">
+                        {PIX_TYPE_LABELS_ADMIN[w.pixKeyType ?? ""] ?? w.pixKeyType}
+                      </span>
+                      <span className="font-mono text-xs">{w.pixKeyValue}</span>
+                      <button onClick={() => copyPix(w.pixKeyValue!, w.id)}
+                        className="text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer"
+                        title="Copiar chave PIX">
+                        {copied === w.id
+                          ? <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                          : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        }
+                      </button>
+                    </div>
+                  ) : <span className="text-zinc-400 text-xs">Não configurado</span>}
+                </Td>
+                <Td>{w.pixHolderName ?? "-"}</Td>
                 <Td>{fmt(w.createdAt)}</Td>
-                <Td><Badge value="Aguardando pagamento" tone={STATUS_BADGES.pending} /></Td>
                 <Td right>
-                  <button
-                    onClick={() => handleMarkPaid(w.id)}
-                    disabled={marking === w.id}
-                    className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-800 disabled:bg-zinc-300 disabled:cursor-not-allowed"
-                  >
+                  <button onClick={() => handleMarkPaid(w.id)} disabled={marking === w.id}
+                    className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-800 disabled:bg-zinc-300 disabled:cursor-not-allowed">
                     {marking === w.id ? "..." : "Marcar como pago"}
                   </button>
                 </Td>
@@ -596,7 +629,9 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
             <thead className="border-b border-zinc-200 bg-zinc-50">
               <tr>
                 <Th>Agência</Th>
-                <Th right>Valor</Th>
+                <Th right>Total</Th>
+                <Th right>Taxa</Th>
+                <Th right>Líquido</Th>
                 <Th>Solicitado em</Th>
                 <Th>Pago em</Th>
                 <Th>Status</Th>
@@ -607,6 +642,8 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
                 <tr key={w.id}>
                   <Td>{w.agencyName}</Td>
                   <Td right>{brl(w.amount)}</Td>
+                  <Td right>{w.feeAmount ? brl(w.feeAmount) : "-"}</Td>
+                  <Td right>{w.netAmount ? brl(w.netAmount) : "-"}</Td>
                   <Td>{fmt(w.createdAt)}</Td>
                   <Td>{fmt(w.processedAt)}</Td>
                   <Td>

@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import AgencyFinances from "@/features/agency/AgencyFinances";
 import type { AgencyTransaction, AgencyFinanceSummary } from "@/features/agency/AgencyFinances";
+import { WITHDRAWAL_FEE_RATE } from "@/lib/withdrawal-fee";
 
 export const metadata: Metadata = { title: "Financeiro — BrisaHub" };
 
@@ -14,7 +15,7 @@ export default async function AgencyFinancesPage() {
 
   const supabase = createServerClient({ useServiceRole: true });
 
-  const [{ data: bookings }, { data: walletTxs }, { data: savedCards }, { data: profile }, { data: contracts }] = await Promise.all([
+  const [{ data: bookings }, { data: walletTxs }, { data: savedCards }, { data: profile }, { data: contracts }, { data: agencyRow }] = await Promise.all([
     supabase
       .from("bookings")
       .select("id, talent_user_id, job_title, price, status, created_at")
@@ -43,6 +44,11 @@ export default async function AgencyFinancesPage() {
       .in("status", ["confirmed", "paid", "cancelled"])
       .order("created_at", { ascending: false })
       .limit(200),
+    supabase
+      .from("agencies")
+      .select("pix_key_type, pix_key_value, pix_holder_name")
+      .eq("id", user?.id ?? "")
+      .single(),
   ]);
 
   const rows = bookings ?? [];
@@ -140,12 +146,18 @@ export default async function AgencyFinancesPage() {
     walletBalance:     profile?.wallet_balance ?? 0,
   };
 
+  const agencyPix = agencyRow?.pix_key_value
+    ? { pix_key_type: agencyRow.pix_key_type ?? null, pix_key_value: agencyRow.pix_key_value, pix_holder_name: agencyRow.pix_holder_name ?? null }
+    : null;
+
   return (
     <AgencyFinances
       summary={summary}
       transactions={transactions}
       savedCards={savedCards ?? []}
       mpPublicKey={process.env.NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY ?? ""}
+      agencyPix={agencyPix}
+      withdrawalFeeRate={WITHDRAWAL_FEE_RATE}
     />
   );
 }
