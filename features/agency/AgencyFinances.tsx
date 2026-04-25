@@ -149,6 +149,7 @@ export default function AgencyFinances({
   const [cardDepositLoading, setCardDepositLoading] = useState(false);
   const [cardDepositError,   setCardDepositError]   = useState("");
   const [cardDepositDone,    setCardDepositDone]    = useState(false);
+  const [cardCvv,            setCardCvv]            = useState("");
 
   async function handleWithdraw() {
     setWithdrawing(true);
@@ -192,14 +193,14 @@ export default function AgencyFinances({
   async function handleCardDeposit(e: React.FormEvent) {
     e.preventDefault();
     const amount = Number(cardDepositAmount);
-    if (!amount || amount <= 0 || !selectedCard) return;
+    if (!amount || amount <= 0 || !selectedCard || cardCvv.length < 3) return;
     setCardDepositLoading(true);
     setCardDepositError("");
     setCardDepositDone(false);
     const res  = await fetch("/api/payments/wallet-deposit-card", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ card_id: selectedCard, amount }),
+      body:    JSON.stringify({ card_id: selectedCard, amount, security_code: cardCvv }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -207,6 +208,7 @@ export default function AgencyFinances({
     } else {
       setLocalWalletBalance((prev) => prev + (data.amount ?? amount));
       setCardDepositAmount("");
+      setCardCvv("");
       setCardDepositDone(true);
       setTimeout(() => setCardDepositDone(false), 4000);
       router.refresh();
@@ -361,7 +363,7 @@ export default function AgencyFinances({
                         : null;
                       const isSelected = selectedCard === card.id;
                       return (
-                        <button key={card.id} type="button" onClick={() => setSelectedCard(card.id)}
+                        <button key={card.id} type="button" onClick={() => { setSelectedCard(card.id); setCardCvv(""); }}
                           className={["w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all cursor-pointer",
                             isSelected ? "border-zinc-900 bg-zinc-50 ring-1 ring-zinc-900" : "border-zinc-200 bg-white hover:border-zinc-300"].join(" ")}>
                           <div className={["w-3 h-3 rounded-full border-2 flex-shrink-0 transition-colors",
@@ -382,6 +384,19 @@ export default function AgencyFinances({
                       );
                     })}
                   </div>
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-medium text-zinc-500">CVV do cartão</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={4}
+                      placeholder="000"
+                      value={cardCvv}
+                      onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                      autoComplete="cc-csc"
+                      className="w-28 h-10 border border-zinc-200 rounded-xl px-3 bg-white text-[14px] text-zinc-900 text-center tabular-nums placeholder:text-zinc-300 focus:outline-none focus:border-zinc-400 transition-colors"
+                    />
+                  </div>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
                       <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] font-semibold text-zinc-400 pointer-events-none">R$</span>
@@ -389,7 +404,7 @@ export default function AgencyFinances({
                         onChange={(e) => setCardDepositAmount(e.target.value)}
                         className="w-full pl-9 pr-3.5 py-2.5 text-[13px] font-semibold bg-zinc-50 border border-zinc-200 rounded-xl placeholder:text-zinc-300 hover:border-zinc-300 focus:border-zinc-900 focus:bg-white focus:outline-none transition-colors" />
                     </div>
-                    <button type="submit" disabled={cardDepositLoading || !cardDepositAmount || Number(cardDepositAmount) <= 0 || !selectedCard}
+                    <button type="submit" disabled={cardDepositLoading || !cardDepositAmount || Number(cardDepositAmount) <= 0 || !selectedCard || cardCvv.length < 3}
                       className="flex items-center gap-2 bg-[var(--brand-green)] hover:bg-[var(--brand-green-strong)] disabled:bg-zinc-100 disabled:text-zinc-400 text-[var(--brand-surface)] text-[13px] font-black px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed flex-shrink-0">
                       {cardDepositLoading ? <div className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" /> : "Depositar"}
                     </button>

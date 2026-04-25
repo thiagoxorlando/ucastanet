@@ -17,12 +17,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body      = await req.json();
-  const cardId    = body.card_id as string | undefined;
-  const numAmount = Number(body.amount);
+  const body         = await req.json();
+  const cardId       = body.card_id as string | undefined;
+  const numAmount    = Number(body.amount);
+  const rawCvv       = String(body.security_code ?? "").replace(/\D/g, "");
 
   if (!cardId)              return NextResponse.json({ error: "card_id é obrigatório."          }, { status: 400 });
   if (!numAmount || numAmount <= 0) return NextResponse.json({ error: "Valor inválido."           }, { status: 400 });
+  if (rawCvv.length < 3 || rawCvv.length > 4) {
+    return NextResponse.json({ error: "CVV inválido ou ausente. Verifique o código do cartão e tente novamente." }, { status: 400 });
+  }
 
   const supabase = createServerClient({ useServiceRole: true });
   const { data: caller } = await supabase
@@ -86,15 +90,22 @@ export async function POST(req: NextRequest) {
 
   const mpClient = new MercadoPagoConfig({ accessToken });
 
-  // Generate a single-use token from the saved card
+  // Generate a single-use token from the saved card, including the CVV so
+  // MP can validate the security code. The raw CVV is never logged or stored.
   let token: string;
   try {
     const cardToken = await new CardToken(mpClient).create({
-      body: { card_id: card.mp_card_id },
+      body: { card_id: card.mp_card_id, security_code: rawCvv },
     });
     token = cardToken.id!;
   } catch (err) {
-    console.error("[wallet-deposit-card] CardToken.create failed:", err);
+    const mpErr  = err as Record<string, unknown>;
+    const causes = Array.isArray(mpErr?.cause) ? mpErr.cause as Array<{ code: number }> : [];
+    if (causes.some((c) => c.code === 3031)) {
+      await supabase.from("wallet_transactions").delete().eq("id", txRecord.id);
+      return NextResponse.json({ error: "CVV inválido ou ausente. Verifique o código do cartão e tente novamente." }, { status: 400 });
+    }
+    console.error("[wallet-deposit-card] CardToken.create failed:", mpErr?.message ?? mpErr?.error);
     await supabase.from("wallet_transactions").delete().eq("id", txRecord.id);
     return NextResponse.json({ error: "Erro ao processar cartão." }, { status: 502 });
   }
@@ -138,7 +149,13 @@ export async function POST(req: NextRequest) {
       requestOptions: { idempotencyKey: `wallet-deposit:${txRecord.id}` },
     });
   } catch (err) {
-    console.error("[wallet-deposit-card] Payment.create failed:", err);
+    const mpErr  = err as Record<string, unknown>;
+    const causes = Array.isArray(mpErr?.cause) ? mpErr.cause as Array<{ code: number }> : [];
+    if (causes.some((c) => c.code === 3031)) {
+      await supabase.from("wallet_transactions").delete().eq("id", txRecord.id);
+      return NextResponse.json({ error: "CVV inválido ou ausente. Verifique o código do cartão e tente novamente." }, { status: 400 });
+    }
+    console.error("[wallet-deposit-card] Payment.create failed:", mpErr?.message ?? mpErr?.error);
     await supabase.from("wallet_transactions").delete().eq("id", txRecord.id);
     return NextResponse.json({ error: "Pagamento falhou. Tente novamente." }, { status: 502 });
   }
