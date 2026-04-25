@@ -517,6 +517,80 @@ const PIX_TYPE_LABELS_ADMIN: Record<string, string> = {
   cpf: "CPF", cnpj: "CNPJ", email: "E-mail", phone: "Telefone", random: "Chave aleatória",
 };
 
+function WithdrawalFeesSection({ withdrawals }: { withdrawals: FinancesWithdrawal[] }) {
+  const paid    = withdrawals.filter((w) => w.status === "paid");
+  const pending = withdrawals.filter((w) => w.status === "pending");
+
+  const todayStart      = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const tomorrowStart   = new Date(todayStart); tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  const monthStart      = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
+
+  const totalEarned    = paid.reduce((s, w) => s + w.feeAmount, 0);
+  const totalPending   = pending.reduce((s, w) => s + w.feeAmount, 0);
+  const feesToday      = paid
+    .filter((w) => { const d = new Date(w.processedAt ?? ""); return d >= todayStart && d < tomorrowStart; })
+    .reduce((s, w) => s + w.feeAmount, 0);
+  const feesThisMonth  = paid
+    .filter((w) => new Date(w.processedAt ?? "") >= monthStart)
+    .reduce((s, w) => s + w.feeAmount, 0);
+
+  const recent = [...withdrawals]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 10);
+
+  return (
+    <Section title="Taxas de saque" subtitle="Receita da plataforma por taxa de processamento (3%)">
+      <div className="grid gap-4 md:grid-cols-4">
+        <StatCard label="Total arrecadado"  value={brl(totalEarned)}   sub="Saques marcados como pago" />
+        <StatCard label="Taxas pendentes"   value={brl(totalPending)}  sub="Aguardando processamento" />
+        <StatCard label="Hoje"              value={brl(feesToday)}     sub="Processado hoje" />
+        <StatCard label="Este mês"          value={brl(feesThisMonth)} sub="Processado no mês atual" />
+      </div>
+
+      {recent.length > 0 && (
+        <>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-400 mt-2">Últimos 10 saques</p>
+          <TableCard>
+            <thead className="border-b border-zinc-200 bg-zinc-50">
+              <tr>
+                <Th>Agência</Th>
+                <Th right>Valor sacado</Th>
+                <Th right>Taxa</Th>
+                <Th right>Líquido enviado</Th>
+                <Th>Solicitado em</Th>
+                <Th>Status</Th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100">
+              {recent.map((w) => (
+                <tr key={w.id}>
+                  <Td>{w.agencyName}</Td>
+                  <Td right>{brl(w.amount)}</Td>
+                  <Td right>
+                    <span className={
+                      w.status === "paid"     ? "font-semibold text-emerald-700" :
+                      w.status === "rejected" ? "text-zinc-400 line-through"     : "text-amber-600"
+                    }>
+                      {brl(w.feeAmount)}
+                    </span>
+                  </Td>
+                  <Td right>{w.status === "rejected" ? <span className="text-zinc-400">—</span> : brl(w.netAmount)}</Td>
+                  <Td>{fmt(w.createdAt)}</Td>
+                  <Td>
+                    {w.status === "paid"     && <Badge value="Pago"      tone="bg-emerald-50 text-emerald-700" />}
+                    {w.status === "rejected" && <Badge value="Cancelado" tone="bg-red-50 text-red-700" />}
+                    {w.status === "pending"  && <Badge value="Pendente"  tone="bg-amber-50 text-amber-700" />}
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </TableCard>
+        </>
+      )}
+    </Section>
+  );
+}
+
 function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[] }) {
   const [rows, setRows] = useState<FinancesWithdrawal[]>(withdrawals);
   const [approving, setApproving] = useState<string | null>(null);
@@ -950,6 +1024,7 @@ export default function AdminFinances({
       </Section>
 
       <ProfitSection bookings={bookings} contracts={contracts} planPayments={planPayments} />
+      <WithdrawalFeesSection withdrawals={withdrawals} />
       <WithdrawalsSection withdrawals={withdrawals} />
       <SubscriptionsSection subscriptions={subscriptions} summary={summary} />
       <ContractsSection contracts={contracts} summary={summary} />
