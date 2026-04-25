@@ -126,9 +126,11 @@ export async function POST(req: NextRequest) {
   const cardHolder = (mpCard.cardholder as { name?: string } | undefined)?.name ?? holder_name?.trim() ?? null;
   const expMonth   = mpCard.expiration_month ?? expiry_month ?? null;
   const expYear    = mpCard.expiration_year  ?? expiry_year  ?? null;
+  // issuer_id is required by Payment.create for saved-card charges in Brazil
+  const issuerId   = (mpCard.issuer as { id?: number } | undefined)?.id ?? null;
 
   // ── Step 3: Persist safe metadata to saved_cards ─────────────────────────────
-  console.log("[card/save] step=db_insert brand:", brand, "last_four:", lastFour);
+  console.log("[card/save] step=db_insert brand:", brand, "last_four:", lastFour, "issuer_id:", issuerId);
   const { data: saved, error: insertErr } = await supabase
     .from("saved_cards")
     .insert({
@@ -142,6 +144,7 @@ export async function POST(req: NextRequest) {
       expiry_year:            expYear,
       holder_document_type:   holder_document_type ?? null,
       holder_document_number: rawDoc,
+      issuer_id:              issuerId !== null ? String(issuerId) : null,
     })
     .select("id, brand, last_four, holder_name, expiry_month, expiry_year, created_at")
     .single();
