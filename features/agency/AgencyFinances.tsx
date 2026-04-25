@@ -27,6 +27,7 @@ export type AgencyTransaction = {
   description?: string;
   withdrawalStatus?: string | null;
   adminNote?: string | null;
+  processedAt?: string | null;
 };
 
 export type AgencyFinanceSummary = {
@@ -43,9 +44,9 @@ const WITHDRAWAL_STATUS_CLS: Record<string, string> = {
 };
 
 const WITHDRAWAL_STATUS_LABEL: Record<string, string> = {
-  pending:  "Aguardando pagamento",
+  pending:  "Pendente",
   paid:     "Pago",
-  rejected: "Rejeitado",
+  rejected: "Cancelado",
 };
 
 const STATUS_CLS: Record<string, string> = {
@@ -127,6 +128,7 @@ export default function AgencyFinances({
   const [withdrawDone,       setWithdrawDone]        = useState(false);
   const [withdrawConfirming, setWithdrawConfirming]  = useState(false);
   const [withdrawAmount,     setWithdrawAmount]      = useState("");
+  const [withdrawError,      setWithdrawError]       = useState("");
 
   // Agency PIX key
   const [savedPix,      setSavedPix]      = useState(agencyPix ?? null);
@@ -193,18 +195,23 @@ export default function AgencyFinances({
     const amt = Number(withdrawAmount);
     setWithdrawConfirming(false);
     setWithdrawing(true);
+    setWithdrawError("");
     const res = await fetch("/api/agencies/withdraw", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ amount: amt }),
     });
+    const data = await res.json().catch(() => ({})) as { error?: string; remaining_balance?: number };
     setWithdrawing(false);
-    if (res.ok) {
-      setLocalWalletBalance((prev) => Math.round((prev - amt) * 100) / 100);
-      setWithdrawAmount("");
-      setWithdrawDone(true);
-      setTimeout(() => setWithdrawDone(false), 4000);
+    if (!res.ok) {
+      console.error("[handleWithdraw] status:", res.status, "body:", data);
+      setWithdrawError(data.error ?? "Erro ao solicitar saque. Tente novamente.");
+      return;
     }
+    setLocalWalletBalance((prev) => Math.round((prev - amt) * 100) / 100);
+    setWithdrawAmount("");
+    setWithdrawDone(true);
+    setTimeout(() => setWithdrawDone(false), 4000);
   }
 
   async function handlePixSave(e: React.FormEvent) {
@@ -424,6 +431,9 @@ export default function AgencyFinances({
                 </div>
                 {withdrawAmountNum > walletBalance && (
                   <p className="text-[11px] text-rose-400">Valor superior ao saldo disponível.</p>
+                )}
+                {withdrawError && (
+                  <p className="text-[11px] text-rose-400">{withdrawError}</p>
                 )}
               </div>
             )}
@@ -732,11 +742,25 @@ export default function AgencyFinances({
                             )}
                             <div className="min-w-0">
                               <p className="text-[13px] font-bold text-zinc-950 truncate max-w-[220px]">{label}</p>
-                              {isWithdrawal && t.withdrawalStatus !== "rejected" && (
-                                <p className="text-[11px] text-zinc-400 mt-0.5">Saques são processados manualmente pela equipe.</p>
-                              )}
-                            {isWithdrawal && t.withdrawalStatus === "rejected" && t.adminNote && (
-                                <p className="text-[11px] text-rose-500 mt-0.5">Motivo: {t.adminNote}</p>
+                              {isWithdrawal && (
+                                <div className="mt-0.5 space-y-0.5">
+                                  <div className="flex flex-wrap gap-x-3">
+                                    <span className="text-[11px] text-zinc-400">
+                                      Solicitado {new Date(t.date).toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}
+                                    </span>
+                                    {t.processedAt && (
+                                      <span className="text-[11px] text-zinc-400">
+                                        Processado {new Date(t.processedAt).toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {t.withdrawalStatus === "rejected" && t.adminNote && (
+                                    <p className="text-[11px] text-rose-500">Motivo do cancelamento: {t.adminNote}</p>
+                                  )}
+                                  {t.withdrawalStatus === "pending" && (
+                                    <p className="text-[11px] text-zinc-400">Processamento manual pela equipe.</p>
+                                  )}
+                                </div>
                               )}
                             </div>
                           </div>

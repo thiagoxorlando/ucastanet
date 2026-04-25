@@ -23,7 +23,7 @@ export default async function AgencyFinancesPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("wallet_transactions")
-      .select("id, type, amount, description, created_at, idempotency_key, status, admin_note")
+      .select("id, type, amount, description, created_at, idempotency_key, status, admin_note, processed_at")
       .eq("user_id", user?.id ?? "")
       .order("created_at", { ascending: false })
       .limit(100),
@@ -127,7 +127,8 @@ export default async function AgencyFinancesPage() {
       bookingId,
       href:            bookingId ? `/agency/bookings?booking_id=${bookingId}` : undefined,
       withdrawalStatus: w.type === "withdrawal" ? (w.status ?? null) : undefined,
-      adminNote:        w.type === "withdrawal" ? ((w as Record<string, unknown>).admin_note as string | null ?? null) : undefined,
+      adminNote:        w.type === "withdrawal" ? ((w as Record<string, unknown>).admin_note    as string | null ?? null) : undefined,
+      processedAt:      w.type === "withdrawal" ? ((w as Record<string, unknown>).processed_at as string | null ?? null) : undefined,
     };
   });
 
