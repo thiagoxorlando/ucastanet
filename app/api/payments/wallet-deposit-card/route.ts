@@ -75,7 +75,7 @@ function mapRejectedDetail(statusDetail: string | undefined): string {
 
 // ── Temporary launch gate — card deposits disabled until MP integration is stable ──
 // To re-enable: remove the early return below.
-const CARD_DEPOSITS_ENABLED = false;
+const CARD_DEPOSITS_ENABLED = true;
 
 export async function POST(req: NextRequest) {
   if (!CARD_DEPOSITS_ENABLED) {

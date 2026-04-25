@@ -4,6 +4,37 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import { PLAN_DEFINITIONS, PLAN_KEYS, type Plan } from "@/lib/plans";
 
+// MP SDK throws parsed JSON, not Error instances.
+type MpCause = { code: number; description: string };
+type MpErrorInfo = { message: string; httpStatus: number; statusDetail?: string; causes: MpCause[] };
+function extractMpErrorDetails(err: unknown): MpErrorInfo {
+  if (!err || typeof err !== "object") return { message: String(err), httpStatus: 502, causes: [] };
+  const e = err as Record<string, unknown>;
+  const causes: MpCause[] = Array.isArray(e.cause)
+    ? (e.cause as Array<Record<string, unknown>>).map((c) => ({ code: Number(c.code ?? 0), description: String(c.description ?? "") }))
+    : [];
+  return {
+    message:      String(e.message ?? e.error ?? causes[0]?.description ?? "unknown"),
+    httpStatus:   typeof e.status === "number" && e.status >= 400 ? e.status : 502,
+    statusDetail: e.status_detail ? String(e.status_detail) : undefined,
+    causes,
+  };
+}
+function mapPaymentError(msg: string, statusDetail?: string, causes: MpCause[] = []): string {
+  const corpus = [msg, statusDetail ?? "", ...causes.map((c) => c.description)].join(" ").toLowerCase();
+  if (corpus.includes("cc_rejected_high_risk"))
+    return "Pagamento recusado por segurança. Tente outro cartão ou outra forma de pagamento.";
+  if (corpus.includes("invalid_user_identification") || corpus.includes("identification number"))
+    return "CPF/CNPJ inválido. Verifique os dados do titular do cartão.";
+  if (corpus.includes("not_result_by_params"))
+    return "Pagamento não aprovado com os dados informados. Verifique o cartão e tente novamente.";
+  if (corpus.includes("security_code") || causes.some((c) => c.code === 3031))
+    return "CVV inválido ou ausente. Verifique o código do cartão e tente novamente.";
+  if (corpus.includes("cc_rejected_insufficient_amount"))
+    return "Saldo insuficiente no cartão.";
+  return "Pagamento recusado pelo processador.";
+}
+
 const PLAN_PRICES: Record<Plan, number> = Object.fromEntries(
   PLAN_KEYS.map((plan) => [plan, PLAN_DEFINITIONS[plan].price]),
 ) as Record<Plan, number>;
@@ -25,11 +56,13 @@ export async function POST(req: NextRequest) {
     chargeImmediately,
     useWallet,
     savedCardId,
+    cvv,
   } = (await req.json()) as {
     plan?: string;
     chargeImmediately?: boolean;
     useWallet?: boolean;
     savedCardId?: string;
+    cvv?: string;
   };
 
   if (!plan || !PLAN_KEYS.includes(plan as Plan)) {
@@ -122,47 +155,65 @@ export async function POST(req: NextRequest) {
 
   if (chargeImmediately && selectedPlan !== "free") {
     if (!savedCardId) {
-      return NextResponse.json({ error: "Cartao obrigatorio para cobranca imediata" }, { status: 400 });
+      return NextResponse.json({ error: "Cartão obrigatório para cobrança imediata." }, { status: 400 });
+    }
+
+    const rawCvv = String(cvv ?? "").replace(/\D/g, "");
+    if (rawCvv.length < 3 || rawCvv.length > 4) {
+      return NextResponse.json({ error: "CVV inválido ou ausente. Verifique o código do cartão." }, { status: 400 });
     }
 
     const { data: card } = await supabase
       .from("saved_cards")
-      .select("id, mp_card_id, mp_customer_id, brand, last_four, holder_document_type, holder_document_number")
+      .select("id, mp_card_id, mp_customer_id, brand, last_four, issuer_id, holder_document_type, holder_document_number")
       .eq("id", savedCardId)
       .eq("user_id", user.id)
       .single();
 
     if (!card) {
-      return NextResponse.json({ error: "Cartao nao encontrado" }, { status: 404 });
+      return NextResponse.json({ error: "Cartão não encontrado." }, { status: 404 });
     }
 
-    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN!;
+    const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
     if (!accessToken) {
-      return NextResponse.json({ error: "Configuracao de pagamento nao encontrada" }, { status: 500 });
+      return NextResponse.json({ error: "Configuração de pagamento não encontrada." }, { status: 500 });
     }
 
     const mpClient = new MercadoPagoConfig({ accessToken });
     const amount = PLAN_PRICES[selectedPlan];
 
+    // Tokenize saved card with CVV — required so MP can validate the security code
     let token: string;
     try {
       const cardToken = await new CardToken(mpClient).create({
-        body: { card_id: card.mp_card_id },
+        body: { card_id: card.mp_card_id, security_code: rawCvv },
       });
       token = cardToken.id!;
     } catch (err) {
-      console.error("[plan-change] CardToken.create failed:", err);
-      return NextResponse.json({ error: "Falha ao processar cartao" }, { status: 502 });
+      const { message, httpStatus, causes } = extractMpErrorDetails(err);
+      const userMsg = mapPaymentError(message, undefined, causes);
+      console.error("[plan-change] CardToken.create failed:", message, "causes:", causes.map((c) => `${c.code}:${c.description}`).join(", "));
+      return NextResponse.json({ error: userMsg, step: "tokenize_failed", detail: message }, { status: httpStatus });
     }
 
     const { data: authUser } = await supabase.auth.admin.getUserById(user.id);
     const email = authUser?.user?.email ?? "pagador@brisadigital.com";
 
-    // Billing cycle = YYYYMM — stable within the same calendar month.
-    // Any retry for the same user+plan in the same month returns the original
-    // MP result instead of creating a duplicate charge.
+    // Billing cycle = YYYYMM — stable idempotency key within the same calendar month
     const _now = new Date();
     const billingCycle = `${_now.getUTCFullYear()}${String(_now.getUTCMonth() + 1).padStart(2, "0")}`;
+
+    const issuerId   = card.issuer_id ? Number(card.issuer_id) : undefined;
+    const docDigits  = (card.holder_document_number ?? "").replace(/\D/g, "");
+
+    console.log(
+      "[plan-change] Payment.create",
+      "plan:", selectedPlan, "amount:", amount,
+      "payment_method_id:", card.brand,
+      "issuer_id:", issuerId,
+      "doc_type:", card.holder_document_type,
+      "has_doc:", !!docDigits,
+    );
 
     let result;
     try {
@@ -172,15 +223,16 @@ export async function POST(req: NextRequest) {
           description: `Plano ${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} - Brisa Digital`,
           installments: 1,
           token,
-          payment_method_id: card.brand ?? "visa",
+          payment_method_id: card.brand ?? undefined,
+          ...(issuerId !== undefined ? { issuer_id: issuerId } : {}),
           payer: {
             id:   card.mp_customer_id,
             email,
             type: "customer",
-            ...(card.holder_document_type && card.holder_document_number ? {
+            ...(card.holder_document_type && docDigits ? {
               identification: {
                 type:   card.holder_document_type,
-                number: card.holder_document_number,
+                number: docDigits,
               },
             } : {}),
           },
@@ -189,21 +241,26 @@ export async function POST(req: NextRequest) {
         requestOptions: { idempotencyKey: `plan-change:${user.id}:${selectedPlan}:${billingCycle}` },
       });
     } catch (err) {
-      console.error("[plan-change] Payment.create failed:", err);
-      return NextResponse.json({ error: "Pagamento recusado pelo processador" }, { status: 502 });
+      const { message, httpStatus, statusDetail, causes } = extractMpErrorDetails(err);
+      const userMsg = mapPaymentError(message, statusDetail, causes);
+      console.error("[plan-change] Payment.create failed:", message, "httpStatus:", httpStatus, "causes:", causes.map((c) => `${c.code}:${c.description}`).join(", "));
+      return NextResponse.json({ error: userMsg, step: "payment_failed", detail: message, mp_status_detail: statusDetail }, { status: httpStatus });
     }
 
     if (result.status === "rejected") {
+      const userMsg = mapPaymentError("", result.status_detail);
+      console.error("[plan-change] payment rejected, status_detail:", result.status_detail, "id:", result.id);
       return NextResponse.json(
-        { error: "Pagamento rejeitado pelo banco", detail: result.status_detail },
+        { error: userMsg, mp_status_detail: result.status_detail },
         { status: 402 },
       );
     }
 
     if (result.status !== "approved") {
+      console.error("[plan-change] payment not approved, status:", result.status, "id:", result.id);
       return NextResponse.json(
         {
-          error: "Pagamento ainda nao aprovado. O plano nao foi alterado.",
+          error: "Pagamento ainda não aprovado. O plano não foi alterado.",
           paymentStatus: result.status,
           paymentId: result.id,
         },

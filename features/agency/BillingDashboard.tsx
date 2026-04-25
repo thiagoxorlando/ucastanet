@@ -227,6 +227,7 @@ function PlanChangeModal({
   const [showCardForm, setShowCardForm] = useState(initialCards.length === 0 && !walletSufficient);
   const [submitting, setSubmitting]   = useState(false);
   const [error, setError]             = useState("");
+  const [cvv, setCvv]                 = useState("");
 
   // Compute "next billing date" label
   const nextBillingLabel = planExpiresAt ? fmtDate(planExpiresAt) : "no próximo ciclo";
@@ -242,6 +243,10 @@ function PlanChangeModal({
       setError("Selecione um cartão para continuar.");
       return;
     }
+    if (needsPayment && payMethod === "card" && selectedCardId && cvv.length < 3) {
+      setError("Informe o CVV do cartão.");
+      return;
+    }
     setSubmitting(true);
     setError("");
     const res = await fetch("/api/agencies/plan-change", {
@@ -252,6 +257,7 @@ function PlanChangeModal({
         chargeImmediately: timing === "immediate",
         useWallet:         timing === "immediate" && payMethod === "wallet",
         savedCardId:       timing === "immediate" && payMethod === "card" ? selectedCardId : null,
+        cvv:               timing === "immediate" && payMethod === "card" ? cvv : undefined,
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -425,7 +431,7 @@ function PlanChangeModal({
                         <input
                           type="radio" name="card" value={c.id}
                           checked={selectedCardId === c.id}
-                          onChange={() => { setSelected(c.id); setShowCardForm(false); }}
+                          onChange={() => { setSelected(c.id); setShowCardForm(false); setCvv(""); }}
                           className="accent-zinc-900"
                         />
                         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -437,6 +443,23 @@ function PlanChangeModal({
                       </label>
                     );
                   })}
+                </div>
+              )}
+
+              {/* CVV — required when charging a saved card */}
+              {payMethod === "card" && selectedCardId && !showCardForm && (
+                <div className="space-y-1.5 pt-1">
+                  <label className="block text-[11px] font-medium text-zinc-500">CVV do cartão</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
+                    placeholder="000"
+                    value={cvv}
+                    onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    autoComplete="cc-csc"
+                    className="w-24 h-10 border border-zinc-200 rounded-xl px-3 bg-white text-[14px] text-zinc-900 text-center tabular-nums placeholder:text-zinc-300 focus:outline-none focus:border-zinc-400 transition-colors"
+                  />
                 </div>
               )}
 
@@ -486,7 +509,7 @@ function PlanChangeModal({
             </button>
             <button
               onClick={handleConfirm}
-              disabled={submitting || (needsPayment && payMethod === "card" && !selectedCardId) || (needsPayment && payMethod === "wallet" && !walletSufficient)}
+              disabled={submitting || (needsPayment && payMethod === "card" && (!selectedCardId || cvv.length < 3)) || (needsPayment && payMethod === "wallet" && !walletSufficient)}
               className={[
                 "flex-1 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-50",
                 isToFree || isDowngrade
