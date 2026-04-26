@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { REFERRAL_RATE } from "@/lib/plans";
 
@@ -109,6 +110,8 @@ const STATUS_BADGES: Record<string, string> = {
   paid:            "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30",
   pending:         "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30",
   pending_payment: "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30",
+  processing:      "bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30",
+  failed:          "bg-red-500/15 text-red-400 ring-1 ring-red-500/30",
   cancelled:       "bg-zinc-700/50 text-zinc-500 ring-1 ring-zinc-600/30",
   active:          "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30",
   inactive:        "bg-zinc-700/50 text-zinc-500 ring-1 ring-zinc-600/30",
@@ -643,9 +646,11 @@ function WithdrawalFeesSection({ withdrawals }: { withdrawals: FinancesWithdrawa
                   <Td right>{w.status === "rejected" ? <span className="text-zinc-600">—</span> : brl(w.netAmount)}</Td>
                   <Td>{fmt(w.createdAt)}</Td>
                   <Td>
-                    {w.status === "paid"     && <Badge value="Pago"      tone="bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30" />}
-                    {w.status === "rejected" && <Badge value="Cancelado" tone="bg-red-500/15 text-red-400 ring-1 ring-red-500/20" />}
-                    {w.status === "pending"  && <Badge value="Pendente"  tone="bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30" />}
+                    {w.status === "paid"       && <Badge value="Pago"         tone="bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30" />}
+                    {w.status === "rejected"   && <Badge value="Cancelado"    tone="bg-red-500/15 text-red-400 ring-1 ring-red-500/20" />}
+                    {w.status === "pending"    && <Badge value="Pendente"     tone="bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30" />}
+                    {w.status === "processing" && <Badge value="Em andamento" tone="bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30" />}
+                    {w.status === "failed"     && <Badge value="Falhou"       tone="bg-red-500/15 text-red-400 ring-1 ring-red-500/30" />}
                   </Td>
                 </tr>
               ))}
@@ -659,6 +664,7 @@ function WithdrawalFeesSection({ withdrawals }: { withdrawals: FinancesWithdrawa
 }
 
 function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[] }) {
+  const router = useRouter();
   const [rows, setRows] = useState<FinancesWithdrawal[]>(withdrawals);
   const [approving, setApproving] = useState<string | null>(null);
   const [approveNote, setApproveNote] = useState("");
@@ -666,6 +672,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
   const [canceling, setCanceling] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [sendingPix, setSendingPix] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedPending, setExpandedPending] = useState(false);
   const [expandedHistory, setExpandedHistory] = useState(false);
@@ -673,7 +680,9 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
 
   useEffect(() => { setRows(withdrawals); }, [withdrawals]);
 
-  const pending = rows.filter((w) => w.status === "pending");
+  const pendingOnly   = rows.filter((w) => w.status === "pending");
+  const processingOnly = rows.filter((w) => w.status === "processing");
+  const pending = rows.filter((w) => w.status === "pending" || w.status === "processing");
   const visiblePending = expandedPending ? pending : pending.slice(0, 5);
   const history = rows
     .filter((w) => w.status !== "pending")
@@ -683,6 +692,19 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
       return tb - ta;
     });
   const visibleHistory = expandedHistory ? history : history.slice(0, 5);
+
+  async function handleSendPix(id: string) {
+    setSendingPix(id);
+    setError(null);
+    const res = await fetch(`/api/admin/withdrawals/${id}/send-pix`, { method: "POST" });
+    const data = await res.json().catch(() => ({})) as { error?: string };
+    setSendingPix(null);
+    if (!res.ok) {
+      setError(data.error ?? "Erro ao enviar PIX.");
+      return;
+    }
+    router.refresh();
+  }
 
   async function handleApprove() {
     if (!approving) return;
@@ -742,7 +764,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
   return (
     <Section
       title="Saques de agências"
-      subtitle={`${pending.length} pendente(s) — pagamento manual necessário`}
+      subtitle={`${pendingOnly.length} pendente(s)${processingOnly.length > 0 ? ` · ${processingOnly.length} em processamento via Asaas` : ""}`}
     >
       {canceling && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -809,7 +831,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
       )}
 
       <div className="rounded-2xl border border-amber-900/50 bg-amber-950/40 px-4 py-3 text-[13px] text-amber-400">
-        Envie manualmente o valor líquido por PIX antes de marcar como pago. Esta ação não envia dinheiro automaticamente.
+        Use <strong>Enviar PIX</strong> para criar a transferência automaticamente via Asaas, ou envie manualmente e use <strong>Marcar como pago</strong>.
       </div>
 
       {error && !canceling && !approving && (
@@ -863,11 +885,25 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
                 <Td>{fmt(w.createdAt)}</Td>
                 <Td right>
                   <div className="flex items-center justify-end gap-2">
-                    <button onClick={() => { setApproving(w.id); setApproveNote(""); setError(null); }} disabled={canceling === w.id}
+                    {w.status === "pending" && (
+                      <button
+                        onClick={() => handleSendPix(w.id)}
+                        disabled={sendingPix === w.id || approving === w.id || canceling === w.id}
+                        className="rounded-lg bg-gradient-to-r from-cyan-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:from-cyan-500 hover:to-teal-500 hover:shadow-lg hover:shadow-cyan-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {sendingPix === w.id ? "Enviando…" : "Enviar PIX"}
+                      </button>
+                    )}
+                    {w.status === "processing" && (
+                      <span className="rounded-lg bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-400 ring-1 ring-cyan-500/20">
+                        PIX em andamento
+                      </span>
+                    )}
+                    <button onClick={() => { setApproving(w.id); setApproveNote(""); setError(null); }} disabled={canceling === w.id || sendingPix === w.id}
                       className="rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:from-emerald-500 hover:to-teal-500 hover:shadow-lg hover:shadow-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed">
                       Marcar como pago
                     </button>
-                    <button onClick={() => { setCanceling(w.id); setCancelReason(""); setError(null); }} disabled={approving === w.id}
+                    <button onClick={() => { setCanceling(w.id); setCancelReason(""); setError(null); }} disabled={approving === w.id || sendingPix === w.id}
                       className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-zinc-400 transition-all hover:border-red-800 hover:bg-red-950/40 hover:text-red-400 disabled:opacity-40 disabled:cursor-not-allowed">
                       Cancelar
                     </button>
@@ -907,10 +943,12 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
                   <Td>{fmt(w.createdAt)}</Td>
                   <Td>{fmt(w.processedAt)}</Td>
                   <Td>
-                    {w.status === "paid" ? (
-                      <Badge value="Pago" tone="bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30" />
-                    ) : (
-                      <Badge value="Cancelado" tone="bg-red-500/15 text-red-400 ring-1 ring-red-500/20" />
+                    {w.status === "paid"       && <Badge value="Pago"           tone="bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30" />}
+                    {w.status === "processing" && <Badge value="Em andamento"   tone="bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30" />}
+                    {w.status === "failed"     && <Badge value="Falhou"         tone="bg-red-500/15 text-red-400 ring-1 ring-red-500/30" />}
+                    {w.status === "rejected"   && <Badge value="Cancelado"      tone="bg-red-500/15 text-red-400 ring-1 ring-red-500/20" />}
+                    {!["paid","processing","failed","rejected"].includes(w.status) && (
+                      <Badge value={w.status} tone="bg-zinc-700/50 text-zinc-500 ring-1 ring-zinc-600/30" />
                     )}
                   </Td>
                   <Td><span className="text-zinc-500 text-xs">{w.adminNote ?? "-"}</span></Td>
