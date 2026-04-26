@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import DashboardShell from "@/components/layout/DashboardShell";
@@ -12,6 +13,8 @@ export default async function AgencyLayout({
 }) {
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
+
+  if (!user) redirect("/login");
 
   const supabase = createServerClient({ useServiceRole: true });
 
