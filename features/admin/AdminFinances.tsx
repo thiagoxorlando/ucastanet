@@ -254,7 +254,7 @@ function GroupBlock({
         </div>
         <p className={`relative mt-1 ml-[26px] text-sm ${v.sub}`}>{subtitle}</p>
       </div>
-      <div className="divide-y divide-zinc-800/60 bg-[#0A0F12]">
+      <div className="divide-y divide-zinc-800/60 bg-[#0B0F14]">
         {children}
       </div>
     </div>
@@ -271,7 +271,7 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="relative rounded-2xl border border-zinc-800 bg-zinc-900/80 p-5 overflow-hidden">
+    <div className="relative rounded-2xl border border-zinc-800 bg-zinc-900 p-5 overflow-hidden">
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">{label}</p>
       <p className="mt-2 text-3xl font-semibold tracking-tight text-white">{value}</p>
@@ -286,7 +286,7 @@ function Badge({ value, tone }: { value: string; tone: string }) {
 
 function TableCard({ children }: { children: ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/60">
+    <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900">
       <table className="w-full">{children}</table>
     </div>
   );
@@ -343,7 +343,7 @@ function ProfitSection({
               "rounded-xl px-3.5 py-2 text-[12px] font-medium transition-all",
               range === option.key
                 ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/20"
-                : "border border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-zinc-600 hover:text-zinc-300",
+                : "border border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600 hover:bg-zinc-800 hover:text-zinc-300",
             ].join(" ")}
           >
             {option.label}
@@ -394,7 +394,7 @@ function SubscriptionsSection({
       </div>
 
       <TableCard>
-        <thead className="border-b border-zinc-800 bg-zinc-900/80">
+        <thead className="border-b border-zinc-800 bg-zinc-800">
           <tr>
             <Th>Agencia</Th>
             <Th>Plano</Th>
@@ -404,7 +404,7 @@ function SubscriptionsSection({
             <Th right>Ultimo pagamento</Th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-800/60 [&>tr]:transition-colors [&>tr:hover]:bg-zinc-800/40">
+        <tbody className="divide-y divide-zinc-800/60 [&>tr]:transition-colors [&>tr:hover]:bg-zinc-800/60">
           {visibleSubscriptions.map((subscription) => (
             <tr key={subscription.userId}>
               <Td>{subscription.agencyName}</Td>
@@ -472,7 +472,7 @@ function ContractsSection({
       </div>
 
       <TableCard>
-        <thead className="border-b border-zinc-800 bg-zinc-900/80">
+        <thead className="border-b border-zinc-800 bg-zinc-800">
           <tr>
             <Th>Vaga</Th>
             <Th>Talento</Th>
@@ -486,7 +486,7 @@ function ContractsSection({
             <Th right>Acoes</Th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-800/60 [&>tr]:transition-colors [&>tr:hover]:bg-zinc-800/40">
+        <tbody className="divide-y divide-zinc-800/60 [&>tr]:transition-colors [&>tr:hover]:bg-zinc-800/60">
           {visibleRows.map((contract) => {
             const statusLabel = contract.withdrawn_at ? "sacado" : contract.status === "paid" ? "aguardando saque" : "escrow";
             const statusTone = contract.withdrawn_at
@@ -553,7 +553,7 @@ function WithdrawalHistory({ contracts }: { contracts: FinancesContract[] }) {
 
   return (
     <Section title="Historico de saques" subtitle={`${receipts.length} saque(s) concluidos`}>
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
         <div className="mb-4 flex items-center justify-between gap-3">
           <p className="text-sm font-medium text-zinc-400">Total pago aos talentos</p>
           <p className="text-lg font-semibold text-white">{brl(grandTotal)}</p>
@@ -563,7 +563,7 @@ function WithdrawalHistory({ contracts }: { contracts: FinancesContract[] }) {
             const total = items.reduce((sum, contract) => sum + contract.netAmount, 0);
             const reference = items[0];
             return (
-              <div key={`${reference.talentName}-${reference.withdrawn_at}`} className="rounded-xl border border-zinc-800/60 bg-zinc-800/30 p-4">
+              <div key={`${reference.talentName}-${reference.withdrawn_at}`} className="rounded-xl border border-zinc-800/60 bg-zinc-800/50 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="font-medium text-white">{reference.talentName}</p>
@@ -620,7 +620,7 @@ function WithdrawalFeesSection({ withdrawals }: { withdrawals: FinancesWithdrawa
         <>
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Histórico de saques</p>
           <TableCard>
-            <thead className="border-b border-zinc-800 bg-zinc-900/80">
+            <thead className="border-b border-zinc-800 bg-zinc-800">
               <tr>
                 <Th>Agência</Th>
                 <Th right>Valor sacado</Th>
@@ -630,7 +630,7 @@ function WithdrawalFeesSection({ withdrawals }: { withdrawals: FinancesWithdrawa
                 <Th>Status</Th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/60 [&>tr]:transition-colors [&>tr:hover]:bg-zinc-800/40">
+            <tbody className="divide-y divide-zinc-800/60 [&>tr]:transition-colors [&>tr:hover]:bg-zinc-800/60">
               {visibleFees.map((w) => (
                 <tr key={w.id}>
                   <Td>{w.agencyName}</Td>
@@ -685,7 +685,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
   const pending = rows.filter((w) => w.status === "pending" || w.status === "processing");
   const visiblePending = expandedPending ? pending : pending.slice(0, 5);
   const history = rows
-    .filter((w) => w.status !== "pending")
+    .filter((w) => w.status !== "pending" && w.status !== "processing")
     .sort((a, b) => {
       const ta = new Date(a.processedAt ?? a.createdAt).getTime();
       const tb = new Date(b.processedAt ?? b.createdAt).getTime();
@@ -776,7 +776,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
               onChange={(e) => setCancelReason(e.target.value)}
               placeholder="Motivo do cancelamento…"
               rows={3}
-              className="w-full border border-zinc-700 rounded-xl px-3 py-2.5 text-[13px] text-white bg-zinc-800/60 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none"
+              className="w-full border border-zinc-700 rounded-xl px-3 py-2.5 text-[13px] text-white bg-zinc-800 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none"
             />
             {error && <p className="text-[12px] text-red-400">{error}</p>}
             <div className="flex gap-2">
@@ -808,7 +808,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
               onChange={(e) => setApproveNote(e.target.value)}
               placeholder="Observação opcional (ex: PIX enviado, comprovante nº…)"
               rows={3}
-              className="w-full border border-zinc-700 rounded-xl px-3 py-2.5 text-[13px] text-white bg-zinc-800/60 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none"
+              className="w-full border border-zinc-700 rounded-xl px-3 py-2.5 text-[13px] text-white bg-zinc-800 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500 resize-none"
             />
             {error && <p className="text-[12px] text-red-400">{error}</p>}
             <div className="flex gap-2">
@@ -839,12 +839,12 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
       )}
 
       {pending.length === 0 ? (
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 px-4 py-5 text-[13px] text-zinc-500">
+        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-5 text-[13px] text-zinc-500">
           Nenhum saque pendente.
         </div>
       ) : (
         <TableCard>
-          <thead className="border-b border-zinc-800 bg-zinc-900/80">
+          <thead className="border-b border-zinc-800 bg-zinc-800">
             <tr>
               <Th>Agência</Th>
               <Th right>Total debitado</Th>
@@ -856,7 +856,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
               <Th right>Ações</Th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-zinc-800/60 [&>tr]:transition-colors [&>tr:hover]:bg-zinc-800/40">
+          <tbody className="divide-y divide-zinc-800/60 [&>tr]:transition-colors [&>tr:hover]:bg-zinc-800/60">
             {visiblePending.map((w) => (
               <tr key={w.id}>
                 <Td>{w.agencyName}</Td>
@@ -921,7 +921,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
         <>
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500 mt-2">Histórico</p>
           <TableCard>
-            <thead className="border-b border-zinc-800 bg-zinc-900/80">
+            <thead className="border-b border-zinc-800 bg-zinc-800">
               <tr>
                 <Th>Agência</Th>
                 <Th right>Total</Th>
@@ -933,7 +933,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
                 <Th>Motivo</Th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-800/60 [&>tr]:transition-colors [&>tr:hover]:bg-zinc-800/40">
+            <tbody className="divide-y divide-zinc-800/60 [&>tr]:transition-colors [&>tr:hover]:bg-zinc-800/60">
               {visibleHistory.map((w) => (
                 <tr key={w.id}>
                   <Td>{w.agencyName}</Td>
@@ -983,7 +983,7 @@ function BookingsSection({
       </div>
 
       <TableCard>
-        <thead className="border-b border-zinc-800 bg-zinc-900/80">
+        <thead className="border-b border-zinc-800 bg-zinc-800">
           <tr>
             <Th>Vaga</Th>
             <Th>Talento</Th>
@@ -995,7 +995,7 @@ function BookingsSection({
             <Th right>Liquido plataforma</Th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-800/60 [&>tr]:transition-colors [&>tr:hover]:bg-zinc-800/40">
+        <tbody className="divide-y divide-zinc-800/60 [&>tr]:transition-colors [&>tr:hover]:bg-zinc-800/60">
           {visibleBookings.map((booking) => (
             <tr key={booking.id}>
               <Td>
@@ -1054,7 +1054,7 @@ export default function AdminFinances({
   const safe = platformBalance.status === "ok" && platformBalance.balance >= summary.minimumRequired;
 
   return (
-    <div className="bg-[#070D0F] -mx-6 -my-10 lg:-mx-10 px-6 py-10 lg:px-10 min-h-full">
+    <div className="bg-[#041C1E] -mx-6 -my-10 lg:-mx-10 px-6 py-10 lg:px-10 min-h-full">
     <div className="mx-auto max-w-7xl space-y-8">
       <header className="space-y-3">
         <div>
@@ -1065,7 +1065,7 @@ export default function AdminFinances({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-2xl border border-zinc-800 bg-zinc-900/60 px-4 py-3 text-sm text-zinc-500">
+        <div className="flex flex-wrap gap-x-4 gap-y-2 rounded-2xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-500">
           <span>
             Comissao por plano:{" "}
             <strong className="text-zinc-200">
@@ -1099,7 +1099,7 @@ export default function AdminFinances({
             <StatCard label="Passivo com talentos" value={brl(summary.contractsAwaitingValue)} sub="Liquido pago ainda nao sacado" />
           </div>
 
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
+          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
@@ -1114,7 +1114,7 @@ export default function AdminFinances({
           </div>
 
           {platformBalance.status === "loading" ? (
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 text-sm text-zinc-500">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 text-sm text-zinc-500">
               Consultando saldo no Mercado Pago...
             </div>
           ) : null}
