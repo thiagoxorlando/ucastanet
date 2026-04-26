@@ -21,6 +21,12 @@ export async function POST(
   const auth = await requireAdmin();
   if (auth instanceof NextResponse) return auth;
 
+  console.log("[send-pix env]", {
+    hasAsaasKey: Boolean(process.env.ASAAS_API_KEY),
+    asaasUrl: process.env.ASAAS_API_URL,
+    nodeEnv: process.env.NODE_ENV,
+  });
+
   const { id } = await params;
   if (!id) return NextResponse.json({ error: "id obrigatório." }, { status: 400 });
 
@@ -109,16 +115,18 @@ export async function POST(
       }),
     });
 
+    const data = await res.json().catch(() => null);
+
     if (!res.ok) {
-      const body = await res.text().catch(() => "(unreadable)");
-      console.error("[send-pix] Asaas API error:", { status: res.status, body, txId: id });
+      console.error("[ASAAS ERROR]", { status: res.status, data, txId: id });
       return NextResponse.json(
         { error: "Erro ao criar transferência PIX no Asaas.", asaas_status: res.status },
         { status: 502 },
       );
     }
 
-    asaasResponse = await res.json();
+    console.log("[ASAAS SUCCESS]", data);
+    asaasResponse = data;
   } catch (err) {
     console.error("[send-pix] Asaas fetch failed:", err, { txId: id });
     return NextResponse.json({ error: "Falha de conexão com Asaas." }, { status: 502 });
