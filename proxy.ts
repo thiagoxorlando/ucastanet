@@ -1,17 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createMiddlewareClient } from "@/lib/supabase";
+import { createServerClient } from "@supabase/ssr";
 
 export async function proxy(req: NextRequest) {
-  const res = NextResponse.next();
-  const supabase = createMiddlewareClient(req, res);
-  // Refreshes the session and writes updated auth cookies to the response,
-  // so server components always receive a valid non-expired token.
+  // supabaseResponse must be reassignable inside setAll so updated cookies
+  // are forwarded to both the browser and to server components.
+  let supabaseResponse = NextResponse.next({ request: req });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          // Write to request so server components see the refreshed token.
+          cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
+          // Rebuild the response with the updated request, then set browser cookies.
+          supabaseResponse = NextResponse.next({ request: req });
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          );
+        },
+      },
+    },
+  );
+
+  // Refreshes the access token if expired. Must be called before any
+  // server component reads the session.
   await supabase.auth.getUser();
-  return res;
+
+  return supabaseResponse;
 }
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
