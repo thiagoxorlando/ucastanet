@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import { notifyAdmins } from "@/lib/notify";
-import { WITHDRAWAL_FEE_RATE } from "@/lib/withdrawal-fee";
+import { WITHDRAWAL_FEE_RATE, WITHDRAWAL_MIN_AMOUNT } from "@/lib/withdrawal-fee";
 
 export async function POST(req: NextRequest) {
   const session = await createSessionClient();
@@ -23,6 +23,12 @@ export async function POST(req: NextRequest) {
   // Reject more than 2 decimal places (e.g. 1.999)
   if (parseFloat(requestedAmount.toFixed(2)) !== requestedAmount) {
     return NextResponse.json({ error: "Valor de saque inválido." }, { status: 400 });
+  }
+
+  // Minimum withdrawal amount
+  if (requestedAmount < WITHDRAWAL_MIN_AMOUNT) {
+    const minFmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(WITHDRAWAL_MIN_AMOUNT);
+    return NextResponse.json({ error: `Valor mínimo para saque é ${minFmt}.` }, { status: 400 });
   }
 
   // Sanity upper cap — prevents absurdly large values reaching the DB
@@ -59,6 +65,10 @@ export async function POST(req: NextRequest) {
     }
     if (result?.error === "invalid_amount") {
       return NextResponse.json({ error: "Valor de saque inválido." }, { status: 400 });
+    }
+    if (result?.error === "below_minimum") {
+      const minFmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(WITHDRAWAL_MIN_AMOUNT);
+      return NextResponse.json({ error: `Valor mínimo para saque é ${minFmt}.` }, { status: 400 });
     }
     if (result?.error === "insufficient_balance") {
       return NextResponse.json({ error: "Saldo insuficiente para saque." }, { status: 400 });

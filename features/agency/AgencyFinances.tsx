@@ -113,6 +113,8 @@ export default function AgencyFinances({
   mpPublicKey,
   agencyPix,
   withdrawalFeeRate,
+  withdrawalMinFee,
+  withdrawalMinAmount,
 }: {
   summary: AgencyFinanceSummary;
   transactions: AgencyTransaction[];
@@ -120,6 +122,8 @@ export default function AgencyFinances({
   mpPublicKey: string;
   agencyPix?: { pix_key_type: string | null; pix_key_value: string | null; pix_holder_name: string | null } | null;
   withdrawalFeeRate: number;
+  withdrawalMinFee: number;
+  withdrawalMinAmount: number;
 }) {
   const router = useRouter();
 
@@ -236,11 +240,12 @@ export default function AgencyFinances({
     setTimeout(() => setPixSaved(false), 3000);
   }
 
-  const hasPix           = !!(savedPix?.pix_key_type && savedPix?.pix_key_value?.trim());
+  const hasPix            = !!(savedPix?.pix_key_type && savedPix?.pix_key_value?.trim());
   const withdrawAmountNum = Math.round(Number(withdrawAmount) * 100) / 100;
-  const withdrawFeeNum    = Math.round(withdrawAmountNum * withdrawalFeeRate * 100) / 100;
+  const withdrawFeeNum    = Math.max(Math.round(withdrawAmountNum * withdrawalFeeRate * 100) / 100, withdrawAmountNum > 0 ? withdrawalMinFee : 0);
   const withdrawNetNum    = Math.round((withdrawAmountNum - withdrawFeeNum) * 100) / 100;
-  const canWithdraw       = hasPix && withdrawAmountNum > 0 && withdrawAmountNum <= walletBalance;
+  const isMinFeeApplied   = withdrawAmountNum > 0 && withdrawFeeNum === withdrawalMinFee;
+  const canWithdraw       = hasPix && withdrawAmountNum >= withdrawalMinAmount && withdrawAmountNum <= walletBalance;
 
   async function handleDeposit(e: React.FormEvent) {
     e.preventDefault();
@@ -337,7 +342,9 @@ export default function AgencyFinances({
                 <span className="font-bold">{brl(withdrawAmountNum)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-zinc-400">Taxa de processamento ({(withdrawalFeeRate * 100).toFixed(0)}%)</span>
+                <span className="text-zinc-400">
+                  Taxa de processamento{isMinFeeApplied ? ` (mín. ${brl(withdrawalMinFee)})` : ` (${(withdrawalFeeRate * 100).toFixed(0)}%)`}
+                </span>
                 <span className="font-bold text-rose-400">−{brl(withdrawFeeNum)}</span>
               </div>
               <div className="flex justify-between border-t border-white/10 pt-2">
@@ -431,6 +438,12 @@ export default function AgencyFinances({
                 </div>
                 {withdrawAmountNum > walletBalance && (
                   <p className="text-[11px] text-rose-400">Valor superior ao saldo disponível.</p>
+                )}
+                {withdrawAmountNum > 0 && withdrawAmountNum < withdrawalMinAmount && (
+                  <p className="text-[11px] text-amber-400">Valor mínimo para saque: {brl(withdrawalMinAmount)}.</p>
+                )}
+                {isMinFeeApplied && withdrawAmountNum >= withdrawalMinAmount && withdrawAmountNum <= walletBalance && (
+                  <p className="text-[11px] text-zinc-400">Taxa mínima de {brl(withdrawalMinFee)} aplicada.</p>
                 )}
                 {withdrawError && (
                   <p className="text-[11px] text-rose-400">{withdrawError}</p>

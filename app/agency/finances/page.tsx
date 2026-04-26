@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import AgencyFinances from "@/features/agency/AgencyFinances";
 import type { AgencyTransaction, AgencyFinanceSummary } from "@/features/agency/AgencyFinances";
-import { WITHDRAWAL_FEE_RATE } from "@/lib/withdrawal-fee";
+import { WITHDRAWAL_FEE_RATE, WITHDRAWAL_MIN_FEE, WITHDRAWAL_MIN_AMOUNT } from "@/lib/withdrawal-fee";
 
 export const metadata: Metadata = { title: "Financeiro — BrisaHub" };
 
@@ -160,6 +160,8 @@ export default async function AgencyFinancesPage() {
       mpPublicKey={process.env.NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY ?? ""}
       agencyPix={agencyPix}
       withdrawalFeeRate={WITHDRAWAL_FEE_RATE}
+      withdrawalMinFee={WITHDRAWAL_MIN_FEE}
+      withdrawalMinAmount={WITHDRAWAL_MIN_AMOUNT}
     />
   );
 }
