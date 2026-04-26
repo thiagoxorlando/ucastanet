@@ -105,6 +105,7 @@ export async function POST(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "User-Agent": "BrisaHub/1.0",
         "access_token": asaasApiKey,
       },
       body: JSON.stringify({
