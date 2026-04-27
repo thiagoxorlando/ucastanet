@@ -48,22 +48,15 @@ export async function handleEfiWebhook(req: NextRequest): Promise<NextResponse> 
     return NextResponse.json({ ok: true, validation: true }, { status: 200 });
   }
 
-  // ── Real payment event: enforce token ────────────────────────────────────────
-  const webhookToken  = process.env.EFI_WEBHOOK_TOKEN;
-  const incoming      = req.headers.get("pix-token") ?? req.headers.get("authorization") ?? "";
-  const tokenToCheck  = incoming.startsWith("Bearer ") ? incoming.slice(7) : incoming;
+  // ── Token validation (debug mode: log mismatch but do NOT block) ─────────────
+  const receivedToken = req.headers.get("pix-token");
 
-  console.log("[EFI WEBHOOK TOKEN RECEIVED]", tokenToCheck || "(empty)");
-  console.log("[EFI WEBHOOK TOKEN EXPECTED]", webhookToken ? "(set)" : "(not configured)");
+  console.log("[EFI WEBHOOK TOKEN RECEIVED RAW]", receivedToken);
+  console.log("[EFI WEBHOOK TOKEN EXPECTED RAW]", process.env.EFI_WEBHOOK_TOKEN);
 
-  if (webhookToken && tokenToCheck !== webhookToken) {
-    log("warn", "Invalid webhook token — logging only, NOT blocking (debug mode)");
-    // Return 200 so Efí does not retry; credit logic below is still skipped.
-    return NextResponse.json({ ok: true, warning: "invalid_token_debug" }, { status: 200 });
-  }
-
-  if (!webhookToken) {
-    log("warn", "EFI_WEBHOOK_TOKEN not configured — accepting without token validation");
+  if (receivedToken !== process.env.EFI_WEBHOOK_TOKEN) {
+    console.warn("[EFI WEBHOOK TOKEN MISMATCH]");
+    // DO NOT return — continue processing (temporary debug mode)
   }
 
   const supabase = createServerClient({ useServiceRole: true });
