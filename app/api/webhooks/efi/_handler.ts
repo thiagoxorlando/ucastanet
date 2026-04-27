@@ -25,14 +25,16 @@ interface EfiWebhookBody {
   pix?:    EfiPixEntry[];
 }
 
-export async function handleEfiWebhook(req: NextRequest): Promise<NextResponse> {
+const OK = () => new Response("OK", { status: 200 });
+
+export async function handleEfiWebhook(req: NextRequest): Promise<Response> {
   // ── Parse body ────────────────────────────────────────────────────────────────
   let body: EfiWebhookBody;
   try {
     body = await req.json();
   } catch {
     log("info", "Empty or malformed body — treating as validation probe");
-    return NextResponse.json({ ok: true, validation: true }, { status: 200 });
+    return OK();
   }
 
   console.log("[EFI WEBHOOK RECEIVED]", {
@@ -45,18 +47,17 @@ export async function handleEfiWebhook(req: NextRequest): Promise<NextResponse> 
 
   if (pixEntries.length === 0) {
     log("info", "No pix entries in payload — treating as validation probe");
-    return NextResponse.json({ ok: true, validation: true }, { status: 200 });
+    return OK();
   }
 
-  // ── Token validation (debug mode: log mismatch but do NOT block) ─────────────
+  // ── Token check — NEVER blocks, always continues ─────────────────────────────
   const receivedToken = req.headers.get("pix-token");
 
   console.log("[EFI WEBHOOK TOKEN RECEIVED RAW]", receivedToken);
   console.log("[EFI WEBHOOK TOKEN EXPECTED RAW]", process.env.EFI_WEBHOOK_TOKEN);
 
   if (receivedToken !== process.env.EFI_WEBHOOK_TOKEN) {
-    console.warn("[EFI WEBHOOK TOKEN MISMATCH]");
-    // DO NOT return — continue processing (temporary debug mode)
+    console.warn("[EFI WEBHOOK TOKEN MISMATCH - NOT BLOCKING]");
   }
 
   console.log("[EFI WEBHOOK CONTINUING AFTER TOKEN CHECK]");
@@ -149,5 +150,5 @@ export async function handleEfiWebhook(req: NextRequest): Promise<NextResponse> 
     }
   }
 
-  return NextResponse.json({ ok: true });
+  return OK();
 }
