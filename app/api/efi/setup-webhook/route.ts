@@ -38,7 +38,7 @@ export async function GET() {
   }
 
   try {
-    const res = await efi.put(`/v2/webhook/${encodeURIComponent(pixKey)}`, {
+    const res = await efi.put(`/v2/webhook/${pixKey}`, {
       webhookUrl,
     });
 
