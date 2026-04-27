@@ -59,13 +59,16 @@ export async function handleEfiWebhook(req: NextRequest): Promise<NextResponse> 
     // DO NOT return — continue processing (temporary debug mode)
   }
 
+  console.log("[EFI WEBHOOK CONTINUING AFTER TOKEN CHECK]");
+
   const supabase = createServerClient({ useServiceRole: true });
 
   for (const entry of pixEntries) {
     const { txid, valor, endToEndId } = entry;
     const eventId = endToEndId ?? txid;
 
-    console.log("[EFI WEBHOOK TXID]", txid, { eventId, valor });
+    console.log("[EFI WEBHOOK TXID]", txid);
+    console.log("[EFI WEBHOOK LOOKUP]", { column: "payment_id", txid });
 
     // ── Deduplication gate ──────────────────────────────────────────────────────
     const { error: weErr } = await supabase
@@ -107,13 +110,13 @@ export async function handleEfiWebhook(req: NextRequest): Promise<NextResponse> 
     const creditAmount = Number(tx.amount);
 
     // ── Credit wallet (atomic + idempotent via RPC) ─────────────────────────────
-    const { data: credited, error: rpcErr } = await supabase.rpc("credit_wallet_deposit", {
+    const { data: creditResult, error: rpcErr } = await supabase.rpc("credit_wallet_deposit", {
       p_user_id:    tx.user_id,
       p_payment_id: txid,
       p_amount:     creditAmount,
     });
 
-    console.log("[EFI WEBHOOK CREDIT RESULT]", { txid, credited, rpcErr: rpcErr?.message ?? null });
+    console.log("[EFI WEBHOOK CREDIT RESULT]", { txid, creditResult, rpcErr: rpcErr?.message ?? null });
 
     if (rpcErr) {
       log("error", "credit_wallet_deposit failed", {
@@ -124,7 +127,7 @@ export async function handleEfiWebhook(req: NextRequest): Promise<NextResponse> 
       continue;
     }
 
-    if (credited) {
+    if (creditResult) {
       log("info", "Wallet deposit credited via Efí PIX", {
         userId: tx.user_id,
         amount: creditAmount,
