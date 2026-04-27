@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
-import { getEfiClient } from "@/lib/efiClient";
+import { getEfiPixClient } from "@/lib/efiClient";
 
 // POST /api/payments/wallet-deposit
 // Body: { amount: number }
@@ -92,10 +92,9 @@ export async function POST(req: NextRequest) {
   console.log("[EFI PIX CREATE]", JSON.stringify({ txid, value: numAmount.toFixed(2) }, null, 2));
   console.log("[EFI PIX CREATE URL]", cobPath);
 
-  // Build authenticated mTLS client — PIX charge creation requires api.efipay.com.br
-  let efi: Awaited<ReturnType<typeof getEfiClient>>;
+  let efi: Awaited<ReturnType<typeof getEfiPixClient>>;
   try {
-    efi = await getEfiClient("https://api.efipay.com.br");
+    efi = await getEfiPixClient();
   } catch (err) {
     await supabase.from("wallet_transactions").delete().eq("id", txRecord.id);
     console.error("[wallet-deposit] Efí client init failed:", String(err));

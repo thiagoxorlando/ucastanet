@@ -106,19 +106,9 @@ async function getToken(agent: https.Agent): Promise<string> {
   return _tokenCache.value;
 }
 
-// ── Public factory ────────────────────────────────────────────────────────────
+// ── Public factories ──────────────────────────────────────────────────────────
 
-/**
- * Returns an axios instance pre-configured with:
- *   - mTLS HTTPS agent (PFX certificate)
- *   - Bearer access_token (auto-refreshed before expiry)
- *   - baseURL defaults to EFI_BASE_URL; pass baseUrlOverride to target a different host
- */
-export async function getEfiClient(baseUrlOverride?: string): Promise<AxiosInstance> {
-  const agent   = getHttpsAgent();
-  const token   = await getToken(agent);
-  const baseUrl = baseUrlOverride ?? process.env.EFI_BASE_URL ?? "https://api.efipay.com.br";
-
+function makeClient(agent: https.Agent, token: string, baseUrl: string): AxiosInstance {
   return axios.create({
     baseURL:    baseUrl,
     httpsAgent: agent,
@@ -127,4 +117,28 @@ export async function getEfiClient(baseUrlOverride?: string): Promise<AxiosInsta
       "Content-Type": "application/json",
     },
   });
+}
+
+/**
+ * Generic Efí client — EFI_BASE_URL (https://api.efipay.com.br).
+ * Used for OAuth-related calls and webhook registration.
+ * Pass baseUrlOverride to target a specific host.
+ */
+export async function getEfiClient(baseUrlOverride?: string): Promise<AxiosInstance> {
+  const agent   = getHttpsAgent();
+  const token   = await getToken(agent);
+  const baseUrl = baseUrlOverride ?? process.env.EFI_BASE_URL ?? "https://api.efipay.com.br";
+  return makeClient(agent, token, baseUrl);
+}
+
+/**
+ * Efí PIX client — EFI_PIX_BASE_URL (https://pix.api.efipay.com.br).
+ * Used for /v2/cob, /v2/loc, /v2/gn/pix/enviar.
+ */
+export async function getEfiPixClient(): Promise<AxiosInstance> {
+  const agent   = getHttpsAgent();
+  const token   = await getToken(agent);
+  const baseUrl = process.env.EFI_PIX_BASE_URL ?? process.env.EFI_BASE_URL ?? "https://pix.api.efipay.com.br";
+  console.log("[EFI PIX CLIENT INIT] baseUrl:", baseUrl);
+  return makeClient(agent, token, baseUrl);
 }

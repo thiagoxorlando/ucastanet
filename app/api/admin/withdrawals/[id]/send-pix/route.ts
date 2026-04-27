@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { createServerClient } from "@/lib/supabase";
-import { getEfiClient } from "@/lib/efiClient";
+import { getEfiPixClient } from "@/lib/efiClient";
 
 // POST /api/admin/withdrawals/[id]/send-pix
 // Creates a PIX transfer via Efí for a pending withdrawal.
@@ -93,9 +93,9 @@ export async function POST(
 
   console.log("[PIX PAYLOAD]", JSON.stringify(pixPayload, null, 2));
 
-  let efi: Awaited<ReturnType<typeof getEfiClient>>;
+  let efi: Awaited<ReturnType<typeof getEfiPixClient>>;
   try {
-    efi = await getEfiClient();
+    efi = await getEfiPixClient();
   } catch (err) {
     console.error("[send-pix] Efí client init failed:", String(err));
     return NextResponse.json({ error: "Falha ao conectar com Efí." }, { status: 502 });
