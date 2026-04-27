@@ -82,28 +82,23 @@ export async function POST(req: NextRequest) {
   const dueDateStr = dueDate.toISOString().split("T")[0];
 
   // Create PIX payment in Asaas
-  console.log("[ASAAS PAYMENT PAYLOAD]", JSON.stringify({
-    value:       numAmount,
-    billingType: "PIX",
-    customer:    asaasCustomerId,
-  }, null, 2));
+  const payload = {
+    customer:             asaasCustomerId,
+    billingType:          "PIX",
+    value:                numAmount,
+    dueDate:              dueDateStr,
+    description:          "Depósito de saldo",
+    externalReference:    txRecord.id,
+    notificationDisabled: true,
+  };
+
+  console.log("[ASAAS PAYMENT PAYLOAD FINAL]", payload);
 
   let payment: AsaasPayment;
   try {
     payment = await asaas<AsaasPayment>("/payments", {
       method: "POST",
-      body:   JSON.stringify({
-        customer:             asaasCustomerId,
-        billingType:          "PIX",
-        value:                numAmount,
-        dueDate:              dueDateStr,
-        description:          `BrisaHub — Depósito de Saldo (${agencyName})`,
-        externalReference:    txRecord.id,
-        notificationDisabled: true,
-        email:                null,
-        sms:                  false,
-        postalService:        false,
-      }),
+      body:   JSON.stringify(payload),
     });
   } catch (err) {
     await supabase.from("wallet_transactions").delete().eq("id", txRecord.id);
