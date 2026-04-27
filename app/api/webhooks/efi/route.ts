@@ -31,40 +31,40 @@ interface EfiWebhookBody {
 }
 
 export async function POST(req: NextRequest) {
-  // ── Auth ──────────────────────────────────────────────────────────────────────
+  // ── Parse body first — needed to distinguish validation from real events ──────
+  let body: EfiWebhookBody;
+  try {
+    body = await req.json();
+  } catch {
+    // Efí validation probe may send an empty body
+    log("info", "Empty or malformed body — treating as validation probe");
+    return NextResponse.json({ ok: true, validation: true }, { status: 200 });
+  }
+
+  console.log("[EFI WEBHOOK RECEIVED]", JSON.stringify(body, null, 2));
+
+  // ── No pix entries → validation/test probe from Efí ─────────────────────────
+  const pixEntries = body.pix ?? [];
+
+  if (pixEntries.length === 0) {
+    log("info", "No pix entries in payload — treating as validation probe");
+    return NextResponse.json({ ok: true, validation: true }, { status: 200 });
+  }
+
+  // ── Real payment event: enforce token ────────────────────────────────────────
   const webhookToken = process.env.EFI_WEBHOOK_TOKEN;
   if (webhookToken) {
-    // Efí sends the configured token in the pix-token header
     const incoming = req.headers.get("pix-token") ?? req.headers.get("authorization") ?? "";
     const tokenToCheck = incoming.startsWith("Bearer ") ? incoming.slice(7) : incoming;
     if (tokenToCheck !== webhookToken) {
-      log("warn", "Invalid webhook token");
+      log("warn", "Invalid webhook token on pix event");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   } else {
     log("warn", "EFI_WEBHOOK_TOKEN not configured — accepting without token validation");
   }
 
-  // ── Parse body ────────────────────────────────────────────────────────────────
-  let body: EfiWebhookBody;
-  try {
-    body = await req.json();
-  } catch {
-    log("warn", "Malformed JSON body");
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  console.log("[EFI WEBHOOK RECEIVED]", JSON.stringify(body, null, 2));
-
   const supabase = createServerClient({ useServiceRole: true });
-
-  // ── pix.recebido — process each PIX entry ────────────────────────────────────
-  const pixEntries = body.pix ?? [];
-
-  if (pixEntries.length === 0) {
-    log("info", "No pix entries in payload — acking");
-    return NextResponse.json({ ok: true });
-  }
 
   for (const entry of pixEntries) {
     const { txid, valor, endToEndId } = entry;
