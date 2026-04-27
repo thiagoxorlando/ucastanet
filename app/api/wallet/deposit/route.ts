@@ -73,6 +73,12 @@ export async function POST(req: NextRequest) {
   dueDate.setDate(dueDate.getDate() + 1);
   const dueDateStr = dueDate.toISOString().split("T")[0];
 
+  console.log("[ASAAS PAYMENT PAYLOAD]", {
+    value:       amount,
+    billingType: "PIX",
+    customer:    asaasCustomerId,
+  });
+
   let payment: AsaasPayment;
   try {
     payment = await asaas<AsaasPayment>("/payments", {
@@ -90,8 +96,10 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     await supabase.from("wallet_transactions").delete().eq("id", txRecord.id);
-    const errBody = err instanceof AsaasApiError ? err.body : String(err);
-    console.error("[wallet/deposit] Asaas create payment failed:", JSON.stringify(errBody, null, 2));
+    console.error("[ASAAS PAYMENT ERROR FULL]", {
+      status: err instanceof AsaasApiError ? err.status : null,
+      body:   err instanceof AsaasApiError ? err.body   : String(err),
+    });
     return NextResponse.json({ error: "Failed to create PIX payment" }, { status: 502 });
   }
 
