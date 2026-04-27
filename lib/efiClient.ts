@@ -125,9 +125,14 @@ function makeClient(agent: https.Agent, token: string, baseUrl: string): AxiosIn
  * Pass baseUrlOverride to target a specific host.
  */
 export async function getEfiClient(baseUrlOverride?: string): Promise<AxiosInstance> {
-  const agent   = getHttpsAgent();
-  const token   = await getToken(agent);
-  const baseUrl = baseUrlOverride ?? process.env.EFI_BASE_URL ?? "https://api.efipay.com.br";
+  const agent      = getHttpsAgent();
+  const token      = await getToken(agent);
+  const baseUrl    = (baseUrlOverride || process.env.EFI_BASE_URL || "https://api.efipay.com.br").trim();
+
+  if (!baseUrl.startsWith("http")) {
+    throw new Error(`[efiClient] Invalid EFI_BASE_URL: ${baseUrl || "missing"}`);
+  }
+
   return makeClient(agent, token, baseUrl);
 }
 
@@ -136,9 +141,14 @@ export async function getEfiClient(baseUrlOverride?: string): Promise<AxiosInsta
  * Used for /v2/cob, /v2/loc, /v2/gn/pix/enviar.
  */
 export async function getEfiPixClient(): Promise<AxiosInstance> {
-  const agent   = getHttpsAgent();
-  const token   = await getToken(agent);
-  const baseUrl = process.env.EFI_PIX_BASE_URL ?? process.env.EFI_BASE_URL ?? "https://pix.api.efipay.com.br";
-  console.log("[EFI PIX CLIENT INIT] baseUrl:", baseUrl);
-  return makeClient(agent, token, baseUrl);
+  const agent      = getHttpsAgent();
+  const token      = await getToken(agent);
+  const pixBaseUrl = (process.env.EFI_PIX_BASE_URL || process.env.EFI_BASE_URL || "").trim();
+
+  if (!pixBaseUrl.startsWith("http")) {
+    throw new Error(`[efiClient] Invalid EFI_PIX_BASE_URL/EFI_BASE_URL: ${pixBaseUrl || "missing"}`);
+  }
+
+  console.log("[EFI PIX CLIENT INIT]", { baseUrl: pixBaseUrl });
+  return makeClient(agent, token, pixBaseUrl);
 }
