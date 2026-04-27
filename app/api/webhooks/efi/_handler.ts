@@ -49,15 +49,20 @@ export async function handleEfiWebhook(req: NextRequest): Promise<NextResponse> 
   }
 
   // ── Real payment event: enforce token ────────────────────────────────────────
-  const webhookToken = process.env.EFI_WEBHOOK_TOKEN;
-  if (webhookToken) {
-    const incoming      = req.headers.get("pix-token") ?? req.headers.get("authorization") ?? "";
-    const tokenToCheck  = incoming.startsWith("Bearer ") ? incoming.slice(7) : incoming;
-    if (tokenToCheck !== webhookToken) {
-      log("warn", "Invalid webhook token on pix event");
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-  } else {
+  const webhookToken  = process.env.EFI_WEBHOOK_TOKEN;
+  const incoming      = req.headers.get("pix-token") ?? req.headers.get("authorization") ?? "";
+  const tokenToCheck  = incoming.startsWith("Bearer ") ? incoming.slice(7) : incoming;
+
+  console.log("[EFI WEBHOOK TOKEN RECEIVED]", tokenToCheck || "(empty)");
+  console.log("[EFI WEBHOOK TOKEN EXPECTED]", webhookToken ? "(set)" : "(not configured)");
+
+  if (webhookToken && tokenToCheck !== webhookToken) {
+    log("warn", "Invalid webhook token — logging only, NOT blocking (debug mode)");
+    // Return 200 so Efí does not retry; credit logic below is still skipped.
+    return NextResponse.json({ ok: true, warning: "invalid_token_debug" }, { status: 200 });
+  }
+
+  if (!webhookToken) {
     log("warn", "EFI_WEBHOOK_TOKEN not configured — accepting without token validation");
   }
 
