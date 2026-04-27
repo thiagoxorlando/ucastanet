@@ -6,7 +6,7 @@ import { getEfiClient } from "@/lib/efiClient";
 // Registers the platform webhook URL with Efí for the configured PIX key.
 // Must be called once (or after any URL change) from an admin session.
 
-export async function POST() {
+export async function GET() {
   const auth = await requireAdmin();
   if (auth instanceof NextResponse) return auth;
 
