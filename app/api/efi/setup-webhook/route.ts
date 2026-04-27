@@ -1,17 +1,18 @@
+import path from "path";
 import { NextResponse } from "next/server";
+import EfiPay from "sdk-node-apis-efi";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { getEfiClient } from "@/lib/efiClient";
 
-// POST /api/efi/setup-webhook
-// Registers the platform webhook URL with Efí for the configured PIX key.
+// GET /api/efi/setup-webhook
+// Registers the platform webhook URL with Efí using the official SDK.
 // Must be called once (or after any URL change) from an admin session.
 
 export async function GET() {
   const auth = await requireAdmin();
   if (auth instanceof NextResponse) return auth;
 
-  const pixKey    = process.env.EFI_PIX_KEY;
-  const appUrl    = process.env.NEXT_PUBLIC_APP_URL;
+  const pixKey = process.env.EFI_PIX_KEY;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
   if (!pixKey) {
     return NextResponse.json({ error: "EFI_PIX_KEY not configured." }, { status: 500 });
@@ -20,65 +21,57 @@ export async function GET() {
     return NextResponse.json({ error: "NEXT_PUBLIC_APP_URL not configured." }, { status: 500 });
   }
 
-  const webhookUrl = `${appUrl}/api/webhooks/efi`;
+  // Efí appends /pix to webhook calls unless ?ignorar= is present in the URL.
+  const webhookUrl = `${appUrl}/api/webhooks/efi?ignorar=`;
 
-  // Webhook registration requires the main API host, not the PIX-specific host.
-  const webhookBaseUrl = "https://api.efipay.com.br";
-  const webhookPath    = `/v2/webhook/${pixKey}`;
+  // Resolve cert — prefer file path, fall back to base64
+  const certPath    = process.env.EFI_CERTIFICATE_PATH;
+  const certBase64  = process.env.EFI_CERT_BASE64;
+  let certificate: string;
+  let cert_base64: boolean;
 
-  console.log("[EFI SETUP WEBHOOK] calling", `${webhookBaseUrl}${webhookPath}`, { webhookUrl });
-
-  let efi: Awaited<ReturnType<typeof getEfiClient>>;
-  try {
-    efi = await getEfiClient(webhookBaseUrl);
-  } catch (err: unknown) {
-    const error = err as { message?: string; code?: string; stack?: string; response?: { status?: number; data?: unknown } };
-    console.error("[EFI SETUP WEBHOOK ERROR FULL]", {
-      message:        error?.message,
-      code:           error?.code,
-      responseStatus: error?.response?.status,
-      responseData:   error?.response?.data,
-      stack:          error?.stack,
-    });
-    return NextResponse.json({ error: "Falha ao conectar com Efí." }, { status: 500 });
+  if (certPath) {
+    certificate = path.isAbsolute(certPath)
+      ? certPath
+      : path.resolve(process.cwd(), certPath);
+    cert_base64 = false;
+    console.log("[EFI SETUP WEBHOOK] cert source: file path, resolved:", certificate);
+  } else if (certBase64) {
+    certificate = certBase64;
+    cert_base64 = true;
+    console.log("[EFI SETUP WEBHOOK] cert source: EFI_CERT_BASE64 (base64)");
+  } else {
+    return NextResponse.json({ error: "No Efí certificate configured." }, { status: 500 });
   }
 
+  console.log("[EFI SETUP WEBHOOK] registering", {
+    hasPixKey:   Boolean(pixKey),
+    webhookUrl,
+    method:      "pixConfigWebhook",
+  });
+
+  const efipay = new EfiPay({
+    sandbox:      false,
+    client_id:    process.env.EFI_CLIENT_ID!,
+    client_secret: process.env.EFI_CLIENT_SECRET!,
+    certificate,
+    cert_base64,
+    validateMtls: false, // SDK sets x-skip-mtls-checking: true
+  });
+
   try {
-    const res = await efi.put(
-      webhookPath,
+    const result = await efipay.pixConfigWebhook(
+      { chave: pixKey },
       { webhookUrl },
-      { headers: { "x-skip-mtls-checking": "true" } },
     );
 
-    console.log("[EFI WEBHOOK SETUP SUCCESS]", {
-      pixKey,
-      webhookUrl,
-      status: res.status,
-      data:   res.data,
-    });
+    console.log("[EFI WEBHOOK SETUP SUCCESS]", { webhookUrl, result });
 
-    return NextResponse.json({
-      ok:         true,
-      webhookUrl,
-      efi_status: res.status,
-      efi_data:   res.data,
-    });
+    return NextResponse.json({ ok: true, webhookUrl, result });
   } catch (err: unknown) {
-    const error = err as { message?: string; code?: string; stack?: string; response?: { status?: number; data?: unknown } };
-    console.error("[EFI SETUP WEBHOOK ERROR FULL]", {
-      message:        error?.message,
-      code:           error?.code,
-      responseStatus: error?.response?.status,
-      responseData:   JSON.stringify(error?.response?.data ?? null, null, 2),
-      stack:          error?.stack,
-    });
-
+    console.error("[EFI SETUP WEBHOOK ERROR]", JSON.stringify(err, null, 2));
     return NextResponse.json(
-      {
-        error:      "Falha ao registrar webhook no Efí.",
-        efi_status: error?.response?.status ?? null,
-        efi_data:   error?.response?.data   ?? null,
-      },
+      { error: "Falha ao registrar webhook no Efí.", detail: err },
       { status: 502 },
     );
   }
