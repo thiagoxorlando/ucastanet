@@ -66,19 +66,23 @@ function getHttpsAgent(): https.Agent {
 
 // ── OAuth token ───────────────────────────────────────────────────────────────
 
+// Single authoritative base URL — must be the same for both OAuth and API calls.
+const EFI_API_BASE = (process.env.EFI_BASE_URL || "https://api.efipay.com.br").trim();
+
 async function fetchToken(agent: https.Agent): Promise<TokenCache> {
   const clientId     = process.env.EFI_CLIENT_ID;
   const clientSecret = process.env.EFI_CLIENT_SECRET;
-  const baseUrl      = process.env.EFI_BASE_URL ?? "https://api.efipay.com.br";
 
   if (!clientId || !clientSecret) {
     throw new Error("[efiClient] EFI_CLIENT_ID or EFI_CLIENT_SECRET is not set");
   }
 
+  console.log("[EFI TOKEN] fetching from:", `${EFI_API_BASE}/v1/authorize`);
+
   const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
   const res = await axios.post<{ access_token: string; expires_in: number }>(
-    `${baseUrl}/v1/authorize`,
+    `${EFI_API_BASE}/v1/authorize`,
     { grant_type: "client_credentials" },
     {
       httpsAgent: agent,
@@ -120,35 +124,34 @@ function makeClient(agent: https.Agent, token: string, baseUrl: string): AxiosIn
 }
 
 /**
- * Generic Efí client — EFI_BASE_URL (https://api.efipay.com.br).
- * Used for OAuth-related calls and webhook registration.
- * Pass baseUrlOverride to target a specific host.
+ * Generic Efí client — always uses EFI_API_BASE (https://api.efipay.com.br).
+ * Pass baseUrlOverride only when explicitly targeting a different host.
  */
 export async function getEfiClient(baseUrlOverride?: string): Promise<AxiosInstance> {
-  const agent      = getHttpsAgent();
-  const token      = await getToken(agent);
-  const baseUrl    = (baseUrlOverride || process.env.EFI_BASE_URL || "https://api.efipay.com.br").trim();
+  const agent   = getHttpsAgent();
+  const token   = await getToken(agent);
+  const baseUrl = baseUrlOverride ? baseUrlOverride.trim() : EFI_API_BASE;
 
   if (!baseUrl.startsWith("http")) {
-    throw new Error(`[efiClient] Invalid EFI_BASE_URL: ${baseUrl || "missing"}`);
+    throw new Error(`[efiClient] Invalid base URL: ${baseUrl || "missing"}`);
   }
 
+  console.log("[EFI CLIENT] baseUrl:", baseUrl, "tokenBase:", EFI_API_BASE);
   return makeClient(agent, token, baseUrl);
 }
 
 /**
- * Efí PIX client — EFI_PIX_BASE_URL (https://pix.api.efipay.com.br).
+ * Efí PIX client — uses the same EFI_API_BASE as OAuth so the token is always valid.
  * Used for /v2/cob, /v2/loc, /v2/gn/pix/enviar.
  */
 export async function getEfiPixClient(): Promise<AxiosInstance> {
-  const agent      = getHttpsAgent();
-  const token      = await getToken(agent);
-  const pixBaseUrl = (process.env.EFI_PIX_BASE_URL || process.env.EFI_BASE_URL || "").trim();
+  const agent = getHttpsAgent();
+  const token = await getToken(agent);
 
-  if (!pixBaseUrl.startsWith("http")) {
-    throw new Error(`[efiClient] Invalid EFI_PIX_BASE_URL/EFI_BASE_URL: ${pixBaseUrl || "missing"}`);
+  if (!EFI_API_BASE.startsWith("http")) {
+    throw new Error(`[efiClient] Invalid EFI_BASE_URL: ${EFI_API_BASE || "missing"}`);
   }
 
-  console.log("[EFI PIX CLIENT INIT]", { baseUrl: pixBaseUrl });
-  return makeClient(agent, token, pixBaseUrl);
+  console.log("[EFI PIX CLIENT INIT]", { baseUrl: EFI_API_BASE, tokenBase: EFI_API_BASE });
+  return makeClient(agent, token, EFI_API_BASE);
 }
