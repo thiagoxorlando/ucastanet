@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
-import { getEfiPixClient } from "@/lib/efiClient";
+import { getEfiSdk } from "@/lib/efiSdk";
 
 // POST /api/wallet/deposit
 // Body: { amount: number, email?: string }
@@ -33,12 +33,7 @@ export async function POST(req: NextRequest) {
   }
 
   const pixKey = process.env.EFI_PIX_KEY;
-  if (
-    !process.env.EFI_CLIENT_ID       ||
-    !process.env.EFI_CLIENT_SECRET    ||
-    !process.env.EFI_CERTIFICATE_PATH ||
-    !pixKey
-  ) {
+  if (!process.env.EFI_CLIENT_ID || !process.env.EFI_CLIENT_SECRET || !pixKey) {
     console.error("[wallet/deposit] Efí env vars not fully configured");
     return NextResponse.json({ error: "Integração de pagamento não configurada." }, { status: 500 });
   }
@@ -71,31 +66,25 @@ export async function POST(req: NextRequest) {
     solicitacaoPagador: "Deposito BrisaHub",
   };
 
-  const cobPath = `/v2/cob/${txid}`;
-
   console.log("[EFI PIX CREATE]", JSON.stringify({ txid, value: amount.toFixed(2) }, null, 2));
-  console.log("[EFI PIX CREATE URL]", cobPath);
+  console.log("[EFI PIX CREATE URL]", `pixCreateCharge /v2/cob/${txid}`);
 
-  let efi: Awaited<ReturnType<typeof getEfiPixClient>>;
+  let efipay: ReturnType<typeof getEfiSdk>;
   try {
-    efi = await getEfiPixClient();
+    efipay = getEfiSdk();
   } catch (err) {
     await supabase.from("wallet_transactions").delete().eq("id", txRecord.id);
-    console.error("[wallet/deposit] Efí client init failed:", String(err));
+    console.error("[wallet/deposit] Efí SDK init failed:", String(err));
     return NextResponse.json({ error: "Erro ao conectar com provedor de pagamento." }, { status: 500 });
   }
 
+  // SDK: pixCreateCharge → PUT /v2/cob/:txid on pix.api.efipay.com.br
   let cob: EfiCobResponse;
   try {
-    const res = await efi.put<EfiCobResponse>(cobPath, cobPayload);
-    cob = res.data;
+    cob = await efipay.pixCreateCharge({ txid }, cobPayload) as EfiCobResponse;
   } catch (err: unknown) {
     await supabase.from("wallet_transactions").delete().eq("id", txRecord.id);
-    const axErr = err as { response?: { status?: number; data?: unknown } };
-    console.error("[EFI PAYMENT ERROR FULL]", {
-      status: axErr?.response?.status ?? null,
-      body:   JSON.stringify(axErr?.response?.data ?? String(err), null, 2),
-    });
+    console.error("[EFI PAYMENT ERROR FULL]", JSON.stringify(err, null, 2));
     return NextResponse.json({ error: "Failed to create PIX payment" }, { status: 502 });
   }
 
@@ -104,20 +93,15 @@ export async function POST(req: NextRequest) {
     .update({ payment_id: txid })
     .eq("id", txRecord.id);
 
+  // SDK: pixGenerateQRCode → GET /v2/loc/:id/qrcode (non-fatal if it fails)
   let qrData: EfiQrCodeResponse | null = null;
   try {
-    const qrRes = await efi.get<EfiQrCodeResponse>(`/v2/loc/${cob.loc.id}/qrcode`);
-    qrData = qrRes.data;
+    qrData = await efipay.pixGenerateQRCode({ id: cob.loc.id }) as EfiQrCodeResponse;
   } catch (err: unknown) {
-    const axErr = err as { response?: { data?: unknown } };
-    console.error(
-      "[wallet/deposit] Efí QR fetch failed (non-fatal):",
-      JSON.stringify(axErr?.response?.data ?? String(err)),
-    );
+    console.error("[wallet/deposit] Efí QR fetch failed (non-fatal):", JSON.stringify(err, null, 2));
   }
 
-  const rawBase64 = qrData?.imagemQrcode
-    ?.replace(/^data:image\/[^;]+;base64,/, "") ?? null;
+  const rawBase64 = qrData?.imagemQrcode?.replace(/^data:image\/[^;]+;base64,/, "") ?? null;
 
   console.log("[wallet/deposit] Efí PIX created — txid:", txid, "tx:", txRecord.id);
 
