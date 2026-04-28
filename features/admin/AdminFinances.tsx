@@ -868,7 +868,13 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
     const res  = await fetch(`/api/admin/withdrawals/${id}/send-pix`, { method: "POST" });
     const data = await res.json().catch(() => ({})) as { error?: string; status?: string };
     setSendingPix(null);
-    if (!res.ok) { setError(data.error ?? "Erro ao enviar PIX."); return; }
+    if (!res.ok) {
+      const msg = data.error ?? "Erro ao enviar PIX.";
+      setError(msg);
+      setRows((cur) => cur.map((w) => w.id === id ? { ...w, adminNote: msg } : w));
+      router.refresh();
+      return;
+    }
     const savedStatus = data.status ?? "processing";
     setRows((cur) => cur.map((w) => w.id === id
       ? {
@@ -1023,7 +1029,12 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
             <tbody className="divide-y divide-[#EFF5F5] [&>tr:hover]:bg-[#F8FAFC]">
               {visiblePending.map((w) => (
                 <tr key={w.id}>
-                  <Td><span className="font-medium text-[#1F2D2E]">{w.agencyName}</span></Td>
+                  <Td>
+                    <span className="font-medium text-[#1F2D2E]">{w.agencyName}</span>
+                    {w.adminNote?.startsWith("Efí recusou") && (
+                      <p className="text-[10px] text-red-400 mt-0.5 max-w-[180px] truncate" title={w.adminNote}>{w.adminNote}</p>
+                    )}
+                  </Td>
                   <Td right><strong className="text-[#1F2D2E]">{brl(w.amount)}</strong></Td>
                   <Td right><span className="text-red-500 text-xs">{brl(w.feeAmount)}</span></Td>
                   <Td right><strong className="text-emerald-600">{brl(w.netAmount)}</strong></Td>

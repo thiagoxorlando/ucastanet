@@ -158,15 +158,31 @@ export async function POST(
       },
     ) as EfiPixSendResponse;
   } catch (err: unknown) {
-    const axErr = err as { type?: string; nome?: string; mensagem?: string; response?: { status?: number; data?: unknown } };
+    const axErr   = err as { type?: string; nome?: string; mensagem?: string; response?: { status?: number; data?: unknown } };
+    const efiData = axErr?.response?.data as Record<string, unknown> | undefined;
+    const mensagem = axErr?.mensagem ?? (efiData?.mensagem as string | undefined) ?? null;
+    const nome     = axErr?.nome     ?? (efiData?.nome     as string | undefined) ?? null;
+
     console.error("[EFI SEND PIX ERROR]", {
       type:     axErr?.type,
-      nome:     axErr?.nome,
-      mensagem: axErr?.mensagem,
+      nome,
+      mensagem,
       status:   axErr?.response?.status ?? null,
       body:     JSON.stringify(axErr?.response?.data ?? axErr ?? String(err), null, 2),
     });
-    return NextResponse.json({ error: "Erro ao enviar PIX via Efí." }, { status: 502 });
+
+    const failNote = mensagem
+      ? `Efí recusou o PIX: ${mensagem}`
+      : `Erro ao enviar PIX via Efí${nome ? ` (${nome})` : ""}`;
+
+    // Best-effort: record rejection reason without touching status — stays "pending" for retry.
+    await supabase
+      .from("wallet_transactions")
+      .update({ admin_note: failNote })
+      .eq("id", id)
+      .eq("status", "pending");
+
+    return NextResponse.json({ error: failNote }, { status: 502 });
   }
 
   // Guard: SDK should always return JSON — if it somehow returns HTML the host is wrong.
