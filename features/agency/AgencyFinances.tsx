@@ -445,9 +445,6 @@ export default function AgencyFinances({
                 {withdrawAmountNum > 0 && withdrawAmountNum < MIN_WITHDRAW && (
                   <p className="text-[11px] text-amber-400">Valor mínimo para saque: {brl(MIN_WITHDRAW)}.</p>
                 )}
-                {isMinFeeApplied && withdrawAmountNum >= MIN_WITHDRAW && withdrawAmountNum <= walletBalance && (
-                  <p className="text-[11px] text-zinc-400">Taxa mínima de {brl(withdrawalMinFee)} aplicada.</p>
-                )}
                 {withdrawError && (
                   <p className="text-[11px] text-rose-400">{withdrawError}</p>
                 )}
