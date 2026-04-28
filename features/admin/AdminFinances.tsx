@@ -95,6 +95,7 @@ export type FinancesSummary = {
 type PlatformBalanceState =
   | { status: "loading" }
   | { status: "ok"; balance: number }
+  | { status: "unavailable" }  // MP legacy — does not affect Efí withdrawals
   | { status: "error" };
 
 type ProfitRange = "today" | "month" | "total";
@@ -1057,6 +1058,10 @@ export default function AdminFinances({
     fetch("/api/admin/platform-balance")
       .then((response) => response.json())
       .then((payload) => {
+        if (payload.unavailable) {
+          setPlatformBalance({ status: "unavailable" });
+          return;
+        }
         if (typeof payload.available_balance === "number") {
           setPlatformBalance({ status: "ok", balance: payload.available_balance });
           return;
@@ -1130,7 +1135,14 @@ export default function AdminFinances({
 
           {platformBalance.status === "loading" ? (
             <div className="rounded-2xl border border-[#DDE6E6] bg-white p-5 text-sm text-zinc-500">
-              Consultando saldo no Mercado Pago...
+              Consultando saldo Mercado Pago...
+            </div>
+          ) : null}
+
+          {platformBalance.status === "unavailable" ? (
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-5 text-sm text-zinc-500">
+              Saldo Mercado Pago: <strong className="text-zinc-400">Indisponível</strong>
+              <span className="ml-2 text-xs">(legado — não afeta saques via Efí)</span>
             </div>
           ) : null}
 

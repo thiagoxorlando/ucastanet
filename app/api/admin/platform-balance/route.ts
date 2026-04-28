@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 
 // GET /api/admin/platform-balance
-// Fetches the available balance from the Mercado Pago account.
-// Returns: { available_balance: number }
+// Legacy: fetches the available balance from the Mercado Pago account.
+// This check is display-only and must NOT affect Efí PIX withdrawals.
+// If MP is unreachable or misconfigured, returns unavailable:true with 200
+// so the admin UI degrades gracefully without noisy production errors.
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -11,29 +13,27 @@ export async function GET() {
 
   const accessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
   if (!accessToken) {
-    return NextResponse.json({ error: "MERCADO_PAGO_ACCESS_TOKEN not configured" }, { status: 500 });
+    return NextResponse.json({ available_balance: null, unavailable: true, provider: "mercadopago" });
   }
 
-  let data: Record<string, unknown>;
   try {
     const res = await fetch("https://api.mercadopago.com/v1/account/balance", {
       headers: { Authorization: `Bearer ${accessToken}` },
-      // Don't cache — always return the live balance
       cache: "no-store",
     });
 
     if (!res.ok) {
       const text = await res.text();
-      console.error("[platform-balance] MP error", res.status, text);
-      return NextResponse.json({ error: "Failed to fetch balance from Mercado Pago" }, { status: 502 });
+      // Warn-level only — MP balance is legacy/display-only, not critical.
+      console.warn("[platform-balance] MP unavailable", { status: res.status, body: text.slice(0, 200) });
+      return NextResponse.json({ available_balance: null, unavailable: true, provider: "mercadopago" });
     }
 
-    data = await res.json();
+    const data = await res.json() as Record<string, unknown>;
+    const available = Number(data.available_balance ?? 0);
+    return NextResponse.json({ available_balance: available, provider: "mercadopago" });
   } catch (err) {
-    console.error("[platform-balance] fetch error", err);
-    return NextResponse.json({ error: "Network error" }, { status: 502 });
+    console.warn("[platform-balance] fetch error (non-fatal)", String(err));
+    return NextResponse.json({ available_balance: null, unavailable: true, provider: "mercadopago" });
   }
-
-  const available = Number(data.available_balance ?? 0);
-  return NextResponse.json({ available_balance: available });
 }
