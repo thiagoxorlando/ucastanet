@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, validateEmailConfig } from "@/lib/resend";
 import { notify } from "@/lib/notify";
 
 export async function POST(req: NextRequest) {
@@ -35,6 +35,11 @@ export async function POST(req: NextRequest) {
 
   if (caller?.role !== "talent" || referrer_id !== user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const emailConfig = validateEmailConfig();
+  if (!emailConfig.ok) {
+    return NextResponse.json({ error: emailConfig.error }, { status: 500 });
   }
 
   const { data: job, error: jobErr } = await supabase

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/requireAdmin";
-import { sendEmail } from "@/lib/email";
+import { getEmailErrorHttpStatus, sendEmail } from "@/lib/resend";
 
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin();
@@ -15,7 +15,6 @@ export async function POST(req: NextRequest) {
   }
 
   let toEmail: string | null = null;
-  let toName: string | null = null;
   let jobId: string | null = null;
   let inviteToken: string | null = null;
 
@@ -28,7 +27,6 @@ export async function POST(req: NextRequest) {
       .single();
     if (invite) {
       toEmail     = invite.referred_email ?? null;
-      toName      = invite.referred_name  ?? null;
       jobId       = invite.job_id         ?? null;
       inviteToken = invite.token          ?? null;
     }
@@ -43,7 +41,6 @@ export async function POST(req: NextRequest) {
       .single();
     if (sub) {
       toEmail = sub.email       ?? sub.talent_name ?? null;
-      toName  = sub.talent_name ?? null;
       jobId   = sub.job_id      ?? null;
     }
 
@@ -101,7 +98,7 @@ export async function POST(req: NextRequest) {
         error: "Convite encontrado, mas o email nao foi enviado.",
         emailError: emailResult.error,
       },
-      { status: emailResult.status === "missing_key" ? 500 : 502 }
+      { status: getEmailErrorHttpStatus(emailResult.status) }
     );
   }
 
