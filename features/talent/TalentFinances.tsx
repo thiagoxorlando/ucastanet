@@ -385,61 +385,101 @@ export default function TalentFinances() {
       .eq("status", "paid")
       .order("paid_at", { ascending: false });
 
-    // Resolve job titles for contracts
+    const contractIds    = (contractsData ?? []).map((c) => c.id);
     const contractJobIds = [...new Set((contractsData ?? []).map((c) => c.job_id).filter(Boolean))];
     const contractJobMap = new Map<string, string>();
-    if (contractJobIds.length) {
-      const { data: cJobs } = await supabase
-        .from("jobs").select("id, title").in("id", contractJobIds);
-      for (const j of cJobs ?? []) contractJobMap.set(j.id, j.title ?? "Untitled Job");
-    }
+    // Actual payout amounts from wallet_transactions (reference_id = contract uuid)
+    const payoutTxMap   = new Map<string, number>();
+
+    await Promise.all([
+      contractJobIds.length
+        ? supabase.from("jobs").select("id, title").in("id", contractJobIds)
+            .then(({ data }) => { for (const j of data ?? []) contractJobMap.set(j.id, j.title ?? "Untitled Job"); })
+        : Promise.resolve(),
+      contractIds.length
+        ? supabase
+            .from("wallet_transactions")
+            .select("reference_id, amount")
+            .eq("user_id", user.id)
+            .eq("type", "payout")
+            .in("reference_id", contractIds)
+            .then(({ data }) => {
+              for (const tx of data ?? []) {
+                if (tx.reference_id) payoutTxMap.set(tx.reference_id, Number(tx.amount));
+              }
+            })
+        : Promise.resolve(),
+    ]);
 
     setPaidContracts(
       (contractsData ?? []).map((c) => ({
         id:           c.id,
         jobTitle:     c.job_id ? (contractJobMap.get(c.job_id) ?? "Untitled Job") : "Untitled Job",
         amount:       c.payment_amount ?? 0,
-        earnings:     Math.round((c.payment_amount ?? 0) * TALENT_RATE),
+        // Use actual credited amount (falls back to estimate for pre-fix contracts)
+        earnings:     payoutTxMap.get(c.id) ?? Math.round((c.payment_amount ?? 0) * TALENT_RATE),
         paid_at:      c.paid_at      ?? null,
         withdrawn_at: c.withdrawn_at ?? null,
       }))
     );
 
-    // Referral earnings: find submissions where I am the referrer
-    const { data: refSubs } = await supabase
-      .from("submissions")
-      .select("talent_user_id, job_id")
-      .eq("referrer_id", user.id)
-      .not("talent_user_id", "is", null);
+    // Referral earnings: actual paid commissions from wallet_transactions.
+    // Replaces the old submission+booking estimate — shows real credited amounts.
+    const { data: refCommTxs } = await supabase
+      .from("wallet_transactions")
+      .select("id, amount, reference_id, created_at")
+      .eq("user_id", user.id)
+      .eq("type", "referral_commission")
+      .order("created_at", { ascending: false });
 
-    if (refSubs && refSubs.length > 0) {
-      const refTalentIds = [...new Set(refSubs.map((s) => s.talent_user_id).filter(Boolean))];
+    if (refCommTxs && refCommTxs.length > 0) {
+      const refContractIds = [...new Set(refCommTxs.map((tx) => tx.reference_id).filter(Boolean))];
+      const refTalentNameMap = new Map<string, string>();
+      const refJobTitleMap   = new Map<string, string>();
+      const refGrossMap      = new Map<string, number>();
 
-      const [{ data: refBookings }, { data: refTalentProfiles }] = await Promise.all([
-        supabase
-          .from("bookings")
-          .select("id, job_title, talent_user_id, price, created_at")
-          .in("talent_user_id", refTalentIds)
-          .in("status", ["paid", "confirmed"]),
-        supabase
-          .from("talent_profiles")
-          .select("id, full_name")
-          .in("id", refTalentIds),
-      ]);
+      if (refContractIds.length) {
+        const { data: refContracts } = await supabase
+          .from("contracts")
+          .select("id, talent_id, job_id, payment_amount")
+          .in("id", refContractIds);
 
-      const nameMap = new Map<string, string>();
-      for (const p of refTalentProfiles ?? []) nameMap.set(p.id, p.full_name ?? "Sem nome");
+        const refTalentIds = [...new Set((refContracts ?? []).map((c) => c.talent_id).filter(Boolean))];
+        const refJobIds    = [...new Set((refContracts ?? []).map((c) => c.job_id).filter(Boolean))];
+
+        const [talentRes, jobRes] = await Promise.all([
+          refTalentIds.length
+            ? supabase.from("talent_profiles").select("id, full_name").in("id", refTalentIds)
+            : null,
+          refJobIds.length
+            ? supabase.from("jobs").select("id, title").in("id", refJobIds)
+            : null,
+        ]);
+
+        const talentNameMap = new Map<string, string>();
+        for (const t of talentRes?.data ?? []) talentNameMap.set(t.id, t.full_name ?? "Sem nome");
+        const jobTitleMap = new Map<string, string>();
+        for (const j of jobRes?.data ?? []) jobTitleMap.set(j.id, j.title ?? "Untitled");
+
+        for (const c of refContracts ?? []) {
+          refTalentNameMap.set(c.id, c.talent_id ? (talentNameMap.get(c.talent_id) ?? "Sem nome") : "Sem nome");
+          refJobTitleMap.set(c.id, c.job_id ? (jobTitleMap.get(c.job_id) ?? "—") : "—");
+          refGrossMap.set(c.id, Number(c.payment_amount ?? 0));
+        }
+      }
 
       setReferrals(
-        (refBookings ?? []).map((b) => ({
-          id:         b.id,
-          talentName: b.talent_user_id ? (nameMap.get(b.talent_user_id) ?? "Sem nome") : "Sem nome",
-          job:        b.job_title ?? "Untitled job",
-          amount:     b.price ?? 0,
-          commission: Math.round((b.price ?? 0) * REFERRAL_RATE),
-          date:       b.created_at,
+        refCommTxs.map((tx) => ({
+          id:         tx.id,
+          talentName: tx.reference_id ? (refTalentNameMap.get(tx.reference_id) ?? "Sem nome") : "Sem nome",
+          job:        tx.reference_id ? (refJobTitleMap.get(tx.reference_id) ?? "—") : "—",
+          amount:     tx.reference_id ? (refGrossMap.get(tx.reference_id) ?? 0) : 0,
+          commission: Number(tx.amount),
+          date:       tx.created_at,
         }))
       );
+    } else {
+      setReferrals([]);
     }
 
     if (initial) setLoading(false);

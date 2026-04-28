@@ -221,6 +221,8 @@ export async function PATCH(
   // ── Agency: release payment after job (ATOMIC) ────────────────────────────
   // Records payout transaction + sets status = paid.
   // NEVER deducts wallet again — money was already locked at escrow time.
+  // If the job has a referral invite, the referral commission is deducted from
+  // the talent payout and credited to the referrer via credit_referral_commission.
   if (action === "pay") {
     if (contract.status !== "confirmed") {
       return NextResponse.json(
@@ -229,20 +231,71 @@ export async function PATCH(
       );
     }
 
-    const amount = Number(contract.net_amount ?? contract.payment_amount ?? 0);
+    // ── 1. Look up referral invite BEFORE payout ────────────────────────────
+    // Must happen first so we can reduce talentPayout by the commission.
+    let referralInvite: { id: string; referrer_id: string; commission_rate: number } | null = null;
+    let referralCommission = 0;
+    let referralJobTitle   = "";
+
+    if (contract.talent_id && contract.payment_amount && contract.job_id) {
+      const [jobRes, inviteRes] = await Promise.all([
+        supabase.from("jobs").select("title").eq("id", contract.job_id).maybeSingle(),
+        supabase
+          .from("referral_invites")
+          .select("id, referrer_id, commission_rate")
+          .eq("referred_user_id", contract.talent_id)
+          .eq("job_id", contract.job_id)
+          .neq("status", "fraud_reported")
+          .neq("status", "commission_paid")
+          .maybeSingle(),
+      ]);
+
+      referralJobTitle = jobRes.data?.title ?? "trabalho";
+
+      if (inviteRes.data?.referrer_id) {
+        const inv = inviteRes.data;
+        referralInvite = {
+          id:              inv.id,
+          referrer_id:     inv.referrer_id,
+          commission_rate: Number(inv.commission_rate ?? REFERRAL_RATE),
+        };
+        referralCommission = parseFloat(
+          (Number(contract.payment_amount) * referralInvite.commission_rate).toFixed(2)
+        );
+        console.log("[referral commission] matched referral", {
+          inviteId:   inv.id,
+          referrerId: inv.referrer_id,
+          commission: referralCommission,
+          contractId: id,
+        });
+      } else {
+        console.log("[referral commission] no referral found", {
+          talentId: contract.talent_id,
+          jobId:    contract.job_id,
+        });
+      }
+    }
+
+    // ── 2. Compute talent payout (net minus referral commission) ────────────
+    const grossAmount   = Number(contract.payment_amount ?? 0);
+    const baseNetAmount = Number(contract.net_amount ?? grossAmount);
+    const talentPayout  = parseFloat((baseNetAmount - referralCommission).toFixed(2));
 
     console.log("[plan] payout_calculation", {
-      contractId: id,
-      agencyId: contract.agency_id,
-      grossAmount: Number(contract.payment_amount ?? 0),
-      commissionAmount: Number(contract.commission_amount ?? 0),
-      netAmount: amount,
+      contractId:        id,
+      agencyId:          contract.agency_id,
+      grossAmount,
+      commissionAmount:  Number(contract.commission_amount ?? 0),
+      referralCommission,
+      baseNetAmount,
+      talentPayout,
     });
 
+    // ── 3. Release payout — talent receives talentPayout ───────────────────
     const { data: result, error: rpcErr } = await supabase.rpc("release_payment_payout", {
       p_contract_id: id,
       p_agency_id:   contract.agency_id,
-      p_amount:      amount,
+      p_amount:      talentPayout,
     });
     if (rpcErr) {
       console.error("[pay rpc]", rpcErr.message);
@@ -264,42 +317,64 @@ export async function PATCH(
     if (!r.already_processed) {
       await syncBooking(supabase, contract, "paid");
       const brl = new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-        maximumFractionDigits: 0,
-      }).format(amount);
+        style: "currency", currency: "BRL", maximumFractionDigits: 0,
+      }).format(talentPayout);
       await notifyAdmins(
         "payment",
         `Pagamento liberado ao talento: ${brl}`,
         "/admin/finances",
         `admin-payment-released:${id}`,
       );
-      // Talent payment notification is inserted inside the RPC atomically — do not re-send here.
+      // Talent payment notification is inserted inside the RPC atomically.
     }
 
-    // Referral commission
-    if (contract.talent_id && contract.payment_amount) {
-      let inviteQuery = supabase
-        .from("referral_invites")
-        .select("id, referrer_id")
-        .eq("referred_user_id", contract.talent_id)
-        .neq("status", "fraud_reported");
-      if (contract.job_id) inviteQuery = inviteQuery.eq("job_id", contract.job_id);
-      const { data: invite } = await inviteQuery.maybeSingle();
-      if (invite?.referrer_id) {
-        const commission = parseFloat((contract.payment_amount * REFERRAL_RATE).toFixed(2));
-        await supabase
-          .from("referral_invites")
-          .update({ commission_paid: commission, status: "commission_paid" })
-          .eq("id", invite.id);
-        const brl = new Intl.NumberFormat("pt-BR", {
+    // ── 4. Referral commission (always attempt — RPC is idempotent) ─────────
+    if (referralInvite && referralCommission > 0) {
+      console.log("[referral commission] commission calculated", {
+        gross:       grossAmount,
+        rate:        referralInvite.commission_rate,
+        commission:  referralCommission,
+        talentPayout,
+      });
+
+      const { data: commResult, error: commErr } = await supabase.rpc("credit_referral_commission", {
+        p_referrer_id: referralInvite.referrer_id,
+        p_invite_id:   referralInvite.id,
+        p_contract_id: id,
+        p_commission:  referralCommission,
+        p_job_title:   referralJobTitle,
+      });
+
+      if (commErr) {
+        console.error("[referral commission] rpc failed", {
+          err:       commErr.message,
+          inviteId:  referralInvite.id,
+          contractId: id,
+        });
+      } else {
+        const cr = commResult as { ok: boolean; already_processed?: boolean };
+        if (cr.already_processed) {
+          console.log("[referral commission] skipped already paid", {
+            inviteId:   referralInvite.id,
+            contractId: id,
+          });
+        } else {
+          console.log("[referral commission] credited referrer", {
+            referrerId: referralInvite.referrer_id,
+            commission: referralCommission,
+            contractId: id,
+          });
+        }
+        // Notify referrer — idempotent key prevents duplicate on retry
+        const commBrl = new Intl.NumberFormat("pt-BR", {
           style: "currency", currency: "BRL", maximumFractionDigits: 0,
-        }).format(commission);
+        }).format(referralCommission);
         await notify(
-          invite.referrer_id,
+          referralInvite.referrer_id,
           "payment",
-          `Comissão de indicação liberada: ${brl}`,
-          "/talent/referrals"
+          `Comissão de indicação liberada: ${commBrl}`,
+          "/talent/referrals",
+          `notif_referral_comm_${referralInvite.id}_${id}`,
         );
       }
     }
