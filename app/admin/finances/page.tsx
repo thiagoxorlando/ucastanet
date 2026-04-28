@@ -40,6 +40,11 @@ type AgencyPlanProfileRow = {
   plan_expires_at?: string | null;
 };
 
+type WithdrawalProfileRow = {
+  id: string;
+  role: string | null;
+};
+
 async function fetchContracts(supabase: ReturnType<typeof createServerClient>) {
   const withAllColumns = await supabase
     .from("contracts")
@@ -147,9 +152,13 @@ export default async function AdminFinancesPage() {
   const contractTalentIds = [...new Set(contractRows.map((contract) => contract.talent_id).filter(Boolean))] as string[];
   const contractAgencyIds = [...new Set(contractRows.map((contract) => contract.agency_id).filter(Boolean))] as string[];
   const contractJobIds = [...new Set(contractRows.map((contract) => contract.job_id).filter(Boolean))] as string[];
+  const withdrawalUserIds = [...new Set((withdrawalTxs ?? []).map((withdrawal) => withdrawal.user_id).filter(Boolean))] as string[];
 
   const talentMap = new Map<string, string>();
   const talentWalletNameMap = new Map<string, string>();
+  const withdrawalRoleMap = new Map<string, string>();
+  const withdrawalTalentNameMap = new Map<string, string>();
+  const withdrawalTalentPixMap = new Map<string, { pix_key_type: string | null; pix_key_value: string | null }>();
   const bookingJobMap = new Map<string, { title: string; agencyId: string | null }>();
   const contractTalentMap = new Map<string, string>();
   const contractAgencyMap = new Map<string, string>();
@@ -222,6 +231,32 @@ export default async function AdminFinancesPage() {
           .then(({ data }) => {
             for (const profile of data ?? []) {
               talentWalletNameMap.set(profile.id, profile.full_name ?? "Sem nome");
+            }
+          })
+      : Promise.resolve(),
+    withdrawalUserIds.length
+      ? supabase
+          .from("profiles")
+          .select("id, role")
+          .in("id", withdrawalUserIds)
+          .then(({ data }) => {
+            for (const profile of (data ?? []) as WithdrawalProfileRow[]) {
+              withdrawalRoleMap.set(profile.id, profile.role ?? "unknown");
+            }
+          })
+      : Promise.resolve(),
+    withdrawalUserIds.length
+      ? supabase
+          .from("talent_profiles")
+          .select("id, full_name, pix_key_type, pix_key_value")
+          .in("id", withdrawalUserIds)
+          .then(({ data }) => {
+            for (const profile of data ?? []) {
+              withdrawalTalentNameMap.set(profile.id, profile.full_name ?? "Talento sem nome");
+              withdrawalTalentPixMap.set(profile.id, {
+                pix_key_type: profile.pix_key_type ?? null,
+                pix_key_value: profile.pix_key_value ?? null,
+              });
             }
           })
       : Promise.resolve(),
@@ -374,11 +409,18 @@ export default async function AdminFinancesPage() {
   const minimumRequired = contractsEscrowValue + contractsAwaitingValue + totalAgencyWalletBalance;
 
   const withdrawals: FinancesWithdrawal[] = (withdrawalTxs ?? []).map((w) => {
-    const pix = agencyPixMap.get(w.user_id);
+    const rawRole = withdrawalRoleMap.get(w.user_id) ?? "unknown";
+    const userRole = rawRole === "agency" || rawRole === "talent" ? rawRole : "unknown";
+    const isTalent = userRole === "talent";
+    const agencyPix = isTalent ? null : agencyPixMap.get(w.user_id);
+    const pix = isTalent ? withdrawalTalentPixMap.get(w.user_id) : agencyPix;
     const raw = w as Record<string, unknown>;
     return {
       id:           w.id,
-      agencyName:   allAgencyNameMap.get(w.user_id) ?? "Agência sem nome",
+      agencyName:   isTalent
+        ? (withdrawalTalentNameMap.get(w.user_id) ?? "Talento sem nome")
+        : (allAgencyNameMap.get(w.user_id) ?? "Agência sem nome"),
+      userRole,
       amount:       Math.abs(w.amount ?? 0),
       feeAmount:    typeof raw.fee_amount === "number" ? raw.fee_amount : 0,
       netAmount:    typeof raw.net_amount === "number" ? raw.net_amount : Math.abs(w.amount ?? 0),
@@ -387,7 +429,7 @@ export default async function AdminFinancesPage() {
       processedAt:  w.processed_at ?? null,
       pixKeyType:   pix?.pix_key_type   ?? null,
       pixKeyValue:  pix?.pix_key_value  ?? null,
-      pixHolderName:pix?.pix_holder_name ?? null,
+      pixHolderName: agencyPix?.pix_holder_name ?? null,
       adminNote:    typeof raw.admin_note === "string" ? raw.admin_note : null,
     };
   });

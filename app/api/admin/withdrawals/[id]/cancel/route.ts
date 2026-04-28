@@ -58,6 +58,11 @@ export async function POST(
     .single();
 
   if (tx?.user_id) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", tx.user_id)
+      .maybeSingle();
     const brlAmt = new Intl.NumberFormat("pt-BR", {
       style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2,
     }).format(Math.abs(Number(tx.amount ?? 0)));
@@ -66,9 +71,9 @@ export async function POST(
       tx.user_id,
       "payment",
       message,
-      "/agency/finances",
+      profile?.role === "talent" ? "/talent/finances" : "/agency/finances",
       `agency-withdrawal-cancelled:${id}`,
-    ).catch((e) => console.error("[cancel-withdrawal] notify agency failed:", e));
+    ).catch((e) => console.error("[cancel-withdrawal] notify user failed:", e));
   } else {
     console.error("[cancel-withdrawal] could not fetch tx to notify agency:", id);
   }

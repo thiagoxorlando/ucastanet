@@ -65,6 +65,11 @@ export async function POST(
     .single();
 
   if (tx?.user_id) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", tx.user_id)
+      .maybeSingle();
     const brlAmt = new Intl.NumberFormat("pt-BR", {
       style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2,
     }).format(Math.abs(Number(tx.amount ?? 0)));
@@ -72,9 +77,9 @@ export async function POST(
       tx.user_id,
       "payment",
       `Seu saque de ${brlAmt} foi marcado como pago.`,
-      "/agency/finances",
+      profile?.role === "talent" ? "/talent/finances" : "/agency/finances",
       `agency-withdrawal-paid:${id}`,
-    ).catch((e) => console.error("[approve-withdrawal] notify agency failed:", e));
+    ).catch((e) => console.error("[approve-withdrawal] notify user failed:", e));
   } else {
     console.error("[approve-withdrawal] could not fetch tx to notify agency:", id);
   }

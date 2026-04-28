@@ -39,6 +39,7 @@ export type FinancesContract = {
 export type FinancesWithdrawal = {
   id: string;
   agencyName: string;
+  userRole: "agency" | "talent" | "unknown";
   amount: number;
   feeAmount: number;
   netAmount: number;
@@ -107,12 +108,6 @@ export type FinancesSummary = {
 
 type Tab = "saques" | "carteiras" | "visao-geral" | "contratos" | "reservas" | "planos";
 type ProfitRange = "today" | "month" | "total";
-
-const PLAN_BADGES: Record<string, string> = {
-  free:    "bg-zinc-500/15 text-zinc-400 ring-1 ring-zinc-500/30",
-  pro:     "bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/30",
-  premium: "bg-violet-500/15 text-violet-400 ring-1 ring-violet-500/30",
-};
 
 const PLAN_BADGES_LIGHT: Record<string, string> = {
   free:    "bg-[#E6F0F0] text-[#647B7B] ring-1 ring-[#DDE6E6]",
@@ -737,7 +732,7 @@ function WalletsSection({
             <TableCard>
               <thead className="border-b border-[#DDE6E6] bg-[#F0F9F8]">
                 <tr>
-                  <Th>Agência</Th>
+                  <Th>Usuário</Th>
                   <Th>Plano</Th>
                   <Th>PIX</Th>
                   <Th right>Saldo</Th>
@@ -997,11 +992,11 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
       )}
 
       <Section
-        title="Saques de agências"
+        title="Saques"
         subtitle={`${pendingOnly.length} pendente(s)${processingOnly.length > 0 ? ` · ${processingOnly.length} em processamento via Efí` : ""}`}
       >
         <div className="rounded-2xl border border-amber-900/40 bg-amber-950/30 px-4 py-3 text-[13px] text-amber-400">
-          Use <strong>Enviar PIX</strong> para criar a transferência automaticamente via Efí, ou envie manualmente e use <strong>Marcar como pago</strong>.
+          Use <strong>Enviar PIX</strong> para saques de agências via Efí. Saques de talentos podem ser pagos manualmente e marcados como pagos.
         </div>
 
         {error && !canceling && !approving && (
@@ -1016,7 +1011,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
           <TableCard>
             <thead className="border-b border-[#DDE6E6] bg-[#F0F9F8]">
               <tr>
-                <Th>Agência</Th>
+                <Th>Usuário</Th>
                 <Th right>Debitado</Th>
                 <Th right>Taxa</Th>
                 <Th right>Líquido</Th>
@@ -1031,6 +1026,9 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
                 <tr key={w.id}>
                   <Td>
                     <span className="font-medium text-[#1F2D2E]">{w.agencyName}</span>
+                    <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-zinc-500">
+                      {w.userRole === "talent" ? "Talento" : "Agência"}
+                    </span>
                     {w.adminNote?.startsWith("Efí recusou") && (
                       <p className="text-[10px] text-red-400 mt-0.5 max-w-[180px] truncate" title={w.adminNote}>{w.adminNote}</p>
                     )}
@@ -1060,7 +1058,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
                   <Td>{fmt(w.createdAt)}</Td>
                   <Td right>
                     <div className="flex items-center justify-end gap-1.5">
-                      {w.status === "pending" && (
+                      {w.status === "pending" && w.userRole === "agency" && (
                         <button
                           onClick={() => handleSendPix(w.id)}
                           disabled={sendingPix === w.id || !!approving || !!canceling}
@@ -1068,6 +1066,11 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
                         >
                           {sendingPix === w.id ? "Enviando…" : "Enviar PIX"}
                         </button>
+                      )}
+                      {w.status === "pending" && w.userRole === "talent" && (
+                        <span className="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-600 ring-1 ring-blue-100">
+                          Manual
+                        </span>
                       )}
                       {w.status === "processing" && (
                         <span className="rounded-lg bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-400 ring-1 ring-cyan-500/20">

@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 
-const TALENT_RATE   = 0.85; // 85% of deal value
-const TALENT_WITHDRAWAL_MIN_AMOUNT = 100;
+const TALENT_RATE = 0.85; // 85% of deal value
 
 function brl(n: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -515,18 +514,13 @@ export default function TalentFinances() {
   const pendingPayment      = payments.filter((p) => p.status === "pending_payment");
   const pendingEarnings     = pendingPayment.reduce((s, p) => s + p.earnings, 0);
   const referralEarnings    = referrals.reduce((s, r) => s + r.commission, 0);
+  const paidContractEarnings = paidContracts.reduce((s, c) => s + c.earnings, 0);
 
-  // Available = unpaid contract payouts + wallet-backed referral commissions.
-  // Referral commissions are real wallet balance, so only add the wallet
-  // portion above the currently withdrawable contract payouts.
+  // Available withdrawal money is the talent wallet balance. It includes both
+  // contract payouts and referral commissions after they are credited.
   const withdrawableContracts = paidContracts.filter((c) => !c.withdrawn_at);
   const withdrawnContracts    = paidContracts.filter((c) => !!c.withdrawn_at);
-  const contractAvailableToWithdraw = withdrawableContracts.reduce((s, c) => s + c.earnings, 0);
-  const referralAvailableToWithdraw = Math.min(
-    referralEarnings,
-    Math.max(0, walletBalance - contractAvailableToWithdraw),
-  );
-  const availableToWithdraw   = contractAvailableToWithdraw + referralAvailableToWithdraw;
+  const availableToWithdraw = Math.max(0, walletBalance);
   const alreadyWithdrawn      = withdrawnContracts.reduce((s, c) => s + c.earnings, 0);
   const filteredPaidContracts = paidContracts.filter((c) => periodMatches(c.paid_at, period));
   const filteredPayments = payments.filter((p) => periodMatches(p.date, period));
@@ -534,32 +528,50 @@ export default function TalentFinances() {
   const filteredReferrals = referrals.filter((r) => periodMatches(r.date, period));
 
   async function handleWithdraw() {
-    if (withdrawableContracts.length === 0) return;
+    if (availableToWithdraw <= 0) return;
     setWithdrawState("loading");
     try {
-      // Withdraw each unwithdrown paid contract
-      const results = await Promise.all(
-        withdrawableContracts.map((c) =>
-          fetch(`/api/contracts/${c.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "withdraw" }),
-          }).then((r) => r.json())
-        )
-      );
+      const withdrawRes = await fetch("/api/talent/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Number(availableToWithdraw.toFixed(2)) }),
+      });
+      const withdrawData = await withdrawRes.json().catch(() => ({})) as {
+        error?: string;
+        remaining_balance?: number;
+      };
+
+      if (!withdrawRes.ok) {
+        setWithdrawState("error");
+        setWithdrawMsg(withdrawData.error ?? "Erro ao solicitar saque.");
+        return;
+      }
+
+      const results = withdrawableContracts.length > 0
+        ? await Promise.all(
+            withdrawableContracts.map((c) =>
+              fetch(`/api/contracts/${c.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "withdraw" }),
+              }).then((r) => r.json())
+            )
+          )
+        : [];
       const allOk = results.every((r) => r.ok || r.withdrawn_at);
       if (allOk) {
         const now = new Date().toISOString();
+        setWalletBalance(Number(withdrawData.remaining_balance ?? 0));
         setPaidContracts((prev) =>
           prev.map((c) => c.withdrawn_at ? c : { ...c, withdrawn_at: now })
         );
         setWithdrawState("success");
         setWithdrawMsg(
-          `Saque confirmado! ${brl(availableToWithdraw)} de ${withdrawableContracts.length} contrato${withdrawableContracts.length > 1 ? "s" : ""} a caminho.`
+          `Saque solicitado! ${brl(availableToWithdraw)} a caminho.`
         );
       } else {
         setWithdrawState("error");
-        setWithdrawMsg("Algo deu errado. Tente novamente.");
+        setWithdrawMsg("Saque solicitado, mas alguns contratos podem demorar para atualizar.");
       }
     } catch {
       setWithdrawState("error");
@@ -601,7 +613,7 @@ export default function TalentFinances() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <StatCard
               label="Total Ganho"
-              value={brl(availableToWithdraw + alreadyWithdrawn)}
+              value={brl(paidContractEarnings + referralEarnings)}
               sub="Contratos pagos + indicações"
               stripe="from-indigo-500 to-violet-500"
             />
@@ -616,7 +628,7 @@ export default function TalentFinances() {
               value={brl(availableToWithdraw)}
               sub={
                 availableToWithdraw > 0
-                  ? `${withdrawableContracts.length} contrato${withdrawableContracts.length !== 1 ? "s" : ""} + ${brl(referralAvailableToWithdraw)} em indicações`
+                  ? `Carteira: ${brl(availableToWithdraw)}`
                   : "Nada pendente"
               }
               stripe="from-emerald-400 to-teal-500"
@@ -642,7 +654,7 @@ export default function TalentFinances() {
               <button
                 onClick={handleWithdraw}
                 disabled={
-                  availableToWithdraw < TALENT_WITHDRAWAL_MIN_AMOUNT ||
+                  availableToWithdraw <= 0 ||
                   !hasPixKey ||
                   withdrawState === "loading" ||
                   withdrawState === "success"
@@ -676,18 +688,6 @@ export default function TalentFinances() {
                 </p>
               </div>
             )}
-
-            {hasPixKey && availableToWithdraw > 0 && availableToWithdraw < TALENT_WITHDRAWAL_MIN_AMOUNT && (
-              <div className="mx-6 mb-5 flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-                <svg className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <p className="text-[13px] text-amber-800 leading-relaxed">
-                  O valor mínimo para saque é <strong>{brl(TALENT_WITHDRAWAL_MIN_AMOUNT)}</strong>.
-                </p>
-              </div>
-            )}
-
 
             {/* Success message */}
             {withdrawState === "success" && (
