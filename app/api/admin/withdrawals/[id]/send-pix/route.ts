@@ -84,8 +84,11 @@ export async function POST(
   // idEnvio = withdrawal UUID — ensures idempotency (same UUID = same transfer).
   // pagador.chave  = platform's PIX key (the sender account)
   // favorecido.chave = agency's PIX key (the recipient)
-  const idEnvio = id;
+  // Efí requires idEnvio to match ^[a-zA-Z0-9]{1,35}$ — strip hyphens from UUID.
+  const idEnvio = id.replace(/[^a-zA-Z0-9]/g, "").slice(0, 35);
   const valor   = Number(tx.net_amount).toFixed(2);
+
+  console.log("[send-pix] sanitized idEnvio", { rawId: id, idEnvio });
 
   console.log("[send-pix] calling Efí PIX endpoint", {
     sdkMethod:    "pixSend",
