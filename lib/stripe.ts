@@ -2,23 +2,30 @@
 // STRIPE_SECRET_KEY must not be prefixed with NEXT_PUBLIC_.
 import Stripe from "stripe";
 
-const key = process.env.STRIPE_SECRET_KEY;
+let _instance: Stripe | undefined;
 
-if (!key) {
-  // Fail at module load rather than silently at the first request.
-  throw new Error(
-    "[stripe] STRIPE_SECRET_KEY is not configured. " +
-      "Add it to your .env.local (or server environment) and restart."
-  );
+// Lazy singleton: throws at the first request rather than at module load,
+// so `next build` succeeds even when STRIPE_SECRET_KEY is not in the environment.
+export function getStripe(): Stripe {
+  if (_instance) return _instance;
+
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) {
+    throw new Error(
+      "[stripe] STRIPE_SECRET_KEY is not configured. " +
+        "Add it to your .env.local (or server environment) and restart."
+    );
+  }
+
+  _instance = new Stripe(key, {
+    apiVersion: "2026-04-22.dahlia",
+    appInfo: {
+      name:    "BrisaHub",
+      url:     "https://brisahub.com.br",
+      version: "1.0.0",
+    },
+  });
+
+  console.log("[stripe] client initialized");
+  return _instance;
 }
-
-export const stripe = new Stripe(key, {
-  apiVersion: "2026-04-22.dahlia",
-  appInfo: {
-    name:    "BrisaHub",
-    url:     "https://brisahub.com.br",
-    version: "1.0.0",
-  },
-});
-
-console.log("[stripe] client initialized (livemode will be confirmed at first API call)");
