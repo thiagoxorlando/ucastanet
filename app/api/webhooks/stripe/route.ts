@@ -69,33 +69,55 @@ async function handleWalletDeposit(supabase: Supabase, session: Stripe.Checkout.
   const paymentIntentId = idFrom(session.payment_intent) ?? session.id;
   const amount = amountFromCents(session.amount_total);
 
+  console.log("[stripe deposit] handling wallet deposit", { userId, transactionId, paymentIntentId, amount });
+
   if (!userId || !transactionId || amount <= 0) {
     throw new Error("wallet_deposit metadata missing user_id, wallet_transaction_id, or amount");
   }
 
-  const { data: result, error } = await supabase.rpc("credit_stripe_wallet_deposit", {
-    p_user_id: userId,
-    p_transaction_id: transactionId,
-    p_payment_id: paymentIntentId,
-    p_amount: amount,
-  });
+  const { data: tx } = await supabase
+    .from("wallet_transactions")
+    .select("id, status, user_id")
+    .eq("id", transactionId)
+    .maybeSingle();
 
-  if (error) throw new Error(`credit_stripe_wallet_deposit failed: ${error.message}`);
+  if (!tx) {
+    console.log("[stripe deposit] no matching transaction", { transactionId, userId, sessionId: session.id });
+    throw new Error(`wallet_transaction ${transactionId} not found`);
+  }
 
-  const payload = result as {
-    ok?: boolean;
-    already_processed?: boolean;
-    wallet_balance_credited?: boolean;
-  } | null;
+  console.log("[stripe deposit] matched transaction", { transactionId, status: tx.status, userId });
 
-  if (!payload?.ok) throw new Error("credit_stripe_wallet_deposit returned not ok");
-
-  if (payload.already_processed) {
-    console.log("[stripe wallet deposit] already credited", { userId, paymentIntentId, amount });
+  if (tx.status === "paid") {
+    console.log("[stripe deposit] already processed", { transactionId, userId, paymentIntentId });
     return;
   }
 
-  console.log("[stripe wallet deposit] credited", { userId, paymentIntentId, amount });
+  const { error: updateError } = await supabase
+    .from("wallet_transactions")
+    .update({
+      status: "paid",
+      payment_id: paymentIntentId,
+      provider_status: "completed",
+      processed_at: new Date().toISOString(),
+    } as Record<string, unknown>)
+    .eq("id", transactionId)
+    .neq("status", "paid");
+
+  if (updateError) {
+    throw new Error(`failed to update wallet_transaction: ${updateError.message}`);
+  }
+
+  const { error: creditError } = await supabase.rpc("increment_wallet_balance", {
+    p_user_id: userId,
+    p_amount: amount,
+  });
+
+  if (creditError) {
+    throw new Error(`increment_wallet_balance failed: ${creditError.message}`);
+  }
+
+  console.log("[stripe deposit] wallet credited", { userId, transactionId, paymentIntentId, amount });
 
   const brl = new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -376,6 +398,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
+  console.log("[stripe webhook] received", { type: event.type, eventId: event.id });
+
   const supabase = createServerClient({ useServiceRole: true });
   if (await hasProcessedEvent(supabase, event.id)) {
     console.log("[stripe webhook] duplicate event skipped", { eventId: event.id, type: event.type });
@@ -387,6 +411,8 @@ export async function POST(req: NextRequest) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         const type = session.metadata?.type;
+
+        console.log("[stripe webhook] checkout.session.completed", { type, sessionId: session.id });
 
         if (type === "wallet_deposit") {
           await handleWalletDeposit(supabase, session);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 
@@ -133,6 +133,14 @@ export default function AgencyFinances({
     () => router.refresh(),
   );
 
+  const [stripeWalletBanner, setStripeWalletBanner] = useState<"pending" | "cancel" | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("stripe_wallet") === "success") setStripeWalletBanner("pending");
+    else if (params.get("stripe_wallet") === "cancel") setStripeWalletBanner("cancel");
+  }, []);
+
   const [depositAmount, setDepositAmount] = useState("");
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositError, setDepositError] = useState("");
@@ -251,6 +259,48 @@ export default function AgencyFinances({
 
   return (
     <div className="max-w-6xl space-y-8">
+      {stripeWalletBanner === "pending" && (
+        <div className="flex items-start gap-3 bg-teal-50 border border-teal-200 rounded-2xl px-4 py-3.5">
+          <svg className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-semibold text-teal-800">Pagamento recebido — aguardando confirmacao do Stripe</p>
+            <p className="text-[12px] text-teal-700 mt-0.5">O saldo sera atualizado automaticamente apos o Stripe confirmar o pagamento (geralmente em segundos).</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStripeWalletBanner(null)}
+            className="text-teal-500 hover:text-teal-700 flex-shrink-0 cursor-pointer"
+            aria-label="Fechar"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
+      {stripeWalletBanner === "cancel" && (
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5">
+          <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-semibold text-amber-800">Deposito cancelado</p>
+            <p className="text-[12px] text-amber-700 mt-0.5">O pagamento foi cancelado. Nenhum valor foi cobrado.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setStripeWalletBanner(null)}
+            className="text-amber-500 hover:text-amber-700 flex-shrink-0 cursor-pointer"
+            aria-label="Fechar"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Visao Geral</p>
         <h1 className="text-[2rem] font-black tracking-[-0.04em] text-zinc-950 leading-tight">Financeiro</h1>
