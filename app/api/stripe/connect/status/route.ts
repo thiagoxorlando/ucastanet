@@ -3,6 +3,8 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import { getStripe } from "@/lib/stripe";
 
+export const runtime = "nodejs";
+
 export type StripeConnectStatusResponse = {
   connected:         boolean;
   charges_enabled:   boolean;

@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { PLAN_DEFINITIONS, PLAN_KEYS, type Plan } from "@/lib/plans";
-import { getStripe } from "@/lib/stripe";
+import { getStripe, isStripeConfigured } from "@/lib/stripe";
 import { getOrCreateStripeCustomer } from "@/lib/stripeCustomer";
+
+export const runtime = "nodejs";
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
@@ -29,6 +31,11 @@ export async function POST(req: NextRequest) {
   }
 
   const selectedPlan = body.plan as Plan;
+
+  if (selectedPlan !== "free" && !isStripeConfigured()) {
+    console.error("[plan] Stripe not configured — STRIPE_SECRET_KEY is missing");
+    return NextResponse.json({ error: "Pagamento nao configurado no servidor." }, { status: 503 });
+  }
 
   const supabase = createServerClient({ useServiceRole: true });
 

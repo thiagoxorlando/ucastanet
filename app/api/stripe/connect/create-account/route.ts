@@ -3,6 +3,8 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import { getStripe } from "@/lib/stripe";
 
+export const runtime = "nodejs";
+
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
 // POST /api/stripe/connect/create-account

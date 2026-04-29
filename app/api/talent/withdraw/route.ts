@@ -3,6 +3,8 @@ import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { getStripe } from "@/lib/stripe";
 
+export const runtime = "nodejs";
+
 type TalentWithdrawalResult = {
   ok?: boolean;
   error?: string;

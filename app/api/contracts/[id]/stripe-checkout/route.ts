@@ -4,6 +4,8 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { getStripe } from "@/lib/stripe";
 import { getOrCreateStripeCustomer } from "@/lib/stripeCustomer";
 
+export const runtime = "nodejs";
+
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
 // POST /api/contracts/[id]/stripe-checkout
