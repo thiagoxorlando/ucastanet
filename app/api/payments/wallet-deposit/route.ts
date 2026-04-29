@@ -6,6 +6,7 @@ import { getStripe } from "@/lib/stripe";
 import { getOrCreateStripeCustomer } from "@/lib/stripeCustomer";
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+const STRIPE_CHECKOUT_HOSTS = new Set(["checkout.stripe.com", "pay.stripe.com"]);
 
 // POST /api/payments/wallet-deposit
 // Body: { amount: number }
@@ -69,6 +70,18 @@ export async function POST(req: NextRequest) {
   try {
     const customerId = await getOrCreateStripeCustomer(supabase, user.id, email);
     const amountInCents = Math.round(amount * 100);
+    const currency = "brl";
+
+    if (!Number.isInteger(amountInCents) || amountInCents <= 0) {
+      throw new Error(`Invalid deposit conversion. amount=${amount} amountInCents=${amountInCents}`);
+    }
+
+    const metadata = {
+      type: "wallet_deposit",
+      user_id: user.id,
+      wallet_transaction_id: txRecord.id,
+      amount: amount.toFixed(2),
+    };
 
     const checkoutSession = await getStripe().checkout.sessions.create({
       mode: "payment",
@@ -78,18 +91,13 @@ export async function POST(req: NextRequest) {
         {
           quantity: 1,
           price_data: {
-            currency: "brl",
+            currency,
             unit_amount: amountInCents,
             product_data: { name: "Credito de carteira BrisaHub" },
           },
         },
       ],
-      metadata: {
-        type: "wallet_deposit",
-        user_id: user.id,
-        wallet_transaction_id: txRecord.id,
-        amount: amount.toFixed(2),
-      },
+      metadata,
       payment_intent_data: {
         metadata: {
           type: "wallet_deposit",
@@ -101,20 +109,36 @@ export async function POST(req: NextRequest) {
       cancel_url: `${APP_URL}/agency/finances?stripe_wallet=cancel`,
     });
 
+    if (!checkoutSession.url) {
+      throw new Error("Stripe Checkout session URL missing.");
+    }
+
+    let checkoutUrl: URL;
+    try {
+      checkoutUrl = new URL(checkoutSession.url);
+    } catch {
+      throw new Error(`Stripe Checkout session URL is invalid: ${checkoutSession.url}`);
+    }
+
+    if (checkoutUrl.protocol !== "https:" || !STRIPE_CHECKOUT_HOSTS.has(checkoutUrl.hostname)) {
+      throw new Error(`Stripe Checkout session URL is not a hosted Stripe URL: ${checkoutSession.url}`);
+    }
+
     await supabase
       .from("wallet_transactions")
       .update({ reference_id: checkoutSession.id })
       .eq("id", txRecord.id);
 
-    if (!checkoutSession.url) {
-      throw new Error("Stripe Checkout session URL missing.");
-    }
-
     console.log("[stripe wallet deposit] checkout created", {
       sessionId: checkoutSession.id,
+      sessionUrl: checkoutSession.url,
       txId: txRecord.id,
       userId: user.id,
       amount,
+      amountInCents,
+      currency,
+      mode: checkoutSession.mode,
+      metadata,
     });
 
     return NextResponse.json({
@@ -122,12 +146,15 @@ export async function POST(req: NextRequest) {
       session_id: checkoutSession.id,
       tx_id: txRecord.id,
       amount,
+      amount_in_cents: amountInCents,
+      currency,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[stripe wallet deposit] checkout failed", {
       txId: txRecord.id,
       userId: user.id,
+      amount,
       error: message,
     });
 
@@ -136,10 +163,13 @@ export async function POST(req: NextRequest) {
       .update({
         status: "failed",
         provider_status: "checkout_failed",
+        admin_note: `Stripe Checkout failed: ${message}`.slice(0, 500),
         processed_at: new Date().toISOString(),
       })
       .eq("id", txRecord.id);
 
-    return NextResponse.json({ error: "Erro ao abrir pagamento Stripe." }, { status: 500 });
+    return NextResponse.json({
+      error: `Erro ao criar sessao do Stripe Checkout: ${message}`,
+    }, { status: 500 });
   }
 }

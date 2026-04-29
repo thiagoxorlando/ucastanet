@@ -185,15 +185,45 @@ export default function AgencyFinances({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ amount }),
     });
-    const data = await res.json().catch(() => ({})) as { error?: string; url?: string };
+    const data = await res.json().catch(() => ({})) as {
+      error?: string;
+      url?: string;
+      session_id?: string;
+      amount?: number;
+      amount_in_cents?: number;
+      currency?: string;
+    };
 
     if (!res.ok || !data.url) {
       setDepositLoading(false);
-      setDepositError(data.error ?? "Erro ao abrir pagamento Stripe.");
+      setDepositError(data.error ?? "Erro ao criar sessao do Stripe Checkout.");
       return;
     }
 
-    window.location.href = data.url;
+    let checkoutUrl: URL;
+    try {
+      checkoutUrl = new URL(data.url);
+    } catch {
+      setDepositLoading(false);
+      setDepositError("O Stripe retornou uma URL de checkout invalida.");
+      return;
+    }
+
+    if (checkoutUrl.protocol !== "https:" || !["checkout.stripe.com", "pay.stripe.com"].includes(checkoutUrl.hostname)) {
+      setDepositLoading(false);
+      setDepositError("O Stripe retornou uma URL de checkout nao confiavel.");
+      return;
+    }
+
+    console.info("[agency finances] redirecting to Stripe Checkout", {
+      sessionId: data.session_id,
+      url: data.url,
+      amount: data.amount ?? amount,
+      amountInCents: data.amount_in_cents,
+      currency: data.currency,
+    });
+
+    window.location.assign(data.url);
   }
 
   async function handleWithdraw() {
