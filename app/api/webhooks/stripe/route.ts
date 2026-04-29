@@ -5,6 +5,9 @@ import { getStripe } from "@/lib/stripe";
 import { notify, notifyAdmins } from "@/lib/notify";
 
 export const runtime = "nodejs";
+type WalletDepositHandleResult =
+  | { ok: true; reason: "credited" | "already_paid" | "ignored_missing_metadata" | "ignored_missing_transaction" | "ignored_not_pending" }
+  | { ok: false; reason: "critical_failure"; transactionId: string | null };
 const STRIPE_WALLET_DEPOSIT_DESCRIPTION = "Depósito via Stripe Checkout";
 
 type Supabase = ReturnType<typeof createServerClient>;
@@ -65,26 +68,52 @@ async function markEventProcessed(supabase: Supabase, event: Stripe.Event) {
 
 async function handleWalletDeposit(supabase: Supabase, session: Stripe.Checkout.Session) {
   const metadata = session.metadata ?? {};
-  const userId = metadata.user_id;
-  const transactionId = metadata.wallet_transaction_id;
+  const transactionId = stringFrom(metadata.wallet_transaction_id);
   const paymentIntentId = idFrom(session.payment_intent) ?? session.id;
   const amount = amountFromCents(session.amount_total);
   const confirmedAdminNote = `Stripe Checkout confirmado. Session: ${session.id}`;
 
-  console.log("[stripe deposit] handling wallet deposit", { userId, transactionId, paymentIntentId, amount });
+  console.log("[stripe deposit] session metadata", { sessionId: session.id, metadata });
+  console.log("[stripe deposit] handling wallet deposit", {
+    transactionId,
+    paymentIntentId,
+    amount,
+    amountTotal: session.amount_total,
+  });
 
-  if (!userId || !transactionId || amount <= 0) {
-    throw new Error("wallet_deposit metadata missing user_id, wallet_transaction_id, or amount");
+  if (!transactionId || amount <= 0) {
+    throw new Error("wallet_deposit metadata missing wallet_transaction_id or amount");
+  }
+
+  const { data: tx, error: txError } = await supabase
+    .from("wallet_transactions")
+    .select("id, user_id, status, provider_status, payment_id")
+    .eq("id", transactionId)
+    .maybeSingle();
+
+  if (txError) {
+    throw new Error(`failed to load wallet_transaction before credit: ${txError.message}`);
+  }
+
+  if (!tx?.user_id) {
+    throw new Error(`wallet_transaction ${transactionId} missing user_id`);
   }
 
   const { data: creditResult, error: creditError } = await supabase.rpc("credit_stripe_wallet_deposit", {
-    p_user_id: userId,
+    p_user_id: tx.user_id,
     p_transaction_id: transactionId,
     p_payment_id: paymentIntentId,
     p_amount: amount,
   });
 
   if (creditError) {
+    console.error("[stripe deposit] RPC error full", {
+      transactionId,
+      sessionId: session.id,
+      paymentIntentId,
+      amount,
+      error: creditError,
+    });
     throw new Error(`credit_stripe_wallet_deposit failed: ${creditError.message}`);
   }
 
@@ -97,6 +126,12 @@ async function handleWalletDeposit(supabase: Supabase, session: Stripe.Checkout.
   } | null;
 
   if (!payload?.ok) {
+    console.error("[stripe deposit] RPC returned non-ok payload", {
+      transactionId,
+      sessionId: session.id,
+      paymentIntentId,
+      payload,
+    });
     throw new Error(`credit_stripe_wallet_deposit returned ${payload?.error ?? "not ok"}`);
   }
 
@@ -107,11 +142,13 @@ async function handleWalletDeposit(supabase: Supabase, session: Stripe.Checkout.
     .update({
       status: "paid",
       provider: "stripe",
+      provider_transfer_id: paymentIntentId,
       provider_status: "paid",
       payment_id: paymentIntentId,
       reference_id: session.id,
       description: STRIPE_WALLET_DEPOSIT_DESCRIPTION,
       admin_note: confirmedAdminNote,
+      processed_at: new Date().toISOString(),
     } as Record<string, unknown>)
     .eq("id", confirmedTxId);
 
@@ -122,7 +159,7 @@ async function handleWalletDeposit(supabase: Supabase, session: Stripe.Checkout.
   if (payload.already_processed) {
     console.log("[stripe deposit] already processed", {
       transactionId: confirmedTxId,
-      userId,
+      userId: tx.user_id,
       paymentIntentId,
       sessionId: session.id,
     });
@@ -130,7 +167,7 @@ async function handleWalletDeposit(supabase: Supabase, session: Stripe.Checkout.
   }
 
   console.log("[stripe deposit] wallet credited", {
-    userId,
+    userId: tx.user_id,
     transactionId: confirmedTxId,
     paymentIntentId,
     sessionId: session.id,
@@ -154,48 +191,69 @@ async function handleWalletDeposit(supabase: Supabase, session: Stripe.Checkout.
 async function handleWalletDepositSafely(supabase: Supabase, session: Stripe.Checkout.Session) {
   const metadata = session.metadata ?? {};
   const transactionId = stringFrom(metadata.wallet_transaction_id);
+  const paymentIntentId = idFrom(session.payment_intent) ?? session.id;
+  const amountTotal = session.amount_total ?? null;
+
+  console.log("[stripe deposit] session metadata", {
+    sessionId: session.id,
+    metadata,
+  });
+  console.log("[stripe deposit] wallet_transaction_id", {
+    sessionId: session.id,
+    walletTransactionId: transactionId,
+  });
+  console.log("[stripe deposit] payment_intent", {
+    sessionId: session.id,
+    paymentIntentId,
+  });
+  console.log("[stripe deposit] amount_total", {
+    sessionId: session.id,
+    amountTotal,
+  });
 
   if (!transactionId) {
     console.log("[stripe deposit] wallet_transaction_id missing on checkout.session.completed", {
       sessionId: session.id,
-      paymentIntentId: idFrom(session.payment_intent),
+      paymentIntentId,
       metadata,
     });
-    return;
+    return { ok: true, reason: "ignored_missing_metadata" } satisfies WalletDepositHandleResult;
   }
 
   const { data: tx, error: txError } = await supabase
     .from("wallet_transactions")
-    .select("id, user_id, status, provider_status, payment_id")
+    .select("id, user_id, status, provider_status, payment_id, amount, provider, reference_id")
     .eq("id", transactionId)
     .maybeSingle();
 
   if (txError) {
-    console.error("[stripe deposit] failed to load wallet transaction", {
+    console.error("[stripe deposit] CRITICAL failed to credit wallet", {
       transactionId,
       sessionId: session.id,
-      error: txError.message,
+      paymentIntentId,
+      reason: "load_wallet_transaction_failed",
+      error: txError,
     });
-    return;
+    return { ok: false, reason: "critical_failure", transactionId };
   }
 
   if (!tx) {
     console.log("[stripe deposit] no matching transaction for checkout.session.completed", {
       transactionId,
       sessionId: session.id,
-      paymentIntentId: idFrom(session.payment_intent),
+      paymentIntentId,
     });
-    return;
+    return { ok: true, reason: "ignored_missing_transaction" } satisfies WalletDepositHandleResult;
   }
 
   if (tx.status === "paid" || tx.provider_status === "paid") {
     console.log("[stripe deposit] transaction already paid before checkout.session.completed", {
       transactionId,
       sessionId: session.id,
-      paymentIntentId: idFrom(session.payment_intent),
+      paymentIntentId,
       paymentId: tx.payment_id,
     });
-    return;
+    return { ok: true, reason: "already_paid" } satisfies WalletDepositHandleResult;
   }
 
   if (tx.status !== "pending") {
@@ -205,19 +263,22 @@ async function handleWalletDepositSafely(supabase: Supabase, session: Stripe.Che
       status: tx.status,
       providerStatus: tx.provider_status,
     });
-    return;
+    return { ok: true, reason: "ignored_not_pending" } satisfies WalletDepositHandleResult;
   }
 
   try {
     await handleWalletDeposit(supabase, session);
+    return { ok: true, reason: "credited" } satisfies WalletDepositHandleResult;
   } catch (err) {
-    console.error("[stripe deposit] checkout.session.completed handler failed", {
+    console.error("[stripe deposit] CRITICAL failed to credit wallet", {
       transactionId,
       sessionId: session.id,
-      paymentIntentId: idFrom(session.payment_intent),
+      paymentIntentId,
+      tx,
       error: err instanceof Error ? err.message : String(err),
       stack: err instanceof Error ? err.stack : undefined,
     });
+    return { ok: false, reason: "critical_failure", transactionId };
   }
 }
 
@@ -505,7 +566,10 @@ export async function POST(req: NextRequest) {
         console.log("[stripe webhook] checkout.session.completed", { type, sessionId: session.id });
 
         if (type === "wallet_deposit") {
-          await handleWalletDepositSafely(supabase, session);
+          const result = await handleWalletDepositSafely(supabase, session);
+          if (!result.ok) {
+            shouldMarkProcessed = false;
+          }
         } else if (type === "contract_funding") {
           await handleContractFunding(supabase, session);
         } else if (type === "plan_subscription") {
