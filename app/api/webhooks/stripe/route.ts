@@ -5,10 +5,6 @@ import { getStripe } from "@/lib/stripe";
 import { notify, notifyAdmins } from "@/lib/notify";
 
 export const runtime = "nodejs";
-type WalletDepositHandleResult =
-  | { ok: true; reason: "credited" | "already_paid" | "ignored_missing_metadata" | "ignored_missing_transaction" | "ignored_not_pending" }
-  | { ok: false; reason: "critical_failure"; transactionId: string | null };
-const STRIPE_WALLET_DEPOSIT_DESCRIPTION = "Depósito via Stripe Checkout";
 
 type Supabase = ReturnType<typeof createServerClient>;
 
@@ -66,82 +62,139 @@ async function markEventProcessed(supabase: Supabase, event: Stripe.Event) {
   }
 }
 
-async function getWalletDepositTransactionForSession(supabase: Supabase, session: Stripe.Checkout.Session) {
-  const transactionId = stringFrom(session.metadata?.wallet_transaction_id);
-  if (!transactionId) return null;
-
-  const { data: tx, error } = await supabase
-    .from("wallet_transactions")
-    .select("id, user_id, status, provider_status, payment_id, amount, provider, reference_id")
-    .eq("id", transactionId)
-    .maybeSingle();
-
-  if (error) {
-    console.error("[stripe deposit] failed to load wallet transaction for session", {
-      transactionId,
-      sessionId: session.id,
-      error: error.message,
-    });
-    return null;
-  }
-
-  return tx;
-}
-
 async function handleWalletDeposit(supabase: Supabase, session: Stripe.Checkout.Session) {
+  const sessionId = session.id;
   const metadata = session.metadata ?? {};
-  const transactionId = stringFrom(metadata.wallet_transaction_id);
-  const paymentIntentId = idFrom(session.payment_intent) ?? session.id;
+  const paymentIntentId = idFrom(session.payment_intent) ?? sessionId;
   const amount = amountFromCents(session.amount_total);
-  const confirmedAdminNote = `Stripe Checkout confirmado. Session: ${session.id}`;
 
-  console.log("[stripe deposit] session metadata", { sessionId: session.id, metadata });
-  console.log("[stripe deposit] handling wallet deposit", {
-    transactionId,
-    paymentIntentId,
-    amount,
-    amountTotal: session.amount_total,
+  // 1. Log everything raw — so we can see exactly what Stripe sent
+  console.log("[stripe deposit] session metadata", { sessionId, metadata });
+  console.log("[stripe deposit] extracted values", {
+    wallet_transaction_id: metadata.wallet_transaction_id ?? null,
+    session_id: sessionId,
+    payment_intent: paymentIntentId,
+    amount_total: session.amount_total,
+    amount_brl: amount,
   });
 
-  if (!transactionId || amount <= 0) {
-    throw new Error("wallet_deposit metadata missing wallet_transaction_id or amount");
+  type TxRow = { id: string; user_id: string; status: string; provider_status: string | null; payment_id: string | null };
+  let tx: TxRow | null = null;
+
+  const explicitTxId = stringFrom(metadata.wallet_transaction_id);
+
+  // 2. Primary lookup: by wallet_transaction_id from metadata
+  if (explicitTxId) {
+    const { data, error } = await supabase
+      .from("wallet_transactions")
+      .select("id, user_id, status, provider_status, payment_id")
+      .eq("id", explicitTxId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("[stripe deposit] CRITICAL DB error loading transaction by id", {
+        transactionId: explicitTxId,
+        sessionId,
+        error: error.message,
+      });
+      throw new Error(`failed to load wallet_transaction: ${error.message}`);
+    }
+
+    if (data) {
+      console.log("[stripe deposit] matched transaction", {
+        transactionId: data.id,
+        status: data.status,
+        providerStatus: data.provider_status,
+        userId: data.user_id,
+      });
+      tx = data;
+    } else {
+      console.error("[stripe deposit] CRITICAL transaction not found by id", {
+        transactionId: explicitTxId,
+        sessionId,
+        paymentIntentId,
+      });
+    }
+  } else {
+    console.error("[stripe deposit] CRITICAL wallet_transaction_id missing from metadata", {
+      sessionId,
+      paymentIntentId,
+      metadataKeys: Object.keys(metadata),
+      metadata,
+    });
   }
 
-  const { data: tx, error: txError } = await supabase
-    .from("wallet_transactions")
-    .select("id, user_id, status, provider_status, payment_id")
-    .eq("id", transactionId)
-    .maybeSingle();
+  // 3. Fallback: find by reference_id = session.id (set in wallet-deposit route after checkout creation)
+  if (!tx) {
+    console.log("[stripe deposit] attempting fallback lookup via reference_id", { reference_id: sessionId });
+    const { data: fallbackTx, error: fallbackErr } = await supabase
+      .from("wallet_transactions")
+      .select("id, user_id, status, provider_status, payment_id")
+      .eq("reference_id", sessionId)
+      .eq("provider", "stripe")
+      .maybeSingle();
 
-  console.log("[stripe deposit] lookup result", {
-    sessionId: session.id,
-    transactionId,
-    lookupResult: tx,
-    lookupError: txError?.message ?? null,
-  });
+    if (fallbackErr) {
+      console.error("[stripe deposit] fallback lookup DB error", { sessionId, error: fallbackErr.message });
+    }
 
-  if (txError) {
-    throw new Error(`failed to load wallet_transaction before credit: ${txError.message}`);
+    if (fallbackTx) {
+      console.log("[stripe deposit] matched transaction via reference_id fallback", {
+        transactionId: fallbackTx.id,
+        status: fallbackTx.status,
+        userId: fallbackTx.user_id,
+        sessionId,
+      });
+      tx = fallbackTx;
+    } else {
+      console.error("[stripe deposit] CRITICAL no matching transaction found", {
+        sessionId,
+        paymentIntentId,
+        wallet_transaction_id_in_metadata: explicitTxId ?? "missing",
+        fallback_reference_id: sessionId,
+      });
+      throw new Error(`no wallet_transaction found for session ${sessionId}`);
+    }
   }
 
-  if (!tx?.user_id) {
-    throw new Error(`wallet_transaction ${transactionId} missing user_id`);
+  // 4. Validate amount
+  if (amount <= 0) {
+    console.error("[stripe deposit] CRITICAL invalid amount", {
+      sessionId,
+      amount,
+      amount_total: session.amount_total,
+    });
+    throw new Error(`invalid amount: ${amount}`);
   }
 
+  // 5. Idempotency guard
+  if (tx.status === "paid" || tx.provider_status === "paid") {
+    console.log("[stripe deposit] already processed", {
+      transactionId: tx.id,
+      userId: tx.user_id,
+      paymentIntentId,
+      status: tx.status,
+      providerStatus: tx.provider_status,
+    });
+    return;
+  }
+
+  // 6. Call the RPC — it locks the row, credits wallet_balance, marks transaction paid
   const { data: creditResult, error: creditError } = await supabase.rpc("credit_stripe_wallet_deposit", {
     p_user_id: tx.user_id,
-    p_transaction_id: transactionId,
+    p_transaction_id: tx.id,
     p_payment_id: paymentIntentId,
     p_amount: amount,
   });
 
   if (creditError) {
-    console.error("[stripe deposit] RPC error full", {
-      transactionId,
-      sessionId: session.id,
+    console.error("[stripe deposit] CRITICAL RPC error", {
+      transactionId: tx.id,
+      sessionId,
       paymentIntentId,
       amount,
-      error: creditError,
+      error: creditError.message,
+      details: creditError,
     });
     throw new Error(`credit_stripe_wallet_deposit failed: ${creditError.message}`);
   }
@@ -154,68 +207,41 @@ async function handleWalletDeposit(supabase: Supabase, session: Stripe.Checkout.
     error?: string;
   } | null;
 
+  console.log("[stripe deposit] RPC result", { sessionId, transactionId: tx.id, payload });
+
   if (!payload?.ok) {
-    console.error("[stripe deposit] RPC returned non-ok payload", {
-      transactionId,
-      sessionId: session.id,
-      paymentIntentId,
+    console.error("[stripe deposit] CRITICAL RPC returned not ok", {
+      transactionId: tx.id,
+      sessionId,
       payload,
     });
     throw new Error(`credit_stripe_wallet_deposit returned ${payload?.error ?? "not ok"}`);
   }
 
-  console.log("[stripe deposit] RPC result", {
-    sessionId: session.id,
-    transactionId,
-    paymentIntentId,
-    payload,
-  });
-
-  const confirmedTxId = payload.transaction_id ?? transactionId;
-
-  const { data: finalUpdate, error: finalizeError } = await supabase
-    .from("wallet_transactions")
-    .update({
-      status: "paid",
-      provider: "stripe",
-      provider_transfer_id: paymentIntentId,
-      provider_status: "paid",
-      payment_id: paymentIntentId,
-      reference_id: session.id,
-      description: STRIPE_WALLET_DEPOSIT_DESCRIPTION,
-      admin_note: confirmedAdminNote,
-      processed_at: new Date().toISOString(),
-    } as Record<string, unknown>)
-    .eq("id", confirmedTxId)
-    .select("id, status, provider, provider_transfer_id, provider_status, payment_id, reference_id, processed_at")
-    .maybeSingle();
-
-  console.log("[stripe deposit] final update result", {
-    sessionId: session.id,
-    transactionId: confirmedTxId,
-    finalUpdate,
-    finalizeError: finalizeError?.message ?? null,
-  });
-
-  if (finalizeError) {
-    throw new Error(`failed to finalize wallet_transaction: ${finalizeError.message}`);
-  }
-
   if (payload.already_processed) {
-    console.log("[stripe deposit] already processed", {
-      transactionId: confirmedTxId,
+    console.log("[stripe deposit] already processed (RPC)", {
+      transactionId: tx.id,
       userId: tx.user_id,
       paymentIntentId,
-      sessionId: session.id,
     });
     return;
   }
 
+  // 7. Stamp transfer reference — RPC already set status/provider/payment_id; we add provider_transfer_id + reference_id
+  await supabase
+    .from("wallet_transactions")
+    .update({
+      provider_transfer_id: paymentIntentId,
+      reference_id: sessionId,
+      processed_at: new Date().toISOString(),
+    } as Record<string, unknown>)
+    .eq("id", payload.transaction_id ?? tx.id);
+
   console.log("[stripe deposit] wallet credited", {
     userId: tx.user_id,
-    transactionId: confirmedTxId,
+    transactionId: payload.transaction_id ?? tx.id,
     paymentIntentId,
-    sessionId: session.id,
+    sessionId,
     amount,
   });
 
@@ -231,135 +257,6 @@ async function handleWalletDeposit(supabase: Supabase, session: Stripe.Checkout.
     "/admin/finances",
     `admin-stripe-wallet-deposit:${paymentIntentId}`,
   );
-}
-
-async function handleWalletDepositSafely(supabase: Supabase, session: Stripe.Checkout.Session) {
-  const metadata = session.metadata ?? {};
-  const transactionId = stringFrom(metadata.wallet_transaction_id);
-  const paymentIntentId = idFrom(session.payment_intent) ?? session.id;
-  const amountTotal = session.amount_total ?? null;
-
-  console.log("[stripe deposit] session metadata", {
-    sessionId: session.id,
-    metadata,
-  });
-  console.log("[stripe deposit] wallet_transaction_id", {
-    sessionId: session.id,
-    walletTransactionId: transactionId,
-  });
-  console.log("[stripe deposit] payment_intent", {
-    sessionId: session.id,
-    paymentIntentId,
-  });
-  console.log("[stripe deposit] amount_total", {
-    sessionId: session.id,
-    amountTotal,
-  });
-
-  if (!transactionId) {
-    console.error("[stripe deposit] CRITICAL skipped/failure reason", {
-      reason: "missing_wallet_transaction_id",
-      sessionId: session.id,
-      paymentIntentId,
-      metadata,
-    });
-    console.log("[stripe deposit] wallet_transaction_id missing on checkout.session.completed", {
-      sessionId: session.id,
-      paymentIntentId,
-      metadata,
-    });
-    return { ok: true, reason: "ignored_missing_metadata" } satisfies WalletDepositHandleResult;
-  }
-
-  const tx = await getWalletDepositTransactionForSession(supabase, session);
-
-  console.log("[stripe deposit] lookup result", {
-    sessionId: session.id,
-    transactionId,
-    lookupResult: tx,
-    lookupError: tx ? null : "not_found_or_load_failed",
-  });
-
-  if (!tx) {
-    const metadataTxId = stringFrom(metadata.wallet_transaction_id);
-    if (metadataTxId) {
-      console.error("[stripe deposit] CRITICAL skipped/failure reason", {
-        reason: "missing_wallet_transaction_row",
-        transactionId: metadataTxId,
-        sessionId: session.id,
-        paymentIntentId,
-      });
-      console.log("[stripe deposit] no matching transaction for checkout.session.completed", {
-        transactionId: metadataTxId,
-        sessionId: session.id,
-        paymentIntentId,
-      });
-      return { ok: true, reason: "ignored_missing_transaction" } satisfies WalletDepositHandleResult;
-    }
-
-    console.error("[stripe deposit] CRITICAL failed to credit wallet", {
-      transactionId,
-      sessionId: session.id,
-      paymentIntentId,
-      reason: "load_wallet_transaction_failed",
-      error: "lookup_failed_without_transaction_id",
-    });
-    return { ok: false, reason: "critical_failure", transactionId };
-  }
-
-  if (tx.status === "paid" || tx.provider_status === "paid") {
-    console.error("[stripe deposit] CRITICAL skipped/failure reason", {
-      reason: "already_paid_before_checkout_completed",
-      transactionId,
-      sessionId: session.id,
-      paymentIntentId,
-      tx,
-    });
-    console.log("[stripe deposit] transaction already paid before checkout.session.completed", {
-      transactionId,
-      sessionId: session.id,
-      paymentIntentId,
-      paymentId: tx.payment_id,
-    });
-    return { ok: true, reason: "already_paid" } satisfies WalletDepositHandleResult;
-  }
-
-  if (tx.status !== "pending") {
-    console.error("[stripe deposit] CRITICAL skipped/failure reason", {
-      reason: "transaction_not_pending",
-      transactionId,
-      sessionId: session.id,
-      paymentIntentId,
-      tx,
-    });
-    console.log("[stripe deposit] transaction not pending, skipping checkout.session.completed", {
-      transactionId,
-      sessionId: session.id,
-      status: tx.status,
-      providerStatus: tx.provider_status,
-    });
-    return { ok: true, reason: "ignored_not_pending" } satisfies WalletDepositHandleResult;
-  }
-
-  try {
-    await handleWalletDeposit(supabase, session);
-    console.log("[stripe deposit] wallet credited successfully", {
-      sessionId: session.id,
-      transactionId,
-      paymentIntentId,
-    });
-    return { ok: true, reason: "credited" } satisfies WalletDepositHandleResult;
-  } catch (err) {
-    console.error("[stripe deposit] CRITICAL failed to credit wallet", {
-      transactionId,
-      sessionId: session.id,
-      paymentIntentId,
-      tx,
-      error: err instanceof Error ? err.message : String(err),
-      stack: err instanceof Error ? err.stack : undefined,
-    });
-    return { ok: false, reason: "critical_failure", transactionId };
-  }
 }
 
 async function handleContractFunding(supabase: Supabase, session: Stripe.Checkout.Session) {
@@ -630,75 +527,11 @@ export async function POST(req: NextRequest) {
   console.log("[stripe webhook] received", { type: event.type, eventId: event.id });
 
   const supabase = createServerClient({ useServiceRole: true });
-  const eventAlreadyProcessed = await hasProcessedEvent(supabase, event.id);
 
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const type = session.metadata?.type;
-
-    if (type === "wallet_deposit") {
-      const tx = await getWalletDepositTransactionForSession(supabase, session);
-
-      console.log("[stripe webhook] loaded transaction", {
-        eventId: event.id,
-        sessionId: session.id,
-        transactionId: tx?.id ?? stringFrom(session.metadata?.wallet_transaction_id),
-        status: tx?.status ?? null,
-        providerStatus: tx?.provider_status ?? null,
-      });
-
-      if (tx && (tx.status === "paid" || tx.provider_status === "paid")) {
-        console.log("[stripe webhook] duplicate event skipped, already paid", {
-          eventId: event.id,
-          sessionId: session.id,
-          transactionId: tx.id,
-          status: tx.status,
-          providerStatus: tx.provider_status,
-        });
-
-        if (!eventAlreadyProcessed) {
-          await markEventProcessed(supabase, event);
-          console.log("[stripe deposit] event marked processed after successful credit", {
-            eventId: event.id,
-            sessionId: session.id,
-            transactionId: tx.id,
-          });
-        }
-
-        return NextResponse.json({ ok: true, duplicate: eventAlreadyProcessed, processed: true });
-      }
-
-      if (tx?.status === "pending") {
-        if (eventAlreadyProcessed) {
-          console.error("[stripe webhook] duplicate event but transaction pending, reprocessing", {
-            eventId: event.id,
-            sessionId: session.id,
-            transactionId: tx.id,
-            status: tx.status,
-            providerStatus: tx.provider_status,
-          });
-        }
-      } else if (tx) {
-        console.error("[stripe deposit] CRITICAL credit failed, event not marked processed", {
-          eventId: event.id,
-          sessionId: session.id,
-          transactionId: tx.id,
-          reason: "transaction_not_pending_or_paid",
-          status: tx.status,
-          providerStatus: tx.provider_status,
-        });
-        return NextResponse.json({ ok: true, processed: false });
-      }
-    } else if (eventAlreadyProcessed) {
-      console.log("[stripe webhook] duplicate event skipped", { eventId: event.id, type: event.type });
-      return NextResponse.json({ ok: true, duplicate: true });
-    }
-  } else if (eventAlreadyProcessed) {
+  if (await hasProcessedEvent(supabase, event.id)) {
     console.log("[stripe webhook] duplicate event skipped", { eventId: event.id, type: event.type });
     return NextResponse.json({ ok: true, duplicate: true });
   }
-
-  let shouldMarkProcessed = true;
 
   try {
     switch (event.type) {
@@ -709,14 +542,13 @@ export async function POST(req: NextRequest) {
         console.log("[stripe webhook] checkout.session.completed", { type, sessionId: session.id });
 
         if (type === "wallet_deposit") {
-          const result = await handleWalletDepositSafely(supabase, session);
-          if (!result.ok) {
-            shouldMarkProcessed = false;
-          }
+          await handleWalletDeposit(supabase, session);
         } else if (type === "contract_funding") {
           await handleContractFunding(supabase, session);
         } else if (type === "plan_subscription") {
           await handlePlanCheckout(supabase, session);
+        } else {
+          console.log("[stripe webhook] checkout.session.completed unhandled type", { type, sessionId: session.id });
         }
         break;
       }
@@ -733,42 +565,16 @@ export async function POST(req: NextRequest) {
         break;
     }
   } catch (err) {
-    shouldMarkProcessed = false;
     console.error("[stripe webhook] processing failed", {
       eventId: event.id,
       type: event.type,
       error: err instanceof Error ? err.message : String(err),
       stack: err instanceof Error ? err.stack : undefined,
     });
+    // Return 500 so Stripe retries the event
+    return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 
-  if (shouldMarkProcessed) {
-    await markEventProcessed(supabase, event);
-    if (event.type === "checkout.session.completed") {
-      const session = event.data.object as Stripe.Checkout.Session;
-      if (session.metadata?.type === "wallet_deposit") {
-        console.log("[stripe deposit] event marked processed after successful credit", {
-          eventId: event.id,
-          sessionId: session.id,
-          transactionId: session.metadata?.wallet_transaction_id ?? null,
-        });
-      }
-    }
-  } else if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    if (session.metadata?.type === "wallet_deposit") {
-      console.error("[stripe deposit] CRITICAL credit failed, event not marked processed", {
-        eventId: event.id,
-        sessionId: session.id,
-        transactionId: session.metadata?.wallet_transaction_id ?? null,
-      });
-      console.error("[stripe deposit] failed before marking processed", {
-        eventId: event.id,
-        sessionId: session.id,
-        transactionId: session.metadata?.wallet_transaction_id ?? null,
-      });
-    }
-  }
-
-  return NextResponse.json({ ok: true, processed: shouldMarkProcessed });
+  await markEventProcessed(supabase, event);
+  return NextResponse.json({ ok: true });
 }
