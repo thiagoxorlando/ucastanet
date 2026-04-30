@@ -9,6 +9,11 @@ export const runtime = "nodejs";
 
 type Supabase = ReturnType<typeof createServerClient>;
 
+type ProfileIdentity = {
+  id: string;
+  plan: string | null;
+};
+
 function idFrom(value: unknown): string | null {
   if (!value) return null;
   if (typeof value === "string") return value;
@@ -39,6 +44,21 @@ function planFrom(value: unknown): Plan | null {
   return typeof value === "string" && PLAN_KEYS.includes(value as Plan) ? (value as Plan) : null;
 }
 
+function isMissingProfileColumnError(error: { message?: string } | null, column: string) {
+  return !!error?.message?.includes(column);
+}
+
+function isIgnorableStripeProfileColumnError(error: { message?: string } | null) {
+  const message = error?.message;
+  if (!message) return false;
+  return [
+    "stripe_customer_id",
+    "stripe_subscription_id",
+    "stripe_subscription_status",
+    "stripe_price_id",
+  ].some((column) => message.includes(column));
+}
+
 async function hasProcessedEvent(supabase: Supabase, eventId: string) {
   const { data } = await supabase
     .from("stripe_events")
@@ -65,6 +85,131 @@ async function markEventProcessed(supabase: Supabase, event: Stripe.Event) {
       error: error.message,
     });
   }
+}
+
+async function updateProfileSubscriptionState(
+  supabase: Supabase,
+  params: {
+    userId: string;
+    plan?: Plan | "free" | null;
+    planStatus: string;
+    planExpiresAt: string | null;
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
+    stripeSubscriptionStatus?: string | null;
+    stripePriceId?: string | null;
+    reason: string;
+  },
+) {
+  const coreUpdate: Record<string, unknown> = {
+    plan_status: params.planStatus,
+    plan_expires_at: params.planExpiresAt,
+  };
+  if (params.plan) {
+    coreUpdate.plan = params.plan;
+  }
+
+  let coreResult = await supabase
+    .from("profiles")
+    .update(coreUpdate)
+    .eq("id", params.userId)
+    .select("id, plan, plan_status, plan_expires_at")
+    .maybeSingle();
+
+  if (coreResult.error && isMissingProfileColumnError(coreResult.error, "plan_expires_at")) {
+    coreResult = await supabase
+      .from("profiles")
+      .update(params.plan ? { plan: params.plan, plan_status: params.planStatus } : { plan_status: params.planStatus })
+      .eq("id", params.userId)
+      .select("id, plan, plan_status")
+      .maybeSingle();
+  }
+
+  if (coreResult.error && isMissingProfileColumnError(coreResult.error, "plan_status")) {
+    if (!params.plan) {
+      console.error("[stripe subscription] update failed", {
+        reason: params.reason,
+        userId: params.userId,
+        error: coreResult.error.message,
+        coreUpdate,
+      });
+      throw new Error(`profile status update failed during ${params.reason}`);
+    }
+
+    coreResult = await supabase
+      .from("profiles")
+      .update({ plan: params.plan })
+      .eq("id", params.userId)
+      .select("id, plan")
+      .maybeSingle();
+  }
+
+  if (coreResult.error || !coreResult.data) {
+    console.error("[stripe subscription] update failed", {
+      reason: params.reason,
+      userId: params.userId,
+      error: coreResult.error?.message ?? "profile_not_found",
+      coreUpdate,
+    });
+    throw new Error(`profile update failed during ${params.reason}`);
+  }
+
+  const stripeUpdate = {
+    stripe_customer_id: params.stripeCustomerId ?? null,
+    stripe_subscription_id: params.stripeSubscriptionId ?? null,
+    stripe_subscription_status: params.stripeSubscriptionStatus ?? null,
+    stripe_price_id: params.stripePriceId ?? null,
+  };
+
+  const stripeResult = await supabase
+    .from("profiles")
+    .update(stripeUpdate)
+    .eq("id", params.userId)
+    .select("id, stripe_customer_id, stripe_subscription_id, stripe_subscription_status, stripe_price_id")
+    .maybeSingle();
+
+  if (stripeResult.error) {
+    if (isIgnorableStripeProfileColumnError(stripeResult.error)) {
+      console.warn("[stripe subscription] optional stripe columns unavailable", {
+        reason: params.reason,
+        userId: params.userId,
+        error: stripeResult.error.message,
+      });
+    } else {
+      console.error("[stripe subscription] update failed", {
+        reason: params.reason,
+        userId: params.userId,
+        error: stripeResult.error.message,
+        stripeUpdate,
+      });
+      throw new Error(`stripe profile field update failed during ${params.reason}`);
+    }
+  }
+
+  const agencyResult = await supabase
+    .from("agencies")
+    .update({ subscription_status: params.planStatus })
+    .eq("id", params.userId);
+
+  if (agencyResult.error) {
+    console.warn("[stripe subscription] agency status update failed", {
+      reason: params.reason,
+      userId: params.userId,
+      error: agencyResult.error.message,
+    });
+  }
+
+  console.log("[stripe subscription] profile updated", {
+    reason: params.reason,
+    userId: params.userId,
+    plan: params.plan ?? null,
+    planStatus: params.planStatus,
+    planExpiresAt: params.planExpiresAt,
+    stripeCustomerId: params.stripeCustomerId ?? null,
+    stripeSubscriptionId: params.stripeSubscriptionId ?? null,
+    stripeSubscriptionStatus: params.stripeSubscriptionStatus ?? null,
+    stripePriceId: params.stripePriceId ?? null,
+  });
 }
 
 async function handleWalletDeposit(supabase: Supabase, session: Stripe.Checkout.Session) {
@@ -390,25 +535,19 @@ async function activateStripePlan(
     return date.toISOString();
   })();
 
-  await supabase
-    .from("profiles")
-    .update({
-      plan: params.plan,
-      plan_status: "active",
-      plan_expires_at: expiresAt,
-      stripe_customer_id: params.customerId,
-      stripe_subscription_id: params.subscriptionId,
-      stripe_subscription_status: params.subscriptionStatus ?? "active",
-      stripe_price_id: params.priceId,
-    })
-    .eq("id", params.userId);
+  await updateProfileSubscriptionState(supabase, {
+    userId: params.userId,
+    plan: planFrom(params.plan) ?? "free",
+    planStatus: "active",
+    planExpiresAt: expiresAt,
+    stripeCustomerId: params.customerId,
+    stripeSubscriptionId: params.subscriptionId,
+    stripeSubscriptionStatus: params.subscriptionStatus ?? "active",
+    stripePriceId: params.priceId,
+    reason: "activateStripePlan",
+  });
 
-  await supabase
-    .from("agencies")
-    .update({ subscription_status: "active" })
-    .eq("id", params.userId);
-
-  await supabase
+  const billingTxResult = await supabase
     .from("wallet_transactions")
     .upsert(
       {
@@ -426,6 +565,16 @@ async function activateStripePlan(
       },
       { onConflict: "idempotency_key" },
     );
+
+  if (billingTxResult.error) {
+    console.error("[stripe subscription] update failed", {
+      reason: "activateStripePlan.wallet_transaction",
+      userId: params.userId,
+      invoiceId: params.invoiceId,
+      error: billingTxResult.error.message,
+    });
+    throw new Error(`wallet transaction upsert failed for invoice ${params.invoiceId}`);
+  }
 
   console.log("[stripe billing] plan activated", {
     userId: params.userId,
@@ -454,8 +603,18 @@ async function handlePlanCheckout(supabase: Supabase, session: Stripe.Checkout.S
     subscriptionId,
     mode: session.mode,
   });
+  console.log("[stripe subscription] metadata", {
+    sessionId: session.id,
+    metadata,
+  });
 
   if (!userId || !plan || !subscriptionId || !customerId) {
+    console.error("[stripe subscription] CRITICAL missing checkout metadata", {
+      sessionId: session.id,
+      metadata,
+      customerId,
+      subscriptionId,
+    });
     throw new Error("plan_subscription metadata missing user_id, plan, customer, or subscription");
   }
 
@@ -493,10 +652,23 @@ async function handleInvoicePaid(supabase: Supabase, invoice: Stripe.Invoice) {
   const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
   const subscriptionRecord = subscription as unknown as Record<string, unknown>;
   const metadata = recordFrom(subscriptionRecord.metadata);
-  const userId = stringFrom(metadata.user_id);
-  const plan = stringFrom(metadata.plan);
+  const resolvedProfile = await resolveProfileByStripeRefs(supabase, {
+    subscriptionId,
+    customerId: idFrom(invoiceRecord.customer),
+  });
+  const userId = stringFrom(metadata.user_id) ?? resolvedProfile?.id ?? null;
+  const plan = planFrom(metadata.plan) ?? planFrom(resolvedProfile?.plan ?? null);
 
-  if (!userId || !plan) return;
+  if (!userId || !plan) {
+    console.error("[stripe subscription] update failed", {
+      reason: "invoice.paid",
+      invoiceId: invoice.id,
+      subscriptionId,
+      metadata,
+      resolvedProfile,
+    });
+    return;
+  }
 
   const items = recordFrom(subscriptionRecord.items);
   const itemData = Array.isArray(items.data) ? items.data : [];
@@ -530,6 +702,7 @@ async function resolveUserIdFromSubscription(
   supabase: Supabase,
   subscriptionId: string,
   metadata: Record<string, unknown>,
+  customerId?: string | null,
 ): Promise<string | null> {
   const metadataUserId = stringFrom(metadata.user_id);
   if (metadataUserId) return metadataUserId;
@@ -540,7 +713,47 @@ async function resolveUserIdFromSubscription(
     .eq("stripe_subscription_id", subscriptionId)
     .maybeSingle();
 
-  return profile?.id ?? null;
+  if (profile?.id) return profile.id;
+
+  if (!customerId) return null;
+
+  const { data: fallbackProfile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+
+  return fallbackProfile?.id ?? null;
+}
+
+async function resolveProfileByStripeRefs(
+  supabase: Supabase,
+  params: {
+    subscriptionId?: string | null;
+    customerId?: string | null;
+  },
+): Promise<ProfileIdentity | null> {
+  if (params.subscriptionId) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, plan")
+      .eq("stripe_subscription_id", params.subscriptionId)
+      .maybeSingle();
+
+    if (data?.id) return data as ProfileIdentity;
+  }
+
+  if (params.customerId) {
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, plan")
+      .eq("stripe_customer_id", params.customerId)
+      .maybeSingle();
+
+    if (data?.id) return data as ProfileIdentity;
+  }
+
+  return null;
 }
 
 async function syncSubscriptionState(
@@ -577,23 +790,20 @@ async function syncSubscriptionState(
     planStatus = params.subscriptionStatus ?? "inactive";
   }
 
-  const profileUpdate: Record<string, unknown> = {
-    plan_status: planStatus,
-    plan_expires_at: planExpiresAt,
-    stripe_customer_id: params.customerId,
-    stripe_subscription_id: params.subscriptionId,
-    stripe_subscription_status: params.subscriptionStatus,
-    stripe_price_id: params.priceId,
-  };
-
-  if (params.plan) {
-    profileUpdate.plan = params.subscriptionStatus === "canceled" ? "free" : params.plan;
-  } else if (params.subscriptionStatus === "canceled") {
-    profileUpdate.plan = "free";
-  }
-
-  await supabase.from("profiles").update(profileUpdate).eq("id", params.userId);
-  await supabase.from("agencies").update({ subscription_status: planStatus }).eq("id", params.userId);
+  await updateProfileSubscriptionState(supabase, {
+    userId: params.userId,
+    plan:
+      params.subscriptionStatus === "canceled"
+        ? "free"
+        : params.plan ?? null,
+    planStatus,
+    planExpiresAt,
+    stripeCustomerId: params.customerId,
+    stripeSubscriptionId: params.subscriptionId,
+    stripeSubscriptionStatus: params.subscriptionStatus,
+    stripePriceId: params.priceId,
+    reason: "syncSubscriptionState",
+  });
 
   return { planStatus, planExpiresAt };
 }
@@ -613,7 +823,12 @@ async function handleSubscriptionCreated(supabase: Supabase, subscription: Strip
   const status = stringFrom(subscriptionRecord.status);
 
   if (!userId) {
-    console.log("[stripe subscription] created: missing metadata.user_id", { subscriptionId: subscription.id });
+    console.error("[stripe subscription] update failed", {
+      reason: "customer.subscription.created",
+      subscriptionId: subscription.id,
+      metadata,
+      error: "missing metadata.user_id",
+    });
     return;
   }
 
@@ -651,16 +866,23 @@ async function handleSubscriptionUpdated(supabase: Supabase, subscription: Strip
   const firstItem = recordFrom(itemData[0]);
   const priceId = idFrom(firstItem.price);
 
-  const userId = await resolveUserIdFromSubscription(supabase, subscription.id, metadata);
+  const customerId = idFrom(subscription.customer);
+  const userId = await resolveUserIdFromSubscription(supabase, subscription.id, metadata, customerId);
   if (!userId) {
-    console.log("[stripe subscription] customer.subscription.updated: no user found", { subscriptionId: subscription.id });
+    console.error("[stripe subscription] update failed", {
+      reason: "customer.subscription.updated",
+      subscriptionId: subscription.id,
+      customerId,
+      metadata,
+      error: "no user found",
+    });
     return;
   }
 
   const { planStatus, planExpiresAt } = await syncSubscriptionState(supabase, {
     userId,
     plan,
-    customerId: idFrom(subscription.customer),
+    customerId,
     subscriptionId: subscription.id,
     subscriptionStatus: status,
     priceId,
@@ -690,32 +912,71 @@ async function handleInvoicePaymentFailed(supabase: Supabase, invoice: Stripe.In
     const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
     const subscriptionRecord = subscription as unknown as Record<string, unknown>;
     const metadata = recordFrom(subscriptionRecord.metadata);
-    userId = await resolveUserIdFromSubscription(supabase, subscriptionId, metadata);
+    userId = await resolveUserIdFromSubscription(
+      supabase,
+      subscriptionId,
+      metadata,
+      idFrom(invoiceRecord.customer),
+    );
     const subStatus = stringFrom(subscriptionRecord.status);
     const planStatus = subStatus === "unpaid" ? "unpaid" : "past_due";
 
     if (!userId) {
-      console.error("[stripe billing] invoice.payment_failed: no user found", {
+      console.error("[stripe subscription] update failed", {
+        reason: "invoice.payment_failed",
         subscriptionId,
         invoiceId: invoice.id,
+        metadata,
+        error: "no user found",
       });
       return;
     }
 
-    await supabase.from("profiles").update({
+    let profileResult = await supabase.from("profiles").update({
       plan_status: planStatus,
       stripe_subscription_status: subStatus,
     }).eq("id", userId);
-    await supabase.from("agencies").update({ subscription_status: planStatus }).eq("id", userId);
 
-    console.log("[stripe billing] payment failed, plan status updated", {
+    if (profileResult.error && isMissingProfileColumnError(profileResult.error, "stripe_subscription_status")) {
+      profileResult = await supabase
+        .from("profiles")
+        .update({ plan_status: planStatus })
+        .eq("id", userId);
+    }
+
+    if (profileResult.error) {
+      console.error("[stripe subscription] update failed", {
+        reason: "invoice.payment_failed",
+        subscriptionId,
+        invoiceId: invoice.id,
+        userId,
+        error: profileResult.error.message,
+      });
+      throw new Error(`invoice.payment_failed profile update failed: ${profileResult.error.message}`);
+    }
+
+    const agencyResult = await supabase
+      .from("agencies")
+      .update({ subscription_status: planStatus })
+      .eq("id", userId);
+
+    if (agencyResult.error) {
+      console.warn("[stripe subscription] agency status update failed", {
+        reason: "invoice.payment_failed",
+        userId,
+        error: agencyResult.error.message,
+      });
+    }
+
+    console.log("[stripe subscription] payment failed", {
       userId,
       subscriptionId,
       invoiceId: invoice.id,
       planStatus,
     });
   } catch (err) {
-    console.error("[stripe billing] invoice.payment_failed handler error", {
+    console.error("[stripe subscription] update failed", {
+      reason: "invoice.payment_failed.handler",
       subscriptionId,
       invoiceId: invoice.id,
       error: err instanceof Error ? err.message : String(err),
@@ -727,9 +988,20 @@ async function handleInvoicePaymentFailed(supabase: Supabase, invoice: Stripe.In
 async function handleSubscriptionDeleted(supabase: Supabase, subscription: Stripe.Subscription) {
   const subscriptionRecord = subscription as unknown as Record<string, unknown>;
   const metadata = recordFrom(subscriptionRecord.metadata);
-  const userId = await resolveUserIdFromSubscription(supabase, subscription.id, metadata);
+  const userId = await resolveUserIdFromSubscription(
+    supabase,
+    subscription.id,
+    metadata,
+    idFrom(subscription.customer),
+  );
   if (!userId) {
-    console.log("[stripe subscription] canceled: no user found", { subscriptionId: subscription.id });
+    console.error("[stripe subscription] update failed", {
+      reason: "customer.subscription.deleted",
+      subscriptionId: subscription.id,
+      customerId: idFrom(subscription.customer),
+      metadata,
+      error: "no user found",
+    });
     return;
   }
 

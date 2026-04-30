@@ -13,14 +13,21 @@ export default async function BillingPage() {
   const supabase = createServerClient({ useServiceRole: true });
 
   const [
-    { data: profile },
+    { data: profile, error: profileError },
+    { data: stripeProfile, error: stripeProfileError },
     { data: transactions },
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("plan, plan_status, plan_expires_at, stripe_customer_id, stripe_subscription_id, stripe_subscription_status")
+      .select("plan, plan_status, plan_expires_at")
       .eq("id", userId)
-      .single(),
+      .maybeSingle(),
+
+    supabase
+      .from("profiles")
+      .select("stripe_customer_id, stripe_subscription_id, stripe_subscription_status")
+      .eq("id", userId)
+      .maybeSingle(),
 
     supabase
       .from("wallet_transactions")
@@ -30,14 +37,28 @@ export default async function BillingPage() {
       .limit(50),
   ]);
 
+  if (profileError) {
+    console.error("[agency billing] failed to load core profile", {
+      userId,
+      error: profileError.message,
+    });
+  }
+
+  if (stripeProfileError) {
+    console.warn("[agency billing] failed to load stripe profile fields", {
+      userId,
+      error: stripeProfileError.message,
+    });
+  }
+
   return (
     <BillingDashboard
       plan={profile?.plan ?? "free"}
       planStatus={profile?.plan_status ?? null}
       planExpiresAt={profile?.plan_expires_at ?? null}
-      stripeCustomerId={profile?.stripe_customer_id ?? null}
-      stripeSubscriptionId={profile?.stripe_subscription_id ?? null}
-      stripeSubscriptionStatus={profile?.stripe_subscription_status ?? null}
+      stripeCustomerId={stripeProfile?.stripe_customer_id ?? null}
+      stripeSubscriptionId={stripeProfile?.stripe_subscription_id ?? null}
+      stripeSubscriptionStatus={stripeProfile?.stripe_subscription_status ?? null}
       transactions={transactions ?? []}
     />
   );
