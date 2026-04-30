@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
 import { notify, notifyAdmins } from "@/lib/notify";
 import { PLAN_KEYS, type Plan } from "@/lib/plans";
+import { syncStripeConnectAccountStatus } from "@/lib/stripeConnect";
 
 export const runtime = "nodejs";
 
@@ -38,6 +39,15 @@ function recordFrom(value: unknown): Record<string, unknown> {
 
 function amountFromCents(cents: number | null | undefined) {
   return cents && cents > 0 ? Math.round(cents) / 100 : 0;
+}
+
+function formatBrl(amount: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
 }
 
 function planFrom(value: unknown): Plan | null {
@@ -1023,6 +1033,146 @@ async function handleSubscriptionDeleted(supabase: Supabase, subscription: Strip
   });
 }
 
+async function resolveWithdrawalTxIdFromPayout(supabase: Supabase, payout: Stripe.Payout) {
+  const metadata = payout.metadata ?? {};
+  const txId = stringFrom(metadata.withdrawal_transaction_id);
+  if (txId) return txId;
+
+  const { data: tx } = await supabase
+    .from("wallet_transactions")
+    .select("id")
+    .eq("type", "withdrawal")
+    .eq("provider_transfer_id", payout.id)
+    .maybeSingle();
+
+  return tx?.id ?? null;
+}
+
+async function handleConnectAccountUpdated(supabase: Supabase, account: Stripe.Account) {
+  await syncStripeConnectAccountStatus(supabase, account);
+  console.log("[stripe connect] account.updated synced", {
+    accountId: account.id,
+    payoutsEnabled: account.payouts_enabled ?? false,
+    detailsSubmitted: account.details_submitted ?? false,
+    transfersActive: account.capabilities?.transfers === "active",
+  });
+}
+
+async function handleStripePayoutEvent(
+  supabase: Supabase,
+  payout: Stripe.Payout,
+  eventType: "payout.created" | "payout.updated" | "payout.paid" | "payout.failed",
+) {
+  const payoutMetadata = payout.metadata ?? {};
+  const userRole = stringFrom(payoutMetadata.user_role);
+  const financesPath = userRole === "agency" ? "/agency/finances" : "/talent/finances";
+  const txId = await resolveWithdrawalTxIdFromPayout(supabase, payout);
+  if (!txId) {
+    console.warn("[stripe payout] withdrawal not found for payout", {
+      payoutId: payout.id,
+      eventType,
+      metadata: payoutMetadata,
+    });
+    return;
+  }
+
+  const providerStatus = payout.status ?? (
+    eventType === "payout.failed"
+      ? "failed"
+      : eventType === "payout.paid"
+        ? "paid"
+        : "pending"
+  );
+
+  await supabase
+    .from("wallet_transactions")
+    .update({
+      provider: "stripe",
+      provider_transfer_id: payout.id,
+      provider_status: providerStatus,
+      reference_id: stringFrom(payout.metadata?.transfer_id),
+    })
+    .eq("id", txId);
+
+  if (eventType === "payout.created" || eventType === "payout.updated") {
+    console.log("[stripe payout] status synced", {
+      txId,
+      payoutId: payout.id,
+      providerStatus,
+      eventType,
+    });
+    return;
+  }
+
+  const { data: tx } = await supabase
+    .from("wallet_transactions")
+    .select("id, user_id, amount, status")
+    .eq("id", txId)
+    .maybeSingle();
+
+  if (!tx?.id) return;
+
+  if (eventType === "payout.paid") {
+    await supabase.rpc("mark_wallet_withdrawal_paid", {
+      p_transaction_id: txId,
+      p_provider: "stripe",
+      p_admin_note: "Stripe payout confirmado por webhook.",
+    });
+
+    const amount = Math.abs(Number(tx.amount ?? 0));
+    await notify(
+      tx.user_id,
+      "payment",
+      `Seu saque de ${formatBrl(amount)} foi pago automaticamente via Stripe.`,
+      financesPath,
+      `wallet-withdrawal-paid-stripe:${txId}`,
+    ).catch((error) => console.error("[stripe payout] paid notify failed", { txId, error }));
+
+    console.log("[withdrawal] marked paid", {
+      txId,
+      provider: "stripe",
+      payoutId: payout.id,
+      eventType,
+    });
+    return;
+  }
+
+  const failureReason =
+    stringFrom((payout as unknown as Record<string, unknown>).failure_message)
+    ?? stringFrom((payout as unknown as Record<string, unknown>).failure_code)
+    ?? "Stripe payout failed";
+
+  await supabase.rpc("fail_wallet_withdrawal", {
+    p_transaction_id: txId,
+    p_reason: `Stripe payout failed: ${failureReason}`,
+    p_provider_status: "failed",
+  });
+
+  const amount = Math.abs(Number(tx.amount ?? 0));
+  await notify(
+    tx.user_id,
+    "payment",
+    `Seu saque de ${formatBrl(amount)} falhou no Stripe e o saldo foi restaurado na carteira.`,
+    financesPath,
+    `wallet-withdrawal-failed-stripe:${txId}`,
+  ).catch((error) => console.error("[stripe payout] failed notify user failed", { txId, error }));
+
+  await notifyAdmins(
+    "payment",
+    `Falha em saque Stripe: ${formatBrl(amount)}`,
+    "/admin/finances",
+    `admin-stripe-withdrawal-failed:${txId}`,
+  ).catch((error) => console.error("[stripe payout] failed notify admin failed", { txId, error }));
+
+  console.log("[withdrawal] failed", {
+    txId,
+    provider: "stripe",
+    payoutId: payout.id,
+    reason: failureReason,
+    eventType,
+  });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -1107,6 +1257,17 @@ export async function POST(req: NextRequest) {
 
       case "customer.subscription.deleted":
         await handleSubscriptionDeleted(supabase, event.data.object as Stripe.Subscription);
+        break;
+
+      case "account.updated":
+        await handleConnectAccountUpdated(supabase, event.data.object as Stripe.Account);
+        break;
+
+      case "payout.created":
+      case "payout.updated":
+      case "payout.paid":
+      case "payout.failed":
+        await handleStripePayoutEvent(supabase, event.data.object as Stripe.Payout, event.type);
         break;
 
       default:

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import { getStripe } from "@/lib/stripe";
+import { getStripeConnectStatusForUser, syncStripeConnectAccountStatus } from "@/lib/stripeConnect";
 
 export const runtime = "nodejs";
 
@@ -22,14 +23,9 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = createServerClient({ useServiceRole: true });
-
-  const { data: talentRow } = await supabase
-    .from("talent_profiles")
-    .select("stripe_account_id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const accountId = talentRow?.stripe_account_id ?? null;
+  const stored = await getStripeConnectStatusForUser(supabase, user.id);
+  if (!stored) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const accountId = stored.stripe_account_id;
 
   if (!accountId) {
     const payload: StripeConnectStatusResponse = {
@@ -44,6 +40,7 @@ export async function GET() {
 
   try {
     const account = await getStripe().accounts.retrieve(accountId);
+    await syncStripeConnectAccountStatus(supabase, account);
 
     const payload: StripeConnectStatusResponse = {
       connected:         true,
@@ -53,19 +50,17 @@ export async function GET() {
       transfers_active:  account.capabilities?.transfers === "active",
     };
 
-    console.log("[stripe status]", accountId, payload);
+    console.log("[stripe status]", accountId, { role: stored.role, ...payload });
     return NextResponse.json(payload);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[stripe status] failed to retrieve account:", accountId, msg);
-    // Return connected=true so the UI shows the "Finalizar cadastro" button rather than
-    // treating the account as never created.
     const fallback: StripeConnectStatusResponse = {
       connected:         true,
-      charges_enabled:   false,
-      payouts_enabled:   false,
-      details_submitted: false,
-      transfers_active:  false,
+      charges_enabled:   stored.charges_enabled,
+      payouts_enabled:   stored.payouts_enabled,
+      details_submitted: stored.details_submitted,
+      transfers_active:  stored.transfers_active,
     };
     return NextResponse.json(fallback);
   }

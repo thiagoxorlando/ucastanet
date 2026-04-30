@@ -857,6 +857,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
   const [cancelReason, setCancelReason] = useState("");
   const [cancelLoading, setCancelLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expandedStripePending, setExpandedStripePending] = useState(false);
   const [expandedAgencyPending, setExpandedAgencyPending] = useState(false);
   const [expandedTalentPending, setExpandedTalentPending] = useState(false);
   const [expandedHistory, setExpandedHistory] = useState(false);
@@ -867,14 +868,17 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
   }, [withdrawals]);
 
   const pending = rows
-    .filter((w) => w.status === "pending")
+    .filter((w) => w.status === "pending" || w.status === "processing")
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  const agencyPending = pending.filter((w) => w.userRole === "agency");
-  const talentPending = pending.filter((w) => w.userRole === "talent");
+  const stripePending = pending.filter((w) => w.provider === "stripe" || w.status === "processing");
+  const manualPending = pending.filter((w) => w.provider !== "stripe" && w.status === "pending");
+  const agencyPending = manualPending.filter((w) => w.userRole === "agency");
+  const talentPending = manualPending.filter((w) => w.userRole === "talent");
+  const visibleStripePending = expandedStripePending ? stripePending : stripePending.slice(0, 5);
   const visibleAgencyPending = expandedAgencyPending ? agencyPending : agencyPending.slice(0, 5);
   const visibleTalentPending = expandedTalentPending ? talentPending : talentPending.slice(0, 5);
   const history = rows
-    .filter((w) => !["pending"].includes(w.status))
+    .filter((w) => !["pending", "processing"].includes(w.status))
     .sort((a, b) => new Date(b.processedAt ?? b.createdAt).getTime() - new Date(a.processedAt ?? a.createdAt).getTime());
   const visibleHistory = expandedHistory ? history : history.slice(0, 10);
 
@@ -980,10 +984,12 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
     title,
     subtitle,
     rows: tableRows,
+    showActions = true,
   }: {
     title: string;
     subtitle: string;
     rows: FinancesWithdrawal[];
+    showActions?: boolean;
   }) {
     return (
       <div className="space-y-3">
@@ -1006,8 +1012,9 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
                 <Th>Chave PIX</Th>
                 <Th>Titular</Th>
                 <Th>Solicitado</Th>
+                <Th>Provedor</Th>
                 <Th>Status</Th>
-                <Th right>Ações</Th>
+                <Th right>{showActions ? "Ações" : "Observação"}</Th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#EFF5F5] [&>tr:hover]:bg-[#F8FAFC]">
@@ -1050,32 +1057,44 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
                   </Td>
                   <Td>{w.pixHolderName ?? "—"}</Td>
                   <Td>{fmt(w.createdAt)}</Td>
+                  <Td>
+                    <Badge value={withdrawalProviderLabel(w)} tone={withdrawalProviderTone(w)} />
+                    {w.providerStatus && (
+                      <p className="mt-1 max-w-[140px] truncate text-[10px] text-zinc-400" title={w.providerStatus}>
+                        {w.providerStatus}
+                      </p>
+                    )}
+                  </Td>
                   <Td>{renderStatusBadge(w.status)}</Td>
                   <Td right>
-                    <div className="flex items-center justify-end gap-1.5">
-                      <button
-                        onClick={() => {
-                          setApproving(w.id);
-                          setApproveNote("");
-                          setError(null);
-                        }}
-                        disabled={approveLoading || cancelLoading || !!canceling}
-                        className="rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:from-emerald-500 hover:to-teal-500 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        Marcar pago
-                      </button>
-                      <button
-                        onClick={() => {
-                          setCanceling(w.id);
-                          setCancelReason("");
-                          setError(null);
-                        }}
-                        disabled={approveLoading || cancelLoading || !!approving}
-                        className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-500 transition-all hover:border-red-300 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
+                    {showActions ? (
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => {
+                            setApproving(w.id);
+                            setApproveNote("");
+                            setError(null);
+                          }}
+                          disabled={approveLoading || cancelLoading || !!canceling}
+                          className="rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:from-emerald-500 hover:to-teal-500 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Marcar pago
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCanceling(w.id);
+                            setCancelReason("");
+                            setError(null);
+                          }}
+                          disabled={approveLoading || cancelLoading || !!approving}
+                          className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-500 transition-all hover:border-red-300 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-zinc-500">{w.adminNote ?? "Automático pelo Stripe"}</span>
+                    )}
                   </Td>
                 </tr>
               ))}
@@ -1167,9 +1186,9 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
         </div>
       )}
 
-      <Section title="Saques" subtitle={`${pending.length} pendente(s) aguardando ação manual`}>
+      <Section title="Saques" subtitle={`${pending.length} pendente(s) no total`}>
         <div className="rounded-2xl border border-amber-900/40 bg-amber-950/30 px-4 py-3 text-[13px] text-amber-400">
-          A carteira é debitada no pedido. O admin apenas confirma o pagamento manual via PIX ou cancela para devolver o saldo.
+          A carteira é debitada no pedido. Saques Stripe ficam em processamento automático; a fila manual serve apenas para PIX fallback.
         </div>
 
         {error && !canceling && !approving && (
@@ -1180,9 +1199,22 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
 
         <div className="space-y-6">
           <PendingTable
+            title="Stripe automáticos"
+            subtitle={`${stripePending.length} solicitação(ões) acompanhadas por webhook`}
+            rows={visibleStripePending}
+            showActions={false}
+          />
+          <ShowMoreButton
+            total={stripePending.length}
+            expanded={expandedStripePending}
+            onToggle={() => setExpandedStripePending((current) => !current)}
+          />
+
+          <PendingTable
             title="Pendentes de agências"
             subtitle={`${agencyPending.length} solicitação(ões) aguardando pagamento manual`}
             rows={visibleAgencyPending}
+            showActions
           />
           <ShowMoreButton
             total={agencyPending.length}
@@ -1194,6 +1226,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
             title="Pendentes de talentos"
             subtitle={`${talentPending.length} solicitação(ões) aguardando pagamento manual`}
             rows={visibleTalentPending}
+            showActions
           />
           <ShowMoreButton
             total={talentPending.length}

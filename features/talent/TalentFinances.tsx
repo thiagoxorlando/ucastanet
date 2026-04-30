@@ -1,9 +1,9 @@
 ﻿"use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
-import type { StripeConnectStatusResponse } from "@/app/api/stripe/connect/status/route";
+import { StripeConnectPayoutPanel } from "@/features/finance/StripeConnectPayoutPanel";
 
 const TALENT_RATE = 0.85; // 85% of deal value
 
@@ -166,6 +166,8 @@ type TalentWithdrawal = {
   created_at: string;
   processed_at: string | null;
   admin_note: string | null;
+  provider: string | null;
+  provider_status: string | null;
 };
 
 const PIX_LABELS: Record<PixKeyType, string> = {
@@ -363,168 +365,6 @@ function PixSetup({ onSaved }: { onSaved: (type: PixKeyType, value: string, hold
   );
 }
 
-// ── Stripe Connect section ────────────────────────────────────────────────────
-
-function StripeConnectSection({
-  onStatusChange,
-}: {
-  onStatusChange?: (status: { ready: boolean; loaded: boolean }) => void;
-}) {
-  const [acct,       setAcct]       = useState<StripeConnectStatusResponse | null>(null);
-  const [statusLoad, setStatusLoad] = useState(true);
-  const [connecting, setConnecting] = useState(false);
-  const [error,      setError]      = useState<string | null>(null);
-  const [note] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    const params = new URLSearchParams(window.location.search);
-    const p = params.get("stripe");
-    if (p === "success") return "Cadastro enviado! Verificando status…";
-    if (p === "refresh") return "O link expirou. Clique abaixo para continuar.";
-    return null;
-  });
-  const hasFetched = useRef(false);
-
-  useEffect(() => {
-    if (hasFetched.current) return;
-    hasFetched.current = true;
-
-    fetch("/api/stripe/connect/status")
-      .then((r) => r.json())
-      .then((d: StripeConnectStatusResponse) => { setAcct(d); setStatusLoad(false); })
-      .catch(() => {
-        setAcct({ connected: false, charges_enabled: false, payouts_enabled: false, details_submitted: false, transfers_active: false });
-        setStatusLoad(false);
-      });
-  }, []);
-
-  async function handleConnect() {
-    setConnecting(true);
-    setError(null);
-    try {
-      const res  = await fetch("/api/stripe/connect/create-account", { method: "POST" });
-      const data = await res.json() as { url?: string; error?: string };
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        setError(data.error ?? "Erro ao iniciar configuração.");
-        setConnecting(false);
-      }
-    } catch {
-      setError("Erro de rede. Tente novamente.");
-      setConnecting(false);
-    }
-  }
-
-  // Derived display state from raw Stripe fields.
-  const isReady      = Boolean(acct?.connected && acct.details_submitted && acct.payouts_enabled && acct.transfers_active);
-  const isPending    = Boolean(acct?.connected && !isReady);
-  const isUnconnected = !acct?.connected;
-
-  useEffect(() => {
-    onStatusChange?.({ ready: isReady, loaded: !statusLoad });
-  }, [isReady, onStatusChange, statusLoad]);
-
-  return (
-    <div id="stripe-connect-section" className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-5 border-b border-zinc-50">
-        <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isReady ? "bg-emerald-50 border border-emerald-100" : "bg-zinc-50 border border-zinc-100"}`}>
-            <svg className={`w-4 h-4 ${isReady ? "text-emerald-600" : "text-zinc-400"}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
-          </div>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-0.5">Recebimentos</p>
-            <p className="text-[15px] font-semibold text-zinc-900">Recebimentos Stripe</p>
-          </div>
-        </div>
-        {statusLoad && (
-          <div className="w-4 h-4 rounded-full border-2 border-zinc-200 border-t-zinc-500 animate-spin" />
-        )}
-        {isReady && (
-          <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 px-2.5 py-1 rounded-full">
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
-            Ativo
-          </span>
-        )}
-        {isPending && !statusLoad && (
-          <span className="text-[11px] font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-100 px-2.5 py-1 rounded-full">
-            Pendente
-          </span>
-        )}
-      </div>
-
-      <div className="px-6 py-5 space-y-4">
-        {statusLoad && (
-          <p className="text-[13px] text-zinc-400">Verificando status da conta…</p>
-        )}
-
-        {note && !statusLoad && (
-          <p className="text-[12px] text-indigo-700 font-medium bg-indigo-50 border border-indigo-100 px-3 py-2 rounded-xl">
-            {note}
-          </p>
-        )}
-
-        {!statusLoad && isUnconnected && (
-          <div className="space-y-4">
-            <p className="text-[13px] text-zinc-500 leading-relaxed">
-              Conecte uma conta Stripe para receber pagamentos diretamente.
-              Seu cadastro PIX não é alterado.
-            </p>
-            <button
-              type="button"
-              onClick={handleConnect}
-              disabled={connecting}
-              className="inline-flex items-center gap-2 bg-[#635BFF] hover:bg-[#4F45E4] disabled:bg-zinc-100 disabled:text-zinc-400 text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
-            >
-              {connecting ? (
-                <><div className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />Abrindo Stripe…</>
-              ) : "Conectar com Stripe"}
-            </button>
-          </div>
-        )}
-
-        {!statusLoad && isPending && (
-          <div className="space-y-4">
-            <p className="text-[13px] text-zinc-500 leading-relaxed">
-              Sua conta Stripe foi criada mas o cadastro ainda não foi concluído.
-              Complete as informações para habilitar recebimentos.
-            </p>
-            <button
-              type="button"
-              onClick={handleConnect}
-              disabled={connecting}
-              className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:bg-zinc-100 disabled:text-zinc-400 text-white text-[13px] font-semibold px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
-            >
-              {connecting ? (
-                <><div className="w-3.5 h-3.5 rounded-full border-2 border-white/40 border-t-white animate-spin" />Abrindo Stripe…</>
-              ) : "Finalizar cadastro Stripe"}
-            </button>
-          </div>
-        )}
-
-        {!statusLoad && isReady && (
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <p className="text-[14px] font-semibold text-zinc-900">Conta pronta para receber</p>
-              <p className="text-[12px] text-zinc-400 mt-0.5">
-                Seus saques serão enviados via Stripe quando você solicitar.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <p className="text-[12px] text-rose-600 font-medium">{error}</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 type WithdrawState = "idle" | "loading" | "success" | "error";
 
 export default function TalentFinances() {
@@ -537,6 +377,7 @@ export default function TalentFinances() {
   const [withdrawState, setWithdrawState] = useState<WithdrawState>("idle");
   const [withdrawMsg, setWithdrawMsg]   = useState("");
   const [pixReady, setPixReady] = useState(false);
+  const [stripeReady, setStripeReady] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [period, setPeriod]             = useState<PeriodFilter>("all");
   const [showAllContracts, setShowAllContracts] = useState(false);
@@ -559,7 +400,7 @@ export default function TalentFinances() {
 
     const { data: withdrawalRows } = await supabase
       .from("wallet_transactions")
-      .select("id, amount, status, created_at, processed_at, admin_note")
+      .select("id, amount, status, created_at, processed_at, admin_note, provider, provider_status")
       .eq("user_id", user.id)
       .eq("type", "withdrawal")
       .order("created_at", { ascending: false });
@@ -571,6 +412,8 @@ export default function TalentFinances() {
       created_at: row.created_at,
       processed_at: (row as Record<string, unknown>).processed_at as string | null ?? null,
       admin_note: (row as Record<string, unknown>).admin_note as string | null ?? null,
+      provider: (row as Record<string, unknown>).provider as string | null ?? null,
+      provider_status: (row as Record<string, unknown>).provider_status as string | null ?? null,
     })));
 
     // My bookings
@@ -761,13 +604,16 @@ export default function TalentFinances() {
   const alreadyWithdrawn = withdrawals
     .filter((w) => w.status === "paid")
     .reduce((sum, w) => sum + w.amount, 0);
-  const canRequestWithdrawal = withdrawAmountNum > 0 && withdrawAmountNum <= availableToWithdraw && pixReady && withdrawState !== "loading";
+  const canRequestWithdrawal = withdrawAmountNum > 0
+    && withdrawAmountNum <= availableToWithdraw
+    && (stripeReady || pixReady)
+    && withdrawState !== "loading";
 
   async function handleWithdraw() {
     if (withdrawAmountNum <= 0 || withdrawAmountNum > availableToWithdraw) return;
-    if (!pixReady) {
+    if (!stripeReady && !pixReady) {
       setWithdrawState("error");
-      setWithdrawMsg("Configure sua chave PIX fallback antes de solicitar saque.");
+      setWithdrawMsg("Configure Stripe automatico ou chave PIX fallback antes de solicitar saque.");
       return;
     }
 
@@ -780,8 +626,10 @@ export default function TalentFinances() {
       });
       const withdrawData = await withdrawRes.json().catch(() => ({})) as {
         error?: string;
-        remaining_balance?: number;
         provider_transfer_id?: string;
+        provider?: string;
+        rail?: string;
+        status?: string;
       };
 
       if (!withdrawRes.ok) {
@@ -792,7 +640,11 @@ export default function TalentFinances() {
 
       setWithdrawState("success");
       setWithdrawAmount("");
-      setWithdrawMsg(`Saque solicitado com sucesso: ${brl(withdrawAmountNum)}.`);
+      setWithdrawMsg(
+        withdrawData.provider === "stripe"
+          ? `Saque enviado pelo Stripe: ${brl(withdrawAmountNum)}. Acompanhe o status abaixo.`
+          : `Saque manual solicitado com sucesso: ${brl(withdrawAmountNum)}.`,
+      );
       await load(false);
     } catch {
       setWithdrawState("error");
@@ -913,14 +765,14 @@ export default function TalentFinances() {
               )}
             </div>
 
-            {!pixReady && availableToWithdraw > 0 && (
+            {!stripeReady && !pixReady && availableToWithdraw > 0 && (
               <div className="mx-6 mb-5 flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
                 <svg className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div className="flex-1">
                   <p className="text-[13px] text-amber-800 leading-relaxed">
-                    Configure sua <strong>chave PIX fallback</strong> para solicitar saque manual.
+                    Configure <strong>Stripe automatico</strong> ou uma <strong>chave PIX fallback</strong> para solicitar saque.
                   </p>
                 </div>
               </div>
@@ -958,6 +810,10 @@ export default function TalentFinances() {
                         <p className="text-[13px] font-semibold text-zinc-900">{brl(withdrawal.amount)}</p>
                         <p className="text-[11px] text-zinc-400">
                           {WITHDRAWAL_STATUS_LABEL[withdrawal.status ?? "pending"] ?? withdrawal.status ?? "Pendente"} · {new Date(withdrawal.created_at).toLocaleDateString("pt-BR", { month: "short", day: "numeric", year: "numeric" })}
+                        </p>
+                        <p className="text-[11px] text-zinc-500 mt-0.5">
+                          {withdrawal.provider === "stripe" ? "Stripe automático" : "PIX manual fallback"}
+                          {withdrawal.provider_status ? ` · ${withdrawal.provider_status}` : ""}
                         </p>
                         {withdrawal.admin_note && (
                           <p className="text-[11px] text-zinc-500 mt-0.5">{withdrawal.admin_note}</p>
@@ -1023,7 +879,7 @@ export default function TalentFinances() {
           <PixSetup onSaved={(_, value, holderName) => setPixReady(Boolean(value.trim() && holderName.trim()))} />
 
           {/* Stripe Connect payout account */}
-          <StripeConnectSection />
+          <StripeConnectPayoutPanel onStatusChange={({ ready }) => setStripeReady(ready)} />
 
           {/* My bookings */}
           <div className="space-y-3">
@@ -1088,6 +944,10 @@ export default function TalentFinances() {
                       <p className="text-[13px] font-semibold text-zinc-900">{WITHDRAWAL_STATUS_LABEL[withdrawal.status ?? "paid"] ?? withdrawal.status ?? "Saque"}</p>
                       <p className="text-[11px] text-zinc-400 mt-0.5">
                         {new Date(withdrawal.processed_at ?? withdrawal.created_at).toLocaleDateString("pt-BR", { weekday: "short", month: "long", day: "numeric", year: "numeric" })}
+                      </p>
+                      <p className="text-[11px] text-zinc-500 mt-0.5">
+                        {withdrawal.provider === "stripe" ? "Stripe automático" : "PIX manual fallback"}
+                        {withdrawal.provider_status ? ` · ${withdrawal.provider_status}` : ""}
                       </p>
                       {withdrawal.admin_note && (
                         <p className="text-[11px] text-zinc-500 mt-1">{withdrawal.admin_note}</p>

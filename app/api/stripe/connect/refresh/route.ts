@@ -1,47 +1,39 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import { getStripe } from "@/lib/stripe";
+import { getStripeConnectStatusForUser } from "@/lib/stripeConnect";
 
 export const runtime = "nodejs";
 
 const APP_URL = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
 
-// GET /api/stripe/connect/refresh
-// Stripe redirects the user here when the onboarding AccountLink has expired.
-// We regenerate a fresh link and redirect immediately.
-export async function GET(_req: NextRequest) {
+export async function GET() {
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
 
   if (!user) {
-    // Session expired — send back to finances page so they can log in and retry.
-    return NextResponse.redirect(new URL("/talent/finances", APP_URL));
+    return NextResponse.redirect(new URL("/", APP_URL));
   }
 
   const supabase = createServerClient({ useServiceRole: true });
+  const status = await getStripeConnectStatusForUser(supabase, user.id);
+  if (!status) return NextResponse.redirect(new URL("/", APP_URL));
 
-  const { data: talentRow } = await supabase
-    .from("talent_profiles")
-    .select("stripe_account_id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const accountId = talentRow?.stripe_account_id ?? null;
-
+  const accountId = status.stripe_account_id;
   if (!accountId) {
-    console.warn("[stripe] refresh called but no account_id for talent:", user.id);
-    return NextResponse.redirect(new URL("/talent/finances", APP_URL));
+    console.warn("[stripe] refresh called but no account_id", { userId: user.id, role: status.role });
+    return NextResponse.redirect(new URL(status.finances_path, APP_URL));
   }
 
-  console.log("[stripe] refreshing onboarding link for account:", accountId);
-
   const accountLink = await getStripe().accountLinks.create({
-    account:     accountId,
-    refresh_url: `${APP_URL}/talent/finances?stripe=refresh`,
-    return_url:  `${APP_URL}/talent/finances?stripe=success`,
-    type:        "account_onboarding",
+    account: accountId,
+    refresh_url: `${APP_URL}/api/stripe/connect/refresh`,
+    return_url: `${APP_URL}/api/stripe/connect/return`,
+    type: "account_onboarding",
   });
+
+  console.log("[stripe] refreshing onboarding link", { accountId, role: status.role, userId: user.id });
 
   return NextResponse.redirect(accountLink.url);
 }

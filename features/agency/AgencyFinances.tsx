@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
+import { StripeConnectPayoutPanel } from "@/features/finance/StripeConnectPayoutPanel";
 
 function brl(n: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -36,6 +37,8 @@ export type AgencyTransaction = {
   withdrawalStatus?: string | null;
   adminNote?: string | null;
   processedAt?: string | null;
+  provider?: string | null;
+  providerStatus?: string | null;
 };
 
 export type AgencyFinanceSummary = {
@@ -148,6 +151,7 @@ export default function AgencyFinances({
   const [withdrawConfirming, setWithdrawConfirming] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawError, setWithdrawError] = useState("");
+  const [stripeReady, setStripeReady] = useState(stripeConnected);
 
   const [savedPix, setSavedPix] = useState(agencyPix ?? null);
   const [pixEditing, setPixEditing] = useState(false);
@@ -161,7 +165,7 @@ export default function AgencyFinances({
   const hasPix = Boolean(savedPix?.pix_key_type && savedPix?.pix_key_value?.trim());
   const withdrawAmountNum = Math.round(Number(withdrawAmount) * 100) / 100;
   const canWithdraw = Boolean(
-    hasPix &&
+    (stripeReady || hasPix) &&
     withdrawAmountNum >= withdrawalMinAmount &&
     withdrawAmountNum <= walletBalance,
   );
@@ -237,7 +241,7 @@ export default function AgencyFinances({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ amount }),
     });
-    const data = await res.json().catch(() => ({})) as { error?: string };
+    const data = await res.json().catch(() => ({})) as { error?: string; provider?: string };
 
     setWithdrawing(false);
     if (!res.ok) {
@@ -247,6 +251,7 @@ export default function AgencyFinances({
 
     setWithdrawAmount("");
     setWithdrawDone(true);
+    setWithdrawError(data.provider === "stripe" ? "Saque enviado pelo Stripe. Acompanhe o status abaixo." : "");
     router.refresh();
     setTimeout(() => setWithdrawDone(false), 4000);
   }
@@ -393,7 +398,7 @@ export default function AgencyFinances({
               )}
             </div>
 
-            {hasPix && walletBalance > 0 && !withdrawDone && (
+            {(stripeReady || hasPix) && walletBalance > 0 && !withdrawDone && (
               <div className="space-y-2">
                 <div className="flex gap-1.5">
                   {([0.25, 0.5, 1] as const).map((pct) => (
@@ -438,8 +443,8 @@ export default function AgencyFinances({
               </div>
             )}
 
-            {!hasPix && walletBalance > 0 && (
-              <p className="text-[11px] text-white/80 font-semibold">Configure uma chave PIX como fallback manual, ou aguarde a configuracao do Stripe Connect.</p>
+            {!stripeReady && !hasPix && walletBalance > 0 && (
+              <p className="text-[11px] text-white/80 font-semibold">Configure Stripe automatico ou uma chave PIX como fallback manual antes de solicitar saque.</p>
             )}
           </div>
         )}
@@ -490,6 +495,8 @@ export default function AgencyFinances({
         </div>
       </div>
 
+      <StripeConnectPayoutPanel onStatusChange={({ ready }) => setStripeReady(ready)} />
+
       <div className="bg-white rounded-[1.75rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_18px_46px_rgba(7,17,13,0.08)] overflow-hidden">
         {/* Card header */}
         <div className="px-6 py-5 border-b border-zinc-50">
@@ -524,7 +531,7 @@ export default function AgencyFinances({
           <p className="text-[12px] text-zinc-400 mt-3">
             {stripeConnected
               ? "Saques sao processados automaticamente via Stripe Connect. Prazo de 2 a 5 dias uteis."
-              : "Sem conta Stripe Connect, saques sao processados manualmente pela equipe via PIX. Entre em contato para configurar."}
+              : "Sem conta Stripe Connect pronta, os saques caem no fluxo manual via PIX. Use o painel acima para concluir a conexao."}
           </p>
         </div>
 
@@ -532,7 +539,7 @@ export default function AgencyFinances({
         <div className="px-6 py-4 border-b border-zinc-50 flex items-center justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">PIX <span className="normal-case font-medium text-zinc-400">(fallback manual)</span></p>
-            <p className="text-[12px] text-zinc-400 mt-0.5">Usado quando Stripe nao esta disponivel.</p>
+            <p className="text-[12px] text-zinc-400 mt-0.5">Usado quando o Stripe automatico nao estiver disponivel.</p>
           </div>
           {hasPix && !pixEditing && (
             <button
