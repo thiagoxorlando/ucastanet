@@ -139,6 +139,22 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof StripeWithdrawalError) {
+      if (error.stage === "transfer") {
+        console.error("[withdrawal] stripe transfer failed", {
+          txId: error.txId,
+          userId: user.id,
+          role: "talent",
+          amount: requestedAmount,
+          message: error.message,
+          isStripeBalanceInsufficient: error.isStripeBalanceInsufficient,
+        });
+
+        return NextResponse.json(
+          { error: error.userMessage ?? "Saldo Stripe insuficiente" },
+          { status: 502 },
+        );
+      }
+
       if (hasPix && error.restorable) {
         const fallbackTxId = await createManualWithdrawal(supabase, user.id, requestedAmount);
         const brl = new Intl.NumberFormat("pt-BR", {

@@ -1,5 +1,6 @@
 import { createServerClient } from "@/lib/supabase";
 import { getStripe } from "@/lib/stripe";
+import type Stripe from "stripe";
 
 type Supabase = ReturnType<typeof createServerClient>;
 
@@ -23,17 +24,52 @@ type StripeWithdrawalResult = {
 export class StripeWithdrawalError extends Error {
   txId: string | null;
   restorable: boolean;
+  stage: "request" | "transfer" | "payout";
+  userMessage: string | null;
+  isStripeBalanceInsufficient: boolean;
 
-  constructor(message: string, options?: { txId?: string | null; restorable?: boolean }) {
+  constructor(message: string, options?: {
+    txId?: string | null;
+    restorable?: boolean;
+    stage?: "request" | "transfer" | "payout";
+    userMessage?: string | null;
+    isStripeBalanceInsufficient?: boolean;
+  }) {
     super(message);
     this.name = "StripeWithdrawalError";
     this.txId = options?.txId ?? null;
     this.restorable = options?.restorable ?? false;
+    this.stage = options?.stage ?? "request";
+    this.userMessage = options?.userMessage ?? null;
+    this.isStripeBalanceInsufficient = options?.isStripeBalanceInsufficient ?? false;
   }
 }
 
 function amountToCents(amount: number) {
   return Math.round(amount * 100);
+}
+
+function isStripeInsufficientBalanceError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+
+  const stripeError = error as Stripe.StripeRawError & { raw?: { code?: string; decline_code?: string } };
+  const candidates = [
+    stripeError.code,
+    stripeError.decline_code,
+    stripeError.raw?.code,
+    stripeError.raw?.decline_code,
+    stripeError.message,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return (
+    candidates.includes("balance_insufficient")
+    || candidates.includes("insufficient_funds")
+    || candidates.includes("insufficient balance")
+    || candidates.includes("not enough funds")
+  );
 }
 
 export async function createAutomaticStripeWithdrawal({
@@ -50,7 +86,7 @@ export async function createAutomaticStripeWithdrawal({
   });
 
   if (rpcError || !txId) {
-    throw new StripeWithdrawalError(rpcError?.message ?? "request_wallet_withdrawal_failed");
+    throw new StripeWithdrawalError(rpcError?.message ?? "request_wallet_withdrawal_failed", { stage: "request" });
   }
 
   const stripe = getStripe();
@@ -65,8 +101,6 @@ export async function createAutomaticStripeWithdrawal({
       admin_note: null,
     })
     .eq("id", txId);
-
-  let transferId: string | null = null;
 
   try {
     const transfer = await stripe.transfers.create(
@@ -85,7 +119,15 @@ export async function createAutomaticStripeWithdrawal({
       },
     );
 
-    transferId = transfer.id;
+    if (!transfer.id) {
+      throw new StripeWithdrawalError("stripe_transfer_not_confirmed", {
+        txId,
+        restorable: true,
+        stage: "transfer",
+        userMessage: "Saldo Stripe insuficiente",
+        isStripeBalanceInsufficient: true,
+      });
+    }
 
     await supabase
       .from("wallet_transactions")
@@ -97,68 +139,60 @@ export async function createAutomaticStripeWithdrawal({
       })
       .eq("id", txId);
 
-    const payout = await stripe.payouts.create(
-      {
-        amount: amountInCents,
-        currency: "brl",
-        metadata: {
-          withdrawal_transaction_id: txId,
-          transfer_id: transfer.id,
-          user_id: userId,
-          user_role: role,
+    try {
+      const payout = await stripe.payouts.create(
+        {
+          amount: amountInCents,
+          currency: "brl",
+          metadata: {
+            withdrawal_transaction_id: txId,
+            transfer_id: transfer.id,
+            user_id: userId,
+            user_role: role,
+          },
         },
-      },
-      {
-        stripeAccount: stripeAccountId,
-        idempotencyKey: `wallet_withdrawal_payout:${txId}`,
-      },
-    );
+        {
+          stripeAccount: stripeAccountId,
+          idempotencyKey: `wallet_withdrawal_payout:${txId}`,
+        },
+      );
 
-    const payoutStatus = payout.status ?? "pending";
+      const payoutStatus = payout.status ?? "pending";
 
-    await supabase
-      .from("wallet_transactions")
-      .update({
+      await supabase
+        .from("wallet_transactions")
+        .update({
+          provider: "stripe",
+          provider_transfer_id: payout.id,
+          provider_status: payoutStatus,
+          reference_id: transfer.id,
+          status: payoutStatus === "paid" ? "paid" : "processing",
+          processed_at: payoutStatus === "paid" ? new Date().toISOString() : null,
+        })
+        .eq("id", txId);
+
+      if (payoutStatus === "paid") {
+        await supabase.rpc("mark_wallet_withdrawal_paid", {
+          p_transaction_id: txId,
+          p_provider: "stripe",
+          p_admin_note: "Stripe payout confirmado imediatamente.",
+        });
+      }
+
+      return {
+        txId,
         provider: "stripe",
-        provider_transfer_id: payout.id,
-        provider_status: payoutStatus,
-        reference_id: transfer.id,
+        providerStatus: payoutStatus,
         status: payoutStatus === "paid" ? "paid" : "processing",
-        processed_at: payoutStatus === "paid" ? new Date().toISOString() : null,
-      })
-      .eq("id", txId);
+        payoutId: payout.id,
+        transferId: transfer.id,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
 
-    if (payoutStatus === "paid") {
-      await supabase.rpc("mark_wallet_withdrawal_paid", {
-        p_transaction_id: txId,
-        p_provider: "stripe",
-        p_admin_note: "Stripe payout confirmado imediatamente.",
-      });
-    }
-
-    return {
-      txId,
-      provider: "stripe",
-      providerStatus: payoutStatus,
-      status: payoutStatus === "paid" ? "paid" : "processing",
-      payoutId: payout.id,
-      transferId: transfer.id,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    let restorable = false;
-
-    if (!transferId) {
-      const { data: failResult } = await supabase.rpc("fail_wallet_withdrawal", {
-        p_transaction_id: txId,
-        p_reason: `Stripe automatic withdrawal failed before transfer: ${message}`,
-        p_provider_status: "failed",
-      });
-      restorable = Boolean(failResult);
-    } else {
       try {
         await stripe.transfers.createReversal(
-          transferId,
+          transfer.id,
           {
             metadata: {
               withdrawal_transaction_id: txId,
@@ -180,11 +214,15 @@ export async function createAutomaticStripeWithdrawal({
           .from("wallet_transactions")
           .update({
             provider: "stripe",
-            reference_id: transferId,
+            reference_id: transfer.id,
           })
           .eq("id", txId);
 
-        restorable = true;
+        throw new StripeWithdrawalError(message, {
+          txId,
+          restorable: true,
+          stage: "payout",
+        });
       } catch (reversalError) {
         const reversalMessage = reversalError instanceof Error ? reversalError.message : String(reversalError);
         await supabase
@@ -193,13 +231,37 @@ export async function createAutomaticStripeWithdrawal({
             provider: "stripe",
             status: "processing",
             provider_status: "requires_manual_review",
-            reference_id: transferId,
+            reference_id: transfer.id,
             admin_note: `Stripe payout failed but transfer reversal also failed: ${message}. Reversal error: ${reversalMessage}`,
           })
           .eq("id", txId);
+
+        throw new StripeWithdrawalError(message, {
+          txId,
+          restorable: false,
+          stage: "payout",
+        });
       }
     }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof StripeWithdrawalError) {
+      throw error;
+    }
 
-    throw new StripeWithdrawalError(message, { txId, restorable });
+    const stripeBalanceInsufficient = isStripeInsufficientBalanceError(error);
+    const { data: failResult } = await supabase.rpc("fail_wallet_withdrawal", {
+      p_transaction_id: txId,
+      p_reason: `Stripe automatic withdrawal failed before transfer: ${message}`,
+      p_provider_status: "failed",
+    });
+
+    throw new StripeWithdrawalError(message, {
+      txId,
+      restorable: Boolean(failResult),
+      stage: "transfer",
+      userMessage: stripeBalanceInsufficient ? "Saldo Stripe insuficiente" : null,
+      isStripeBalanceInsufficient: stripeBalanceInsufficient,
+    });
   }
 }
