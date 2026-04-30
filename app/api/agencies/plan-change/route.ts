@@ -32,6 +32,11 @@ export async function POST(req: NextRequest) {
 
   const selectedPlan = body.plan as Plan;
 
+  if (selectedPlan === "premium") {
+    console.warn("[plan] premium temporarily disabled", { userId: user.id });
+    return NextResponse.json({ error: "Premium ainda não está disponível." }, { status: 400 });
+  }
+
   if (selectedPlan !== "free" && !isStripeConfigured()) {
     console.error("[plan] Stripe not configured — STRIPE_SECRET_KEY is missing");
     return NextResponse.json({ error: "Pagamento nao configurado no servidor." }, { status: 503 });

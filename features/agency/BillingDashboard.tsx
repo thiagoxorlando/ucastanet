@@ -67,10 +67,11 @@ const PLANS = [
     price: PLAN_DEFINITIONS.premium.price,
     priceLabel: "R$ 297",
     period: "/mes",
-    badge: null,
+    badge: "EM BREVE" as const,
     gradient: "from-violet-500 to-purple-700",
     headline: "Operacao premium com cobranca recorrente",
     commission: "10% de comissao",
+    available: false,
     features: [
       "Tudo do Pro",
       "Vagas fechadas",
@@ -356,6 +357,10 @@ export default function BillingDashboard({
   }
 
   function handlePlanClick(p: PlanDef) {
+    if ("available" in p && p.available === false) {
+      showToast("Premium ainda nao esta disponivel.", false);
+      return;
+    }
     if (p.key === activePlan) return;
     setChangingTo(p);
   }
@@ -528,6 +533,7 @@ export default function BillingDashboard({
             const isCurrent = activePlan === p.key;
             const isDowngrade = p.price < currentPlanDef.price;
             const isPending = pendingChange?.plan === p.key;
+            const isAvailable = !("available" in p) || p.available !== false;
             return (
               <div
                 key={p.key}
@@ -535,7 +541,9 @@ export default function BillingDashboard({
                   "rounded-2xl border overflow-hidden flex flex-col transition-shadow",
                   isCurrent
                     ? "bg-white border-zinc-300 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.07)]"
-                    : "bg-zinc-50 border-zinc-100",
+                    : isAvailable
+                      ? "bg-zinc-50 border-zinc-100"
+                      : "bg-zinc-50/70 border-zinc-200 opacity-80",
                 ].join(" ")}
               >
                 <div className={`h-[3px] bg-gradient-to-r ${p.gradient}`} />
@@ -582,19 +590,29 @@ export default function BillingDashboard({
                   {!isCurrent && !isPending && (
                     <button
                       onClick={() => handlePlanClick(p)}
+                      disabled={!isAvailable}
                       className={[
-                        "w-full mt-auto text-white text-[13px] font-semibold py-2.5 rounded-xl transition-colors cursor-pointer",
-                        isDowngrade
+                        "w-full mt-auto text-white text-[13px] font-semibold py-2.5 rounded-xl transition-colors",
+                        !isAvailable
+                          ? "bg-zinc-300 cursor-not-allowed"
+                          : isDowngrade
                           ? "bg-zinc-500 hover:bg-zinc-600"
-                          : "bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2]",
+                          : "bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] cursor-pointer",
                       ].join(" ")}
                     >
-                      {activePlan === "free"
-                        ? `Assinar ${p.name}`
-                        : isDowngrade
-                          ? `Mudar para ${p.name}`
-                          : `Fazer upgrade para ${p.name}`}
+                      {!isAvailable
+                        ? "Em breve"
+                        : activePlan === "free"
+                          ? `Assinar ${p.name}`
+                          : isDowngrade
+                            ? `Mudar para ${p.name}`
+                            : `Fazer upgrade para ${p.name}`}
                     </button>
+                  )}
+                  {!isAvailable && (
+                    <p className="mt-3 text-[11px] text-zinc-500 text-center">
+                      Premium ainda nao esta disponivel para novas assinaturas.
+                    </p>
                   )}
                   {isPending && !isCurrent && (
                     <p className="text-[11px] text-indigo-600 text-center font-medium">
