@@ -46,7 +46,6 @@ export type AgencyFinanceSummary = {
   pendingPayments: number;
   completedPayments: number;
   walletBalance?: number;
-  autoWithdrawableBalance?: number;
 };
 
 
@@ -128,7 +127,6 @@ export default function AgencyFinances({
   const router = useRouter();
 
   const walletBalance = summary.walletBalance ?? 0;
-  const autoWithdrawableBalance = summary.autoWithdrawableBalance ?? 0;
 
   const { refreshing: walletRefreshing } = useRealtimeRefresh(
     [{ table: "wallet_transactions" }, { table: "profiles" }],
@@ -167,7 +165,7 @@ export default function AgencyFinances({
   const withdrawAmountNum = Math.round(Number(withdrawAmount) * 100) / 100;
   const canWithdraw = Boolean(
     withdrawAmountNum >= withdrawalMinAmount &&
-    withdrawAmountNum <= autoWithdrawableBalance,
+    withdrawAmountNum <= walletBalance,
   );
   const pendingWithdrawals = transactions.filter(
     (transaction) => transaction.withdrawalStatus === "pending" || transaction.withdrawalStatus === "processing",
@@ -353,7 +351,7 @@ export default function AgencyFinances({
                   )}
                 </div>
                 <p className="text-[3rem] font-black tracking-[-0.07em] text-white leading-none">{brl(walletBalance)}</p>
-                <p className="text-[12px] text-white/70 mt-1">Saldo total na carteira: {brl(walletBalance)} · disponivel para saque automatico: {brl(autoWithdrawableBalance)}</p>
+                <p className="text-[12px] text-white/70 mt-1">Saldo total na carteira: {brl(walletBalance)}</p>
               </div>
               {withdrawDone && (
                 <div className="flex items-center gap-1.5 text-[12px] text-white font-semibold mt-1">
@@ -372,7 +370,7 @@ export default function AgencyFinances({
                     <button
                       key={pct}
                       type="button"
-                      onClick={() => setWithdrawAmount(String(Math.floor(autoWithdrawableBalance * pct * 100) / 100))}
+                      onClick={() => setWithdrawAmount(String(Math.floor(walletBalance * pct * 100) / 100))}
                       className="text-[11px] font-bold px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors cursor-pointer"
                     >
                       {pct === 1 ? "100%" : pct === 0.5 ? "50%" : "25%"}
@@ -400,8 +398,8 @@ export default function AgencyFinances({
                     Solicitar Saque
                   </button>
                 </div>
-                {withdrawAmountNum > autoWithdrawableBalance && (
-                  <p className="text-[11px] text-rose-100">Valor superior ao disponivel para saque automatico.</p>
+                {withdrawAmountNum > walletBalance && (
+                  <p className="text-[11px] text-rose-100">Valor superior ao saldo disponível.</p>
                 )}
                 {withdrawAmountNum > 0 && withdrawAmountNum < withdrawalMinAmount && (
                   <p className="text-[11px] text-white/80">Valor minimo para agencias: {brl(withdrawalMinAmount)}.</p>
@@ -600,7 +598,7 @@ export default function AgencyFinances({
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <StatCard label="Saldo Total" value={brl(walletBalance)} sub="Saldo atual em carteira" stripe="from-indigo-500 to-violet-500" />
-        <StatCard label="Saque Automatico" value={brl(autoWithdrawableBalance)} sub="Lastreado por pagamentos Stripe" stripe="from-emerald-400 to-teal-500" />
+        <StatCard label="Disponível para Saque" value={brl(walletBalance)} sub="Saldo disponível em carteira" stripe="from-emerald-400 to-teal-500" />
         <StatCard label="Pagamentos Pendentes" value={brl(summary.pendingPayments)} sub="Aguardando confirmacao" stripe="from-amber-400 to-orange-500" />
         <StatCard label="Pagamentos Realizados" value={brl(summary.completedPayments)} sub="Reservas confirmadas" stripe="from-cyan-400 to-sky-500" />
       </div>
