@@ -162,21 +162,11 @@ export default async function AgencyFinancesPage() {
     ? { pix_key_type: agencyRow.pix_key_type ?? null, pix_key_value: agencyRow.pix_key_value, pix_holder_name: agencyRow.pix_holder_name ?? null }
     : null;
 
-  // Fetch stripe_account_id separately — column may not exist yet in all environments.
-  // If missing or null, stripeConnected defaults to false (shows "Configure Stripe").
-  const { data: agencyStripe } = await supabase
-    .from("agencies")
-    .select("stripe_account_id")
-    .eq("id", user?.id ?? "")
-    .maybeSingle();
-  const stripeConnected = !!(agencyStripe as Record<string, unknown> | null)?.stripe_account_id;
-
   return (
     <AgencyFinances
       summary={summary}
       transactions={transactions}
       agencyPix={agencyPix}
-      stripeConnected={stripeConnected}
       withdrawalMinAmount={WITHDRAWAL_MIN_AMOUNT}
     />
   );

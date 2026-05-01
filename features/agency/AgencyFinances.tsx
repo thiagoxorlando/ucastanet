@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
-import { StripeConnectPayoutPanel } from "@/features/finance/StripeConnectPayoutPanel";
 
 function brl(n: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -49,13 +48,6 @@ export type AgencyFinanceSummary = {
   autoWithdrawableBalance?: number;
 };
 
-function getStripeWalletBannerFromLocation(): "pending" | "cancel" | null {
-  if (typeof window === "undefined") return null;
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("stripe_wallet") === "success") return "pending";
-  if (params.get("stripe_wallet") === "cancel") return "cancel";
-  return null;
-}
 
 const PIX_TYPE_LABELS: Record<string, string> = {
   cpf: "CPF",
@@ -123,13 +115,11 @@ export default function AgencyFinances({
   summary,
   transactions,
   agencyPix,
-  stripeConnected = false,
   withdrawalMinAmount,
 }: {
   summary: AgencyFinanceSummary;
   transactions: AgencyTransaction[];
   agencyPix?: { pix_key_type: string | null; pix_key_value: string | null; pix_holder_name: string | null } | null;
-  stripeConnected?: boolean;
   withdrawalMinAmount: number;
 }) {
   const router = useRouter();
@@ -142,11 +132,16 @@ export default function AgencyFinances({
     () => router.refresh(),
   );
 
-  const [stripeWalletBanner, setStripeWalletBanner] = useState<"pending" | "cancel" | null>(getStripeWalletBannerFromLocation);
-
   const [depositAmount, setDepositAmount] = useState("");
   const [depositLoading, setDepositLoading] = useState(false);
   const [depositError, setDepositError] = useState("");
+  const [depositResult, setDepositResult] = useState<{
+    paymentId: string;
+    invoiceUrl: string | null;
+    pixQrCode: string | null;
+    pixCopyPaste: string | null;
+  } | null>(null);
+  const [pixCopied, setPixCopied] = useState(false);
 
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawDone, setWithdrawDone] = useState(false);
@@ -154,13 +149,6 @@ export default function AgencyFinances({
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [withdrawError, setWithdrawError] = useState("");
   const [withdrawInfo, setWithdrawInfo] = useState("");
-  const [stripeReady, setStripeReady] = useState(stripeConnected);
-  const [stripeMessage, setStripeMessage] = useState("fale com o suporte");
-  const stripeReason = stripeMessage;
-  const setStripeReason = setStripeMessage;
-  const [stripeState, setStripeState] = useState<"unconnected" | "review" | "processing" | "available" | "blocked">(
-    stripeConnected ? "available" : "unconnected",
-  );
 
   const [savedPix, setSavedPix] = useState(agencyPix ?? null);
   const [pixEditing, setPixEditing] = useState(false);
@@ -174,7 +162,6 @@ export default function AgencyFinances({
   const hasPix = Boolean(savedPix?.pix_key_type && savedPix?.pix_key_value?.trim());
   const withdrawAmountNum = Math.round(Number(withdrawAmount) * 100) / 100;
   const canWithdraw = Boolean(
-    stripeReady &&
     withdrawAmountNum >= withdrawalMinAmount &&
     withdrawAmountNum <= autoWithdrawableBalance,
   );
@@ -188,55 +175,39 @@ export default function AgencyFinances({
   async function handleDeposit(e: React.FormEvent) {
     e.preventDefault();
     const amount = Number(depositAmount);
-    if (!Number.isFinite(amount) || amount <= 0) return;
+    if (!Number.isFinite(amount) || amount < 10) return;
 
     setDepositLoading(true);
     setDepositError("");
+    setDepositResult(null);
 
-    const res = await fetch("/api/payments/wallet-deposit", {
+    const res = await fetch("/api/asaas/deposit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ amount }),
     });
     const data = await res.json().catch(() => ({})) as {
       error?: string;
-      url?: string;
-      session_id?: string;
-      amount?: number;
-      amount_in_cents?: number;
-      currency?: string;
+      paymentId?: string;
+      invoiceUrl?: string;
+      pixQrCode?: string;
+      pixCopyPaste?: string;
     };
 
-    if (!res.ok || !data.url) {
-      setDepositLoading(false);
-      setDepositError(data.error ?? "Erro ao criar sessao do Stripe Checkout.");
+    setDepositLoading(false);
+
+    if (!res.ok || !data.paymentId) {
+      setDepositError(data.error ?? "Erro ao gerar cobrança PIX.");
       return;
     }
 
-    let checkoutUrl: URL;
-    try {
-      checkoutUrl = new URL(data.url);
-    } catch {
-      setDepositLoading(false);
-      setDepositError("O Stripe retornou uma URL de checkout invalida.");
-      return;
-    }
-
-    if (checkoutUrl.protocol !== "https:" || !["checkout.stripe.com", "pay.stripe.com"].includes(checkoutUrl.hostname)) {
-      setDepositLoading(false);
-      setDepositError("O Stripe retornou uma URL de checkout nao confiavel.");
-      return;
-    }
-
-    console.info("[agency finances] redirecting to Stripe Checkout", {
-      sessionId: data.session_id,
-      url: data.url,
-      amount: data.amount ?? amount,
-      amountInCents: data.amount_in_cents,
-      currency: data.currency,
+    setDepositResult({
+      paymentId:    data.paymentId,
+      invoiceUrl:   data.invoiceUrl   ?? null,
+      pixQrCode:    data.pixQrCode    ?? null,
+      pixCopyPaste: data.pixCopyPaste ?? null,
     });
-
-    window.location.assign(data.url);
+    setDepositAmount("");
   }
 
   async function handleWithdraw() {
@@ -304,48 +275,6 @@ export default function AgencyFinances({
 
   return (
     <div className="max-w-6xl space-y-8">
-      {stripeWalletBanner === "pending" && (
-        <div className="flex items-start gap-3 bg-teal-50 border border-teal-200 rounded-2xl px-4 py-3.5">
-          <svg className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-teal-800">Pagamento recebido — aguardando confirmacao do Stripe</p>
-            <p className="text-[12px] text-teal-700 mt-0.5">O saldo sera atualizado automaticamente apos o Stripe confirmar o pagamento (geralmente em segundos).</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setStripeWalletBanner(null)}
-            className="text-teal-500 hover:text-teal-700 flex-shrink-0 cursor-pointer"
-            aria-label="Fechar"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
-      {stripeWalletBanner === "cancel" && (
-        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5">
-          <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-amber-800">Deposito cancelado</p>
-            <p className="text-[12px] text-amber-700 mt-0.5">O pagamento foi cancelado. Nenhum valor foi cobrado.</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setStripeWalletBanner(null)}
-            className="text-amber-500 hover:text-amber-700 flex-shrink-0 cursor-pointer"
-            aria-label="Fechar"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-      )}
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Visao Geral</p>
         <h1 className="text-[2rem] font-black tracking-[-0.04em] text-zinc-950 leading-tight">Financeiro</h1>
@@ -454,226 +383,123 @@ export default function AgencyFinances({
               </div>
             )}
 
-            {!stripeReady && autoWithdrawableBalance > 0 && (
-              <p className="text-[11px] text-white/80 font-semibold">
-                {stripeReason
-                  ? `Saque automático indisponível: ${stripeReason}`
-                  : "Conclua a verificacao da sua conta Stripe para liberar saques automaticos."}
-              </p>
-            )}
           </div>
         )}
 
         <div className="px-6 pt-5 pb-6 space-y-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Depositar Fundos</p>
-            <p className="text-[12px] text-zinc-400 mt-1">O pagamento abre no Stripe Checkout. O saldo aparece depois da confirmacao do Stripe.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Depositar fundos</p>
+            <p className="text-[12px] text-zinc-400 mt-1">O pagamento será feito via PIX pelo Asaas. O saldo aparece após confirmação do pagamento.</p>
           </div>
-          <form onSubmit={handleDeposit} className="space-y-3">
-            {depositError && (
-              <p className="text-[12px] text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{depositError}</p>
-            )}
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] font-semibold text-zinc-400 pointer-events-none">R$</span>
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  placeholder="0"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  className="w-full pl-9 pr-3.5 py-2.5 text-[13px] font-semibold bg-zinc-50 border border-zinc-200 rounded-xl placeholder:text-[#647B7B] hover:border-zinc-300 focus:border-zinc-900 focus:bg-white focus:outline-none transition-colors"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={Boolean(depositLoading || !depositAmount || Number(depositAmount) <= 0)}
-                className="flex items-center gap-2 bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] disabled:bg-[#E6F0F0] disabled:text-[#B8D4D4] disabled:bg-none text-white text-[13px] font-bold px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed flex-shrink-0"
-              >
-                {depositLoading ? "Abrindo..." : "Abrir Stripe"}
-              </button>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {[500, 1000, 2000, 5000].map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setDepositAmount(String(value))}
-                  className="text-[11px] font-semibold px-3 py-1.5 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-lg text-zinc-600 transition-colors cursor-pointer"
-                >
-                  {brl(value)}
-                </button>
-              ))}
-            </div>
-          </form>
-        </div>
-      </div>
 
-      <StripeConnectPayoutPanel
-        amount={withdrawAmountNum > 0 ? withdrawAmountNum : withdrawalMinAmount}
-        onStatusChange={({ ready, state, message }) => {
-          setStripeReady(ready);
-          setStripeState(state);
-          setStripeReason(message === "Saque automático indisponível — fale com o suporte" ? "fale com o suporte" : message);
-        }}
-      />
-
-      <div className="bg-white rounded-[1.75rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_18px_46px_rgba(7,17,13,0.08)] overflow-hidden">
-        {/* Card header */}
-        <div className="px-6 py-5 border-b border-zinc-50">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Metodo de Saque</p>
-          <p className="text-[12px] text-zinc-500 mt-0.5">Stripe e o metodo principal. PIX e o fallback processado manualmente.</p>
-        </div>
-
-        {/* Stripe section — primary */}
-        <div className="px-6 py-5 border-b border-zinc-50">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#635BFF]/10 flex items-center justify-center flex-shrink-0">
-                <svg className="w-5 h-5 text-[#635BFF]" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/>
-                </svg>
-              </div>
-              <div>
-                <p className="text-[13px] font-semibold text-zinc-900">Stripe Connect</p>
-                <p className="text-[12px] text-zinc-400">Saques automaticos e diretos</p>
-              </div>
-            </div>
-            {stripeState === "available" ? (
-              <span className="text-[11px] font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 px-2.5 py-1 rounded-full flex-shrink-0">
-                Pronto para saque
-              </span>
-            ) : stripeState === "processing" ? (
-              <span className="text-[11px] font-semibold bg-sky-50 text-sky-700 ring-1 ring-sky-100 px-2.5 py-1 rounded-full flex-shrink-0">
-                Em processamento
-              </span>
-            ) : stripeState === "blocked" ? (
-              <span className="text-[11px] font-semibold bg-rose-50 text-rose-700 ring-1 ring-rose-100 px-2.5 py-1 rounded-full flex-shrink-0">
-                Saques bloqueados
-              </span>
-            ) : stripeState === "review" ? (
-              <span className="text-[11px] font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-100 px-2.5 py-1 rounded-full flex-shrink-0">
-                Em analise
-              </span>
-            ) : (
-              <span className="text-[11px] font-semibold bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200 px-2.5 py-1 rounded-full flex-shrink-0">
-                Nao configurado
-              </span>
-            )}
-          </div>
-          <p className="text-[12px] text-zinc-400 mt-3">
-            {stripeState === "available"
-              ? "Saques sao processados automaticamente via Stripe Connect. Prazo de 2 a 5 dias uteis."
-              : stripeState === "processing"
-                ? "Seu saque automatico esta em processamento no Stripe."
-              : stripeState === "blocked"
-                ? "Saque automatico indisponivel — fale com o suporte."
-                : stripeState === "review"
-                  ? "A conta Stripe ja foi conectada, mas ainda nao esta pronta para payout automatico."
-               : "Sem conta Stripe Connect pronta, o saque automatico fica indisponivel ate concluir a conexao."}
-          </p>
-        </div>
-
-        {/* PIX section — fallback */}
-        <div className="px-6 py-4 border-b border-zinc-50 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">PIX <span className="normal-case font-medium text-zinc-400">(fallback manual)</span></p>
-            <p className="text-[12px] text-zinc-400 mt-0.5">Usado quando o Stripe automatico nao estiver disponivel.</p>
-          </div>
-          {hasPix && !pixEditing && (
-            <button
-              type="button"
-              onClick={() => { setPixEditing(true); setPixError(""); }}
-              className="text-[12px] font-semibold text-zinc-500 hover:text-zinc-900 border border-zinc-200 rounded-xl px-3 py-1.5 transition-colors cursor-pointer flex-shrink-0"
-            >
-              Editar
-            </button>
-          )}
-        </div>
-        <div className="px-6 py-5">
-          {!pixEditing && hasPix ? (
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 text-[13px]">
-                <span className="text-[11px] font-bold uppercase bg-zinc-100 text-zinc-600 px-2 py-0.5 rounded">
-                  {PIX_TYPE_LABELS[savedPix?.pix_key_type ?? ""] ?? savedPix?.pix_key_type}
-                </span>
-                <span className="font-semibold text-zinc-900">{savedPix?.pix_key_value}</span>
-              </div>
-              {savedPix?.pix_holder_name && (
-                <p className="text-[12px] text-zinc-400">Titular: {savedPix.pix_holder_name}</p>
+          {!depositResult ? (
+            <form onSubmit={handleDeposit} className="space-y-3">
+              {depositError && (
+                <p className="text-[12px] text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{depositError}</p>
               )}
-              {pixSaved && <p className="text-[12px] text-emerald-600 mt-1">Chave PIX salva com sucesso.</p>}
-              <p className="text-[11px] text-zinc-400 pt-1">
-                Saques manuais via PIX exigem minimo de {brl(withdrawalMinAmount)}.
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={handlePixSave} className="space-y-3">
-              {!hasPix && (
-                <p className="text-[12px] text-zinc-500 bg-zinc-50 border border-zinc-100 rounded-xl px-3 py-2">
-                  Configure uma chave PIX como fallback para saques manuais.
-                </p>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <label className="block text-[11px] font-medium text-zinc-500">Tipo de chave</label>
-                  <select
-                    value={pixKeyType}
-                    onChange={(e) => setPixKeyType(e.target.value)}
-                    className="w-full h-10 border border-zinc-200 rounded-xl px-3 text-[13px] text-zinc-900 bg-white focus:outline-none focus:border-zinc-400 transition-colors"
-                  >
-                    {Object.entries(PIX_TYPE_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1 sm:col-span-2">
-                  <label className="block text-[11px] font-medium text-zinc-500">Chave PIX</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] font-semibold text-zinc-400 pointer-events-none">R$</span>
                   <input
-                    type="text"
-                    value={pixKeyValue}
-                    onChange={(e) => setPixKeyValue(e.target.value)}
-                    placeholder="Sua chave PIX"
-                    className="w-full h-10 border border-zinc-200 rounded-xl px-3 text-[13px] text-zinc-900 bg-zinc-50 placeholder:text-[#647B7B] focus:outline-none focus:border-zinc-400 focus:bg-white transition-colors"
+                    type="number"
+                    min={10}
+                    step={1}
+                    placeholder="0"
+                    value={depositAmount}
+                    onChange={(e) => setDepositAmount(e.target.value)}
+                    className="w-full pl-9 pr-3.5 py-2.5 text-[13px] font-semibold bg-zinc-50 border border-zinc-200 rounded-xl placeholder:text-[#647B7B] hover:border-zinc-300 focus:border-zinc-900 focus:bg-white focus:outline-none transition-colors"
                   />
                 </div>
-              </div>
-              <div className="space-y-1">
-                <label className="block text-[11px] font-medium text-zinc-500">Nome do titular</label>
-                <input
-                  type="text"
-                  value={pixHolderName}
-                  onChange={(e) => setPixHolderName(e.target.value)}
-                  placeholder="Nome completo ou razao social"
-                  className="w-full h-10 border border-zinc-200 rounded-xl px-3 text-[13px] text-zinc-900 bg-zinc-50 placeholder:text-[#647B7B] focus:outline-none focus:border-zinc-400 focus:bg-white transition-colors"
-                />
-              </div>
-              {pixError && (
-                <p className="text-[12px] text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{pixError}</p>
-              )}
-              <div className="flex gap-2 pt-1">
                 <button
                   type="submit"
-                  disabled={pixSaving}
-                  className="flex items-center gap-2 bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] disabled:opacity-50 text-white text-[13px] font-bold px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
+                  disabled={Boolean(depositLoading || !depositAmount || Number(depositAmount) < 10)}
+                  className="flex items-center gap-2 bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] disabled:bg-[#E6F0F0] disabled:text-[#B8D4D4] disabled:bg-none text-white text-[13px] font-bold px-5 py-2.5 rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed flex-shrink-0"
                 >
-                  {pixSaving ? "Salvando..." : "Salvar Chave PIX"}
+                  {depositLoading ? "Gerando..." : "Gerar PIX"}
                 </button>
-                {hasPix && (
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {[500, 1000, 2000, 5000].map((value) => (
                   <button
+                    key={value}
                     type="button"
-                    onClick={() => { setPixEditing(false); setPixError(""); }}
-                    className="text-[13px] font-semibold text-zinc-500 hover:text-zinc-900 border border-zinc-200 rounded-xl px-4 py-2.5 transition-colors cursor-pointer"
+                    onClick={() => setDepositAmount(String(value))}
+                    className="text-[11px] font-semibold px-3 py-1.5 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 rounded-lg text-zinc-600 transition-colors cursor-pointer"
                   >
-                    Cancelar
+                    {brl(value)}
                   </button>
-                )}
+                ))}
               </div>
             </form>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 bg-teal-50 border border-teal-100 rounded-xl px-4 py-3">
+                <svg className="w-4 h-4 text-teal-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-[13px] font-semibold text-teal-800">Cobrança PIX gerada. Pague para creditar seu saldo.</p>
+              </div>
+
+              {depositResult.invoiceUrl && (
+                <a
+                  href={depositResult.invoiceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] text-white text-[13px] font-bold px-5 py-2.5 rounded-xl transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Abrir cobrança
+                </a>
+              )}
+
+              {depositResult.pixCopyPaste && (
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">PIX Copia e Cola</p>
+                  <div className="flex gap-2">
+                    <input
+                      readOnly
+                      value={depositResult.pixCopyPaste}
+                      className="flex-1 text-[12px] font-mono bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 text-zinc-700 focus:outline-none truncate"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(depositResult.pixCopyPaste!);
+                        setPixCopied(true);
+                        setTimeout(() => setPixCopied(false), 2000);
+                      }}
+                      className="flex-shrink-0 text-[12px] font-semibold px-3 py-2 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl text-zinc-700 transition-colors cursor-pointer"
+                    >
+                      {pixCopied ? "Copiado!" : "Copiar"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {depositResult.pixQrCode && (
+                <div className="flex justify-center pt-1">
+                  <img
+                    src={`data:image/png;base64,${depositResult.pixQrCode}`}
+                    alt="QR Code PIX"
+                    className="w-40 h-40 rounded-xl border border-zinc-100"
+                  />
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => { setDepositResult(null); setDepositError(""); }}
+                className="text-[12px] font-semibold text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer"
+              >
+                Gerar novo PIX
+              </button>
+            </div>
           )}
         </div>
       </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_14px_34px_rgba(7,17,13,0.06)] overflow-hidden">
