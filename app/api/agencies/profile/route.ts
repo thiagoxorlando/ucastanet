@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { digitsOnly } from "@/lib/cpf";
 
 export async function PATCH(req: NextRequest) {
   const session = await createSessionClient();
@@ -10,7 +11,12 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { company_name, avatar_url, phone, address } = await req.json();
+  const { company_name, avatar_url, phone, address, cpf_cnpj } = await req.json();
+  const normalizedCpf = cpf_cnpj === undefined || cpf_cnpj === null ? undefined : digitsOnly(String(cpf_cnpj));
+
+  if (normalizedCpf !== undefined && normalizedCpf.length !== 11) {
+    return NextResponse.json({ error: "CPF inválido" }, { status: 400 });
+  }
 
   const updates: Record<string, string | null> = {};
   if (company_name !== undefined) updates.company_name = company_name;
@@ -18,11 +24,23 @@ export async function PATCH(req: NextRequest) {
   if (phone        !== undefined) updates.phone        = phone;
   if (address      !== undefined) updates.address      = address;
 
-  if (Object.keys(updates).length === 0) {
+  if (Object.keys(updates).length === 0 && normalizedCpf === undefined) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
   const supabase = createServerClient({ useServiceRole: true });
+
+  if (normalizedCpf !== undefined) {
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ cpf_cnpj: normalizedCpf } as Record<string, unknown>)
+      .eq("id", user.id);
+
+    if (profileError) {
+      console.error("[PATCH /api/agencies/profile][profiles]", profileError);
+      return NextResponse.json({ error: profileError.message }, { status: 400 });
+    }
+  }
 
   const { error } = await supabase
     .from("agencies")

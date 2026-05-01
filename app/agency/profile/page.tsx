@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import AgencyProfile from "@/features/agency/AgencyProfile";
+import { formatCpf } from "@/lib/cpf";
 
 export const metadata: Metadata = { title: "Perfil — BrisaHub" };
 
@@ -11,11 +12,18 @@ export default async function AgencyProfilePage() {
 
   const supabase = createServerClient({ useServiceRole: true });
 
-  const { data: agency } = await supabase
-    .from("agencies")
-    .select("company_name, contact_name, avatar_url, subscription_status, phone, address")
-    .eq("id", user?.id ?? "")
-    .single();
+  const [{ data: agency }, { data: profile }] = await Promise.all([
+    supabase
+      .from("agencies")
+      .select("company_name, contact_name, avatar_url, subscription_status, phone, address")
+      .eq("id", user?.id ?? "")
+      .single(),
+    supabase
+      .from("profiles")
+      .select("cpf_cnpj")
+      .eq("id", user?.id ?? "")
+      .maybeSingle(),
+  ]);
 
   // Pre-fill company name from DB; fall back to auth metadata when not yet set
   const fallbackName =
@@ -33,6 +41,7 @@ export default async function AgencyProfilePage() {
       subscriptionStatus={agency?.subscription_status ?? "active"}
       phone={agency?.phone ?? ""}
       address={agency?.address ?? ""}
+      cpf={formatCpf(profile?.cpf_cnpj ?? "")}
     />
   );
 }

@@ -1,5 +1,6 @@
 import { asaas, AsaasApiError } from "./asaasClient";
 import { createServerClient } from "./supabase";
+import { digitsOnly } from "./cpf";
 
 interface AsaasCustomerRecord { id: string; cpfCnpj?: string | null }
 interface AsaasCustomerSearch { data: AsaasCustomerRecord[]; totalCount: number }
@@ -12,12 +13,25 @@ export class AsaasCustomerError extends Error {
 }
 
 // Resolve CPF/CNPJ for a user from available DB sources:
-//   1. Agency PIX key (when type is "cpf" or "cnpj" the value IS the document)
-//   2. Saved cards holder document (most recently added card)
+//   1. profiles.cpf_cnpj
+//   2. Agency PIX key (when type is "cpf" or "cnpj" the value IS the document)
+//   3. Saved cards holder document (most recently added card)
 export async function resolveDocument(userId: string): Promise<string | null> {
   const supabase = createServerClient({ useServiceRole: true });
 
-  // Source 1: agency PIX key
+  // Source 1: profile CPF
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("cpf_cnpj")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profile?.cpf_cnpj) {
+    const digits = digitsOnly(profile.cpf_cnpj);
+    if (digits) return digits;
+  }
+
+  // Source 2: agency PIX key
   const { data: agency } = await supabase
     .from("agencies")
     .select("pix_key_type, pix_key_value")
@@ -25,11 +39,11 @@ export async function resolveDocument(userId: string): Promise<string | null> {
     .maybeSingle();
 
   if (agency?.pix_key_type === "cpf" || agency?.pix_key_type === "cnpj") {
-    const digits = (agency.pix_key_value ?? "").replace(/\D/g, "");
+    const digits = digitsOnly(agency.pix_key_value);
     if (digits) return digits;
   }
 
-  // Source 2: saved card document
+  // Source 3: saved card document
   const { data: card } = await supabase
     .from("saved_cards")
     .select("holder_document_number")
@@ -40,7 +54,7 @@ export async function resolveDocument(userId: string): Promise<string | null> {
     .maybeSingle();
 
   if (card?.holder_document_number) {
-    return card.holder_document_number.replace(/\D/g, "");
+    return digitsOnly(card.holder_document_number);
   }
 
   return null;
@@ -97,7 +111,7 @@ export async function ensureAsaasCustomer(
 
   // Resolve document now — needed for both create and patch paths
   const resolvedDoc = cpfCnpj
-    ? cpfCnpj.replace(/\D/g, "")
+    ? digitsOnly(cpfCnpj)
     : await resolveDocument(userId);
 
   // 1. Check profile cache

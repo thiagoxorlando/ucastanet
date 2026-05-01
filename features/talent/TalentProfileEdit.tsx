@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { TALENT_CATEGORY_LABELS, talentCategoryLabel } from "@/lib/talentCategories";
+import { digitsOnly, formatCpf, isValidCpf } from "@/lib/cpf";
 
 const TALENT_CATEGORIES = TALENT_CATEGORY_LABELS;
 
@@ -33,6 +34,7 @@ type Form = {
   categories:  string[];
   age:         string;
   gender:      string;
+  cpf:         string;
   instagram:   string;
   tiktok:      string;
   youtube:     string;
@@ -44,7 +46,7 @@ type FormErrors = Partial<Record<keyof Form, string>>;
 
 const DEFAULTS: Form = {
   fullName: "", phone: "", country: "", city: "",
-  bio: "", categories: [], age: "", gender: "",
+  bio: "", categories: [], age: "", gender: "", cpf: "",
   instagram: "", tiktok: "", youtube: "", xHandle: "", website: "",
 };
 
@@ -66,6 +68,8 @@ function validate(form: Form): FormErrors {
     e.xHandle = "Digite seu @ sem o símbolo ou espaços.";
   if (form.age && (isNaN(Number(form.age)) || Number(form.age) < 1 || Number(form.age) > 120))
     e.age = "Digite uma idade válida.";
+  if (!isValidCpf(form.cpf))
+    e.cpf = "CPF inválido";
   return e;
 }
 
@@ -116,11 +120,18 @@ export default function TalentProfileEdit() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      const { data } = await supabase
-        .from("talent_profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+      const [{ data }, { data: profile }] = await Promise.all([
+        supabase
+          .from("talent_profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single(),
+        supabase
+          .from("profiles")
+          .select("cpf_cnpj")
+          .eq("id", user.id)
+          .maybeSingle(),
+      ]);
 
       if (data) {
         setForm({
@@ -132,6 +143,7 @@ export default function TalentProfileEdit() {
           categories: data.categories  ?? [],
           age:        data.age != null ? String(data.age) : "",
           gender:     normalizeGender(data.gender),
+          cpf:        formatCpf(profile?.cpf_cnpj ?? ""),
           instagram:  data.instagram   ?? "",
           tiktok:     data.tiktok      ?? "",
           youtube:    data.youtube     ?? "",
@@ -139,6 +151,8 @@ export default function TalentProfileEdit() {
           website:    data.website     ?? "",
         });
         if (data.avatar_url) setPreview(data.avatar_url);
+      } else {
+        setForm((current) => ({ ...current, cpf: formatCpf(profile?.cpf_cnpj ?? "") }));
       }
       setLoading(false);
     }
@@ -175,7 +189,7 @@ export default function TalentProfileEdit() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setTouched({ fullName: true, bio: true, instagram: true, tiktok: true, xHandle: true, age: true });
+    setTouched({ fullName: true, bio: true, instagram: true, tiktok: true, xHandle: true, age: true, cpf: true });
     const errs = validate(form);
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
@@ -185,6 +199,8 @@ export default function TalentProfileEdit() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setServerError("Não autenticado."); setSaving(false); return; }
+
+    const normalizedCpf = digitsOnly(form.cpf);
 
     let avatarUrl: string | undefined;
 
@@ -221,6 +237,17 @@ export default function TalentProfileEdit() {
       website:    form.website.trim()  || null,
     };
     if (avatarUrl) payload.avatar_url = avatarUrl;
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ cpf_cnpj: normalizedCpf })
+      .eq("id", user.id);
+
+    if (profileError) {
+      setServerError(profileError.message);
+      setSaving(false);
+      return;
+    }
 
     const { error: dbError } = await supabase
       .from("talent_profiles")
@@ -301,6 +328,17 @@ export default function TalentProfileEdit() {
                 value={form.phone}
                 onChange={(v) => set("phone", v)}
               />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className={labelCls}>CPF</label>
+              <input
+                className={inputCls(!!errors.cpf && !!touched.cpf)}
+                placeholder="000.000.000-00"
+                value={form.cpf}
+                onChange={(e) => set("cpf", formatCpf(e.target.value))}
+              />
+              {touched.cpf && <FieldError msg={errors.cpf} />}
             </div>
 
             <div>

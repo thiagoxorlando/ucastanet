@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { useSubscription } from "@/lib/SubscriptionContext";
+import { formatCpf, isValidCpf } from "@/lib/cpf";
 
 type Props = {
   userId: string;
@@ -14,6 +15,7 @@ type Props = {
   subscriptionStatus: string;
   phone: string;
   address: string;
+  cpf: string;
 };
 
 export default function AgencyProfile({
@@ -25,6 +27,7 @@ export default function AgencyProfile({
   subscriptionStatus,
   phone: initialPhone,
   address: initialAddress,
+  cpf: initialCpf,
 }: Props) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -35,8 +38,10 @@ export default function AgencyProfile({
   const [avatar, setAvatar]       = useState(avatarUrl ?? "");
   const [phone, setPhone]         = useState(initialPhone);
   const [address, setAddress]     = useState(initialAddress);
+  const [cpf, setCpf]             = useState(initialCpf);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving]       = useState(false);
+  const [cpfError, setCpfError]   = useState("");
   const [toast, setToast]         = useState<{ msg: string; ok: boolean } | null>(null);
 
   const initials = name
@@ -71,6 +76,12 @@ export default function AgencyProfile({
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (!isValidCpf(cpf)) {
+      setCpfError("CPF inválido");
+      return;
+    }
+
+    setCpfError("");
     setSaving(true);
 
     const res = await fetch("/api/agencies/profile", {
@@ -82,6 +93,7 @@ export default function AgencyProfile({
         avatar_url:    avatar || null,
         phone:         phone.trim() || null,
         address:       address.trim() || null,
+        cpf_cnpj:      cpf,
       }),
     });
 
@@ -208,6 +220,24 @@ export default function AgencyProfile({
         <div>
           <label className="block text-[12px] font-medium text-zinc-600 mb-1.5">Telefone</label>
           <PhoneInput value={phone} onChange={setPhone} />
+        </div>
+
+        <div>
+          <label className="block text-[12px] font-medium text-zinc-600 mb-1.5">CPF</label>
+          <input
+            type="text"
+            value={cpf}
+            onChange={(e) => {
+              setCpf(formatCpf(e.target.value));
+              if (cpfError) setCpfError("");
+            }}
+            placeholder="000.000.000-00"
+            className={[
+              "w-full px-4 py-3 text-[14px] rounded-xl border hover:border-zinc-300 focus:outline-none transition-colors",
+              cpfError ? "border-rose-300 focus:border-rose-400" : "border-zinc-200 focus:border-zinc-900",
+            ].join(" ")}
+          />
+          {cpfError && <p className="text-[12px] text-rose-500 mt-1.5">{cpfError}</p>}
         </div>
 
         <div>

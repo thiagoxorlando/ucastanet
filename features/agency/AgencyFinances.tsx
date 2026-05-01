@@ -184,7 +184,6 @@ export default function AgencyFinances({
     const customerRes = await fetch("/api/asaas/customer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
     });
     const customerData = await customerRes.json().catch(() => ({})) as {
       error?: string;
