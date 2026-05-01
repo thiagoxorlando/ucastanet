@@ -143,7 +143,7 @@ function StatCard({ label, value, sub, stripe }: { label: string; value: string;
       <div className="flex h-full flex-col justify-between gap-3 p-5 sm:p-5 lg:p-6">
         <div className="space-y-2">
           <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">{label}</p>
-          <p className="overflow-hidden whitespace-nowrap text-[1.2rem] sm:text-[1.35rem] lg:text-[1.55rem] xl:text-[1.7rem] font-semibold tracking-tight text-zinc-900 leading-none tabular-nums">
+          <p className="overflow-hidden whitespace-nowrap text-[1.2rem] sm:text-[1.35rem] lg:text-[1.55rem] xl:text-[1.7rem] font-semibold tracking-tight text-zinc-900 leading-tight tabular-nums pb-0.5">
             {value}
           </p>
         </div>
