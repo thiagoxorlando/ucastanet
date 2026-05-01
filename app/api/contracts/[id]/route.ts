@@ -159,7 +159,7 @@ export async function PATCH(
     const r = result as { ok: boolean; already_processed?: boolean; error?: string; required?: number; available?: number };
 
     if (!r.ok) {
-      if (r.error === "insufficient_balance" || r.error === "insufficient_funding_sources") {
+      if (r.error === "insufficient_balance") {
         return NextResponse.json(
           { error: "insufficient_balance", required: r.required, available: r.available },
           { status: 402 }
