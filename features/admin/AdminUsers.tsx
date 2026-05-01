@@ -82,8 +82,10 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [sortKey, setSortKey] = useState<SortKey>("none");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [updating, setUpdating] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState<"freeze" | "delete" | null>(null);
   const [error, setError] = useState("");
   const [creditModal, setCreditModal] = useState<{ userId: string; name: string; balance: number } | null>(null);
   const [creditAmount, setCreditAmount] = useState("");
@@ -157,6 +159,11 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
 
     if (response.ok) {
       setUsers((current) => current.filter((item) => item.id !== user.id));
+      setSelectedIds((current) => {
+        const next = new Set(current);
+        next.delete(user.id);
+        return next;
+      });
     } else {
       const payload = await response.json().catch(() => ({}));
       setError(payload.error ?? "Falha ao deletar o usuario.");
@@ -195,11 +202,89 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
   }
 
   function handleRowClick(user: AdminUser, event: MouseEvent) {
-    if ((event.target as HTMLElement).closest("select, button")) return;
+    if ((event.target as HTMLElement).closest("select, button, input")) return;
     router.push(`/admin/users/${user.id}`);
   }
 
+  function toggleSelected(userId: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  }
+
+  function toggleSelectAllFiltered() {
+    const filteredIds = filtered.map((user) => user.id);
+    const allFilteredSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id));
+
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allFilteredSelected) {
+        for (const id of filteredIds) next.delete(id);
+      } else {
+        for (const id of filteredIds) next.add(id);
+      }
+      return next;
+    });
+  }
+
+  async function handleBulkFreeze() {
+    if (selectedIds.size === 0) return;
+    setBulkBusy("freeze");
+    setError("");
+
+    const ids = Array.from(selectedIds);
+    const response = await fetch("/api/admin/users/bulk", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, action: "freeze" }),
+    });
+
+    if (response.ok) {
+      const selected = new Set(ids);
+      setUsers((current) => current.map((user) => (selected.has(user.id) ? { ...user, isFrozen: true } : user)));
+      setSelectedIds(new Set());
+    } else {
+      const payload = await response.json().catch(() => ({}));
+      setError(payload.error ?? "Falha ao desabilitar os usuarios selecionados.");
+    }
+
+    setBulkBusy(null);
+  }
+
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    setBulkBusy("delete");
+    setError("");
+
+    const ids = Array.from(selectedIds);
+    const response = await fetch("/api/admin/users/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+
+    if (response.ok) {
+      const selected = new Set(ids);
+      setUsers((current) => current.filter((user) => !selected.has(user.id)));
+      setSelectedIds(new Set());
+    } else {
+      const payload = await response.json().catch(() => ({}));
+      const detail = payload.id ? ` (${payload.id})` : "";
+      setError((payload.error ?? "Falha ao excluir os usuarios selecionados.") + detail);
+    }
+
+    setBulkBusy(null);
+  }
+
   const userToDelete = deleting ? users.find((user) => user.id === deleting) : null;
+  const filteredIds = filtered.map((user) => user.id);
+  const selectedCount = selectedIds.size;
+  const selectedFilteredCount = filteredIds.filter((id) => selectedIds.has(id)).length;
+  const allFilteredSelected = filteredIds.length > 0 && selectedFilteredCount === filteredIds.length;
+  const someFilteredSelected = selectedFilteredCount > 0 && !allFilteredSelected;
 
   return (
     <div className="max-w-7xl space-y-6">
@@ -369,11 +454,52 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
         </div>
       </div>
 
+      {selectedCount > 0 ? (
+        <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[13px] font-semibold text-zinc-900">{selectedCount} selecionados</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleBulkFreeze}
+              disabled={bulkBusy !== null}
+              className="rounded-xl border border-zinc-200 px-3.5 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {bulkBusy === "freeze" ? "Desabilitando..." : "Desabilitar selecionados"}
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkBusy !== null}
+              className="rounded-xl bg-rose-600 px-3.5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {bulkBusy === "delete" ? "Excluindo..." : "Excluir selecionados"}
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              disabled={bulkBusy !== null}
+              className="rounded-xl px-3.5 py-2 text-[12px] font-medium text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Limpar seleção
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)]">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-100">
+                <th className="px-4 py-3.5">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    ref={(node) => {
+                      if (node) node.indeterminate = someFilteredSelected;
+                    }}
+                    onChange={toggleSelectAllFiltered}
+                    aria-label="Selecionar usuarios filtrados"
+                    className="h-4 w-4 cursor-pointer rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
+                  />
+                </th>
                 <th className="px-6 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Usuario</th>
                 <th className="hidden px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400 sm:table-cell">Email</th>
                 <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Papel</th>
@@ -396,6 +522,15 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                     onClick={(event) => handleRowClick(user, event)}
                     className={["cursor-pointer transition-colors hover:bg-zinc-50/60", user.isFrozen ? "opacity-60" : ""].join(" ")}
                   >
+                    <td className="px-4 py-4" onClick={(event) => event.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(user.id)}
+                        onChange={() => toggleSelected(user.id)}
+                        aria-label={`Selecionar ${user.name || user.email}`}
+                        className="h-4 w-4 cursor-pointer rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
+                      />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div
@@ -562,7 +697,7 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
 
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-16 text-center">
+                  <td colSpan={11} className="px-6 py-16 text-center">
                     <p className="text-[14px] font-medium text-zinc-500">Nenhum usuario encontrado</p>
                     <p className="mt-1 text-[13px] text-zinc-400">Tente ajustar a busca ou o filtro.</p>
                   </td>

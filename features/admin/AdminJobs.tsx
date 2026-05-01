@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
+import type { MouseEvent } from "react";
 
 export type AdminJob = {
   id: string;
@@ -171,7 +172,19 @@ function SubmissionStatusBadge({ status }: { status: string }) {
   );
 }
 
-function JobRow({ job, onDelete }: { job: AdminJob; onDelete: (id: string) => void }) {
+function JobRow({
+  job,
+  onDelete,
+  onUpdate,
+  selected,
+  onToggleSelected,
+}: {
+  job: AdminJob;
+  onDelete: (id: string) => void;
+  onUpdate: (jobId: string, updates: Partial<AdminJob>) => void;
+  selected: boolean;
+  onToggleSelected: (id: string) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirm, setConfirm] = useState(false);
@@ -180,9 +193,7 @@ function JobRow({ job, onDelete }: { job: AdminJob; onDelete: (id: string) => vo
   const [editStatus, setEditStatus] = useState(job.status);
   const [editBudget, setEditBudget] = useState(String(job.budget ?? ""));
   const [editDeadline, setEditDeadline] = useState(job.deadline ?? "");
-  const [localJob, setLocalJob] = useState(job);
-
-  const statusTone = STATUS_STYLES[localJob.status] ?? STATUS_STYLES.closed;
+  const statusTone = STATUS_STYLES[job.status] ?? STATUS_STYLES.closed;
 
   async function handleSave() {
     setSaving(true);
@@ -199,13 +210,12 @@ function JobRow({ job, onDelete }: { job: AdminJob; onDelete: (id: string) => vo
     setSaving(false);
 
     if (response.ok) {
-      setLocalJob((current) => ({
-        ...current,
+      onUpdate(job.id, {
         title: editTitle.trim(),
         status: editStatus,
         budget: editBudget ? Number(editBudget) : null,
         deadline: editDeadline || null,
-      }));
+      });
       setEditing(false);
     }
   }
@@ -217,70 +227,84 @@ function JobRow({ job, onDelete }: { job: AdminJob; onDelete: (id: string) => vo
   }
 
   const detailItems = [
-    { label: "Agencia", value: localJob.agencyName },
-    { label: "Status", value: localJob.status },
-    { label: "Orcamento", value: localJob.budget ? brl(localJob.budget) : "-" },
-    { label: "Candidaturas", value: String(localJob.submissionCount) },
-    { label: "Categoria", value: localJob.category ?? "-" },
-    { label: "Localizacao", value: localJob.location ?? "-" },
-    { label: "Genero", value: localJob.gender ?? "-" },
+    { label: "Agencia", value: job.agencyName },
+    { label: "Status", value: job.status },
+    { label: "Orcamento", value: job.budget ? brl(job.budget) : "-" },
+    { label: "Candidaturas", value: String(job.submissionCount) },
+    { label: "Categoria", value: job.category ?? "-" },
+    { label: "Localizacao", value: job.location ?? "-" },
+    { label: "Genero", value: job.gender ?? "-" },
     {
       label: "Faixa etaria",
-      value: localJob.ageMin || localJob.ageMax ? `${localJob.ageMin ?? "Qualquer"} - ${localJob.ageMax ?? "Qualquer"}` : "-",
+      value: job.ageMin || job.ageMax ? `${job.ageMin ?? "Qualquer"} - ${job.ageMax ?? "Qualquer"}` : "-",
     },
-    { label: "Data da vaga", value: formatJobDate(localJob.jobDate) ?? "-" },
-    { label: "Prazo", value: formatDate(localJob.deadline) },
-    { label: "Publicado", value: formatDate(localJob.created_at) },
+    { label: "Data da vaga", value: formatJobDate(job.jobDate) ?? "-" },
+    { label: "Prazo", value: formatDate(job.deadline) },
+    { label: "Publicado", value: formatDate(job.created_at) },
   ];
+
+  function handleRowClick(event: MouseEvent<HTMLTableRowElement>) {
+    if ((event.target as HTMLElement).closest("button, input, select, label")) return;
+    if (!editing) setExpanded((current) => !current);
+  }
 
   return (
     <>
       {confirm ? (
         <ConfirmDialog
-          message={`Mover "${localJob.title}" para a lixeira?`}
+          message={`Mover "${job.title}" para a lixeira?`}
           onConfirm={handleDelete}
           onCancel={() => setConfirm(false)}
         />
       ) : null}
 
-      <tr onClick={() => !editing && setExpanded((current) => !current)} className="cursor-pointer transition-colors hover:bg-zinc-50/60">
+      <tr onClick={handleRowClick} className="cursor-pointer transition-colors hover:bg-zinc-50/60">
+        <td className="px-4 py-4" onClick={(event) => event.stopPropagation()}>
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelected(job.id)}
+            aria-label={`Selecionar vaga ${job.title}`}
+            className="h-4 w-4 cursor-pointer rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
+          />
+        </td>
         <td className="px-6 py-4">
           <div className="flex items-center gap-2">
             <svg className={`h-3.5 w-3.5 flex-shrink-0 text-[#647B7B] transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            <p className="max-w-[180px] truncate text-[13px] font-semibold text-zinc-900">{localJob.title}</p>
+            <p className="max-w-[180px] truncate text-[13px] font-semibold text-zinc-900">{job.title}</p>
           </div>
         </td>
         <td className="px-4 py-4">
-          <span className="block max-w-[160px] truncate text-[13px] text-zinc-500">{localJob.agencyName}</span>
+          <span className="block max-w-[160px] truncate text-[13px] text-zinc-500">{job.agencyName}</span>
         </td>
         <td className="hidden px-4 py-4 sm:table-cell">
           <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${statusTone}`}>
-            {localJob.status}
+            {job.status}
           </span>
         </td>
         <td className="hidden px-4 py-4 sm:table-cell">
-          {localJob.category ? (
-            <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-500">{localJob.category}</span>
+          {job.category ? (
+            <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-500">{job.category}</span>
           ) : (
             <span className="text-[13px] text-[#647B7B]">-</span>
           )}
         </td>
         <td className="hidden px-4 py-4 text-right md:table-cell">
-          <span className="text-[13px] font-semibold tabular-nums text-zinc-900">{localJob.budget ? brl(localJob.budget) : "-"}</span>
+          <span className="text-[13px] font-semibold tabular-nums text-zinc-900">{job.budget ? brl(job.budget) : "-"}</span>
         </td>
         <td className="hidden px-4 py-4 text-right md:table-cell">
-          <span className="text-[13px] tabular-nums text-zinc-500">{localJob.submissionCount}</span>
+          <span className="text-[13px] tabular-nums text-zinc-500">{job.submissionCount}</span>
         </td>
         <td className="hidden px-4 py-4 lg:table-cell">
-          <span className="text-[13px] text-zinc-500">{localJob.jobDate ? formatJobDate(localJob.jobDate) : "-"}</span>
+          <span className="text-[13px] text-zinc-500">{job.jobDate ? formatJobDate(job.jobDate) : "-"}</span>
         </td>
         <td className="hidden px-4 py-4 lg:table-cell">
-          <span className="text-[13px] text-zinc-500">{localJob.deadline ? formatDate(localJob.deadline) : "-"}</span>
+          <span className="text-[13px] text-zinc-500">{job.deadline ? formatDate(job.deadline) : "-"}</span>
         </td>
         <td className="hidden px-4 py-4 lg:table-cell">
-          <span className="text-[12px] text-zinc-400">{formatDate(localJob.created_at)}</span>
+          <span className="text-[12px] text-zinc-400">{formatDate(job.created_at)}</span>
         </td>
         <td className="px-4 py-4 text-right">
           <div className="flex items-center justify-end gap-2" onClick={(event) => event.stopPropagation()}>
@@ -305,7 +329,7 @@ function JobRow({ job, onDelete }: { job: AdminJob; onDelete: (id: string) => vo
 
       {expanded ? (
         <tr>
-          <td colSpan={10} className="px-0 py-0">
+          <td colSpan={11} className="px-0 py-0">
             <div className="space-y-4 border-t border-zinc-50 bg-zinc-50/60 px-6 py-5">
               {editing ? (
                 <div className="max-w-xl space-y-4">
@@ -379,20 +403,20 @@ function JobRow({ job, onDelete }: { job: AdminJob; onDelete: (id: string) => vo
                     ))}
                   </div>
 
-                  {localJob.description ? (
+                  {job.description ? (
                     <div>
                       <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">Descricao</p>
-                      <p className="max-w-2xl whitespace-pre-line text-[13px] leading-relaxed text-zinc-600">{localJob.description}</p>
+                      <p className="max-w-2xl whitespace-pre-line text-[13px] leading-relaxed text-zinc-600">{job.description}</p>
                     </div>
                   ) : null}
 
-                  {localJob.assignedTalents && localJob.assignedTalents.length > 0 ? (
+                  {job.assignedTalents && job.assignedTalents.length > 0 ? (
                     <div>
                       <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-                        Talentos com contrato ({localJob.assignedTalents.length})
+                        Talentos com contrato ({job.assignedTalents.length})
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {localJob.assignedTalents.map((talent) => (
+                        {job.assignedTalents.map((talent) => (
                           <div key={talent.id} className="flex items-center gap-1.5 rounded-full border border-zinc-100 bg-white py-1 pl-2.5 pr-1.5 shadow-sm">
                             <span className="text-[12px] font-medium text-zinc-800">{talent.name}</span>
                             <ContractStatusBadge status={talent.status} />
@@ -402,13 +426,13 @@ function JobRow({ job, onDelete }: { job: AdminJob; onDelete: (id: string) => vo
                     </div>
                   ) : null}
 
-                  {localJob.invitedTalents && localJob.invitedTalents.length > 0 ? (
+                  {job.invitedTalents && job.invitedTalents.length > 0 ? (
                     <div>
                       <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-                        Candidatos ({localJob.invitedTalents.length})
+                        Candidatos ({job.invitedTalents.length})
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {localJob.invitedTalents.map((talent) => (
+                        {job.invitedTalents.map((talent) => (
                           <div key={talent.id} className="flex items-center gap-1.5 rounded-full border border-zinc-100 bg-white py-1 pl-2.5 pr-1.5 shadow-sm">
                             <span className="text-[12px] font-medium text-zinc-800">{talent.name}</span>
                             <SubmissionStatusBadge status={talent.status} />
@@ -434,9 +458,21 @@ export default function AdminJobs({ jobs: initialJobs }: { jobs: AdminJob[] }) {
   const [dateField, setDateField] = useState<DateField>("jobDate");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState<"disable" | "delete" | null>(null);
+  const [error, setError] = useState("");
 
   function handleDelete(id: string) {
     setJobs((current) => current.filter((job) => job.id !== id));
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  function handleUpdate(jobId: string, updates: Partial<AdminJob>) {
+    setJobs((current) => current.map((job) => (job.id === jobId ? { ...job, ...updates } : job)));
   }
 
   const filtered = jobs.filter((job) => {
@@ -454,6 +490,82 @@ export default function AdminJobs({ jobs: initialJobs }: { jobs: AdminJob[] }) {
       job.agencyName.toLowerCase().includes(query)
     );
   });
+
+  const filteredIds = filtered.map((job) => job.id);
+  const selectedCount = selectedIds.size;
+  const selectedFilteredCount = filteredIds.filter((id) => selectedIds.has(id)).length;
+  const allFilteredSelected = filteredIds.length > 0 && selectedFilteredCount === filteredIds.length;
+  const someFilteredSelected = selectedFilteredCount > 0 && !allFilteredSelected;
+
+  function toggleSelected(jobId: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(jobId)) next.delete(jobId);
+      else next.add(jobId);
+      return next;
+    });
+  }
+
+  function toggleSelectAllFiltered() {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allFilteredSelected) {
+        for (const id of filteredIds) next.delete(id);
+      } else {
+        for (const id of filteredIds) next.add(id);
+      }
+      return next;
+    });
+  }
+
+  async function handleBulkDisable() {
+    if (selectedIds.size === 0) return;
+    setBulkBusy("disable");
+    setError("");
+
+    const ids = Array.from(selectedIds);
+    const response = await fetch("/api/admin/jobs/bulk", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, action: "disable" }),
+    });
+
+    if (response.ok) {
+      const selected = new Set(ids);
+      setJobs((current) => current.map((job) => (selected.has(job.id) ? { ...job, status: "inactive" } : job)));
+      setSelectedIds(new Set());
+    } else {
+      const payload = await response.json().catch(() => ({}));
+      setError(payload.error ?? "Falha ao desabilitar as vagas selecionadas.");
+    }
+
+    setBulkBusy(null);
+  }
+
+  async function handleBulkDelete() {
+    if (selectedIds.size === 0) return;
+    setBulkBusy("delete");
+    setError("");
+
+    const ids = Array.from(selectedIds);
+    const response = await fetch("/api/admin/jobs/bulk", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+
+    if (response.ok) {
+      const selected = new Set(ids);
+      setJobs((current) => current.filter((job) => !selected.has(job.id)));
+      setSelectedIds(new Set());
+    } else {
+      const payload = await response.json().catch(() => ({}));
+      const detail = payload.id ? ` (${payload.id})` : "";
+      setError((payload.error ?? "Falha ao excluir as vagas selecionadas.") + detail);
+    }
+
+    setBulkBusy(null);
+  }
 
   return (
     <div className="max-w-7xl space-y-6">
@@ -541,11 +653,56 @@ export default function AdminJobs({ jobs: initialJobs }: { jobs: AdminJob[] }) {
         </p>
       </div>
 
+      {error ? (
+        <p className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-[13px] text-rose-600">{error}</p>
+      ) : null}
+
+      {selectedCount > 0 ? (
+        <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-[13px] font-semibold text-zinc-900">{selectedCount} selecionados</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleBulkDisable}
+              disabled={bulkBusy !== null}
+              className="rounded-xl border border-zinc-200 px-3.5 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {bulkBusy === "disable" ? "Desabilitando..." : "Desabilitar selecionadas"}
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              disabled={bulkBusy !== null}
+              className="rounded-xl bg-rose-600 px-3.5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {bulkBusy === "delete" ? "Excluindo..." : "Excluir selecionadas"}
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              disabled={bulkBusy !== null}
+              className="rounded-xl px-3.5 py-2 text-[12px] font-medium text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Limpar seleção
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)]">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-100">
+                <th className="px-4 py-3.5">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    ref={(node) => {
+                      if (node) node.indeterminate = someFilteredSelected;
+                    }}
+                    onChange={toggleSelectAllFiltered}
+                    aria-label="Selecionar vagas filtradas"
+                    className="h-4 w-4 cursor-pointer rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
+                  />
+                </th>
                 <th className="whitespace-nowrap px-6 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Titulo</th>
                 <th className="whitespace-nowrap px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Agencia</th>
                 <th className="hidden whitespace-nowrap px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400 sm:table-cell">Status</th>
@@ -560,11 +717,18 @@ export default function AdminJobs({ jobs: initialJobs }: { jobs: AdminJob[] }) {
             </thead>
             <tbody className="divide-y divide-zinc-50">
               {filtered.map((job) => (
-                <JobRow key={job.id} job={job} onDelete={handleDelete} />
+                <JobRow
+                  key={job.id}
+                  job={job}
+                  onDelete={handleDelete}
+                  onUpdate={handleUpdate}
+                  selected={selectedIds.has(job.id)}
+                  onToggleSelected={toggleSelected}
+                />
               ))}
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-16 text-center">
+                  <td colSpan={11} className="px-6 py-16 text-center">
                     <p className="text-[14px] font-medium text-zinc-500">Nenhuma vaga encontrada</p>
                     <p className="mt-1 text-[13px] text-zinc-400">Tente ajustar a busca, o status ou o intervalo de datas.</p>
                   </td>
@@ -582,5 +746,3 @@ export default function AdminJobs({ jobs: initialJobs }: { jobs: AdminJob[] }) {
     </div>
   );
 }
-
-
