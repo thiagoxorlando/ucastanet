@@ -139,17 +139,20 @@ function BookingRow({
     setApiError(null);
     setActing("confirm");
     if (!booking.contractId) { setActing(null); return; }
-    const res = await fetch(`/api/contracts/${booking.contractId}/stripe-checkout`, {
-      method: "POST",
+    const res = await fetch(`/api/contracts/${booking.contractId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "agency_sign" }),
     });
-    if (!res) { setActing(null); return; }
-    const d = await res.json().catch(() => ({})) as { error?: string; url?: string };
-    if (res.ok && d.url) {
-      window.location.href = d.url;
+    const d = await res.json().catch(() => ({})) as { error?: string; required?: number; available?: number; derived_status?: string };
+    if (res.ok) {
+      onStatusChange(booking.id, d.derived_status ?? "aguardando_pagamento");
+    } else if (res.status === 402) {
+      setBalanceError({ required: d.required ?? 0, available: d.available ?? 0 });
     } else if (res.status === 409) {
       onStatusChange(booking.id, "aguardando_pagamento");
     } else {
-      setApiError(d.error ?? "Erro ao abrir pagamento Stripe. Tente novamente.");
+      setApiError(d.error ?? "Erro ao confirmar reserva. Tente novamente.");
     }
     setActing(null);
   }
@@ -257,7 +260,7 @@ function BookingRow({
                       d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                 )}
-                {acting === "confirm" ? "Abrindo..." : "Pagar via Stripe"}
+                {acting === "confirm" ? "Confirmando..." : "Confirmar reserva"}
               </button>
               {canCancelBooking && (
                 <button onClick={handleCancel} disabled={acting !== null} className={cancelButtonClass}>
@@ -332,7 +335,7 @@ function BookingRow({
               d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
           <div className="flex-1 min-w-0">
-            <p className="text-[12px] font-semibold text-amber-800">Saldo insuficiente</p>
+            <p className="text-[12px] font-semibold text-amber-800">Saldo insuficiente. Deposite saldo na carteira para confirmar a reserva.</p>
             <p className="text-[11px] text-amber-700 mt-0.5">
               Necessário: <strong>{brl(balanceError.required)}</strong> · Disponível: <strong>{brl(balanceError.available)}</strong>
             </p>
@@ -342,7 +345,7 @@ function BookingRow({
             onClick={(e) => e.stopPropagation()}
             className="flex-shrink-0 text-[12px] font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3 py-1.5 rounded-lg transition-colors"
           >
-            Depositar fundos
+            Depositar saldo
           </Link>
         </div>
       )}

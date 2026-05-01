@@ -76,16 +76,6 @@ export async function PATCH(
 
   const now = new Date().toISOString();
 
-  if (action === "agency_sign") {
-    return NextResponse.json(
-      {
-        error: "Contract funding must use Stripe Checkout.",
-        checkout_route: `/api/contracts/${id}/stripe-checkout`,
-      },
-      { status: 409 },
-    );
-  }
-
   // ── Talent: reject ────────────────────────────────────────────────────────
   if (action === "reject") {
     if (contract.status !== "sent") {
@@ -169,7 +159,7 @@ export async function PATCH(
     const r = result as { ok: boolean; already_processed?: boolean; error?: string; required?: number; available?: number };
 
     if (!r.ok) {
-      if (r.error === "insufficient_balance") {
+      if (r.error === "insufficient_balance" || r.error === "insufficient_funding_sources") {
         return NextResponse.json(
           { error: "insufficient_balance", required: r.required, available: r.available },
           { status: 402 }

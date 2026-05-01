@@ -140,6 +140,7 @@ function ContractCard({
 }) {
   const [expanded,         setExpanded]         = useState(false);
   const [acting,           setActing]           = useState<string | null>(null);
+  const [balanceError,     setBalanceError]     = useState<string | null>(null);
   const { t, lang } = useT();
   const stCls   = STATUS_CLS[c.status] ?? "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200";
   const stLabel = t((STATUS_LABEL_KEY[c.status] ?? "general_unknown") as Parameters<typeof t>[0]);
@@ -160,15 +161,22 @@ function ContractCard({
     setActing(null);
   }
 
-  async function handleStripeFunding() {
-    setActing("stripe_funding");
-    const res = await fetch(`/api/contracts/${c.id}/stripe-fund`, { method: "POST" });
-    const data = await res.json().catch(() => ({})) as { error?: string; url?: string };
-    if (res.ok && data.url) {
-      window.location.href = data.url;
-      return;
+  async function handleConfirmEscrow() {
+    setBalanceError(null);
+    setActing("confirm_escrow");
+    const res = await fetch(`/api/contracts/${c.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "agency_sign" }),
+    });
+    const data = await res.json().catch(() => ({})) as { error?: string; required?: number; available?: number };
+    if (res.ok) {
+      onUpdate(c.id, { status: "confirmed" });
+    } else if (res.status === 402) {
+      setBalanceError("Saldo insuficiente. Deposite saldo na carteira para confirmar a reserva.");
+    } else {
+      setBalanceError(data.error ?? "Erro ao confirmar reserva. Tente novamente.");
     }
-    console.error("[contract stripe funding]", data.error ?? "Stripe fund failed");
     setActing(null);
   }
 
@@ -194,11 +202,11 @@ function ContractCard({
 
         {c.status === "signed" && (
           <button
-            onClick={handleStripeFunding}
+            onClick={handleConfirmEscrow}
             disabled={acting !== null}
             className="flex-shrink-0 text-[12px] font-semibold px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white transition-colors cursor-pointer disabled:opacity-50"
           >
-            {acting === "stripe_funding" ? "Abrindo..." : "Pagar via Stripe"}
+            {acting === "confirm_escrow" ? "Confirmando..." : "Confirmar reserva"}
           </button>
         )}
 
@@ -259,6 +267,22 @@ function ContractCard({
           </svg>
         </button>
       </div>
+
+      {/* Insufficient balance / confirm error */}
+      {balanceError && (
+        <div className="mx-6 mb-3 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <svg className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
+          <p className="text-[12px] font-semibold text-amber-800 flex-1">{balanceError}</p>
+          <button onClick={() => setBalanceError(null)} className="text-amber-400 hover:text-amber-600 transition-colors cursor-pointer">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Expanded details */}
       {expanded && (
