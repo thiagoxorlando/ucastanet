@@ -18,7 +18,7 @@ export async function deleteUserDeep(userId: string): Promise<void> {
 
   const [{ data: agencyRows }, { data: talentRows }] = await Promise.all([
     supabase.from("agencies").select("id, user_id").or(`id.eq.${userId},user_id.eq.${userId}`),
-    supabase.from("talent_profiles").select("id").or(`id.eq.${userId}`),
+    supabase.from("talent_profiles").select("id, user_id").or(`id.eq.${userId},user_id.eq.${userId}`),
   ]);
 
   for (const r of agencyRows ?? []) {
@@ -28,6 +28,8 @@ export async function deleteUserDeep(userId: string): Promise<void> {
   }
   for (const r of talentRows ?? []) {
     if (r.id) candidateIds.add(r.id);
+    const uid = (r as Record<string, unknown>).user_id;
+    if (uid && typeof uid === "string") candidateIds.add(uid);
   }
 
   const ids = [...candidateIds];
@@ -71,8 +73,12 @@ export async function deleteUserDeep(userId: string): Promise<void> {
   }
 
   // ── 10. HARD-DELETE role rows (critical — blocks email/phone reuse if left) ─
+  // Delete by both id and user_id to catch any orphan rows with mismatched keys.
   await supabase.from("talent_profiles").delete().in("id", ids);
   await supabase.from("agencies").delete().in("id", ids);
+  // Fallback sweep by user_id column in case schema diverges
+  await supabase.from("talent_profiles").delete().in("user_id", ids);
+  await supabase.from("agencies").delete().in("user_id", ids);
 
   // ── 11. HARD-DELETE profile row ──────────────────────────────────────────────
   const { error: profileErr } = await supabase.from("profiles").delete().in("id", ids);

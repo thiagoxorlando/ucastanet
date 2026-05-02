@@ -85,6 +85,7 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [updating, setUpdating] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [bulkBusy, setBulkBusy] = useState<"freeze" | "delete" | null>(null);
   const [error, setError] = useState("");
   const [creditModal, setCreditModal] = useState<{ userId: string; name: string; balance: number } | null>(null);
@@ -155,6 +156,10 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
   }
 
   async function handleDelete(user: AdminUser) {
+    if (deleteLoading) return;
+    setDeleteLoading(true);
+    setError("");
+
     const response = await fetch(`/api/admin/users/${user.id}`, { method: "DELETE" });
 
     if (response.ok) {
@@ -164,12 +169,14 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
         next.delete(user.id);
         return next;
       });
+      setDeleting(null);
     } else {
-      const payload = await response.json().catch(() => ({}));
-      setError(payload.error ?? "Falha ao deletar o usuario.");
+      const payload = await response.json().catch(() => ({})) as { error?: string };
+      setError(payload.error ?? "Falha ao excluir o usuário.");
+      setDeleting(null);
     }
 
-    setDeleting(null);
+    setDeleteLoading(false);
   }
 
   async function handleAddBalance() {
@@ -267,14 +274,29 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
       body: JSON.stringify({ ids }),
     });
 
+    const payload = await response.json().catch(() => ({})) as {
+      error?: string;
+      id?: string;
+      deletedIds?: string[];
+    };
+
     if (response.ok) {
-      const selected = new Set(ids);
-      setUsers((current) => current.filter((user) => !selected.has(user.id)));
+      const removed = new Set(payload.deletedIds ?? ids);
+      setUsers((current) => current.filter((user) => !removed.has(user.id)));
       setSelectedIds(new Set());
     } else {
-      const payload = await response.json().catch(() => ({}));
-      const detail = payload.id ? ` (${payload.id})` : "";
-      setError((payload.error ?? "Falha ao excluir os usuarios selecionados.") + detail);
+      // Partial success: remove users that were already confirmed deleted
+      if (payload.deletedIds && payload.deletedIds.length > 0) {
+        const removed = new Set(payload.deletedIds);
+        setUsers((current) => current.filter((user) => !removed.has(user.id)));
+        setSelectedIds((current) => {
+          const next = new Set(current);
+          for (const id of removed) next.delete(id);
+          return next;
+        });
+      }
+      const detail = payload.id ? ` (usuário: ${payload.id})` : "";
+      setError((payload.error ?? "Falha ao excluir os usuários selecionados.") + detail);
     }
 
     setBulkBusy(null);
@@ -307,9 +329,10 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
               </button>
               <button
                 onClick={() => handleDelete(userToDelete)}
-                className="flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-rose-700"
+                disabled={deleteLoading}
+                className="flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Deletar
+                {deleteLoading ? "Excluindo…" : "Excluir permanentemente"}
               </button>
             </div>
           </div>
