@@ -62,7 +62,7 @@ function StatCard({
         </div>
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1">{label}</p>
-          <p className="text-[2rem] font-semibold tracking-tighter text-[#1F2D2E] leading-none">{value}</p>
+          <p className="text-[1.5rem] font-semibold tracking-tighter text-[#1F2D2E] leading-none">{value}</p>
           {sub && <p className="text-[12px] text-[#647B7B] mt-1.5 font-medium">{sub}</p>}
         </div>
       </div>
@@ -293,7 +293,7 @@ export default function AdminDashboard({ bookings, stats }: { bookings: Booking[
         <div className="px-6 py-5 border-b border-[#DDE6E6] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-0.5">Reservas</p>
-            <p className="text-[15px] font-semibold text-[#1F2D2E]">{filtered.length} reserva{filtered.length !== 1 ? "s" : ""}</p>
+            <p className="text-[13px] font-semibold text-[#1F2D2E]">{filtered.length} reserva{filtered.length !== 1 ? "s" : ""}</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <div className="relative">

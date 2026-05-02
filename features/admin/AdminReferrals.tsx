@@ -184,12 +184,12 @@ export default function AdminReferrals({ referrals: initial }: { referrals: Admi
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-2xl border border-[#DDE6E6] p-5">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1">Total de Indicações</p>
-          <p className="text-[2rem] font-semibold tracking-tighter text-[#1F2D2E]">{referrals.length}</p>
+          <p className="text-[1.5rem] font-semibold tracking-tighter text-[#1F2D2E]">{referrals.length}</p>
           <p className="text-[12px] text-[#647B7B] mt-1">{converted.length} convertidas · {noAction.length} sem ação</p>
         </div>
         <div className="bg-white rounded-2xl border border-[#DDE6E6] p-5">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1">Valor Reservado</p>
-          <p className="text-[2rem] font-semibold tracking-tighter text-[#1F2D2E]">{brl(totalBookingVal)}</p>
+          <p className="text-[1.5rem] font-semibold tracking-tighter text-[#1F2D2E]">{brl(totalBookingVal)}</p>
         </div>
         <div className="bg-white rounded-2xl border border-[#DDE6E6] p-5">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1">Total de Pagamentos de Indicação</p>

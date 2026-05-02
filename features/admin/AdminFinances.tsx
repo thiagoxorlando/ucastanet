@@ -1367,7 +1367,7 @@ export default function AdminFinances({
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#647B7B]">Admin da plataforma</p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-[#1F2D2E]">Financeiro</h1>
+            <h1 className="mt-1 text-[1.75rem] font-bold tracking-tight text-[#1F2D2E]">Financeiro</h1>
             <p className="mt-1 text-sm text-[#647B7B]">
               {summary.confirmedBookings} reservas confirmadas · {contracts.length} contratos · {subscriptions.length} agências
             </p>
