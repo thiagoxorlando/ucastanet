@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
 
     const profileUpdate: Record<string, unknown> = { onboarding_completed: true };
     if (t.full_name) profileUpdate.full_name = t.full_name;
+    if (t.cpf) profileUpdate.cpf_cnpj = t.cpf;
 
     await supabase.from("profiles").update(profileUpdate).eq("id", user.id);
     return NextResponse.json({ ok: true });
@@ -101,6 +102,7 @@ export async function POST(req: NextRequest) {
     const profileUpdate: Record<string, unknown> = { onboarding_completed: true };
     const name = a.company_name ?? a.contact_name;
     if (name) profileUpdate.full_name = name;
+    if (a.cpf_cnpj) profileUpdate.cpf_cnpj = a.cpf_cnpj;
 
     await supabase.from("profiles").update(profileUpdate).eq("id", user.id);
     return NextResponse.json({ ok: true });

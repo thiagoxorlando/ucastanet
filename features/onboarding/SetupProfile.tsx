@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { TALENT_CATEGORY_LABELS, talentCategoryLabel } from "@/lib/talentCategories";
-import { formatCpfCnpj, isValidCpfCnpj, normalizeCpfCnpj } from "@/lib/cpf";
+import { formatCpf, isValidCpf, digitsOnly, formatCpfCnpj, isValidCpfCnpj, normalizeCpfCnpj } from "@/lib/cpf";
 import { PLAN_DEFINITIONS } from "@/lib/plans";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -14,6 +14,7 @@ type Role = "agency" | "talent" | null;
 
 type TalentForm = {
   fullName:   string;
+  cpf:        string;
   phone:      string;
   country:    string;
   city:       string;
@@ -26,7 +27,6 @@ type TalentForm = {
   youtube:    string;
   linkedin:   string;
   website:    string;
-  main_role:  string;
 };
 
 type AgencyPlan = "free" | "pro";
@@ -59,12 +59,11 @@ type AgencyRow = {
 const TALENT_CATEGORIES = TALENT_CATEGORY_LABELS;
 
 const TALENT_DEFAULTS: TalentForm = {
-  fullName: "", phone: "", country: "", city: "",
+  fullName: "", cpf: "", phone: "", country: "", city: "",
   gender: "", age: "",
   bio: "", categories: [],
   instagram: "", tiktok: "", youtube: "",
   linkedin: "", website: "",
-  main_role: "",
 };
 
 const AGENCY_DEFAULTS: AgencyForm = {
@@ -197,12 +196,17 @@ function StepIndicator({ current }: { current: number }) {
 
 // ── Step 1 — Basic info ───────────────────────────────────────────────────────
 
-type Step1Errors = { fullName?: string; phone?: string; country?: string; city?: string };
+type Step1Errors = { fullName?: string; cpf?: string; phone?: string; country?: string; city?: string };
 
 function validateStep1(form: TalentForm): Step1Errors {
   const e: Step1Errors = {};
   if (!form.fullName.trim()) e.fullName = "Nome completo é obrigatório.";
   else if (form.fullName.trim().length < 2) e.fullName = "Mínimo de 2 caracteres.";
+  if (!form.cpf.trim()) {
+    e.cpf = "CPF é obrigatório.";
+  } else if (!isValidCpf(digitsOnly(form.cpf))) {
+    e.cpf = "CPF inválido. Verifique os números.";
+  }
   if (!form.phone.trim()) e.phone = "Telefone é obrigatório.";
   if (!form.country.trim()) e.country = "País é obrigatório.";
   if (!form.city.trim()) e.city = "Cidade é obrigatória.";
@@ -239,6 +243,19 @@ function Step1({
             />
           </Field>
         </div>
+        <Field label="CPF *" error={errors.cpf} hint="Somente números — 11 dígitos">
+          <input
+            className={inputErrCls(!!errors.cpf)}
+            placeholder="000.000.000-00"
+            value={form.cpf}
+            inputMode="numeric"
+            maxLength={14}
+            onChange={(e) => {
+              onChange("cpf", formatCpf(e.target.value));
+              clearError("cpf");
+            }}
+          />
+        </Field>
         <Field label="Telefone *" error={errors.phone}>
           <PhoneInput
             value={form.phone}
@@ -250,7 +267,6 @@ function Step1({
             required
           />
         </Field>
-        <div />
         <Field label="País *" error={errors.country}>
           <input
             className={inputErrCls(!!errors.country)}
@@ -273,14 +289,6 @@ function Step1({
             }}
           />
         </Field>
-        <Field label="Função Principal">
-          <input
-            className={inputCls}
-            placeholder="ex: Modelo, Ator, Influenciador"
-            value={form.main_role}
-            onChange={(e) => onChange("main_role", e.target.value)}
-          />
-        </Field>
       </div>
     </div>
   );
@@ -291,27 +299,24 @@ function Step1({
 const BIO_MAX = 300;
 
 function Step2({
-  form, onChange,
+  form, onChange, customOtherText, onCustomOtherText, customOtherError,
 }: {
   form: TalentForm;
   onChange: (k: keyof TalentForm, v: string | string[]) => void;
+  customOtherText: string;
+  onCustomOtherText: (v: string) => void;
+  customOtherError: string;
 }) {
-  const [customCategory, setCustomCategory] = useState("");
+  const otherSelected = form.categories.includes("Outro");
 
   function toggleCategory(cat: string) {
+    const label = cat === "Outro" ? "Outro" : cat;
     onChange(
       "categories",
-      form.categories.some((c) => talentCategoryLabel(c) === cat)
-        ? form.categories.filter((c) => talentCategoryLabel(c) !== cat)
-        : [...form.categories, cat]
+      form.categories.includes(label)
+        ? form.categories.filter((c) => c !== label)
+        : [...form.categories, label],
     );
-  }
-
-  function addCustomCategory() {
-    const category = customCategory.trim();
-    if (!category || form.categories.some((c) => talentCategoryLabel(c).toLowerCase() === category.toLowerCase())) return;
-    onChange("categories", [...form.categories, category]);
-    setCustomCategory("");
   }
 
   return (
@@ -351,24 +356,10 @@ function Step2({
 
       <div>
         <p className={labelCls}>Categorias <span className="text-zinc-400 font-normal">(selecione todas que se aplicam)</span></p>
-        {form.categories.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2">
-            {form.categories.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => toggleCategory(talentCategoryLabel(cat))}
-                className="inline-flex items-center gap-1.5 rounded-full bg-[#1F2D2E] px-3 py-1.5 text-[12px] font-semibold text-white"
-              >
-                {talentCategoryLabel(cat)}
-                <span className="text-white/60">×</span>
-              </button>
-            ))}
-          </div>
-        )}
         <div className="flex flex-wrap gap-2 mt-1.5">
           {TALENT_CATEGORIES.map((cat) => {
-            const active = form.categories.some((c) => talentCategoryLabel(c) === cat);
+            const key   = cat === "Outro" ? "Outro" : cat;
+            const active = form.categories.includes(key);
             return (
               <button
                 key={cat} type="button" onClick={() => toggleCategory(cat)}
@@ -384,27 +375,20 @@ function Step2({
             );
           })}
         </div>
-        <div className="mt-3 flex gap-2">
-          <input
-            className={inputCls}
-            placeholder="Digite uma categoria personalizada"
-            value={customCategory}
-            onChange={(e) => setCustomCategory(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addCustomCategory();
-              }
-            }}
-          />
-          <button
-            type="button"
-            onClick={addCustomCategory}
-            className="rounded-xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-4 text-[13px] font-semibold text-white transition-colors hover:from-[#17A58A] hover:to-[#22B5C2]"
-          >
-            Adicionar
-          </button>
-        </div>
+
+        {otherSelected && (
+          <div className="mt-3">
+            <Field label="Descreva sua categoria *" error={customOtherError}>
+              <input
+                className={inputErrCls(!!customOtherError)}
+                placeholder="Ex: DJ, Mágico, Dublador…"
+                value={customOtherText}
+                onChange={(e) => onCustomOtherText(e.target.value)}
+                autoFocus
+              />
+            </Field>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -531,6 +515,7 @@ function Step4({
       {/* Data summary */}
       <div className="bg-zinc-50 rounded-2xl border border-zinc-100 px-5 py-1">
         <ReviewRow label="Nome"       value={form.fullName} />
+        <ReviewRow label="CPF"        value={form.cpf || undefined} />
         <ReviewRow label="Telefone"   value={form.phone} />
         <ReviewRow label="País"       value={form.country} />
         <ReviewRow label="Cidade"     value={form.city} />
@@ -554,6 +539,8 @@ function TalentSetup({ userId, onDone }: { userId: string; onDone: () => void })
   const [step, setStep]             = useState(0);
   const [form, setForm]             = useState<TalentForm>(TALENT_DEFAULTS);
   const [step1Errors, setStep1Errors] = useState<Step1Errors>({});
+  const [customOtherText, setCustomOtherText] = useState("");
+  const [customOtherError, setCustomOtherError] = useState("");
   const [avatar, setAvatar]         = useState<File | null>(null);
   const [preview, setPreview]       = useState<string | null>(null);
   const [loading, setLoading]       = useState(false);
@@ -583,9 +570,17 @@ function TalentSetup({ userId, onDone }: { userId: string; onDone: () => void })
       }
       setStep1Errors({});
     }
-    if (step === 1 && form.bio.length > BIO_MAX) {
-      setError(`Bio deve ter no máximo ${BIO_MAX} caracteres.`);
-      return;
+    if (step === 1) {
+      if (form.bio.length > BIO_MAX) {
+        setError(`Bio deve ter no máximo ${BIO_MAX} caracteres.`);
+        return;
+      }
+      if (form.categories.includes("Outro") && !customOtherText.trim()) {
+        setCustomOtherError("Descreva sua categoria personalizada.");
+        setError("Preencha a descrição da categoria personalizada.");
+        return;
+      }
+      setCustomOtherError("");
     }
     setError("");
     setStep((s) => s + 1);
@@ -612,21 +607,26 @@ function TalentSetup({ userId, onDone }: { userId: string; onDone: () => void })
       avatarUrl = json.url;
     }
 
+    // Replace "Outro" placeholder with the actual custom text
+    const resolvedCategories = form.categories.map((c) =>
+      c === "Outro" && customOtherText.trim() ? customOtherText.trim() : c,
+    );
+
     const talent: Record<string, unknown> = {
       full_name:  form.fullName.trim(),
+      cpf:        digitsOnly(form.cpf),
       phone:      form.phone.trim(),
       country:    form.country.trim(),
       city:       form.city.trim(),
       gender:     form.gender   || null,
       age:        form.age      ? parseInt(form.age, 10) : null,
       bio:        form.bio.trim(),
-      categories: form.categories,
+      categories: resolvedCategories,
       instagram:  form.instagram.trim() || null,
       tiktok:     form.tiktok.trim()    || null,
       youtube:    form.youtube.trim()   || null,
       linkedin:   form.linkedin.trim()  || null,
       website:    form.website.trim()   || null,
-      main_role:  form.main_role.trim() || null,
     };
     if (avatarUrl) talent.avatar_url = avatarUrl;
 
@@ -675,7 +675,15 @@ function TalentSetup({ userId, onDone }: { userId: string; onDone: () => void })
             errors={step1Errors} clearError={clearStep1Error}
           />
         )}
-        {step === 1 && <Step2 form={form} onChange={update} />}
+        {step === 1 && (
+          <Step2
+            form={form}
+            onChange={update}
+            customOtherText={customOtherText}
+            onCustomOtherText={(v) => { setCustomOtherText(v); setCustomOtherError(""); }}
+            customOtherError={customOtherError}
+          />
+        )}
         {step === 2 && <Step3 form={form} onChange={update} />}
         {step === 3 && <Step4 form={form} preview={preview} />}
 
