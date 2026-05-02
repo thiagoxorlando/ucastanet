@@ -1,11 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { REFERRAL_RATE } from "@/lib/plans";
 
-// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Types -------------------------------------------------------------------
 
 export type FinancesBooking = {
   id: string;
@@ -53,27 +53,6 @@ export type FinancesWithdrawal = {
   pixKeyValue: string | null;
   pixHolderName: string | null;
   adminNote: string | null;
-};
-
-export type FinancesFundingSourceTrace = {
-  id: string;
-  createdAt: string;
-  stripeChargeId: string | null;
-  stripePaymentIntentId: string | null;
-  sourceType: string;
-  status: string;
-  originalAmount: number;
-  remainingAmount: number;
-  originalPayerName: string;
-  currentOwnerName: string;
-  relatedContractId: string | null;
-  relatedContractLabel: string | null;
-  sourceWalletTransactionId: string | null;
-  allocatedAmount: number;
-  withdrawalCount: number;
-  withdrawalStatus: string | null;
-  providerStatus: string | null;
-  needsAdminReview: boolean;
 };
 
 export type FinancesPlanPayment = {
@@ -128,7 +107,7 @@ export type FinancesSummary = {
   };
 };
 
-// â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Constants ---------------------------------------------------------------
 
 type Tab = "saques" | "carteiras" | "visao-geral" | "contratos" | "reservas" | "planos";
 type ProfitRange = "today" | "month" | "total";
@@ -156,7 +135,7 @@ const PIX_TYPE_LABELS_ADMIN: Record<string, string> = {
   cpf: "CPF", cnpj: "CNPJ", email: "Email", phone: "Tel", random: "EVP",
 };
 
-// â”€â”€ Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Utilities ---------------------------------------------------------------
 
 function brl(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -166,7 +145,7 @@ function brl(value: number) {
 }
 
 function fmt(value: string | null) {
-  if (!value) return "â€”";
+  if (!value) return "—";
   return new Date(value).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" });
 }
 
@@ -175,10 +154,10 @@ function planLabel(plan: string) {
 }
 
 function withdrawalProviderLabel(w: FinancesWithdrawal) {
-  if (w.provider === "stripe") return "Stripe";
-  if (w.provider === "efi") return "EfÃ­";
-  if (w.provider === "asaas") return "Asaas";
-  return "Manual";
+  if (w.provider === "asaas") return "Asaas PIX";
+  if (w.provider === "efi") return "Efí PIX";
+  if (w.provider === "stripe") return "PIX legado";
+  return "Saque via PIX";
 }
 
 function withdrawalProviderTone(w: FinancesWithdrawal) {
@@ -199,7 +178,7 @@ function isInRange(value: string | null, range: ProfitRange) {
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
 }
 
-// â”€â”€ UI Atoms â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- UI Atoms ----------------------------------------------------------------
 
 function Badge({ value, tone }: { value: string; tone: string }) {
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{value}</span>;
@@ -297,7 +276,7 @@ function Divider() {
   return <div className="border-t border-zinc-800/60" />;
 }
 
-// â”€â”€ Section: Profit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Section: Profit ---------------------------------------------------------
 
 function ProfitSection({
   bookings, contracts, planPayments,
@@ -320,14 +299,14 @@ function ProfitSection({
 
   const RANGES: { key: ProfitRange; label: string }[] = [
     { key: "today", label: "Hoje" },
-    { key: "month", label: "Este mÃªs" },
+    { key: "month", label: "Este mês" },
     { key: "total", label: "Total" },
   ];
 
   return (
     <Section
       title="Lucro da plataforma"
-      subtitle="ComissÃ£o e receita de planos filtrÃ¡veis por perÃ­odo."
+      subtitle="Comissão e receita de planos filtráveis por período."
       action={
         <div className="flex gap-1">
           {RANGES.map(({ key, label }) => (
@@ -349,17 +328,17 @@ function ProfitSection({
     >
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard
-          label="ComissÃ£o de reservas/contratos"
+          label="Comissão de reservas/contratos"
           value={brl(totalCommission)}
-          sub={`Reservas: ${brl(bookingCommission)} Â· Contratos: ${brl(contractCommission)}`}
+          sub={`Reservas: ${brl(bookingCommission)} · Contratos: ${brl(contractCommission)}`}
         />
         <StatCard
           label="Receita de planos"
           value={brl(planRevenue)}
-          sub={`${fp.length} pagamento(s) no perÃ­odo`}
+          sub={`${fp.length} pagamento(s) no período`}
         />
         <StatCard
-          label="Total do perÃ­odo"
+          label="Total do período"
           value={brl(totalProfit)}
           sub={`${fb.length} reservas + ${fc.length} contratos`}
         />
@@ -368,7 +347,7 @@ function ProfitSection({
   );
 }
 
-// â”€â”€ Section: Subscriptions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Section: Subscriptions --------------------------------------------------
 
 function SubscriptionsSection({
   subscriptions, summary,
@@ -383,24 +362,24 @@ function SubscriptionsSection({
 
   return (
     <Section
-      title="Planos de agÃªncias"
-      subtitle={`${subscriptions.length} agÃªncias cadastradas Â· ${proCount + premiumCount} pagantes`}
+      title="Planos de agências"
+      subtitle={`${subscriptions.length} agências cadastradas · ${proCount + premiumCount} pagantes`}
     >
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="Receita total de assinaturas" value={brl(summary.subscriptionRevenue)} />
-        <StatCard label="AgÃªncias Pro" value={String(proCount)} sub={`${summary.planBreakdown.pro.priceLabel}`} />
-        <StatCard label="AgÃªncias Premium" value={String(premiumCount)} sub={`${summary.planBreakdown.premium.priceLabel}`} />
-        <StatCard label="AgÃªncias pagantes" value={String(proCount + premiumCount)} />
+        <StatCard label="Agências Pro" value={String(proCount)} sub={`${summary.planBreakdown.pro.priceLabel}`} />
+        <StatCard label="Agências Premium" value={String(premiumCount)} sub={`${summary.planBreakdown.premium.priceLabel}`} />
+        <StatCard label="Agências pagantes" value={String(proCount + premiumCount)} />
       </div>
       <TableCard>
         <thead className="border-b border-[#DDE6E6] bg-[#F0F9F8]">
           <tr>
-            <Th>AgÃªncia</Th>
+            <Th>Agência</Th>
             <Th>Plano</Th>
             <Th>Status</Th>
             <Th>Vencimento</Th>
             <Th right>Total pago</Th>
-            <Th right>Ãšltimo pag.</Th>
+            <Th right>Último pag.</Th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#EFF5F5] [&>tr:hover]:bg-[#F8FAFC]">
@@ -410,7 +389,7 @@ function SubscriptionsSection({
               <Td><Badge value={planLabel(s.plan)} tone={PLAN_BADGES_LIGHT[s.plan] ?? PLAN_BADGES_LIGHT.free} /></Td>
               <Td><Badge value={s.planStatus} tone={STATUS_BADGES[s.planStatus] ?? STATUS_BADGES.inactive} /></Td>
               <Td>{fmt(s.planExpiresAt)}</Td>
-              <Td right>{s.totalPaid ? brl(s.totalPaid) : "â€”"}</Td>
+              <Td right>{s.totalPaid ? brl(s.totalPaid) : "—"}</Td>
               <Td right>{fmt(s.lastPayment)}</Td>
             </tr>
           ))}
@@ -421,7 +400,7 @@ function SubscriptionsSection({
   );
 }
 
-// â”€â”€ Section: Withdrawal fees â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Section: Withdrawal fees ------------------------------------------------
 
 function WithdrawalFeesSection({ withdrawals }: { withdrawals: FinancesWithdrawal[] }) {
   const [expanded, setExpanded] = useState(false);
@@ -443,20 +422,20 @@ function WithdrawalFeesSection({ withdrawals }: { withdrawals: FinancesWithdrawa
   return (
     <Section title="Taxas de saque" subtitle="Receita da plataforma por processamento de saques (3%)">
       <div className="grid gap-4 md:grid-cols-4">
-        <StatCard label="Total arrecadado"  value={brl(totalEarned)}  sub="Saques concluÃ­dos" />
+        <StatCard label="Total arrecadado"  value={brl(totalEarned)}  sub="Saques concluídos" />
         <StatCard label="Pendente"          value={brl(totalPending)} sub="Aguardando processamento" />
         <StatCard label="Hoje"              value={brl(feesToday)}    sub="Processado hoje" />
-        <StatCard label="Este mÃªs"          value={brl(feesMonth)}    sub="MÃªs atual" />
+        <StatCard label="Este mês"          value={brl(feesMonth)}    sub="Mês atual" />
       </div>
       {sorted.length > 0 && (
         <>
           <TableCard>
             <thead className="border-b border-[#DDE6E6] bg-[#F0F9F8]">
               <tr>
-                <Th>AgÃªncia</Th>
+                <Th>Agência</Th>
                 <Th right>Sacado</Th>
                 <Th right>Taxa (3%)</Th>
-                <Th right>LÃ­quido enviado</Th>
+                <Th right>Líquido enviado</Th>
                 <Th>Solicitado em</Th>
                 <Th>Status</Th>
               </tr>
@@ -474,7 +453,7 @@ function WithdrawalFeesSection({ withdrawals }: { withdrawals: FinancesWithdrawa
                       {brl(w.feeAmount)}
                     </span>
                   </Td>
-                  <Td right>{w.status === "rejected" ? <span className="text-zinc-400">â€”</span> : brl(w.netAmount)}</Td>
+                  <Td right>{w.status === "rejected" ? <span className="text-zinc-400">—</span> : brl(w.netAmount)}</Td>
                   <Td>{fmt(w.createdAt)}</Td>
                   <Td>
                     {w.status === "paid"       && <Badge value="Pago"         tone="bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30" />}
@@ -494,7 +473,7 @@ function WithdrawalFeesSection({ withdrawals }: { withdrawals: FinancesWithdrawa
   );
 }
 
-// â”€â”€ Section: Contracts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Section: Contracts ------------------------------------------------------
 
 function ContractsSection({
   contracts, summary,
@@ -526,26 +505,26 @@ function ContractsSection({
   return (
     <Section
       title="Contratos confirmados e pagos"
-      subtitle={`${rows.length} contratos Â· ${brl(summary.contractsCommission)} retido pela plataforma`}
+      subtitle={`${rows.length} contratos · ${brl(summary.contractsCommission)} retido pela plataforma`}
     >
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="Em escrow" value={brl(summary.contractsEscrowValue)} sub="Bruto retido em confirmados" />
-        <StatCard label="Aguardando saque" value={brl(summary.contractsAwaitingValue)} sub="LÃ­quido a sacar por talentos" />
-        <StatCard label="JÃ¡ sacado" value={brl(summary.contractsWithdrawnValue)} sub="LÃ­quido enviado aos talentos" />
-        <StatCard label="ComissÃ£o da plataforma" value={brl(summary.contractsCommission)} sub="RetenÃ§Ã£o por plano" />
+        <StatCard label="Aguardando saque" value={brl(summary.contractsAwaitingValue)} sub="Líquido a sacar por talentos" />
+        <StatCard label="Já sacado" value={brl(summary.contractsWithdrawnValue)} sub="Líquido enviado aos talentos" />
+        <StatCard label="Comissão da plataforma" value={brl(summary.contractsCommission)} sub="Retenção por plano" />
       </div>
       <TableCard>
         <thead className="border-b border-[#DDE6E6] bg-[#F0F9F8]">
           <tr>
             <Th>Vaga</Th>
             <Th>Talento</Th>
-            <Th>AgÃªncia</Th>
+            <Th>Agência</Th>
             <Th>Plano</Th>
             <Th>Status</Th>
             <Th right>Bruto</Th>
-            <Th right>ComissÃ£o</Th>
-            <Th right>LÃ­quido</Th>
-            <Th right>AÃ§Ãµes</Th>
+            <Th right>Comissão</Th>
+            <Th right>Líquido</Th>
+            <Th right>Ações</Th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#EFF5F5] [&>tr:hover]:bg-[#F8FAFC]">
@@ -574,10 +553,10 @@ function ContractsSection({
                       disabled={withdrawing === c.id}
                       className="rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {withdrawing === c.id ? "â€¦" : "Sacar"}
+                      {withdrawing === c.id ? "…" : "Sacar"}
                     </button>
                   ) : (
-                    <span className="text-xs text-zinc-500">{c.withdrawn_at ? "ConcluÃ­do" : "â€”"}</span>
+                    <span className="text-xs text-zinc-500">{c.withdrawn_at ? "Concluído" : "—"}</span>
                   )}
                 </Td>
               </tr>
@@ -612,9 +591,9 @@ function WithdrawalHistory({ contracts }: { contracts: FinancesContract[] }) {
   const grand    = withdrawn.reduce((s, c) => s + c.netAmount, 0);
 
   return (
-    <Section title="HistÃ³rico de saques para talentos" subtitle={`${receipts.length} saques concluÃ­dos`}>
+    <Section title="Histórico de saques para talentos" subtitle={`${receipts.length} saques concluídos`}>
       <div className="grid gap-3 md:grid-cols-3">
-        <StatCard label="Total pago a talentos" value={brl(grand)} sub={`${receipts.length} transaÃ§Ãµes`} />
+        <StatCard label="Total pago a talentos" value={brl(grand)} sub={`${receipts.length} transações`} />
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {visible.map((items) => {
@@ -639,7 +618,7 @@ function WithdrawalHistory({ contracts }: { contracts: FinancesContract[] }) {
   );
 }
 
-// â”€â”€ Section: Bookings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Section: Bookings -------------------------------------------------------
 
 function BookingsSection({ bookings, summary }: { bookings: FinancesBooking[]; summary: FinancesSummary }) {
   const [expanded, setExpanded] = useState(false);
@@ -648,12 +627,12 @@ function BookingsSection({ bookings, summary }: { bookings: FinancesBooking[]; s
   return (
     <Section
       title="Reservas"
-      subtitle={`${bookings.length} reservas Â· comissÃ£o dinÃ¢mica por plano`}
+      subtitle={`${bookings.length} reservas · comissão dinâmica por plano`}
     >
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="Bruto confirmado"    value={brl(summary.confirmedGrossValue)} />
-        <StatCard label="ComissÃ£o plataforma" value={brl(summary.platformCommission)} sub="Free 20% Â· Pro/Premium 10%" />
-        <StatCard label="IndicaÃ§Ãµes"          value={brl(summary.referralPayouts)} sub={`${REFERRAL_RATE * 100}% por indicaÃ§Ã£o ativa`} />
+        <StatCard label="Comissão plataforma" value={brl(summary.platformCommission)} sub="Free 20% · Pro/Premium 10%" />
+        <StatCard label="Indicações"          value={brl(summary.referralPayouts)} sub={`${REFERRAL_RATE * 100}% por indicação ativa`} />
         <StatCard label="Pendente"            value={brl(summary.pendingValue)} />
       </div>
       <TableCard>
@@ -664,9 +643,9 @@ function BookingsSection({ bookings, summary }: { bookings: FinancesBooking[]; s
             <Th>Plano</Th>
             <Th>Status</Th>
             <Th right>Valor</Th>
-            <Th right>ComissÃ£o</Th>
-            <Th right>IndicaÃ§Ã£o</Th>
-            <Th right>LÃ­q. plataforma</Th>
+            <Th right>Comissão</Th>
+            <Th right>Indicação</Th>
+            <Th right>Líq. plataforma</Th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#EFF5F5] [&>tr:hover]:bg-[#F8FAFC]">
@@ -682,9 +661,9 @@ function BookingsSection({ bookings, summary }: { bookings: FinancesBooking[]; s
               <Td><Badge value={planLabel(b.agencyPlan)} tone={PLAN_BADGES_LIGHT[b.agencyPlan] ?? PLAN_BADGES_LIGHT.free} /></Td>
               <Td><Badge value={b.status} tone={STATUS_BADGES[b.status] ?? STATUS_BADGES.cancelled} /></Td>
               <Td right>{brl(b.price)}</Td>
-              <Td right>{b.commissionAmount ? brl(b.commissionAmount) : "â€”"}</Td>
-              <Td right>{b.referralAmount ? brl(b.referralAmount) : "â€”"}</Td>
-              <Td right>{b.netPlatformAmount ? brl(b.netPlatformAmount) : "â€”"}</Td>
+              <Td right>{b.commissionAmount ? brl(b.commissionAmount) : "—"}</Td>
+              <Td right>{b.referralAmount ? brl(b.referralAmount) : "—"}</Td>
+              <Td right>{b.netPlatformAmount ? brl(b.netPlatformAmount) : "—"}</Td>
             </tr>
           ))}
         </tbody>
@@ -694,7 +673,7 @@ function BookingsSection({ bookings, summary }: { bookings: FinancesBooking[]; s
   );
 }
 
-// â”€â”€ Section: Wallets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Section: Wallets --------------------------------------------------------
 
 function WalletsSection({
   agencyWallets,
@@ -720,18 +699,18 @@ function WalletsSection({
   return (
     <>
       {/* Overview */}
-      <Section title="Carteiras na plataforma" subtitle="Saldos pertencentes a agÃªncias e talentos â€” obrigaÃ§Ãµes da plataforma.">
+      <Section title="Carteiras na plataforma" subtitle="Saldos pertencentes a agências e talentos — obrigações da plataforma.">
         <div className="grid gap-4 md:grid-cols-4">
-          <StatCard label="Total em carteiras" value={brl(totalAll)} sub={`${agencyWallets.length + talentWallets.length} usuÃ¡rios com saldo`} />
-          <StatCard label="Carteiras de agÃªncias" value={brl(totalAgency)} sub={`${agencyWallets.length} agÃªncias Â· ${agencyPct}% do total`} />
-          <StatCard label="Carteiras de talentos" value={brl(totalTalent)} sub={`${talentWallets.length} talentos Â· ${talentPct}% do total`} />
-          <StatCard label="Do mÃ­nimo obrigatÃ³rio" value={brl(summary.agencyWalletTotal)} sub="Parcela das agÃªncias no mÃ­n. obrigatÃ³rio" />
+          <StatCard label="Total em carteiras" value={brl(totalAll)} sub={`${agencyWallets.length + talentWallets.length} usuários com saldo`} />
+          <StatCard label="Carteiras de agências" value={brl(totalAgency)} sub={`${agencyWallets.length} agências · ${agencyPct}% do total`} />
+          <StatCard label="Carteiras de talentos" value={brl(totalTalent)} sub={`${talentWallets.length} talentos · ${talentPct}% do total`} />
+          <StatCard label="Do mínimo obrigatório" value={brl(summary.agencyWalletTotal)} sub="Parcela das agências no mín. obrigatório" />
         </div>
 
         {/* Balance bar */}
         {totalAll > 0 && (
           <div className="rounded-2xl border border-[#DDE6E6] bg-white p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500 mb-3">DistribuiÃ§Ã£o de saldos</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500 mb-3">Distribuição de saldos</p>
             <div className="flex h-3 overflow-hidden rounded-full bg-[#F0F9F8]">
               <div
                 className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all"
@@ -745,7 +724,7 @@ function WalletsSection({
             <div className="mt-2.5 flex gap-4 text-xs text-zinc-500">
               <span className="flex items-center gap-1.5">
                 <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-                AgÃªncias {agencyPct}%
+                Agências {agencyPct}%
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="inline-block h-2 w-2 rounded-full bg-blue-500" />
@@ -759,17 +738,17 @@ function WalletsSection({
       <Divider />
 
       {/* Agency wallets */}
-      <Section title="Carteiras de agÃªncias" subtitle={`${agencyWallets.length} agÃªncia(s) com saldo positivo Â· ordenado por saldo`}>
+      <Section title="Carteiras de agências" subtitle={`${agencyWallets.length} agência(s) com saldo positivo · ordenado por saldo`}>
         {agencyWallets.length === 0 ? (
           <div className="rounded-2xl border border-[#DDE6E6] bg-white px-4 py-5 text-sm text-[#647B7B]">
-            Nenhuma agÃªncia com saldo.
+            Nenhuma agência com saldo.
           </div>
         ) : (
           <>
             <TableCard>
               <thead className="border-b border-[#DDE6E6] bg-[#F0F9F8]">
                 <tr>
-                  <Th>UsuÃ¡rio</Th>
+                  <Th>Usuário</Th>
                   <Th>Plano</Th>
                   <Th>PIX</Th>
                   <Th right>Saldo</Th>
@@ -803,7 +782,7 @@ function WalletsSection({
                     </Td>
                     <Td right>
                       <span className="text-xs text-zinc-500">
-                        {totalAgency > 0 ? `${((w.balance / totalAgency) * 100).toFixed(1)}%` : "â€”"}
+                        {totalAgency > 0 ? `${((w.balance / totalAgency) * 100).toFixed(1)}%` : "—"}
                       </span>
                     </Td>
                   </tr>
@@ -818,7 +797,7 @@ function WalletsSection({
       <Divider />
 
       {/* Talent wallets */}
-      <Section title="Carteiras de talentos" subtitle={`${talentWallets.length} talento(s) com saldo positivo Â· ordenado por saldo`}>
+      <Section title="Carteiras de talentos" subtitle={`${talentWallets.length} talento(s) com saldo positivo · ordenado por saldo`}>
         {talentWallets.length === 0 ? (
           <div className="rounded-2xl border border-[#DDE6E6] bg-white px-4 py-5 text-sm text-[#647B7B]">
             Nenhum talento com saldo.
@@ -851,7 +830,7 @@ function WalletsSection({
                     </Td>
                     <Td right>
                       <span className="text-xs text-zinc-500">
-                        {totalTalent > 0 ? `${((w.balance / totalTalent) * 100).toFixed(1)}%` : "â€”"}
+                        {totalTalent > 0 ? `${((w.balance / totalTalent) * 100).toFixed(1)}%` : "—"}
                       </span>
                     </Td>
                   </tr>
@@ -866,7 +845,7 @@ function WalletsSection({
   );
 }
 
-// â”€â”€ Section: Withdrawals (action-heavy) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Section: Withdrawals (action-heavy) -------------------------------------
 
 function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[] }) {
   const router = useRouter();
@@ -878,7 +857,6 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
   const [cancelReason, setCancelReason] = useState("");
   const [cancelLoading, setCancelLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expandedStripePending, setExpandedStripePending] = useState(false);
   const [expandedAgencyPending, setExpandedAgencyPending] = useState(false);
   const [expandedTalentPending, setExpandedTalentPending] = useState(false);
   const [expandedHistory, setExpandedHistory] = useState(false);
@@ -891,11 +869,8 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
   const pending = rows
     .filter((w) => w.status === "pending" || w.status === "processing")
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  const stripePending = pending.filter((w) => w.provider === "stripe" || w.status === "processing");
-  const manualPending = pending.filter((w) => w.provider !== "stripe" && w.status === "pending");
-  const agencyPending = manualPending.filter((w) => w.userRole === "agency");
-  const talentPending = manualPending.filter((w) => w.userRole === "talent");
-  const visibleStripePending = expandedStripePending ? stripePending : stripePending.slice(0, 5);
+  const agencyPending = pending.filter((w) => w.userRole === "agency");
+  const talentPending = pending.filter((w) => w.userRole === "talent");
   const visibleAgencyPending = expandedAgencyPending ? agencyPending : agencyPending.slice(0, 5);
   const visibleTalentPending = expandedTalentPending ? talentPending : talentPending.slice(0, 5);
   const history = rows
@@ -1114,7 +1089,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
                         </button>
                       </div>
                     ) : (
-                      <span className="text-xs text-zinc-500">{w.adminNote ?? "Automático pelo Stripe"}</span>
+                      <span className="text-xs text-zinc-500">{w.adminNote ?? "Processado automaticamente"}</span>
                     )}
                   </Td>
                 </tr>
@@ -1209,7 +1184,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
 
       <Section title="Saques" subtitle={`${pending.length} pendente(s) no total`}>
         <div className="rounded-2xl border border-amber-900/40 bg-amber-950/30 px-4 py-3 text-[13px] text-amber-400">
-          A carteira é debitada no pedido. Saques Stripe ficam em processamento automático; a fila manual serve apenas para PIX fallback.
+          A carteira é debitada no pedido. Saques via PIX ficam em processamento enquanto o provedor confirma. Pendências manuais aparecem abaixo.
         </div>
 
         {error && !canceling && !approving && (
@@ -1220,15 +1195,10 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
 
         <div className="space-y-6">
           <PendingTable
-            title="Stripe automáticos"
-            subtitle={`${stripePending.length} solicitação(ões) acompanhadas por webhook`}
-            rows={visibleStripePending}
+            title="Saques em processamento"
+            subtitle={`${pending.filter((w) => w.status === "processing").length} solicitação(ões) aguardando confirmação do provedor`}
+            rows={pending.filter((w) => w.status === "processing")}
             showActions={false}
-          />
-          <ShowMoreButton
-            total={stripePending.length}
-            expanded={expandedStripePending}
-            onToggle={() => setExpandedStripePending((current) => !current)}
           />
 
           <PendingTable
@@ -1328,100 +1298,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
   );
 }
 
-function fundingSourceTypeLabel(sourceType: string) {
-  if (sourceType === "wallet_deposit") return "Depósito";
-  if (sourceType === "contract_payment") return "Pagamento";
-  if (sourceType === "escrow") return "Escrow";
-  if (sourceType === "platform_fee") return "Receita";
-  return sourceType;
-}
-
-function FundingSourceTraceSection({ fundingSources }: { fundingSources: FinancesFundingSourceTrace[] }) {
-  const [expanded, setExpanded] = useState(false);
-  const visibleRows = expanded ? fundingSources : fundingSources.slice(0, 12);
-
-  return (
-    <Section
-      title="Rastreio de funding source"
-      subtitle="Payer → charge Stripe → dono atual → contrato/escrow → saque"
-    >
-      <TableCard>
-        <thead className="border-b border-[#DDE6E6] bg-[#F0F9F8]">
-          <tr>
-            <Th>Payer</Th>
-            <Th>Dono atual</Th>
-            <Th>Tipo</Th>
-            <Th>Contrato</Th>
-            <Th right>Original</Th>
-            <Th right>Restante</Th>
-            <Th right>Alocado</Th>
-            <Th>Status</Th>
-            <Th>Charge</Th>
-            <Th>Saque</Th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[#EFF5F5] [&>tr:hover]:bg-[#F8FAFC]">
-          {visibleRows.map((source) => (
-            <tr key={source.id}>
-              <Td><span className="font-medium text-[#1F2D2E]">{source.originalPayerName}</span></Td>
-              <Td>{source.currentOwnerName}</Td>
-              <Td>
-                <Badge value={fundingSourceTypeLabel(source.sourceType)} tone="bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200" />
-              </Td>
-              <Td>
-                <div className="space-y-1">
-                  <p className="text-xs text-[#1F2D2E]">{source.relatedContractLabel ?? "—"}</p>
-                  {source.relatedContractId && (
-                    <p className="font-mono text-[10px] text-zinc-400">{source.relatedContractId.slice(0, 8)}</p>
-                  )}
-                </div>
-              </Td>
-              <Td right>{brl(source.originalAmount)}</Td>
-              <Td right>{brl(source.remainingAmount)}</Td>
-              <Td right>{source.allocatedAmount > 0 ? brl(source.allocatedAmount) : "—"}</Td>
-              <Td>
-                <div className="space-y-1">
-                  <Badge value={source.status} tone={source.needsAdminReview ? "bg-red-500/15 text-red-400 ring-1 ring-red-500/30" : "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30"} />
-                  {source.needsAdminReview && (
-                    <p className="text-[10px] font-semibold text-red-400">needs_admin_review</p>
-                  )}
-                </div>
-              </Td>
-              <Td>
-                <div className="space-y-1">
-                  <p className="max-w-[140px] truncate font-mono text-[11px] text-[#647B7B]" title={source.stripeChargeId ?? "—"}>
-                    {source.stripeChargeId ?? "—"}
-                  </p>
-                  {source.stripePaymentIntentId && (
-                    <p className="max-w-[140px] truncate font-mono text-[10px] text-zinc-400" title={source.stripePaymentIntentId}>
-                      {source.stripePaymentIntentId}
-                    </p>
-                  )}
-                </div>
-              </Td>
-              <Td>
-                <div className="space-y-1">
-                  <p className="text-xs text-zinc-500">
-                    {source.withdrawalCount > 0 ? `${source.withdrawalCount} saque(s)` : "—"}
-                  </p>
-                  {source.withdrawalStatus && (
-                    <p className="text-[10px] text-zinc-400">
-                      {source.withdrawalStatus}
-                      {source.providerStatus ? ` · ${source.providerStatus}` : ""}
-                    </p>
-                  )}
-                </div>
-              </Td>
-            </tr>
-          ))}
-        </tbody>
-      </TableCard>
-      <ShowMoreButton total={fundingSources.length} threshold={12} expanded={expanded} onToggle={() => setExpanded((current) => !current)} />
-    </Section>
-  );
-}
-
-// â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// -- Main component ----------------------------------------------------------
 
 type PlatformBalanceState =
   | { status: "loading" }
@@ -1438,7 +1315,6 @@ export default function AdminFinances({
   withdrawals = [],
   agencyWallets = [],
   talentWallets = [],
-  fundingSources = [],
 }: {
   summary: FinancesSummary;
   bookings: FinancesBooking[];
@@ -1448,7 +1324,6 @@ export default function AdminFinances({
   withdrawals?: FinancesWithdrawal[];
   agencyWallets?: FinancesWallet[];
   talentWallets?: FinancesWallet[];
-  fundingSources?: FinancesFundingSourceTrace[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("saques");
   const [platformBalance, setPlatformBalance] = useState<PlatformBalanceState>({ status: "loading" });
@@ -1471,7 +1346,7 @@ export default function AdminFinances({
   const TABS: { id: Tab; label: string; badge?: number }[] = [
     { id: "saques",    label: "Saques",      badge: pendingCount > 0 ? pendingCount : undefined },
     { id: "carteiras", label: "Carteiras",   badge: totalWallets > 0 ? totalWallets : undefined },
-    { id: "visao-geral", label: "VisÃ£o Geral" },
+    { id: "visao-geral", label: "Visão geral" },
     { id: "contratos", label: "Contratos" },
     { id: "reservas",  label: "Reservas" },
     { id: "planos",    label: "Planos" },
@@ -1480,7 +1355,7 @@ export default function AdminFinances({
   return (
     <div className="bg-[#041C1E] -mx-6 -my-10 lg:-mx-10 min-h-full">
 
-      {/* â”€â”€ Page header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* -- Page header ----------------------------------------------------- */}
       <div className="px-6 pt-8 pb-6 lg:px-10">
         <div className="mx-auto max-w-7xl space-y-6">
           <div className="flex items-end justify-between gap-4">
@@ -1488,21 +1363,21 @@ export default function AdminFinances({
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-600">Admin da plataforma</p>
               <h1 className="mt-1 text-3xl font-bold tracking-tight text-white">Financeiro</h1>
               <p className="mt-1 text-sm text-zinc-500">
-                {summary.confirmedBookings} reservas confirmadas Â· {contracts.length} contratos Â· {subscriptions.length} agÃªncias
+                {summary.confirmedBookings} reservas confirmadas · {contracts.length} contratos · {subscriptions.length} agências
               </p>
             </div>
             <div className="hidden md:flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-600">
               <span>Free <strong className="text-zinc-500">{summary.planBreakdown.free.commissionLabel}</strong></span>
               <span>Pro <strong className="text-zinc-500">{summary.planBreakdown.pro.commissionLabel}</strong></span>
               <span>Premium <strong className="text-zinc-500">{summary.planBreakdown.premium.commissionLabel}</strong></span>
-              <span>IndicaÃ§Ã£o <strong className="text-zinc-500">{REFERRAL_RATE * 100}%</strong></span>
+              <span>Indicação <strong className="text-zinc-500">{REFERRAL_RATE * 100}%</strong></span>
             </div>
           </div>
 
-          {/* KPI bar â€” always visible */}
+          {/* KPI bar — always visible */}
           <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
             <KpiCard
-              label="ObrigaÃ§Ãµes totais"
+              label="Obrigações totais"
               value={brl(summary.minimumRequired)}
               sub="Escrow + talentos + carteiras"
               accent="amber"
@@ -1510,17 +1385,17 @@ export default function AdminFinances({
             <KpiCard
               label="Saques pendentes"
               value={String(pendingCount)}
-              sub={pendingCount > 0 ? "requerem aÃ§Ã£o" : "tudo em dia"}
+              sub={pendingCount > 0 ? "requerem ação" : "tudo em dia"}
               accent={pendingCount > 0 ? "red" : "neutral"}
             />
             <KpiCard
               label="Receita de planos"
               value={brl(summary.subscriptionRevenue)}
-              sub={`${subscriptions.filter((s) => s.plan !== "free").length} agÃªncias pagantes`}
+              sub={`${subscriptions.filter((s) => s.plan !== "free").length} agências pagantes`}
               accent="blue"
             />
             <KpiCard
-              label="ComissÃ£o de reservas"
+              label="Comissão de reservas"
               value={brl(summary.platformCommission)}
               sub={`${summary.confirmedBookings} reservas confirmadas`}
               accent="green"
@@ -1529,7 +1404,7 @@ export default function AdminFinances({
         </div>
       </div>
 
-      {/* â”€â”€ Tab bar â€” sticky â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* -- Tab bar - sticky ------------------------------------------------ */}
       <div className="sticky top-0 z-20 border-b border-zinc-800/60 bg-[#041C1E]/95 backdrop-blur-sm">
         <div className="mx-auto max-w-7xl px-6 lg:px-10">
           <div className="flex gap-0.5 overflow-x-auto py-1.5 scrollbar-none">
@@ -1558,14 +1433,12 @@ export default function AdminFinances({
         </div>
       </div>
 
-      {/* â”€â”€ Tab content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* -- Tab content ----------------------------------------------------- */}
       <div className="mx-auto max-w-7xl px-6 lg:px-10">
 
         {/* Saques */}
         <div className={activeTab === "saques" ? "" : "hidden"}>
           <WithdrawalsSection withdrawals={withdrawals} />
-          <Divider />
-          <FundingSourceTraceSection fundingSources={fundingSources} />
         </div>
 
         {/* Carteiras */}
@@ -1577,19 +1450,19 @@ export default function AdminFinances({
           />
         </div>
 
-        {/* VisÃ£o Geral */}
+        {/* Visão geral */}
         <div className={activeTab === "visao-geral" ? "" : "hidden"}>
-          <Section title="ObrigaÃ§Ãµes financeiras" subtitle="MÃ­nimo necessÃ¡rio para honrar todos os compromissos da plataforma.">
+          <Section title="Obrigações financeiras" subtitle="Mínimo necessário para honrar todos os compromissos da plataforma.">
             <div className="grid gap-4 md:grid-cols-3">
-              <StatCard label="Escrow de contratos"    value={brl(summary.contractsEscrowValue)}   sub="Bruto em custÃ³dia" />
-              <StatCard label="Carteiras das agÃªncias" value={brl(summary.agencyWalletTotal)}       sub="Saldo pertencente Ã s agÃªncias" />
-              <StatCard label="Passivo com talentos"   value={brl(summary.contractsAwaitingValue)} sub="LÃ­quido pago, nÃ£o sacado" />
+              <StatCard label="Escrow de contratos"    value={brl(summary.contractsEscrowValue)}   sub="Bruto em custódia" />
+              <StatCard label="Carteiras das agências" value={brl(summary.agencyWalletTotal)}       sub="Saldo pertencente às agências" />
+              <StatCard label="Passivo com talentos"   value={brl(summary.contractsAwaitingValue)} sub="Líquido pago, não sacado" />
             </div>
 
             <div className="rounded-2xl border border-[#DDE6E6] bg-white p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">MÃ­nimo necessÃ¡rio</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Mínimo necessário</p>
                   <p className="mt-2 text-4xl font-bold tracking-tight text-[#1F2D2E]">{brl(summary.minimumRequired)}</p>
                   <p className="mt-1.5 text-sm text-zinc-500">
                     {brl(summary.contractsEscrowValue)} escrow + {brl(summary.contractsAwaitingValue)} talentos + {brl(summary.agencyWalletTotal)} carteiras
@@ -1597,15 +1470,15 @@ export default function AdminFinances({
                 </div>
                 {platformBalance.status === "ok" && (
                   <div className={`rounded-2xl border px-4 py-3 text-sm ${safe ? "border-emerald-900/50 bg-emerald-950/40 text-emerald-400" : "border-red-900/50 bg-red-950/40 text-red-400"}`}>
-                    <p className="font-semibold">{safe ? "âœ“ Plataforma solvente" : "âš  Abaixo do mÃ­nimo"}</p>
+                    <p className="font-semibold">{safe ? "✓ Plataforma solvente" : "⚠ Abaixo do mínimo"}</p>
                     <p className="mt-1 text-xs text-zinc-400">
-                      Saldo MP: {brl(platformBalance.balance)} Â· {safe ? "Margem" : "DÃ©ficit"}: {brl(Math.abs(platformBalance.balance - summary.minimumRequired))}
+                      Saldo MP: {brl(platformBalance.balance)} · {safe ? "Margem" : "Déficit"}: {brl(Math.abs(platformBalance.balance - summary.minimumRequired))}
                     </p>
                   </div>
                 )}
                 {platformBalance.status === "unavailable" && (
                   <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-sm text-zinc-500">
-                    Saldo MP: <strong className="text-zinc-400">IndisponÃ­vel</strong>
+                    Saldo MP: <strong className="text-zinc-400">Indisponível</strong>
                     <span className="ml-1 text-xs">(legado)</span>
                   </div>
                 )}
@@ -1643,5 +1516,3 @@ export default function AdminFinances({
     </div>
   );
 }
-
-
