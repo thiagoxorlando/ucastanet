@@ -28,7 +28,7 @@ const PLANS: { id: Plan; name: string; price: string; features: string[]; highli
   {
     id: "pro",
     name: "Pro",
-    price: "R$247/mês",
+    price: "R$287/mês",
     highlight: true,
     features: [
       "Vagas ilimitadas",
