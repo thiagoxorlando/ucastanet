@@ -15,6 +15,7 @@ export default async function AdminDashboardPage() {
     { count: jobsCount },
     { count: talentCount },
     { count: agencyCount },
+    { count: pendingWithdrawalsCount },
   ] = await Promise.all([
     supabase
       .from("bookings")
@@ -23,6 +24,11 @@ export default async function AdminDashboardPage() {
     supabase.from("jobs").select("id", { count: "exact", head: true }),
     supabase.from("talent_profiles").select("id", { count: "exact", head: true }),
     supabase.from("agencies").select("id", { count: "exact", head: true }),
+    supabase
+      .from("wallet_transactions")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["pending", "processing"])
+      .eq("type", "withdrawal"),
   ]);
 
   // Find which job+talent pairs have a referrer
@@ -81,10 +87,11 @@ export default async function AdminDashboardPage() {
   const totalRevenue = bookings.reduce((s, b) => s + b.platformCommission, 0);
 
   const stats = {
-    totalJobs:     jobsCount     ?? 0,
-    totalUsers:    (talentCount ?? 0) + (agencyCount ?? 0),
-    totalBookings: bookings.length,
+    totalJobs:          jobsCount     ?? 0,
+    totalUsers:         (talentCount ?? 0) + (agencyCount ?? 0),
+    totalBookings:      bookings.length,
     totalRevenue,
+    pendingWithdrawals: pendingWithdrawalsCount ?? 0,
   };
 
   return <AdminDashboard bookings={bookings} stats={stats} />;

@@ -119,16 +119,16 @@ const PLAN_BADGES_LIGHT: Record<string, string> = {
 };
 
 const STATUS_BADGES: Record<string, string> = {
-  confirmed:       "bg-indigo-500/15 text-indigo-400 ring-1 ring-indigo-500/30",
-  paid:            "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30",
-  pending:         "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30",
-  pending_payment: "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30",
-  processing:      "bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30",
-  failed:          "bg-red-500/15 text-red-400 ring-1 ring-red-500/30",
-  cancelled:       "bg-zinc-500/15 text-zinc-400 ring-1 ring-zinc-500/30",
-  active:          "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30",
-  inactive:        "bg-zinc-500/15 text-zinc-400 ring-1 ring-zinc-500/30",
-  cancelling:      "bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30",
+  confirmed:       "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100",
+  paid:            "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
+  pending:         "bg-amber-50 text-amber-700 ring-1 ring-amber-100",
+  pending_payment: "bg-amber-50 text-amber-700 ring-1 ring-amber-100",
+  processing:      "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100",
+  failed:          "bg-red-50 text-red-700 ring-1 ring-red-100",
+  cancelled:       "bg-zinc-100 text-zinc-600 ring-1 ring-zinc-200",
+  active:          "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
+  inactive:        "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200",
+  cancelling:      "bg-amber-50 text-amber-700 ring-1 ring-amber-100",
 };
 
 const PIX_TYPE_LABELS_ADMIN: Record<string, string> = {
@@ -161,9 +161,9 @@ function withdrawalProviderLabel(w: FinancesWithdrawal) {
 }
 
 function withdrawalProviderTone(w: FinancesWithdrawal) {
-  if (w.provider === "stripe") return "bg-indigo-500/15 text-indigo-400 ring-1 ring-indigo-500/30";
-  if (w.provider === "efi") return "bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30";
-  return "bg-zinc-500/15 text-zinc-400 ring-1 ring-zinc-500/30";
+  if (w.provider === "stripe") return "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100";
+  if (w.provider === "efi") return "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100";
+  return "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200";
 }
 
 function isInRange(value: string | null, range: ProfitRange) {
@@ -201,18 +201,25 @@ function KpiCard({
   label: string; value: string; sub?: string;
   accent: "green" | "amber" | "blue" | "red" | "neutral";
 }) {
-  const styles = {
-    green:   "border-emerald-800/50 bg-emerald-950/40 text-emerald-300",
-    amber:   "border-amber-800/50 bg-amber-950/40 text-amber-300",
-    blue:    "border-blue-800/50 bg-blue-950/40 text-blue-300",
-    red:     "border-red-800/50 bg-red-950/40 text-red-300",
-    neutral: "border-zinc-700/50 bg-zinc-800/40 text-zinc-300",
+  const bgCls = {
+    green:   "bg-emerald-50 border-emerald-100",
+    amber:   "bg-amber-50 border-amber-100",
+    blue:    "bg-blue-50 border-blue-100",
+    red:     "bg-red-50 border-red-100",
+    neutral: "bg-white border-[#DDE6E6]",
+  }[accent];
+  const valCls = {
+    green:   "text-emerald-700",
+    amber:   "text-amber-700",
+    blue:    "text-blue-700",
+    red:     "text-red-700",
+    neutral: "text-[#1F2D2E]",
   }[accent];
   return (
-    <div className={`rounded-2xl border ${styles} px-5 py-4`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-zinc-500">{label}</p>
-      <p className="mt-2 text-2xl font-bold tracking-tight text-white">{value}</p>
-      {sub ? <p className="mt-1 text-[11px] text-zinc-500">{sub}</p> : null}
+    <div className={`rounded-2xl border ${bgCls} px-5 py-4`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.15em] text-[#647B7B]">{label}</p>
+      <p className={`mt-2 text-2xl font-bold tracking-tight ${valCls}`}>{value}</p>
+      {sub ? <p className="mt-1 text-[11px] text-[#647B7B]">{sub}</p> : null}
     </div>
   );
 }
@@ -247,7 +254,7 @@ function ShowMoreButton({
     <div className="flex justify-center pt-1">
       <button
         onClick={onToggle}
-        className="rounded-xl border border-zinc-700 px-4 py-2 text-[12px] font-medium text-zinc-400 transition-all hover:border-zinc-500 hover:text-zinc-300"
+        className="rounded-xl border border-[#DDE6E6] px-4 py-2 text-[12px] font-medium text-[#647B7B] transition-all hover:border-zinc-300 hover:text-[#1F2D2E]"
       >
         {expanded ? "Ver menos" : `Ver mais (${total - threshold} restantes)`}
       </button>
@@ -262,8 +269,8 @@ function Section({ title, subtitle, children, action }: {
     <div className="space-y-5 py-7">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-base font-semibold tracking-tight text-white">{title}</h3>
-          {subtitle ? <p className="mt-0.5 text-sm text-zinc-500">{subtitle}</p> : null}
+          <h3 className="text-base font-semibold tracking-tight text-[#1F2D2E]">{title}</h3>
+          {subtitle ? <p className="mt-0.5 text-sm text-[#647B7B]">{subtitle}</p> : null}
         </div>
         {action}
       </div>
@@ -273,7 +280,7 @@ function Section({ title, subtitle, children, action }: {
 }
 
 function Divider() {
-  return <div className="border-t border-zinc-800/60" />;
+  return <div className="border-t border-[#DDE6E6]" />;
 }
 
 // -- Section: Profit ---------------------------------------------------------
@@ -316,8 +323,8 @@ function ProfitSection({
               className={[
                 "rounded-xl px-3.5 py-2 text-[12px] font-semibold transition-all",
                 range === key
-                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/20"
-                  : "border border-zinc-700 text-zinc-400 hover:border-zinc-600 hover:text-zinc-300",
+                  ? "bg-[#E6F0F0] text-[#0E7C86] font-semibold"
+                  : "border border-[#DDE6E6] text-[#647B7B] hover:border-zinc-300 hover:text-[#1F2D2E]",
               ].join(" ")}
             >
               {label}
@@ -456,11 +463,11 @@ function WithdrawalFeesSection({ withdrawals }: { withdrawals: FinancesWithdrawa
                   <Td right>{w.status === "rejected" ? <span className="text-zinc-400">—</span> : brl(w.netAmount)}</Td>
                   <Td>{fmt(w.createdAt)}</Td>
                   <Td>
-                    {w.status === "paid"       && <Badge value="Pago"         tone="bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30" />}
-                    {w.status === "rejected"   && <Badge value="Cancelado"    tone="bg-red-500/15 text-red-400 ring-1 ring-red-500/20" />}
-                    {w.status === "pending"    && <Badge value="Pendente"     tone="bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30" />}
-                    {w.status === "processing" && <Badge value="Em andamento" tone="bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30" />}
-                    {w.status === "failed"     && <Badge value="Falhou"       tone="bg-red-500/15 text-red-400 ring-1 ring-red-500/30" />}
+                    {w.status === "paid"       && <Badge value="Pago"         tone="bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" />}
+                    {w.status === "rejected"   && <Badge value="Cancelado"    tone="bg-red-50 text-red-600 ring-1 ring-red-100" />}
+                    {w.status === "pending"    && <Badge value="Pendente"     tone="bg-amber-50 text-amber-700 ring-1 ring-amber-100" />}
+                    {w.status === "processing" && <Badge value="Em andamento" tone="bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100" />}
+                    {w.status === "failed"     && <Badge value="Falhou"       tone="bg-red-50 text-red-600 ring-1 ring-red-100" />}
                   </Td>
                 </tr>
               ))}
@@ -962,18 +969,18 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
 
   function renderStatusBadge(status: string) {
     if (status === "paid") {
-      return <Badge value="Pago" tone="bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30" />;
+      return <Badge value="Pago" tone="bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" />;
     }
     if (status === "cancelled" || status === "rejected") {
-      return <Badge value="Cancelado" tone="bg-red-500/15 text-red-400 ring-1 ring-red-500/20" />;
+      return <Badge value="Cancelado" tone="bg-red-50 text-red-600 ring-1 ring-red-100" />;
     }
     if (status === "failed") {
-      return <Badge value="Falhou" tone="bg-red-500/15 text-red-400 ring-1 ring-red-500/30" />;
+      return <Badge value="Falhou" tone="bg-red-50 text-red-600 ring-1 ring-red-100" />;
     }
     if (status === "processing") {
-      return <Badge value="Em processamento" tone="bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/30" />;
+      return <Badge value="Em processamento" tone="bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100" />;
     }
-    return <Badge value={status} tone="bg-zinc-500/15 text-zinc-400 ring-1 ring-zinc-500/30" />;
+    return <Badge value={status} tone="bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200" />;
   }
 
   function PendingTable({
@@ -994,7 +1001,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
           <p className="text-xs text-zinc-500">{subtitle}</p>
         </div>
         {tableRows.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 px-4 py-5 text-center text-[13px] text-zinc-500">
+          <div className="rounded-2xl border border-[#DDE6E6] bg-[#F8FAFC] px-4 py-5 text-center text-[13px] text-[#647B7B]">
             Nenhum saque pendente nesta fila.
           </div>
         ) : (
@@ -1101,16 +1108,16 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
     );
   }
 
-  const MODAL_BASE = "fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm";
-  const MODAL_CARD = "w-full max-w-md space-y-4 rounded-2xl border border-zinc-800 bg-[#0B0F14] p-6 shadow-2xl";
+  const MODAL_BASE = "fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm";
+  const MODAL_CARD = "w-full max-w-md space-y-4 rounded-2xl border border-[#DDE6E6] bg-white p-6 shadow-2xl";
 
   return (
     <>
       {canceling && (
         <div className={MODAL_BASE}>
           <div className={MODAL_CARD}>
-            <h3 className="text-[15px] font-bold text-white">Cancelar saque</h3>
-            <p className="text-[13px] text-zinc-400">
+            <h3 className="text-[15px] font-bold text-[#1F2D2E]">Cancelar saque</h3>
+            <p className="text-[13px] text-[#647B7B]">
               O saldo será restaurado na carteira do usuário. Informe o motivo para auditoria.
             </p>
             <textarea
@@ -1118,14 +1125,14 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
               onChange={(e) => setCancelReason(e.target.value)}
               placeholder="Motivo do cancelamento..."
               rows={3}
-              className="w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[13px] text-white placeholder:text-zinc-600 focus:border-zinc-500 focus:outline-none"
+              className="w-full resize-none rounded-xl border border-[#DDE6E6] bg-[#F8FAFC] px-3 py-2.5 text-[13px] text-[#1F2D2E] placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none"
             />
-            {error && <p className="text-[12px] text-red-400">{error}</p>}
+            {error && <p className="text-[12px] text-red-600">{error}</p>}
             <div className="flex gap-2">
               <button
                 onClick={handleCancel}
                 disabled={cancelLoading || !cancelReason.trim()}
-                className="flex-1 rounded-xl bg-red-700 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex-1 rounded-xl bg-red-600 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {cancelLoading ? "Cancelando..." : "Confirmar cancelamento"}
               </button>
@@ -1135,7 +1142,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
                   setCancelReason("");
                   setError(null);
                 }}
-                className="rounded-xl border border-zinc-700 px-4 py-2.5 text-[13px] font-semibold text-zinc-400 transition-colors hover:border-zinc-600"
+                className="rounded-xl border border-[#DDE6E6] px-4 py-2.5 text-[13px] font-semibold text-[#647B7B] transition-colors hover:border-zinc-300"
               >
                 Voltar
               </button>
@@ -1147,8 +1154,8 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
       {approving && (
         <div className={MODAL_BASE}>
           <div className={MODAL_CARD}>
-            <h3 className="text-[15px] font-bold text-white">Marcar saque como pago</h3>
-            <p className="text-[13px] text-zinc-400">
+            <h3 className="text-[15px] font-bold text-[#1F2D2E]">Marcar saque como pago</h3>
+            <p className="text-[13px] text-[#647B7B]">
               Confirme que o pagamento manual foi concluído. O saldo já foi debitado na solicitação.
             </p>
             <textarea
@@ -1156,9 +1163,9 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
               onChange={(e) => setApproveNote(e.target.value)}
               placeholder="Observação opcional..."
               rows={3}
-              className="w-full resize-none rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[13px] text-white placeholder:text-zinc-600 focus:border-zinc-500 focus:outline-none"
+              className="w-full resize-none rounded-xl border border-[#DDE6E6] bg-[#F8FAFC] px-3 py-2.5 text-[13px] text-[#1F2D2E] placeholder:text-zinc-400 focus:border-zinc-300 focus:outline-none"
             />
-            {error && <p className="text-[12px] text-red-400">{error}</p>}
+            {error && <p className="text-[12px] text-red-600">{error}</p>}
             <div className="flex gap-2">
               <button
                 onClick={handleApprove}
@@ -1173,7 +1180,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
                   setApproveNote("");
                   setError(null);
                 }}
-                className="rounded-xl border border-zinc-700 px-4 py-2.5 text-[13px] font-semibold text-zinc-400 transition-colors hover:border-zinc-600"
+                className="rounded-xl border border-[#DDE6E6] px-4 py-2.5 text-[13px] font-semibold text-[#647B7B] transition-colors hover:border-zinc-300"
               >
                 Voltar
               </button>
@@ -1183,12 +1190,12 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
       )}
 
       <Section title="Saques" subtitle={`${pending.length} pendente(s) no total`}>
-        <div className="rounded-2xl border border-amber-900/40 bg-amber-950/30 px-4 py-3 text-[13px] text-amber-400">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-700">
           A carteira é debitada no pedido. Saques via PIX ficam em processamento enquanto o provedor confirma. Pendências manuais aparecem abaixo.
         </div>
 
         {error && !canceling && !approving && (
-          <div className="rounded-2xl border border-red-900/50 bg-red-950/40 px-4 py-3 text-[13px] text-red-400">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-600">
             {error}
           </div>
         )}
@@ -1353,88 +1360,84 @@ export default function AdminFinances({
   ];
 
   return (
-    <div className="bg-[#041C1E] -mx-6 -my-10 lg:-mx-10 min-h-full">
+    <div className="max-w-7xl space-y-6">
 
       {/* -- Page header ----------------------------------------------------- */}
-      <div className="px-6 pt-8 pb-6 lg:px-10">
-        <div className="mx-auto max-w-7xl space-y-6">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-600">Admin da plataforma</p>
-              <h1 className="mt-1 text-3xl font-bold tracking-tight text-white">Financeiro</h1>
-              <p className="mt-1 text-sm text-zinc-500">
-                {summary.confirmedBookings} reservas confirmadas · {contracts.length} contratos · {subscriptions.length} agências
-              </p>
-            </div>
-            <div className="hidden md:flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-600">
-              <span>Free <strong className="text-zinc-500">{summary.planBreakdown.free.commissionLabel}</strong></span>
-              <span>Pro <strong className="text-zinc-500">{summary.planBreakdown.pro.commissionLabel}</strong></span>
-              <span>Premium <strong className="text-zinc-500">{summary.planBreakdown.premium.commissionLabel}</strong></span>
-              <span>Indicação <strong className="text-zinc-500">{REFERRAL_RATE * 100}%</strong></span>
-            </div>
+      <div className="space-y-6">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#647B7B]">Admin da plataforma</p>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight text-[#1F2D2E]">Financeiro</h1>
+            <p className="mt-1 text-sm text-[#647B7B]">
+              {summary.confirmedBookings} reservas confirmadas · {contracts.length} contratos · {subscriptions.length} agências
+            </p>
           </div>
+          <div className="hidden md:flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#647B7B]">
+            <span>Free <strong className="text-[#1F2D2E]">{summary.planBreakdown.free.commissionLabel}</strong></span>
+            <span>Pro <strong className="text-[#1F2D2E]">{summary.planBreakdown.pro.commissionLabel}</strong></span>
+            <span>Premium <strong className="text-[#1F2D2E]">{summary.planBreakdown.premium.commissionLabel}</strong></span>
+            <span>Indicação <strong className="text-[#1F2D2E]">{REFERRAL_RATE * 100}%</strong></span>
+          </div>
+        </div>
 
-          {/* KPI bar — always visible */}
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
-            <KpiCard
-              label="Obrigações totais"
-              value={brl(summary.minimumRequired)}
-              sub="Escrow + talentos + carteiras"
-              accent="amber"
-            />
-            <KpiCard
-              label="Saques pendentes"
-              value={String(pendingCount)}
-              sub={pendingCount > 0 ? "requerem ação" : "tudo em dia"}
-              accent={pendingCount > 0 ? "red" : "neutral"}
-            />
-            <KpiCard
-              label="Receita de planos"
-              value={brl(summary.subscriptionRevenue)}
-              sub={`${subscriptions.filter((s) => s.plan !== "free").length} agências pagantes`}
-              accent="blue"
-            />
-            <KpiCard
-              label="Comissão de reservas"
-              value={brl(summary.platformCommission)}
-              sub={`${summary.confirmedBookings} reservas confirmadas`}
-              accent="green"
-            />
-          </div>
+        {/* KPI bar — always visible */}
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <KpiCard
+            label="Obrigações totais"
+            value={brl(summary.minimumRequired)}
+            sub="Escrow + talentos + carteiras"
+            accent="amber"
+          />
+          <KpiCard
+            label="Saques pendentes"
+            value={String(pendingCount)}
+            sub={pendingCount > 0 ? "requerem ação" : "tudo em dia"}
+            accent={pendingCount > 0 ? "red" : "neutral"}
+          />
+          <KpiCard
+            label="Receita de planos"
+            value={brl(summary.subscriptionRevenue)}
+            sub={`${subscriptions.filter((s) => s.plan !== "free").length} agências pagantes`}
+            accent="blue"
+          />
+          <KpiCard
+            label="Comissão de reservas"
+            value={brl(summary.platformCommission)}
+            sub={`${summary.confirmedBookings} reservas confirmadas`}
+            accent="green"
+          />
         </div>
       </div>
 
       {/* -- Tab bar - sticky ------------------------------------------------ */}
-      <div className="sticky top-0 z-20 border-b border-zinc-800/60 bg-[#041C1E]/95 backdrop-blur-sm">
-        <div className="mx-auto max-w-7xl px-6 lg:px-10">
-          <div className="flex gap-0.5 overflow-x-auto py-1.5 scrollbar-none">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={[
-                  "flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-all",
-                  activeTab === tab.id
-                    ? "bg-white/10 text-white ring-1 ring-white/10"
-                    : "text-zinc-500 hover:bg-white/5 hover:text-zinc-300",
-                ].join(" ")}
-              >
-                {tab.label}
-                {tab.badge != null && (
-                  <span className={`rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums leading-tight ${
-                    tab.id === "saques" ? "bg-amber-500 text-black" : "bg-zinc-700 text-zinc-300"
-                  }`}>
-                    {tab.badge}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+      <div className="sticky top-0 z-20 border-b border-[#DDE6E6] bg-white/95 backdrop-blur-sm">
+        <div className="flex gap-0.5 overflow-x-auto py-1.5 scrollbar-none">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={[
+                "flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-[13px] font-semibold transition-all",
+                activeTab === tab.id
+                  ? "bg-[#E6F0F0] text-[#0E7C86]"
+                  : "text-[#647B7B] hover:bg-[#F0F9F8] hover:text-[#1F2D2E]",
+              ].join(" ")}
+            >
+              {tab.label}
+              {tab.badge != null && (
+                <span className={`rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums leading-tight ${
+                  tab.id === "saques" ? "bg-amber-500 text-black" : "bg-zinc-100 text-zinc-600"
+                }`}>
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* -- Tab content ----------------------------------------------------- */}
-      <div className="mx-auto max-w-7xl px-6 lg:px-10">
+      <div>
 
         {/* Saques */}
         <div className={activeTab === "saques" ? "" : "hidden"}>
@@ -1469,16 +1472,16 @@ export default function AdminFinances({
                   </p>
                 </div>
                 {platformBalance.status === "ok" && (
-                  <div className={`rounded-2xl border px-4 py-3 text-sm ${safe ? "border-emerald-900/50 bg-emerald-950/40 text-emerald-400" : "border-red-900/50 bg-red-950/40 text-red-400"}`}>
+                  <div className={`rounded-2xl border px-4 py-3 text-sm ${safe ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-red-200 bg-red-50 text-red-700"}`}>
                     <p className="font-semibold">{safe ? "✓ Plataforma solvente" : "⚠ Abaixo do mínimo"}</p>
-                    <p className="mt-1 text-xs text-zinc-400">
+                    <p className="mt-1 text-xs text-[#647B7B]">
                       Saldo MP: {brl(platformBalance.balance)} · {safe ? "Margem" : "Déficit"}: {brl(Math.abs(platformBalance.balance - summary.minimumRequired))}
                     </p>
                   </div>
                 )}
                 {platformBalance.status === "unavailable" && (
-                  <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-sm text-zinc-500">
-                    Saldo MP: <strong className="text-zinc-400">Indisponível</strong>
+                  <div className="rounded-2xl border border-[#DDE6E6] bg-[#F8FAFC] px-4 py-3 text-sm text-[#647B7B]">
+                    Saldo MP: <strong className="text-[#1F2D2E]">Indisponível</strong>
                     <span className="ml-1 text-xs">(legado)</span>
                   </div>
                 )}
@@ -1510,9 +1513,6 @@ export default function AdminFinances({
         </div>
 
       </div>
-
-      {/* Bottom padding */}
-      <div className="h-12" />
     </div>
   );
 }

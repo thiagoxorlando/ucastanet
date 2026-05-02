@@ -24,6 +24,7 @@ type AdminStats = {
   totalBookings: number;
   totalRevenue: number;
   monthlySubscriptionTotal?: number;
+  pendingWithdrawals?: number;
 };
 
 function brl(n: number) {
@@ -216,8 +217,78 @@ export default function AdminDashboard({ bookings, stats }: { bookings: Booking[
         />
       </div>
 
+      {/* ── Urgent actions ── */}
+      {(() => {
+        const pendingBookings = bookings.filter((b) => b.status === "pending");
+        const pendingW = stats.pendingWithdrawals ?? 0;
+        const items: { label: string; count: number; href: string; color: string }[] = [];
+        if (pendingBookings.length > 0) items.push({
+          label: "reserva" + (pendingBookings.length !== 1 ? "s pendentes" : " pendente"),
+          count: pendingBookings.length,
+          href: "#bookings-table",
+          color: "text-amber-700 bg-amber-50 border-amber-200",
+        });
+        if (pendingW > 0) items.push({
+          label: "saque" + (pendingW !== 1 ? "s aguardando" : " aguardando"),
+          count: pendingW,
+          href: "/admin/finances",
+          color: "text-red-700 bg-red-50 border-red-200",
+        });
+        if (items.length === 0) return null;
+        return (
+          <div className="card p-5 flex flex-wrap items-center gap-3">
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">Requer atenção</span>
+            {items.map((item) => (
+              <a key={item.href} href={item.href}
+                className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-[13px] font-semibold transition-colors hover:opacity-80 ${item.color}`}>
+                <span className="text-[1.1em] font-bold tabular-nums">{item.count}</span>
+                {item.label}
+                <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </a>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* ── Recent activity ── */}
+      {bookings.length > 0 && (
+        <div className="card overflow-hidden">
+          <div className="px-6 py-4 border-b border-[#DDE6E6]">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-0.5">Atividade Recente</p>
+            <p className="text-[14px] font-semibold text-[#1F2D2E]">Últimas reservas</p>
+          </div>
+          <div className="divide-y divide-[#DDE6E6]">
+            {bookings.slice(0, 6).map((b) => {
+              const st = STATUS[b.status] ?? STATUS_FALLBACK;
+              return (
+                <div key={b.id} className="px-6 py-3 flex items-center justify-between gap-4 hover:bg-[#F8FAFC] transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-7 h-7 rounded-full bg-[#E6F0F0] flex items-center justify-center flex-shrink-0">
+                      <span className="text-[10px] font-bold text-[#0E7C86]">
+                        {b.talentName.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold text-[#1F2D2E] truncate">{b.talentName}</p>
+                      <p className="text-[11px] text-[#647B7B] truncate">{b.jobTitle}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <span className={`${st.cls} text-[11px]`}>{st.label}</span>
+                    <p className="text-[13px] font-semibold text-[#1F2D2E] tabular-nums">{brl(b.platformCommission)}</p>
+                    <p className="text-[11px] text-[#647B7B] hidden sm:block">{formatDate(b.bookedAt)}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Table card ── */}
-      <div className="card overflow-hidden">
+      <div id="bookings-table" className="card overflow-hidden">
 
         <div className="px-6 py-5 border-b border-[#DDE6E6] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
