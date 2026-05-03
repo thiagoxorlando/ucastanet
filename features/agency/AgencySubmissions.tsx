@@ -50,25 +50,26 @@ function formatDate(s: string) {
 // Derive a single readable pipeline status
 function pipelineStatus(s: SubmissionEntry): { label: string; cls: string } {
   if (s.bookingStatus === "paid" || s.bookingStatus === "confirmed") {
-    return { label: "Paid", cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" };
+    return { label: "Pago", cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" };
   }
   if (s.bookingStatus === "pending_payment") {
-    return { label: "Pending Payment", cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-100" };
+    return { label: "Pagamento Pendente", cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-100" };
   }
   if (s.bookingStatus === "cancelled") {
-    return { label: "Cancelled", cls: "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200" };
+    return { label: "Cancelado", cls: "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200" };
   }
   if (s.contractStatus === "signed") {
-    return { label: "Contract Signed", cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" };
+    return { label: "Contrato Assinado", cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" };
   }
   if (s.contractStatus === "sent") {
-    return { label: "Contract Sent", cls: "bg-violet-50 text-violet-700 ring-1 ring-violet-100" };
+    return { label: "Contrato Enviado", cls: "bg-violet-50 text-violet-700 ring-1 ring-violet-100" };
   }
   if (s.contractStatus === "rejected") {
-    return { label: "Contract Rejected", cls: "bg-rose-50 text-rose-600 ring-1 ring-rose-100" };
+    return { label: "Contrato Recusado", cls: "bg-rose-50 text-rose-600 ring-1 ring-rose-100" };
   }
+  const STATUS_LABELS: Record<string, string> = { pending: "Pendente", approved: "Aprovado", rejected: "Recusado" };
   return {
-    label: s.status.charAt(0).toUpperCase() + s.status.slice(1),
+    label: STATUS_LABELS[s.status] ?? s.status.charAt(0).toUpperCase() + s.status.slice(1),
     cls: SUB_STATUS_CLS[s.status] ?? "bg-zinc-100 text-zinc-400 ring-1 ring-zinc-200",
   };
 }
@@ -111,7 +112,7 @@ function SubmissionRow({ submission, onRemove }: { submission: SubmissionEntry; 
         <div className="flex-1 min-w-0">
           <p className="text-[14px] font-semibold text-zinc-900 truncate">{submission.talentName}</p>
           <p className="text-[12px] text-zinc-400 mt-0.5">
-            {submission.mode === "self" ? "Self-submitted" : "Referred"} · {formatDate(submission.submittedAt)}
+            {submission.mode === "self" ? "Candidatura própria" : "Indicado"} · {formatDate(submission.submittedAt)}
           </p>
         </div>
         <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${pipeline.cls}`}>
@@ -186,7 +187,7 @@ function SubmissionRow({ submission, onRemove }: { submission: SubmissionEntry; 
                 onClick={(e) => e.stopPropagation()}
                 className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-4 py-2 rounded-xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] text-white transition-colors"
               >
-                View Full Profile
+                Ver Perfil Completo
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -197,7 +198,7 @@ function SubmissionRow({ submission, onRemove }: { submission: SubmissionEntry; 
               onClick={(e) => e.stopPropagation()}
               className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3.5 py-2 rounded-xl border border-zinc-200 hover:border-zinc-300 text-zinc-600 hover:text-zinc-900 transition-colors"
             >
-              Job Detail
+              Detalhes da Vaga
             </Link>
             {!submission.contractStatus && submission.status === "pending" && (
               <button
@@ -238,10 +239,10 @@ export default function AgencySubmissions({ submissions: initialSubmissions }: {
 
       {/* Header */}
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Agency</p>
-        <h1 className="text-[1.75rem] font-semibold tracking-tight text-zinc-900 leading-tight">Submissions</h1>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Agência</p>
+        <h1 className="text-[1.75rem] font-semibold tracking-tight text-zinc-900 leading-tight">Candidaturas</h1>
         <p className="text-[13px] text-zinc-400 mt-1">
-          {submissions.length} submission{submissions.length !== 1 ? "s" : ""} across {groups.length} job{groups.length !== 1 ? "s" : ""}
+          {submissions.length} candidatura{submissions.length !== 1 ? "s" : ""} em {groups.length} vaga{groups.length !== 1 ? "s" : ""}
         </p>
       </div>
 
