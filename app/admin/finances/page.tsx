@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import AdminFinances, {
   type FinancesBooking,
   type FinancesContract,
+  type FinancesDeposit,
   type FinancesPlanPayment,
   type FinancesSubscription,
   type FinancesSummary,
@@ -96,6 +97,7 @@ export default async function AdminFinancesPage() {
     contractsData,
     { data: withdrawalTxs },
     { data: talentWalletsData },
+    { data: depositsData },
   ] = await Promise.all([
     supabase
       .from("bookings")
@@ -135,6 +137,54 @@ export default async function AdminFinancesPage() {
       .eq("role", "talent")
       .gt("wallet_balance", 0)
       .order("wallet_balance", { ascending: false }),
+    supabase
+      .from("wallet_transactions")
+      .select("id, user_id, amount, status, provider, asaas_payment_id, description, created_at, processed_at")
+      .eq("type", "deposit")
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const depositUserIds = [...new Set((depositsData ?? []).map((d) => d.user_id).filter(Boolean))] as string[];
+  const depositNameMap = new Map<string, { name: string; role: string }>();
+
+  await Promise.all([
+    depositUserIds.length
+      ? supabase
+          .from("profiles")
+          .select("id, role")
+          .in("id", depositUserIds)
+          .then(({ data }) => {
+            for (const p of data ?? []) {
+              depositNameMap.set(p.id, { name: "", role: p.role ?? "unknown" });
+            }
+          })
+      : Promise.resolve(),
+    depositUserIds.length
+      ? supabase
+          .from("agencies")
+          .select("id, company_name")
+          .in("id", depositUserIds)
+          .then(({ data }) => {
+            for (const a of data ?? []) {
+              const existing = depositNameMap.get(a.id);
+              depositNameMap.set(a.id, { name: a.company_name ?? "Agência", role: existing?.role ?? "agency" });
+            }
+          })
+      : Promise.resolve(),
+    depositUserIds.length
+      ? supabase
+          .from("talent_profiles")
+          .select("id, full_name")
+          .in("id", depositUserIds)
+          .then(({ data }) => {
+            for (const t of data ?? []) {
+              const existing = depositNameMap.get(t.id);
+              if (existing?.role === "talent" || !existing) {
+                depositNameMap.set(t.id, { name: t.full_name ?? "Talento", role: "talent" });
+              }
+            }
+          })
+      : Promise.resolve(),
   ]);
 
   const rows = bookingsData ?? [];
@@ -473,6 +523,23 @@ export default async function AdminFinancesPage() {
     },
   };
 
+  const deposits: FinancesDeposit[] = (depositsData ?? []).map((d) => {
+    const raw = d as Record<string, unknown>;
+    const info = depositNameMap.get(d.user_id);
+    return {
+      id:            d.id,
+      userName:      info?.name || (allAgencyNameMap.get(d.user_id) ?? "Usuário"),
+      userRole:      info?.role ?? "unknown",
+      amount:        Math.abs(d.amount ?? 0),
+      status:        d.status ?? "pending",
+      provider:      typeof raw.provider === "string" ? raw.provider : null,
+      asaasPaymentId: typeof raw.asaas_payment_id === "string" ? raw.asaas_payment_id : null,
+      description:   typeof raw.description === "string" ? raw.description : null,
+      createdAt:     d.created_at ?? "",
+      processedAt:   typeof raw.processed_at === "string" ? raw.processed_at : null,
+    };
+  });
+
   return (
     <AdminFinances
       summary={summary}
@@ -483,6 +550,7 @@ export default async function AdminFinancesPage() {
       withdrawals={withdrawals}
       agencyWallets={agencyWalletList}
       talentWallets={talentWalletList}
+      deposits={deposits}
     />
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { REFERRAL_RATE } from "@/lib/plans";
@@ -34,6 +34,8 @@ export type FinancesContract = {
   created_at: string;
   paid_at: string | null;
   withdrawn_at: string | null;
+  fileUrl?: string | null;
+  signedFileUrl?: string | null;
 };
 
 export type FinancesWithdrawal = {
@@ -83,6 +85,19 @@ export type FinancesWallet = {
   hasPix?: boolean;
 };
 
+export type FinancesDeposit = {
+  id: string;
+  userName: string;
+  userRole: string;
+  amount: number;
+  status: string;
+  provider: string | null;
+  asaasPaymentId: string | null;
+  description: string | null;
+  createdAt: string;
+  processedAt: string | null;
+};
+
 export type FinancesSummary = {
   totalGrossValue: number;
   confirmedGrossValue: number;
@@ -110,7 +125,7 @@ export type FinancesSummary = {
 
 // -- Constants ---------------------------------------------------------------
 
-type Tab = "saques" | "carteiras" | "visao-geral" | "contratos" | "reservas" | "planos";
+type Tab = "saques" | "carteiras" | "visao-geral" | "contratos" | "reservas" | "planos" | "depositos";
 type ProfitRange = "today" | "month" | "total";
 
 const PLAN_BADGES_LIGHT: Record<string, string> = {
@@ -294,9 +309,12 @@ function ProfitSection({
   planPayments: FinancesPlanPayment[];
 }) {
   const [range, setRange] = useState<ProfitRange>("month");
+  const [showCommDetail, setShowCommDetail] = useState(false);
+  const [showPlanDetail, setShowPlanDetail] = useState(false);
 
   const fb = bookings.filter((b) => isInRange(b.created_at, range));
-  const fc = contracts.filter((c) => isInRange(c.paid_at ?? c.created_at, range));
+  // realized-only: only paid contracts (commission already settled)
+  const fc = contracts.filter((c) => c.status === "paid" && isInRange(c.paid_at ?? c.created_at, range));
   const fp = planPayments.filter((p) => isInRange(p.createdAt, range));
 
   const bookingCommission = fb.reduce((s, b) => s + b.commissionAmount, 0);
@@ -311,10 +329,16 @@ function ProfitSection({
     { key: "total", label: "Total" },
   ];
 
+  const chevron = (open: boolean) => (
+    <svg className={`h-4 w-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+
   return (
     <Section
       title="Lucro da plataforma"
-      subtitle="Comissão e receita de planos filtráveis por período."
+      subtitle="Comissão e receita de planos filtráveis por período. Apenas contratos pagos (realizados)."
       action={
         <div className="flex gap-1">
           {RANGES.map(({ key, label }) => (
@@ -335,16 +359,80 @@ function ProfitSection({
       }
     >
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard
-          label="Comissão de reservas/contratos"
-          value={brl(totalCommission)}
-          sub={`Reservas: ${brl(bookingCommission)} · Contratos: ${brl(contractCommission)}`}
-        />
-        <StatCard
-          label="Receita de planos"
-          value={brl(planRevenue)}
-          sub={`${fp.length} pagamento(s) no período`}
-        />
+
+        {/* Expandable: Commission */}
+        <div className="space-y-2">
+          <button
+            onClick={() => setShowCommDetail((c) => !c)}
+            className="w-full text-left relative rounded-2xl border border-[#DDE6E6] bg-white p-5 overflow-hidden hover:border-zinc-300 transition-colors"
+          >
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Comissão de reservas/contratos</p>
+              {chevron(showCommDetail)}
+            </div>
+            <p className="mt-2 text-2xl font-bold tracking-tight text-[#1F2D2E]">{brl(totalCommission)}</p>
+            <p className="mt-1.5 text-xs text-zinc-500">Reservas: {brl(bookingCommission)} · Contratos: {brl(contractCommission)}</p>
+          </button>
+          {showCommDetail && (
+            <div className="rounded-2xl border border-[#DDE6E6] bg-white divide-y divide-[#EFF5F5] max-h-64 overflow-y-auto">
+              {fb.filter((b) => b.commissionAmount > 0).slice(0, 20).map((b) => (
+                <div key={`booking-${b.id}`} className="flex items-center justify-between px-4 py-2.5 text-[12px]">
+                  <div>
+                    <p className="font-medium text-[#1F2D2E]">{b.jobTitle}</p>
+                    <p className="text-zinc-500">{b.talentName} · {fmt(b.created_at)}</p>
+                  </div>
+                  <span className="font-semibold text-emerald-600 shrink-0 ml-2">{brl(b.commissionAmount)}</span>
+                </div>
+              ))}
+              {fc.slice(0, 20).map((c) => (
+                <div key={`contract-${c.id}`} className="flex items-center justify-between px-4 py-2.5 text-[12px]">
+                  <div>
+                    <p className="font-medium text-[#1F2D2E]">{c.jobTitle} <span className="text-zinc-400 text-[11px]">(contrato)</span></p>
+                    <p className="text-zinc-500">{c.talentName} · {fmt(c.paid_at)}</p>
+                  </div>
+                  <span className="font-semibold text-emerald-600 shrink-0 ml-2">{brl(c.commissionAmount)}</span>
+                </div>
+              ))}
+              {(fb.filter((b) => b.commissionAmount > 0).length + fc.length) === 0 && (
+                <p className="px-4 py-3 text-[12px] text-zinc-400">Nenhum item no período.</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Expandable: Plan revenue */}
+        <div className="space-y-2">
+          <button
+            onClick={() => setShowPlanDetail((c) => !c)}
+            className="w-full text-left relative rounded-2xl border border-[#DDE6E6] bg-white p-5 overflow-hidden hover:border-zinc-300 transition-colors"
+          >
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Receita de planos</p>
+              {chevron(showPlanDetail)}
+            </div>
+            <p className="mt-2 text-2xl font-bold tracking-tight text-[#1F2D2E]">{brl(planRevenue)}</p>
+            <p className="mt-1.5 text-xs text-zinc-500">{fp.length} pagamento(s) no período</p>
+          </button>
+          {showPlanDetail && (
+            <div className="rounded-2xl border border-[#DDE6E6] bg-white divide-y divide-[#EFF5F5] max-h-64 overflow-y-auto">
+              {fp.slice(0, 20).map((p) => (
+                <div key={p.id} className="flex items-center justify-between px-4 py-2.5 text-[12px]">
+                  <div>
+                    <p className="font-medium text-[#1F2D2E]">{p.agencyName}</p>
+                    <p className="text-zinc-500">{planLabel(p.plan)} · {fmt(p.createdAt)}</p>
+                  </div>
+                  <span className="font-semibold text-blue-600 shrink-0 ml-2">{brl(p.amount)}</span>
+                </div>
+              ))}
+              {fp.length === 0 && (
+                <p className="px-4 py-3 text-[12px] text-zinc-400">Nenhum pagamento no período.</p>
+              )}
+            </div>
+          )}
+        </div>
+
         <StatCard
           label="Total do período"
           value={brl(totalProfit)}
@@ -489,31 +577,13 @@ function ContractsSection({
   contracts: FinancesContract[];
   summary: FinancesSummary;
 }) {
-  const [rows, setRows] = useState<FinancesContract[]>(contracts);
-  const [withdrawing, setWithdrawing] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => { setRows(contracts); }, [contracts]);
-
-  async function handleWithdraw(id: string) {
-    setWithdrawing(id);
-    const res = await fetch(`/api/contracts/${id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "withdraw" }),
-    });
-    setWithdrawing(null);
-    if (res.ok) {
-      const payload = (await res.json()) as { withdrawn_at?: string | null };
-      setRows((cur) => cur.map((c) => c.id === id ? { ...c, withdrawn_at: payload.withdrawn_at ?? new Date().toISOString() } : c));
-    }
-  }
-
-  const visible = expanded ? rows : rows.slice(0, 5);
+  const visible = expanded ? contracts : contracts.slice(0, 5);
 
   return (
     <Section
       title="Contratos confirmados e pagos"
-      subtitle={`${rows.length} contratos · ${brl(summary.contractsCommission)} retido pela plataforma`}
+      subtitle={`${contracts.length} contratos · ${brl(summary.contractsCommission)} retido pela plataforma`}
     >
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="Em escrow" value={brl(summary.contractsEscrowValue)} sub="Bruto retido em confirmados" />
@@ -532,7 +602,7 @@ function ContractsSection({
             <Th right>Bruto</Th>
             <Th right>Comissão</Th>
             <Th right>Líquido</Th>
-            <Th right>Ações</Th>
+            <Th>Documentos</Th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#EFF5F5] [&>tr:hover]:bg-[#F8FAFC]">
@@ -554,25 +624,22 @@ function ContractsSection({
                 <Td right>{brl(c.amount)}</Td>
                 <Td right>{brl(c.commissionAmount)}</Td>
                 <Td right><strong className="text-[#1F2D2E]">{brl(c.netAmount)}</strong></Td>
-                <Td right>
-                  {c.status === "paid" && !c.withdrawn_at ? (
-                    <button
-                      onClick={() => handleWithdraw(c.id)}
-                      disabled={withdrawing === c.id}
-                      className="rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {withdrawing === c.id ? "…" : "Sacar"}
-                    </button>
-                  ) : (
-                    <span className="text-xs text-zinc-500">{c.withdrawn_at ? "Concluído" : "—"}</span>
-                  )}
+                <Td>
+                  <div className="flex flex-col gap-0.5">
+                    {c.fileUrl
+                      ? <a href={c.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[#0E7C86] hover:underline">Contrato original</a>
+                      : <span className="text-xs text-zinc-400">—</span>}
+                    {c.signedFileUrl && (
+                      <a href={c.signedFileUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[#0E7C86] hover:underline">Contrato assinado</a>
+                    )}
+                  </div>
                 </Td>
               </tr>
             );
           })}
         </tbody>
       </TableCard>
-      <ShowMoreButton total={rows.length} expanded={expanded} onToggle={() => setExpanded((c) => !c)} />
+      <ShowMoreButton total={contracts.length} expanded={expanded} onToggle={() => setExpanded((c) => !c)} />
     </Section>
   );
 }
@@ -630,12 +697,21 @@ function WithdrawalHistory({ contracts }: { contracts: FinancesContract[] }) {
 
 function BookingsSection({ bookings, summary }: { bookings: FinancesBooking[]; summary: FinancesSummary }) {
   const [expanded, setExpanded] = useState(false);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const visible = expanded ? bookings : bookings.slice(0, 5);
+
+  function toggleRow(id: string) {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   return (
     <Section
       title="Reservas"
-      subtitle={`${bookings.length} reservas · comissão dinâmica por plano`}
+      subtitle={`${bookings.length} reservas · comissão dinâmica por plano · clique em uma linha para expandir`}
     >
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="Bruto confirmado"    value={brl(summary.confirmedGrossValue)} />
@@ -656,24 +732,52 @@ function BookingsSection({ bookings, summary }: { bookings: FinancesBooking[]; s
             <Th right>Líq. plataforma</Th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#EFF5F5] [&>tr:hover]:bg-[#F8FAFC]">
-          {visible.map((b) => (
-            <tr key={b.id}>
-              <Td>
-                <div>
-                  <p className="font-medium text-[#1F2D2E]">{b.jobTitle}</p>
-                  <p className="text-xs text-zinc-500">{fmt(b.created_at)}</p>
-                </div>
-              </Td>
-              <Td>{b.talentName}</Td>
-              <Td><Badge value={planLabel(b.agencyPlan)} tone={PLAN_BADGES_LIGHT[b.agencyPlan] ?? PLAN_BADGES_LIGHT.free} /></Td>
-              <Td><Badge value={b.status} tone={STATUS_BADGES[b.status] ?? STATUS_BADGES.cancelled} /></Td>
-              <Td right>{brl(b.price)}</Td>
-              <Td right>{b.commissionAmount ? brl(b.commissionAmount) : "—"}</Td>
-              <Td right>{b.referralAmount ? brl(b.referralAmount) : "—"}</Td>
-              <Td right>{b.netPlatformAmount ? brl(b.netPlatformAmount) : "—"}</Td>
-            </tr>
-          ))}
+        <tbody className="divide-y divide-[#EFF5F5]">
+          {visible.map((b) => {
+            const isRowOpen = expandedRows.has(b.id);
+            return (
+              <Fragment key={b.id}>
+                <tr
+                  onClick={() => toggleRow(b.id)}
+                  className="cursor-pointer hover:bg-[#F8FAFC] transition-colors"
+                >
+                  <Td>
+                    <div className="flex items-center gap-2">
+                      <svg className={`h-3.5 w-3.5 shrink-0 text-zinc-400 transition-transform ${isRowOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                      <div>
+                        <p className="font-medium text-[#1F2D2E]">{b.jobTitle}</p>
+                        <p className="text-xs text-zinc-500">{fmt(b.created_at)}</p>
+                      </div>
+                    </div>
+                  </Td>
+                  <Td>{b.talentName}</Td>
+                  <Td><Badge value={planLabel(b.agencyPlan)} tone={PLAN_BADGES_LIGHT[b.agencyPlan] ?? PLAN_BADGES_LIGHT.free} /></Td>
+                  <Td><Badge value={b.status} tone={STATUS_BADGES[b.status] ?? STATUS_BADGES.cancelled} /></Td>
+                  <Td right>{brl(b.price)}</Td>
+                  <Td right>{b.commissionAmount ? brl(b.commissionAmount) : "—"}</Td>
+                  <Td right>{b.referralAmount ? brl(b.referralAmount) : "—"}</Td>
+                  <Td right>{b.netPlatformAmount ? brl(b.netPlatformAmount) : "—"}</Td>
+                </tr>
+                {isRowOpen && (
+                  <tr>
+                    <td colSpan={8} className="bg-[#F0F9F8] px-6 py-4">
+                      <div className="flex flex-wrap gap-x-6 gap-y-2 text-[12px] text-[#647B7B]">
+                        <span>Criado: <strong className="text-[#1F2D2E]">{fmt(b.created_at)}</strong></span>
+                        <span className="flex items-center gap-1.5">Status: <Badge value={b.status} tone={STATUS_BADGES[b.status] ?? STATUS_BADGES.cancelled} /></span>
+                        <span>Valor bruto: <strong className="text-[#1F2D2E]">{brl(b.price)}</strong></span>
+                        <span>Comissão: <strong className="text-emerald-600">{brl(b.commissionAmount)}</strong></span>
+                        {b.referralAmount > 0 && <span>Indicação: <strong className="text-amber-600">-{brl(b.referralAmount)}</strong></span>}
+                        <span>Líq. plataforma: <strong className="text-[#0E7C86]">{brl(b.netPlatformAmount)}</strong></span>
+                        {b.isReferred && <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-600 ring-1 ring-violet-200">Indicação ativa</span>}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
         </tbody>
       </TableCard>
       <ShowMoreButton total={bookings.length} expanded={expanded} onToggle={() => setExpanded((c) => !c)} />
@@ -708,11 +812,10 @@ function WalletsSection({
     <>
       {/* Overview */}
       <Section title="Carteiras na plataforma" subtitle="Saldos pertencentes a agências e talentos — obrigações da plataforma.">
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3">
           <StatCard label="Total em carteiras" value={brl(totalAll)} sub={`${agencyWallets.length + talentWallets.length} usuários com saldo`} />
           <StatCard label="Carteiras de agências" value={brl(totalAgency)} sub={`${agencyWallets.length} agências · ${agencyPct}% do total`} />
           <StatCard label="Carteiras de talentos" value={brl(totalTalent)} sub={`${talentWallets.length} talentos · ${talentPct}% do total`} />
-          <StatCard label="Do mínimo obrigatório" value={brl(summary.agencyWalletTotal)} sub="Parcela das agências no mín. obrigatório" />
         </div>
 
         {/* Balance bar */}
@@ -865,8 +968,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
   const [cancelReason, setCancelReason] = useState("");
   const [cancelLoading, setCancelLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expandedAgencyPending, setExpandedAgencyPending] = useState(false);
-  const [expandedTalentPending, setExpandedTalentPending] = useState(false);
+  const [expandedPending, setExpandedPending] = useState(false);
   const [expandedHistory, setExpandedHistory] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -877,13 +979,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
   const pending = rows
     .filter((w) => w.status === "pending" || w.status === "processing" || w.status === "blocked")
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  // processing/blocked = automated (Asaas/provider in flight) — no admin action needed
-  const processing = pending.filter((w) => w.status === "processing" || w.status === "blocked");
-  // manual = status pending only — admin must act
-  const agencyPending = pending.filter((w) => w.userRole === "agency" && w.status === "pending");
-  const talentPending = pending.filter((w) => w.userRole === "talent" && w.status === "pending");
-  const visibleAgencyPending = expandedAgencyPending ? agencyPending : agencyPending.slice(0, 5);
-  const visibleTalentPending = expandedTalentPending ? talentPending : talentPending.slice(0, 5);
+  const visiblePending = expandedPending ? pending : pending.slice(0, 10);
   const history = rows
     .filter((w) => !["pending", "processing", "blocked"].includes(w.status))
     .sort((a, b) => new Date(b.processedAt ?? b.createdAt).getTime() - new Date(a.processedAt ?? a.createdAt).getTime());
@@ -995,11 +1091,13 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
     subtitle,
     rows: tableRows,
     showActions = true,
+    actionsWhen,
   }: {
     title: string;
     subtitle: string;
     rows: FinancesWithdrawal[];
     showActions?: boolean;
+    actionsWhen?: (w: FinancesWithdrawal) => boolean;
   }) {
     return (
       <div className="space-y-3">
@@ -1077,7 +1175,7 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
                   </Td>
                   <Td>{renderStatusBadge(w.status)}</Td>
                   <Td right>
-                    {showActions ? (
+                    {(actionsWhen ? actionsWhen(w) : showActions) ? (
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => {
@@ -1196,9 +1294,9 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
         </div>
       )}
 
-      <Section title="Saques" subtitle={`${pending.length} pendente(s) no total`}>
+      <Section title="Saques em processamento" subtitle={`${pending.length} solicitação(ões) ativa(s)`}>
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-700">
-          A carteira é debitada no pedido. Saques via PIX ficam em processamento enquanto o provedor confirma. Pendências manuais aparecem abaixo.
+          A carteira é debitada no pedido. Saques via Asaas/PIX ficam em processamento automaticamente. Saques pendentes requerem ação manual.
         </div>
 
         {error && !canceling && !approving && (
@@ -1207,38 +1305,18 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
           </div>
         )}
 
-        <div className="space-y-6">
-          <PendingTable
-            title="Saques em processamento"
-            subtitle={`${processing.length} solicitação(ões) aguardando confirmação do provedor`}
-            rows={processing}
-            showActions={false}
-          />
-
-          <PendingTable
-            title="Pendentes de agências"
-            subtitle={`${agencyPending.length} solicitação(ões) aguardando pagamento manual`}
-            rows={visibleAgencyPending}
-            showActions
-          />
-          <ShowMoreButton
-            total={agencyPending.length}
-            expanded={expandedAgencyPending}
-            onToggle={() => setExpandedAgencyPending((current) => !current)}
-          />
-
-          <PendingTable
-            title="Pendentes de talentos"
-            subtitle={`${talentPending.length} solicitação(ões) aguardando pagamento manual`}
-            rows={visibleTalentPending}
-            showActions
-          />
-          <ShowMoreButton
-            total={talentPending.length}
-            expanded={expandedTalentPending}
-            onToggle={() => setExpandedTalentPending((current) => !current)}
-          />
-        </div>
+        <PendingTable
+          title=""
+          subtitle=""
+          rows={visiblePending}
+          actionsWhen={(w) => w.status === "pending"}
+        />
+        <ShowMoreButton
+          total={pending.length}
+          threshold={10}
+          expanded={expandedPending}
+          onToggle={() => setExpandedPending((current) => !current)}
+        />
       </Section>
 
       {history.length > 0 && (
@@ -1312,6 +1390,97 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
   );
 }
 
+// -- Section: Deposits -------------------------------------------------------
+
+const DEPOSIT_STATUS_LABELS: Record<string, string> = {
+  paid:       "Confirmado",
+  pending:    "Pendente",
+  processing: "Processando",
+  failed:     "Falhou",
+  cancelled:  "Cancelado",
+};
+const DEPOSIT_STATUS_TONES: Record<string, string> = {
+  paid:       "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
+  pending:    "bg-amber-50 text-amber-700 ring-1 ring-amber-100",
+  processing: "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100",
+  failed:     "bg-red-50 text-red-600 ring-1 ring-red-100",
+  cancelled:  "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200",
+};
+
+function DepositsSection({ deposits }: { deposits: FinancesDeposit[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const visible = expanded ? deposits : deposits.slice(0, 15);
+
+  const totalPaid    = deposits.filter((d) => d.status === "paid").reduce((s, d) => s + d.amount, 0);
+  const totalPending = deposits.filter((d) => d.status !== "paid" && d.status !== "cancelled" && d.status !== "failed").reduce((s, d) => s + d.amount, 0);
+  const confirmedCount = deposits.filter((d) => d.status === "paid").length;
+
+  return (
+    <Section
+      title="Depósitos"
+      subtitle={`${deposits.length} depósitos registrados · ${confirmedCount} confirmados`}
+    >
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard label="Total confirmado" value={brl(totalPaid)}    sub={`${confirmedCount} depósitos pagos`} />
+        <StatCard label="Aguardando"       value={brl(totalPending)} sub="Pendentes de confirmação" />
+        <StatCard label="Total registrado" value={brl(deposits.reduce((s, d) => s + d.amount, 0))} sub={`${deposits.length} depósitos`} />
+      </div>
+      {deposits.length === 0 ? (
+        <div className="rounded-2xl border border-[#DDE6E6] bg-white px-4 py-5 text-sm text-[#647B7B]">
+          Nenhum depósito registrado.
+        </div>
+      ) : (
+        <>
+          <TableCard>
+            <thead className="border-b border-[#DDE6E6] bg-[#F0F9F8]">
+              <tr>
+                <Th>Usuário</Th>
+                <Th>Role</Th>
+                <Th right>Valor</Th>
+                <Th>Status</Th>
+                <Th>Provedor</Th>
+                <Th>ID pagamento</Th>
+                <Th>Solicitado em</Th>
+                <Th>Confirmado em</Th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#EFF5F5] [&>tr:hover]:bg-[#F8FAFC]">
+              {visible.map((d) => (
+                <tr key={d.id}>
+                  <Td><span className="font-medium text-[#1F2D2E]">{d.userName}</span></Td>
+                  <Td>
+                    <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-zinc-500">
+                      {d.userRole === "talent" ? "Talento" : "Agência"}
+                    </span>
+                  </Td>
+                  <Td right><strong className="text-[#1F2D2E]">{brl(d.amount)}</strong></Td>
+                  <Td>
+                    <Badge
+                      value={DEPOSIT_STATUS_LABELS[d.status] ?? d.status}
+                      tone={DEPOSIT_STATUS_TONES[d.status] ?? DEPOSIT_STATUS_TONES.cancelled}
+                    />
+                  </Td>
+                  <Td>
+                    <span className="text-xs text-zinc-500">{d.provider ?? "—"}</span>
+                  </Td>
+                  <Td>
+                    {d.asaasPaymentId
+                      ? <span className="font-mono text-xs text-zinc-500">{d.asaasPaymentId}</span>
+                      : <span className="text-xs text-zinc-400">—</span>}
+                  </Td>
+                  <Td>{fmt(d.createdAt)}</Td>
+                  <Td>{fmt(d.processedAt)}</Td>
+                </tr>
+              ))}
+            </tbody>
+          </TableCard>
+          <ShowMoreButton total={deposits.length} threshold={15} expanded={expanded} onToggle={() => setExpanded((c) => !c)} />
+        </>
+      )}
+    </Section>
+  );
+}
+
 // -- Main component ----------------------------------------------------------
 
 type PlatformBalanceState =
@@ -1329,6 +1498,7 @@ export default function AdminFinances({
   withdrawals = [],
   agencyWallets = [],
   talentWallets = [],
+  deposits = [],
 }: {
   summary: FinancesSummary;
   bookings: FinancesBooking[];
@@ -1338,6 +1508,7 @@ export default function AdminFinances({
   withdrawals?: FinancesWithdrawal[];
   agencyWallets?: FinancesWallet[];
   talentWallets?: FinancesWallet[];
+  deposits?: FinancesDeposit[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("saques");
   const [platformBalance, setPlatformBalance] = useState<PlatformBalanceState>({ status: "loading" });
@@ -1364,6 +1535,7 @@ export default function AdminFinances({
     { id: "contratos", label: "Contratos" },
     { id: "reservas",  label: "Reservas" },
     { id: "planos",    label: "Planos" },
+    { id: "depositos", label: "Depósitos",   badge: deposits.length > 0 ? deposits.length : undefined },
   ];
 
   return (
@@ -1464,9 +1636,9 @@ export default function AdminFinances({
         <div className={activeTab === "visao-geral" ? "" : "hidden"}>
           <Section title="Obrigações financeiras" subtitle="Mínimo necessário para honrar todos os compromissos da plataforma.">
             <div className="grid gap-4 md:grid-cols-3">
-              <StatCard label="Escrow de contratos"    value={brl(summary.contractsEscrowValue)}   sub="Bruto em custódia" />
-              <StatCard label="Carteiras das agências" value={brl(summary.agencyWalletTotal)}       sub="Saldo pertencente às agências" />
-              <StatCard label="Passivo com talentos"   value={brl(summary.contractsAwaitingValue)} sub="Líquido pago, não sacado" />
+              <StatCard label="Escrow de contratos"    value={brl(summary.contractsEscrowValue)}  sub="Bruto em custódia" />
+              <StatCard label="Carteiras das agências" value={brl(summary.agencyWalletTotal)}      sub="Saldo pertencente às agências" />
+              <StatCard label="Carteiras de talentos"  value={brl(summary.talentWalletTotal)}      sub="Saldo pertencente aos talentos" />
             </div>
 
             <div className="rounded-2xl border border-[#DDE6E6] bg-white p-5">
@@ -1475,7 +1647,7 @@ export default function AdminFinances({
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Mínimo necessário</p>
                   <p className="mt-2 text-4xl font-bold tracking-tight text-[#1F2D2E]">{brl(summary.minimumRequired)}</p>
                   <p className="mt-1.5 text-sm text-zinc-500">
-                    {brl(summary.contractsEscrowValue)} escrow + {brl(summary.contractsAwaitingValue)} talentos + {brl(summary.agencyWalletTotal)} carteiras
+                    {brl(summary.contractsEscrowValue)} escrow + {brl(summary.talentWalletTotal)} talentos + {brl(summary.agencyWalletTotal)} agências
                   </p>
                 </div>
                 {platformBalance.status === "ok" && (
@@ -1515,8 +1687,11 @@ export default function AdminFinances({
         {/* Planos */}
         <div className={activeTab === "planos" ? "" : "hidden"}>
           <SubscriptionsSection subscriptions={subscriptions} summary={summary} />
-          <Divider />
-          <WithdrawalFeesSection withdrawals={withdrawals} />
+        </div>
+
+        {/* Depósitos */}
+        <div className={activeTab === "depositos" ? "" : "hidden"}>
+          <DepositsSection deposits={deposits} />
         </div>
 
       </div>
