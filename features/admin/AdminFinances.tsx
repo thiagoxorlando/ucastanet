@@ -875,17 +875,17 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
   }, [withdrawals]);
 
   const pending = rows
-    .filter((w) => w.status === "pending" || w.status === "processing")
+    .filter((w) => w.status === "pending" || w.status === "processing" || w.status === "blocked")
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  // processing = automated (Asaas/provider in flight) — no admin action needed
-  const processing = pending.filter((w) => w.status === "processing");
+  // processing/blocked = automated (Asaas/provider in flight) — no admin action needed
+  const processing = pending.filter((w) => w.status === "processing" || w.status === "blocked");
   // manual = status pending only — admin must act
   const agencyPending = pending.filter((w) => w.userRole === "agency" && w.status === "pending");
   const talentPending = pending.filter((w) => w.userRole === "talent" && w.status === "pending");
   const visibleAgencyPending = expandedAgencyPending ? agencyPending : agencyPending.slice(0, 5);
   const visibleTalentPending = expandedTalentPending ? talentPending : talentPending.slice(0, 5);
   const history = rows
-    .filter((w) => !["pending", "processing"].includes(w.status))
+    .filter((w) => !["pending", "processing", "blocked"].includes(w.status))
     .sort((a, b) => new Date(b.processedAt ?? b.createdAt).getTime() - new Date(a.processedAt ?? a.createdAt).getTime());
   const visibleHistory = expandedHistory ? history : history.slice(0, 10);
 
@@ -983,6 +983,9 @@ function WithdrawalsSection({ withdrawals }: { withdrawals: FinancesWithdrawal[]
     }
     if (status === "processing") {
       return <Badge value="Em processamento" tone="bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100" />;
+    }
+    if (status === "blocked") {
+      return <Badge value="Bloqueado" tone="bg-orange-50 text-orange-700 ring-1 ring-orange-100" />;
     }
     return <Badge value={status} tone="bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200" />;
   }
@@ -1351,7 +1354,7 @@ export default function AdminFinances({
   }, []);
 
   const safe = platformBalance.status === "ok" && platformBalance.balance >= summary.minimumRequired;
-  const pendingCount = withdrawals.filter((w) => w.status === "pending" || w.status === "processing").length;
+  const pendingCount = withdrawals.filter((w) => w.status === "pending" || w.status === "processing" || w.status === "blocked").length;
   const totalWallets = agencyWallets.length + talentWallets.length;
 
   const TABS: { id: Tab; label: string; badge?: number }[] = [

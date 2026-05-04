@@ -130,6 +130,7 @@ const STATUS_LABEL: Record<string, string> = {
 const WITHDRAWAL_STATUS_LABEL: Record<string, string> = {
   pending: "Pendente",
   processing: "Processando",
+  blocked: "Bloqueado",
   paid: "Pago",
   cancelled: "Cancelado",
   rejected: "Cancelado",
@@ -613,7 +614,7 @@ export default function TalentFinances() {
   const withdrawAmountNum = Math.round(Number(withdrawAmount) * 100) / 100;
   const filteredPayments = payments.filter((p) => periodMatches(p.date, period));
   const filteredReferrals = referrals.filter((r) => periodMatches(r.date, period));
-  const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending" || w.status === "processing");
+  const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending" || w.status === "processing" || w.status === "blocked");
   const filteredWithdrawalHistory = withdrawals.filter((w) =>
     (w.status === "paid" || w.status === "cancelled" || w.status === "rejected" || w.status === "failed")
     && periodMatches(w.processed_at ?? w.created_at, period),

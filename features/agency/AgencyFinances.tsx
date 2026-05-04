@@ -93,6 +93,7 @@ const WITHDRAWAL_STATUS_LABEL: Record<string, string> = {
   pending: "Pendente",
   paid: "Pago",
   processing: "Processando",
+  blocked: "Bloqueado",
   cancelled: "Cancelado",
   rejected: "Cancelado",
   failed: "Falhou",
@@ -168,7 +169,10 @@ export default function AgencyFinances({
     withdrawAmountNum <= walletBalance,
   );
   const pendingWithdrawals = transactions.filter(
-    (transaction) => transaction.withdrawalStatus === "pending" || transaction.withdrawalStatus === "processing",
+    (transaction) =>
+      transaction.withdrawalStatus === "pending" ||
+      transaction.withdrawalStatus === "processing" ||
+      transaction.withdrawalStatus === "blocked",
   );
   const withdrawalHistory = transactions.filter(
     (transaction) => transaction.withdrawalStatus === "paid" || transaction.withdrawalStatus === "cancelled" || transaction.withdrawalStatus === "rejected",
