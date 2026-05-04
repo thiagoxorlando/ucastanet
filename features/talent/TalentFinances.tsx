@@ -489,7 +489,6 @@ export default function TalentFinances() {
   const [pixReady, setPixReady] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [period, setPeriod]             = useState<PeriodFilter>("all");
-  const [showAllBookings, setShowAllBookings]   = useState(false);
   const [showAllWithdrawals, setShowAllWithdrawals] = useState(false);
   const [showAllReferrals, setShowAllReferrals] = useState(false);
   const [expandedWithdrawal, setExpandedWithdrawal] = useState<string | null>(null);
@@ -743,7 +742,6 @@ export default function TalentFinances() {
   // contract payouts and referral commissions after they are credited.
   const availableToWithdraw = Math.max(0, walletBalance);
   const withdrawAmountNum = Math.round(Number(withdrawAmount) * 100) / 100;
-  const filteredPayments = payments.filter((p) => periodMatches(p.date, period));
   const filteredReferrals = referrals.filter((r) => periodMatches(r.date, period));
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending" || w.status === "processing" || w.status === "blocked");
   const filteredWithdrawalHistory = withdrawals.filter((w) =>
@@ -988,53 +986,6 @@ export default function TalentFinances() {
 
           {/* PIX account setup */}
           <PixSetup onSaved={(_, value, holderName) => setPixReady(Boolean(value.trim() && holderName.trim()))} />
-
-          {/* My bookings */}
-          <div className="space-y-3">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Minhas Reservas</p>
-
-            {filteredPayments.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-zinc-100 py-12 text-center">
-                <p className="text-[14px] font-medium text-zinc-500">Nenhuma reserva neste período</p>
-                <p className="text-[13px] text-zinc-400 mt-1">Ajuste o filtro para ver outros registros.</p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] divide-y divide-zinc-50 overflow-hidden">
-                {visibleItems(filteredPayments, showAllBookings).map((p) => (
-                  <div key={p.id} className="flex items-center gap-4 px-6 py-4 hover:bg-zinc-50/60 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-semibold text-zinc-900 truncate">{p.job}</p>
-                      <p className="text-[12px] text-zinc-400 mt-0.5">
-                        {new Date(p.date).toLocaleDateString("pt-BR", { month: "short", day: "numeric", year: "numeric" })}
-                      </p>
-                      {(p.gender || (p.ageMin && p.ageMax)) && (
-                        <p className="text-[11px] text-zinc-400 mt-0.5 flex items-center gap-2">
-                          {p.gender && p.gender !== "any" && (
-                            <span className="bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded font-medium capitalize">{p.gender}</span>
-                          )}
-                          {p.ageMin && p.ageMax && (
-                            <span className="bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded font-medium">Idade {p.ageMin}–{p.ageMax}</span>
-                          )}
-                        </p>
-                      )}
-                    </div>
-                    <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${STATUS_CLS[p.status] ?? "bg-zinc-100 text-zinc-500"}`}>
-                      {STATUS_LABEL[p.status] ?? p.status}
-                    </span>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-[15px] font-semibold text-zinc-900 tabular-nums">{brl(p.earnings)}</p>
-                      <p className="text-[11px] text-zinc-400 tabular-nums">de {brl(p.amount)}</p>
-                    </div>
-                  </div>
-                ))}
-                <ShowMoreButton
-                  total={filteredPayments.length}
-                  expanded={showAllBookings}
-                  onClick={() => setShowAllBookings((value) => !value)}
-                />
-              </div>
-            )}
-          </div>
 
           {/* Withdrawal history */}
           {filteredWithdrawalHistory.length > 0 && (
