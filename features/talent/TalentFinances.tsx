@@ -164,12 +164,16 @@ type PixProfileRow = {
 type TalentWithdrawal = {
   id: string;
   amount: number;
+  net_amount: number | null;
+  fee_amount: number | null;
   status: string | null;
   created_at: string;
   processed_at: string | null;
   admin_note: string | null;
   provider: string | null;
   provider_status: string | null;
+  provider_transfer_id: string | null;
+  asaas_transfer_id: string | null;
 };
 
 const PIX_LABELS: Record<PixKeyType, string> = {
@@ -369,6 +373,110 @@ function PixSetup({ onSaved }: { onSaved: (type: PixKeyType, value: string, hold
 
 type WithdrawState = "idle" | "loading" | "success" | "error";
 
+// ── Receipt generator ─────────────────────────────────────────────────────────
+
+function maskPixKey(type: string | null, value: string | null): string {
+  if (!value) return "—";
+  if (type === "cpf" && value.length >= 4) return `***.***.${value.slice(-4, -2)}-${value.slice(-2)}`;
+  if (type === "cnpj" && value.length >= 4) return `**/****-${value.slice(-2)}`;
+  if (type === "email") {
+    const [user, domain] = value.split("@");
+    return `${user.slice(0, 2)}***@${domain ?? ""}`;
+  }
+  if (type === "phone" && value.length >= 4) return `+55 ** *****-${value.slice(-4)}`;
+  if (value.length > 8) return `${value.slice(0, 4)}…${value.slice(-4)}`;
+  return value;
+}
+
+function generateReceiptHtml(w: TalentWithdrawal, pix: PixProfileRow | null, talentName: string): string {
+  const dateStr = new Date(w.processed_at ?? w.created_at).toLocaleString("pt-BR", {
+    day: "2-digit", month: "long", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+
+  const pixTypeLabel = pix?.pix_key_type ? (
+    { cpf: "CPF", cnpj: "CNPJ", email: "E-mail", phone: "Telefone", random: "Chave Aleatória" }[pix.pix_key_type] ?? pix.pix_key_type
+  ) : null;
+
+  const transferRef = w.asaas_transfer_id ?? w.provider_transfer_id ?? null;
+  const netDisplay = w.net_amount !== null ? brl(w.net_amount) : brl(w.amount);
+  const feeDisplay = w.fee_amount !== null && w.fee_amount > 0 ? brl(w.fee_amount) : null;
+
+  const statusLabel: Record<string, string> = {
+    paid: "Concluído", cancelled: "Cancelado", rejected: "Cancelado",
+    failed: "Falhou", processing: "Em processamento",
+  };
+
+  const row = (label: string, value: string) =>
+    `<tr><td style="padding:10px 0;color:#6b7280;font-size:13px;border-bottom:1px solid #f3f4f6;width:45%">${label}</td><td style="padding:10px 0;font-size:13px;font-weight:600;color:#111827;border-bottom:1px solid #f3f4f6;text-align:right">${value}</td></tr>`;
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Comprovante de Saque — BrisaHub</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:24px;background:#fff;color:#111827}
+  @media print{body{padding:0}.no-print{display:none!important}}
+</style>
+</head>
+<body>
+<div style="max-width:480px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
+
+  <div style="background:linear-gradient(135deg,#0f766e,#0e7c86);padding:28px 28px 20px;color:#fff">
+    <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.75">BrisaHub</p>
+    <p style="margin:0;font-size:22px;font-weight:800;letter-spacing:-.3px">Comprovante de Saque</p>
+    <p style="margin:6px 0 0;font-size:13px;opacity:.8">${dateStr}</p>
+  </div>
+
+  <div style="padding:24px 28px">
+    <div style="text-align:center;margin-bottom:20px">
+      <p style="margin:0;font-size:36px;font-weight:800;color:#065f46;letter-spacing:-.5px">${netDisplay}</p>
+      ${feeDisplay ? `<p style="margin:4px 0 0;font-size:12px;color:#6b7280">Taxa: ${feeDisplay} · Bruto: ${brl(w.amount)}</p>` : ""}
+      <span style="display:inline-block;margin-top:8px;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;background:${w.status === "paid" ? "#d1fae5" : "#fee2e2"};color:${w.status === "paid" ? "#065f46" : "#991b1b"}">${statusLabel[w.status ?? ""] ?? w.status ?? ""}</span>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse">
+      ${row("Favorecido", pix?.pix_holder_name ?? talentName)}
+      ${pixTypeLabel ? row("Tipo de chave PIX", pixTypeLabel) : ""}
+      ${pix?.pix_key_value ? row("Chave PIX", maskPixKey(pix.pix_key_type, pix.pix_key_value)) : ""}
+      ${row("Provedor", w.provider === "asaas" ? "Asaas PIX" : w.provider ?? "PIX")}
+      ${row("Origem", "BrisaHub")}
+      ${transferRef ? row("ID da transferência", transferRef) : ""}
+      ${row("ID interno", w.id)}
+      ${w.admin_note ? row("Observação", w.admin_note) : ""}
+    </table>
+
+    <div style="margin-top:20px;padding:12px 14px;background:#f9fafb;border-radius:8px;font-size:11px;color:#6b7280;line-height:1.5">
+      Este comprovante é gerado automaticamente pela plataforma BrisaHub. Guarde-o para seus registros.
+    </div>
+
+    <div class="no-print" style="margin-top:20px;text-align:center">
+      <button onclick="window.print()" style="background:#0e7c86;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:600;cursor:pointer">
+        Imprimir / Salvar PDF
+      </button>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+}
+
+function downloadReceipt(w: TalentWithdrawal, pix: PixProfileRow | null, talentName: string) {
+  const html = generateReceiptHtml(w, pix, talentName);
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, "_blank");
+  if (win) {
+    win.addEventListener("load", () => {
+      setTimeout(() => {
+        win.print();
+        URL.revokeObjectURL(url);
+      }, 300);
+    });
+  }
+}
+
 export default function TalentFinances() {
   const [payments, setPayments]         = useState<Payment[]>([]);
   const [referrals, setReferrals]       = useState<Referral[]>([]);
@@ -384,6 +492,9 @@ export default function TalentFinances() {
   const [showAllBookings, setShowAllBookings]   = useState(false);
   const [showAllWithdrawals, setShowAllWithdrawals] = useState(false);
   const [showAllReferrals, setShowAllReferrals] = useState(false);
+  const [expandedWithdrawal, setExpandedWithdrawal] = useState<string | null>(null);
+  const [pixProfile, setPixProfile] = useState<PixProfileRow | null>(null);
+  const [talentName, setTalentName] = useState("");
 
   async function load(initial = false) {
     if (initial) setLoading(true);
@@ -398,23 +509,43 @@ export default function TalentFinances() {
 
     setWalletBalance(Number(profileBalance?.wallet_balance ?? 0));
 
-    const { data: withdrawalRows } = await supabase
-      .from("wallet_transactions")
-      .select("id, amount, status, created_at, processed_at, admin_note, provider, provider_status")
-      .eq("user_id", user.id)
-      .eq("type", "withdrawal")
-      .order("created_at", { ascending: false });
+    const [{ data: withdrawalRows }, { data: pixRow }] = await Promise.all([
+      supabase
+        .from("wallet_transactions")
+        .select("id, amount, net_amount, fee_amount, status, created_at, processed_at, admin_note, provider, provider_status, provider_transfer_id, asaas_transfer_id")
+        .eq("user_id", user.id)
+        .eq("type", "withdrawal")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("talent_profiles")
+        .select("full_name, pix_key_type, pix_key_value, pix_holder_name")
+        .eq("id", user.id)
+        .maybeSingle(),
+    ]);
 
-    setWithdrawals((withdrawalRows ?? []).map((row) => ({
-      id: row.id,
-      amount: Number(row.amount ?? 0),
-      status: row.status ?? null,
-      created_at: row.created_at,
-      processed_at: (row as Record<string, unknown>).processed_at as string | null ?? null,
-      admin_note: (row as Record<string, unknown>).admin_note as string | null ?? null,
-      provider: (row as Record<string, unknown>).provider as string | null ?? null,
-      provider_status: (row as Record<string, unknown>).provider_status as string | null ?? null,
-    })));
+    if (pixRow) {
+      const p = pixRow as PixProfileRow & { full_name?: string };
+      setPixProfile(p);
+      if (p.full_name) setTalentName(p.full_name);
+    }
+
+    setWithdrawals((withdrawalRows ?? []).map((row) => {
+      const r = row as Record<string, unknown>;
+      return {
+        id: row.id,
+        amount: Number(row.amount ?? 0),
+        net_amount: typeof r.net_amount === "number" ? r.net_amount : null,
+        fee_amount: typeof r.fee_amount === "number" ? r.fee_amount : null,
+        status: row.status ?? null,
+        created_at: row.created_at,
+        processed_at: r.processed_at as string | null ?? null,
+        admin_note: r.admin_note as string | null ?? null,
+        provider: r.provider as string | null ?? null,
+        provider_status: r.provider_status as string | null ?? null,
+        provider_transfer_id: r.provider_transfer_id as string | null ?? null,
+        asaas_transfer_id: r.asaas_transfer_id as string | null ?? null,
+      };
+    }));
 
     // My bookings
     const { data: bookingsData } = await supabase
@@ -910,31 +1041,142 @@ export default function TalentFinances() {
             <div className="space-y-3">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Histórico de Saques</p>
               <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden divide-y divide-zinc-50">
-                {visibleItems(filteredWithdrawalHistory, showAllWithdrawals).map((withdrawal) => (
-                  <div key={withdrawal.id} className="px-5 py-4 flex items-center gap-4">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-zinc-900">{WITHDRAWAL_STATUS_LABEL[withdrawal.status ?? "paid"] ?? withdrawal.status ?? "Saque"}</p>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">
-                        {new Date(withdrawal.processed_at ?? withdrawal.created_at).toLocaleDateString("pt-BR", { weekday: "short", month: "long", day: "numeric", year: "numeric" })}
-                      </p>
-                      <p className="text-[11px] text-zinc-500 mt-0.5">
-                        Saque via PIX
-                        {withdrawal.provider_status ? ` · ${withdrawal.provider_status}` : ""}
-                      </p>
-                      {withdrawal.admin_note && (
-                        <p className="text-[11px] text-zinc-500 mt-1">{withdrawal.admin_note}</p>
+                {visibleItems(filteredWithdrawalHistory, showAllWithdrawals).map((withdrawal) => {
+                  const isExpanded = expandedWithdrawal === withdrawal.id;
+                  const refDate = new Date(withdrawal.processed_at ?? withdrawal.created_at);
+                  const transferRef = withdrawal.asaas_transfer_id ?? withdrawal.provider_transfer_id;
+                  const netDisplay = withdrawal.net_amount !== null ? brl(withdrawal.net_amount) : brl(withdrawal.amount);
+                  const pixTypeLabel = pixProfile?.pix_key_type
+                    ? ({ cpf: "CPF", cnpj: "CNPJ", email: "E-mail", phone: "Telefone", random: "Chave Aleatória" }[pixProfile.pix_key_type] ?? pixProfile.pix_key_type)
+                    : null;
+
+                  const isPaid = withdrawal.status === "paid";
+
+                  return (
+                    <div key={withdrawal.id}>
+                      {/* Summary row — click to toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedWithdrawal(isExpanded ? null : withdrawal.id)}
+                        className="w-full px-5 py-4 flex items-center gap-4 text-left hover:bg-zinc-50/60 transition-colors"
+                      >
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${isPaid ? "bg-emerald-100" : "bg-zinc-100"}`}>
+                          <svg className={`w-4 h-4 ${isPaid ? "text-emerald-600" : "text-zinc-400"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-semibold text-zinc-900">{WITHDRAWAL_STATUS_LABEL[withdrawal.status ?? "paid"] ?? withdrawal.status ?? "Saque"}</p>
+                          <p className="text-[11px] text-zinc-400 mt-0.5">
+                            {refDate.toLocaleDateString("pt-BR", { weekday: "short", month: "long", day: "numeric", year: "numeric" })}
+                            {" · "}
+                            {refDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <div className="text-right">
+                            <p className={`text-[20px] font-semibold tracking-tight tabular-nums leading-none ${isPaid ? "text-emerald-700" : "text-zinc-400"}`}>{netDisplay}</p>
+                            {withdrawal.net_amount !== null && withdrawal.fee_amount !== null && withdrawal.fee_amount > 0 && (
+                              <p className="text-[10px] text-zinc-400 mt-0.5">bruto {brl(withdrawal.amount)}</p>
+                            )}
+                          </div>
+                          <svg className={`w-4 h-4 text-zinc-300 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
+                      </button>
+
+                      {/* Expanded detail */}
+                      {isExpanded && (
+                        <div className="border-t border-zinc-50 bg-zinc-50/60 px-5 py-4 space-y-3">
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[12px]">
+                            <div>
+                              <p className="text-zinc-400 mb-0.5">Status</p>
+                              <p className="font-semibold text-zinc-800">{WITHDRAWAL_STATUS_LABEL[withdrawal.status ?? ""] ?? withdrawal.status ?? "—"}</p>
+                            </div>
+                            <div>
+                              <p className="text-zinc-400 mb-0.5">Valor líquido</p>
+                              <p className="font-semibold text-emerald-700">{netDisplay}</p>
+                            </div>
+                            {withdrawal.fee_amount !== null && withdrawal.fee_amount > 0 && (
+                              <div>
+                                <p className="text-zinc-400 mb-0.5">Taxa</p>
+                                <p className="font-semibold text-zinc-800">{brl(withdrawal.fee_amount)}</p>
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-zinc-400 mb-0.5">Data</p>
+                              <p className="font-semibold text-zinc-800">{refDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}</p>
+                            </div>
+                            <div>
+                              <p className="text-zinc-400 mb-0.5">Horário</p>
+                              <p className="font-semibold text-zinc-800">{refDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
+                            </div>
+                            {pixTypeLabel && (
+                              <div>
+                                <p className="text-zinc-400 mb-0.5">Tipo de chave PIX</p>
+                                <p className="font-semibold text-zinc-800">{pixTypeLabel}</p>
+                              </div>
+                            )}
+                            {pixProfile?.pix_key_value && (
+                              <div>
+                                <p className="text-zinc-400 mb-0.5">Chave PIX</p>
+                                <p className="font-semibold text-zinc-800 font-mono text-[11px]">{maskPixKey(pixProfile.pix_key_type, pixProfile.pix_key_value)}</p>
+                              </div>
+                            )}
+                            {pixProfile?.pix_holder_name && (
+                              <div>
+                                <p className="text-zinc-400 mb-0.5">Titular</p>
+                                <p className="font-semibold text-zinc-800">{pixProfile.pix_holder_name}</p>
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-zinc-400 mb-0.5">Provedor</p>
+                              <p className="font-semibold text-zinc-800">{withdrawal.provider === "asaas" ? "Asaas PIX" : withdrawal.provider ?? "PIX"}</p>
+                            </div>
+                            <div>
+                              <p className="text-zinc-400 mb-0.5">Origem</p>
+                              <p className="font-semibold text-zinc-800">BrisaHub</p>
+                            </div>
+                            {transferRef && (
+                              <div className="col-span-2">
+                                <p className="text-zinc-400 mb-0.5">ID da transferência</p>
+                                <p className="font-semibold text-zinc-800 font-mono text-[11px] break-all">{transferRef}</p>
+                              </div>
+                            )}
+                            <div className="col-span-2">
+                              <p className="text-zinc-400 mb-0.5">ID interno</p>
+                              <p className="font-medium text-zinc-500 font-mono text-[10px] break-all">{withdrawal.id}</p>
+                            </div>
+                            {withdrawal.provider_status && (
+                              <div className="col-span-2">
+                                <p className="text-zinc-400 mb-0.5">Status do provedor</p>
+                                <p className="font-semibold text-zinc-800">{withdrawal.provider_status}</p>
+                              </div>
+                            )}
+                            {withdrawal.admin_note && (
+                              <div className="col-span-2">
+                                <p className="text-zinc-400 mb-0.5">Observação</p>
+                                <p className="font-semibold text-zinc-800">{withdrawal.admin_note}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => downloadReceipt(withdrawal, pixProfile, talentName)}
+                            className="flex items-center gap-2 rounded-xl border border-[#DDE6E6] bg-white px-4 py-2 text-[12px] font-semibold text-[#0E7C86] transition-colors hover:bg-[#F0F9F8] hover:border-[#0E7C86]"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Baixar comprovante
+                          </button>
+                        </div>
                       )}
                     </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-[20px] font-semibold tracking-tight text-emerald-700 tabular-nums leading-none">{brl(withdrawal.amount)}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <ShowMoreButton
                   total={filteredWithdrawalHistory.length}
                   expanded={showAllWithdrawals}
