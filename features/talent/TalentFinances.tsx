@@ -380,7 +380,6 @@ export default function TalentFinances() {
   const [pixReady, setPixReady] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [period, setPeriod]             = useState<PeriodFilter>("all");
-  const [showAllContracts, setShowAllContracts] = useState(false);
   const [showAllBookings, setShowAllBookings]   = useState(false);
   const [showAllWithdrawals, setShowAllWithdrawals] = useState(false);
   const [showAllReferrals, setShowAllReferrals] = useState(false);
@@ -612,7 +611,6 @@ export default function TalentFinances() {
   // contract payouts and referral commissions after they are credited.
   const availableToWithdraw = Math.max(0, walletBalance);
   const withdrawAmountNum = Math.round(Number(withdrawAmount) * 100) / 100;
-  const filteredPaidContracts = paidContracts.filter((c) => periodMatches(c.paid_at, period));
   const filteredPayments = payments.filter((p) => periodMatches(p.date, period));
   const filteredReferrals = referrals.filter((r) => periodMatches(r.date, period));
   const pendingWithdrawals = withdrawals.filter((w) => w.status === "pending" || w.status === "processing");
@@ -716,20 +714,10 @@ export default function TalentFinances() {
               stripe="from-amber-400 to-orange-500"
             />
             <StatCard
-              label="Saldo Total"
-              value={brl(walletBalance)}
-              sub="Saldo atual em carteira"
-              stripe="from-emerald-400 to-teal-500"
-            />
-            <StatCard
               label="Disponível para saque"
               value={brl(availableToWithdraw)}
-              sub={
-                availableToWithdraw > 0
-                  ? `Saldo disponível: ${brl(availableToWithdraw)}`
-                  : "Nada pendente"
-              }
-              stripe="from-cyan-400 to-sky-500"
+              sub={alreadyWithdrawn > 0 ? `${brl(alreadyWithdrawn)} já sacado` : "Pronto para saque"}
+              stripe="from-emerald-400 to-teal-500"
             />
             <StatCard
               label="Indicações"
@@ -748,7 +736,6 @@ export default function TalentFinances() {
                 {alreadyWithdrawn > 0 && (
                   <p className="text-[12px] text-zinc-400 mt-1">{brl(alreadyWithdrawn)} já sacado</p>
                 )}
-                <p className="text-[12px] text-zinc-400 mt-1">Saldo total em carteira: {brl(walletBalance)}</p>
               </div>
             </div>
 
@@ -841,30 +828,6 @@ export default function TalentFinances() {
               </div>
             )}
 
-            {/* Per-contract breakdown */}
-            {filteredPaidContracts.length > 0 && (
-              <div className="border-t border-zinc-50 divide-y divide-zinc-50">
-                {visibleItems(filteredPaidContracts, showAllContracts).map((c) => (
-                  <div key={c.id} className="flex items-center gap-4 px-6 py-3 hover:bg-zinc-50/60 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-zinc-900 truncate">{c.jobTitle}</p>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">
-                        Pago em {c.paid_at ? new Date(c.paid_at).toLocaleDateString("pt-BR", { month: "short", day: "numeric", year: "numeric" }) : "—"}
-                      </p>
-                    </div>
-                    <span className="text-[11px] font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 px-2.5 py-1 rounded-full flex-shrink-0">
-                      Pago
-                    </span>
-                    <p className="text-[14px] font-semibold text-zinc-900 tabular-nums flex-shrink-0">{brl(c.earnings)}</p>
-                  </div>
-                ))}
-                <ShowMoreButton
-                  total={filteredPaidContracts.length}
-                  expanded={showAllContracts}
-                  onClick={() => setShowAllContracts((value) => !value)}
-                />
-              </div>
-            )}
           </div>
 
           {/* Pending payment notice */}
