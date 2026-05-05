@@ -92,17 +92,27 @@ export async function POST(req: NextRequest) {
   }
 
   // Store pending plan charge — marked paid by webhook on PAYMENT_CONFIRMED.
-  // ON CONFLICT on asaas_payment_id is a safety net against double-submission.
-  await supabase.from("wallet_transactions").upsert({
-    user_id:          user.id,
-    type:             "plan_charge",
-    amount:           planPrice,
-    description:      `Plano ${planLabel} - BrisaHub`,
-    asaas_payment_id: payment.id,
-    invoice_url:      payment.invoiceUrl,
-    provider:         "asaas",
-    status:           "pending",
-  } as Record<string, unknown>, { onConflict: "asaas_payment_id", ignoreDuplicates: true });
+  // Uses payment_id column (exists since 20260417 migration, has unique index).
+  // Avoids invoice_url / asaas_payment_id which may not exist in production yet.
+  const { error: chargeInsertErr } = await supabase.from("wallet_transactions").upsert({
+    user_id:     user.id,
+    type:        "plan_charge",
+    amount:      planPrice,
+    description: `Plano ${planLabel} - BrisaHub`,
+    payment_id:  payment.id,
+    provider:    "asaas",
+    status:      "pending",
+  } as Record<string, unknown>, { onConflict: "payment_id", ignoreDuplicates: true });
+
+  if (chargeInsertErr) {
+    console.error("[asaas/plan/checkout] plan_charge insert failed (non-fatal)", {
+      userId: user.id, paymentId: payment.id, err: chargeInsertErr.message,
+    });
+  } else {
+    console.log("[asaas/plan/checkout] plan_charge row inserted", {
+      userId: user.id, paymentId: payment.id, plan: requestedPlan,
+    });
+  }
 
   return NextResponse.json({ url: payment.invoiceUrl });
 }

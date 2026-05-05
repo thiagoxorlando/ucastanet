@@ -1,13 +1,7 @@
--- Add columns needed to track Asaas plan-subscription charges in wallet_transactions.
--- All statements are idempotent.
+-- Add invoice_url to wallet_transactions for storing Asaas payment invoice links.
+-- All other columns used by plan_charge rows (status, payment_id, provider, etc.)
+-- already exist from earlier migrations (20260417, 20260425, 20260427).
+-- This statement is idempotent.
 
 ALTER TABLE wallet_transactions
-  ADD COLUMN IF NOT EXISTS asaas_payment_id text,
-  ADD COLUMN IF NOT EXISTS asaas_status     text,
-  ADD COLUMN IF NOT EXISTS status           text,
-  ADD COLUMN IF NOT EXISTS invoice_url      text;
-
--- Unique index so we never double-insert for the same Asaas payment id.
-CREATE UNIQUE INDEX IF NOT EXISTS wallet_transactions_asaas_payment_id_uniq
-  ON wallet_transactions(asaas_payment_id)
-  WHERE asaas_payment_id IS NOT NULL;
+  ADD COLUMN IF NOT EXISTS invoice_url text;

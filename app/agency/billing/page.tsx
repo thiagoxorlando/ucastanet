@@ -14,49 +14,49 @@ export default async function BillingPage() {
 
   const [
     { data: profile, error: profileError },
-    { data: chargeRows },
-    { data: webhookEvents },
+    { data: chargeRows, error: chargeError },
+    { data: webhookEvents, error: webhookError },
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("plan, plan_status, plan_expires_at")
+      .select("plan, plan_status, plan_expires_at, asaas_customer_id")
       .eq("id", userId)
       .maybeSingle(),
 
-    // Dedicated plan-charge rows written by checkout + webhook
+    // payment_id stores Asaas payment ID — column exists since 20260417 migration.
+    // Avoid selecting invoice_url / asaas_payment_id which may not exist in production.
     supabase
       .from("wallet_transactions")
-      .select("id, amount, description, created_at, status, asaas_payment_id, invoice_url, provider")
+      .select("id, amount, description, created_at, status, payment_id, provider")
       .eq("user_id", userId)
       .eq("type", "plan_charge")
       .order("created_at", { ascending: false })
       .limit(50),
 
-    // Fallback: raw webhook events for PAYMENT_CONFIRMED with plan externalReference.
-    // Used to surface the charge that activated the plan before the wallet_transaction fix.
+    // Fallback: raw webhook events for plan payments.
+    // Query both PAYMENT_RECEIVED and PAYMENT_CONFIRMED because either event
+    // may be the first (and only) one stored for a given credit-card payment.
     supabase
       .from("asaas_webhook_events")
       .select("raw_payload, created_at")
-      .eq("event_type", "PAYMENT_CONFIRMED")
+      .in("event_type", ["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"])
       .order("created_at", { ascending: false })
-      .limit(100),
+      .limit(200),
   ]);
 
   if (profileError) {
-    console.error("[agency billing] failed to load core profile", {
-      userId,
-      error: profileError.message,
-    });
+    console.error("[billing] profile load failed", { userId, err: profileError.message });
+  }
+  if (chargeError) {
+    console.error("[billing] wallet_transactions query failed", { userId, err: chargeError.message });
+  }
+  if (webhookError) {
+    console.error("[billing] asaas_webhook_events query failed", { err: webhookError.message });
   }
 
-  // Build plan charge list: wallet_transactions are the primary source.
-  // Supplement with any confirmed webhook events for this user that aren't
-  // already represented (matched by asaas_payment_id).
-  const seenPaymentIds = new Set<string>(
-    (chargeRows ?? [])
-      .map((r) => (r as Record<string, unknown>).asaas_payment_id as string | null)
-      .filter((id): id is string => !!id),
-  );
+  const profileRow = profile as Record<string, unknown> | null;
+  const asaasCustomerId = (profileRow?.asaas_customer_id as string | null) ?? null;
+
 
   type PlanCharge = {
     id: string;
@@ -69,6 +69,7 @@ export default async function BillingPage() {
     provider: string | null;
   };
 
+  // Primary source: wallet_transactions with type = 'plan_charge'
   const charges: PlanCharge[] = (chargeRows ?? []).map((r) => {
     const row = r as Record<string, unknown>;
     return {
@@ -77,27 +78,48 @@ export default async function BillingPage() {
       description:      (row.description as string | null) ?? null,
       created_at:       String(row.created_at ?? ""),
       status:           (row.status as string | null) ?? null,
-      asaas_payment_id: (row.asaas_payment_id as string | null) ?? null,
-      invoice_url:      (row.invoice_url as string | null) ?? null,
+      asaas_payment_id: (row.payment_id as string | null) ?? null,  // payment_id stores Asaas ID
+      invoice_url:      null,
       provider:         (row.provider as string | null) ?? "asaas",
     };
   });
 
-  // Supplement from webhook events for charges that pre-date the wallet_transaction fix
+  // payment_ids already captured from wallet_transactions
+  const seenPaymentIds = new Set<string>(
+    charges.map((c) => c.asaas_payment_id).filter((id): id is string => !!id),
+  );
+
+
+  // Fallback: synthesise charges from raw Asaas webhook events.
+  // Match by externalReference containing userId OR by customer field matching asaas_customer_id.
   for (const evt of webhookEvents ?? []) {
     const payload = evt.raw_payload as Record<string, unknown> | null;
     const paymentRaw = payload?.payment as Record<string, unknown> | null;
     if (!paymentRaw) continue;
 
+    const pid    = String(paymentRaw.id ?? "");
     const extRef = String(paymentRaw.externalReference ?? "");
-    if (!extRef.startsWith(`plan:`) || !extRef.endsWith(`:${userId}`)) continue;
+    const cust   = String(paymentRaw.customer ?? "");
 
-    const pid = String(paymentRaw.id ?? "");
+    // Skip if already covered by a wallet_transaction row
     if (!pid || seenPaymentIds.has(pid)) continue;
 
-    const parts = extRef.split(":");
-    const planKey = parts[1] ?? "";
-    const planLabel = planKey === "premium" ? "Premium" : "PRO";
+    // Match by externalReference (plan:{planKey}:{userId}) OR by customer ID
+    const matchesByRef      = extRef.startsWith("plan:") && extRef.endsWith(`:${userId}`);
+    const matchesByCustomer = asaasCustomerId && cust === asaasCustomerId;
+
+    if (!matchesByRef && !matchesByCustomer) continue;
+
+    // Only surface plan-related payments
+    if (!extRef.startsWith("plan:") && !matchesByRef) {
+      // customer match but no plan extRef — skip unless description says "plano"
+      const desc = String(paymentRaw.description ?? "").toLowerCase();
+      if (!desc.includes("plano")) continue;
+    }
+
+    const parts    = extRef.startsWith("plan:") ? extRef.split(":") : [];
+    const planKey  = parts[1] ?? "";
+    const planLabel = planKey === "premium" ? "Premium" : planKey === "pro" ? "PRO" : "Assinatura";
 
     charges.push({
       id:               `webhook:${pid}`,
@@ -110,16 +132,18 @@ export default async function BillingPage() {
       provider:         "asaas",
     });
     seenPaymentIds.add(pid);
+
   }
 
-  // Keep most-recent first
+
+  // Most-recent first, deduped
   charges.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
     <BillingDashboard
-      plan={profile?.plan ?? "free"}
-      planStatus={profile?.plan_status ?? null}
-      planExpiresAt={(profile as Record<string, unknown> | null)?.plan_expires_at as string | null ?? null}
+      plan={profileRow?.plan as string ?? "free"}
+      planStatus={profileRow?.plan_status as string | null ?? null}
+      planExpiresAt={profileRow?.plan_expires_at as string | null ?? null}
       planCharges={charges}
     />
   );

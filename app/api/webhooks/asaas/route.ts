@@ -170,33 +170,55 @@ export async function POST(req: NextRequest) {
           }
 
           // Mark the plan_charge wallet_transaction as paid (created by checkout route).
-          // If not found (e.g. checkout pre-dates this fix), insert it now as a fallback.
-          const { data: existingCharge } = await supabase
+          // Uses payment_id column (definitely exists, has unique index from 20260417 migration).
+          // Avoids asaas_payment_id / asaas_status / invoice_url which may be absent in production.
+          const { data: existingCharge, error: chargeLookupErr } = await supabase
             .from("wallet_transactions")
             .select("id, status")
-            .eq("asaas_payment_id", asaasPaymentId)
+            .eq("payment_id", asaasPaymentId)
+            .eq("type", "plan_charge")
             .maybeSingle();
+
+          if (chargeLookupErr) {
+            log("warn", "[asaas webhook] plan_charge lookup failed (non-fatal)", {
+              asaasPaymentId, err: chargeLookupErr.message,
+            });
+          }
 
           if (existingCharge) {
             if (existingCharge.status !== "paid") {
-              await supabase
+              const { error: updateErr } = await supabase
                 .from("wallet_transactions")
-                .update({ status: "paid", asaas_status: asaasStatus, processed_at: now } as Record<string, unknown>)
+                .update({ status: "paid", processed_at: now } as Record<string, unknown>)
                 .eq("id", existingCharge.id);
+              if (updateErr) {
+                log("warn", "[asaas webhook] plan_charge status update failed (non-fatal)", {
+                  chargeId: existingCharge.id, err: updateErr.message,
+                });
+              } else {
+                log("info", "[asaas webhook] plan_charge marked paid", { chargeId: existingCharge.id });
+              }
             }
           } else {
+            // Fallback: checkout didn't store the row (or pre-dates this fix) — insert now.
             const planLabel = planKey === "premium" ? "Premium" : "PRO";
-            await supabase.from("wallet_transactions").insert({
-              user_id:          userId,
-              type:             "plan_charge",
-              amount:           payment.value,
-              description:      `Plano ${planLabel} - BrisaHub`,
-              asaas_payment_id: asaasPaymentId,
-              provider:         "asaas",
-              status:           "paid",
-              asaas_status:     asaasStatus,
-              processed_at:     now,
+            const { error: insertErr } = await supabase.from("wallet_transactions").insert({
+              user_id:      userId,
+              type:         "plan_charge",
+              amount:       payment.value,
+              description:  `Plano ${planLabel} - BrisaHub`,
+              payment_id:   asaasPaymentId,
+              provider:     "asaas",
+              status:       "paid",
+              processed_at: now,
             } as Record<string, unknown>);
+            if (insertErr) {
+              log("warn", "[asaas webhook] plan_charge fallback insert failed (non-fatal)", {
+                userId, asaasPaymentId, err: insertErr.message,
+              });
+            } else {
+              log("info", "[asaas webhook] plan_charge inserted via fallback", { userId, asaasPaymentId });
+            }
           }
 
           await supabase
