@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
-import RehireModal from "@/components/agency/RehireModal";
 import InviteModal from "@/components/agency/InviteModal";
 import ReliabilityBadge from "@/components/agency/ReliabilityBadge";
 import { reliabilitySortScore } from "@/lib/reliability";
@@ -68,14 +67,13 @@ function formatDate(iso: string) {
 }
 
 export default function TalentHistory({
-  agencyId, initialHistory, defaultJobId,
+  agencyId, initialHistory,
   initialAvailability = {}, initialFilterDate,
 }: Props) {
   const today = new Date().toISOString().slice(0, 10);
 
   const [history, setHistory]           = useState<HistoryEntry[]>(initialHistory);
   const [search, setSearch]             = useState("");
-  const [rehireTarget, setRehireTarget] = useState<TalentProfile | null>(null);
   const [inviteTarget, setInviteTarget] = useState<TalentProfile | null>(null);
   const [favoriteLoading, setFavLoading] = useState<string | null>(null);
   const [filterDate, setFilterDate]     = useState(initialFilterDate ?? today);
@@ -295,15 +293,6 @@ export default function TalentHistory({
             Convidar para vaga
           </button>
 
-          {/* Full rehire modal — select job / amount */}
-          <button
-            onClick={() => setRehireTarget(t ? { ...t, id: entry.talent_id } : null)}
-            disabled={!t}
-            className="px-4 py-2 rounded-xl border border-zinc-200 hover:bg-zinc-50 active:scale-[0.97] text-zinc-600 text-[13px] font-semibold transition-all whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Escolher vaga e valor
-          </button>
-
           <Link
             href={`/agency/talent/${entry.talent_id}`}
             className="px-4 py-2 rounded-xl border border-zinc-200 hover:bg-zinc-50 active:scale-[0.97] text-zinc-600 text-[13px] font-semibold transition-all whitespace-nowrap text-center"
@@ -458,16 +447,6 @@ export default function TalentHistory({
         />
       )}
 
-      {/* Rehire modal */}
-      {rehireTarget && (
-        <RehireModal
-          talent={rehireTarget}
-          agencyId={agencyId}
-          defaultJobId={defaultJobId}
-          onClose={() => setRehireTarget(null)}
-          onSuccess={refreshHistory}
-        />
-      )}
     </div>
   );
 }
