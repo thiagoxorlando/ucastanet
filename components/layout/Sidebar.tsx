@@ -346,24 +346,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       <aside
         className={[
-          "fixed left-0 top-0 z-30 h-screen w-64 bg-white border-r border-[#DDE6E6] flex flex-col",
+          "fixed left-0 top-0 z-30 h-screen w-64 bg-[#102325] border-r border-white/10 flex flex-col text-[#EAF4F2]",
           "transition-transform duration-300 ease-in-out",
           "lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between px-5 h-16 border-b border-[#DDE6E6] flex-shrink-0">
+        <div className="flex items-center justify-between px-5 h-16 border-b border-white/10 flex-shrink-0">
           <Link href="/" className="flex items-center gap-2 min-w-0">
             <Logo size="md" src="/logo1.png" />
-            <p className="text-[10px] text-[#647B7B] leading-none tracking-wide uppercase">
+            <p className="text-[10px] text-[#9DB8B3] leading-none tracking-wide uppercase">
               {portalLabel}
             </p>
           </Link>
 
           <button
             onClick={onClose}
-            className="lg:hidden w-7 h-7 flex items-center justify-center rounded-lg text-[#647B7B] hover:text-[#1F2D2E] hover:bg-[#E6F0F0] transition-colors flex-shrink-0"
+            className="lg:hidden w-7 h-7 flex items-center justify-center rounded-lg text-[#B8CECA] hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
             aria-label="Close menu"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -374,7 +374,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-5 overflow-y-auto">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#647B7B] px-3 mb-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#88A6A1] px-3 mb-2.5">
             {t("nav_menu")}
           </p>
           <ul className="flex flex-col gap-0.5">
@@ -391,11 +391,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     className={[
                       "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all",
                       isActive
-                        ? "bg-[#E6F0F0] text-[#0E7C86] font-semibold"
-                        : "text-[#647B7B] hover:bg-[#F8FAFC] hover:text-[#1F2D2E]",
+                        ? "bg-[#1ABC9C]/18 text-white ring-1 ring-[#49D5C3]/35 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                        : "text-[#C7D9D5] hover:bg-white/8 hover:text-white",
                     ].join(" ")}
                   >
-                    <span className={isActive ? "text-[#0E7C86]" : "text-[#7FA9A8]"}>
+                    <span className={isActive ? "text-[#7BF0DE]" : "text-[#8FB1AB]"}>
                       {item.icon}
                     </span>
                     {t(item.labelKey as any)}
@@ -408,12 +408,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Divider */}
         <div className="px-5 pb-1">
-          <div className="h-px bg-[#DDE6E6]" />
+          <div className="h-px bg-white/10" />
         </div>
 
         {/* User + Logout */}
         <div className="px-3 py-3 flex-shrink-0 space-y-1">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5">
             <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden">
               {!loading && avatarUrl && !imgError ? (
                 <img
@@ -423,22 +423,22 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   onError={() => setImgError(true)}
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-[#E6F0F0] flex items-center justify-center text-[11px] font-bold text-[#0E7C86] flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-[#1ABC9C]/20 flex items-center justify-center text-[11px] font-bold text-[#A6FFF2] flex-shrink-0">
                   {loading ? "…" : initials}
                 </div>
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-[#1F2D2E] truncate leading-none">
+              <p className="text-[13px] font-medium text-[#F3FBF9] truncate leading-none">
                 {loading ? "…" : (displayName || email)}
               </p>
               {inferredRole === "agency" && !loading && agentName ? (
-                <p className="text-[10px] text-[#647B7B] truncate mt-0.5">
-                  <span className="text-[#0E7C86] font-semibold uppercase tracking-wide">Agente</span>
+                <p className="text-[10px] text-[#9DB8B3] truncate mt-0.5">
+                  <span className="text-[#7BF0DE] font-semibold uppercase tracking-wide">Agente</span>
                   {" · "}{agentName}
                 </p>
               ) : (
-                <p className="text-[11px] text-[#647B7B] truncate mt-0.5">
+                <p className="text-[11px] text-[#9DB8B3] truncate mt-0.5">
                   {loading ? "" : email}
                 </p>
               )}
@@ -447,7 +447,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-[#647B7B] hover:bg-[#F8FAFC] hover:text-red-500 transition-all duration-150 cursor-pointer"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-[#C7D9D5] hover:bg-white/8 hover:text-[#FFB3B3] transition-all duration-150 cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
