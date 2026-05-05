@@ -96,6 +96,12 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
   const [creditNote, setCreditNote] = useState("");
   const [crediting, setCrediting] = useState(false);
 
+  const [debitModal, setDebitModal] = useState<{ userId: string; name: string; balance: number } | null>(null);
+  const [debitAmount, setDebitAmount] = useState("");
+  const [debitReason, setDebitReason] = useState("");
+  const [debiting, setDebiting] = useState(false);
+  const [debitError, setDebitError] = useState("");
+
   const filtered = users
     .filter((user) => {
       if (roleFilter !== "all" && user.role !== roleFilter) return false;
@@ -209,6 +215,39 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
     }
 
     setCrediting(false);
+  }
+
+  async function handleDebit() {
+    if (!debitModal) return;
+    setDebitError("");
+
+    const amount = parseFloat(debitAmount.replace(",", "."));
+    if (!amount || amount <= 0) { setDebitError("Digite um valor válido."); return; }
+    if (!debitReason.trim()) { setDebitError("O motivo é obrigatório."); return; }
+
+    setDebiting(true);
+    const response = await fetch(`/api/admin/users/${debitModal.userId}/debit-wallet`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount, reason: debitReason.trim() }),
+    });
+
+    const payload = await response.json().catch(() => ({})) as { newBalance?: number; error?: string };
+
+    if (response.ok && payload.newBalance !== undefined) {
+      setUsers((current) =>
+        current.map((user) =>
+          user.id === debitModal.userId ? { ...user, walletBalance: payload.newBalance! } : user,
+        ),
+      );
+      setDebitModal(null);
+      setDebitAmount("");
+      setDebitReason("");
+    } else {
+      setDebitError(payload.error ?? "Falha ao debitar saldo.");
+    }
+
+    setDebiting(false);
   }
 
   function handleRowClick(user: AdminUser, event: MouseEvent) {
@@ -416,6 +455,91 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                 className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-400"
               >
                 {crediting ? "Adicionando..." : "Adicionar saldo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {debitModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-sm space-y-5 rounded-2xl bg-white p-6 shadow-xl">
+            <div>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-rose-400">Débito administrativo</p>
+              <h3 className="text-[16px] font-semibold text-zinc-900">{debitModal.name || "Sem nome"}</h3>
+              <p className="mt-0.5 text-[12px] text-zinc-400">
+                Saldo atual: <strong className="text-zinc-700">{brl(debitModal.balance, { zeroLabel: "R$ 0" })}</strong>
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+                  Valor a debitar (R$)
+                </label>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0,00"
+                  value={debitAmount}
+                  onChange={(event) => { setDebitAmount(event.target.value); setDebitError(""); }}
+                  autoFocus
+                  className="w-full rounded-xl border border-zinc-200 px-3.5 py-2.5 text-[14px] font-semibold transition-colors focus:border-rose-400 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+                  Motivo <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: estorno incorreto, ajuste manual..."
+                  value={debitReason}
+                  onChange={(event) => { setDebitReason(event.target.value); setDebitError(""); }}
+                  className="w-full rounded-xl border border-zinc-200 px-3.5 py-2.5 text-[13px] transition-colors placeholder:text-[#647B7B] focus:border-rose-400 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {debitAmount && parseFloat(debitAmount.replace(",", ".")) > 0 && parseFloat(debitAmount.replace(",", ".")) <= debitModal.balance ? (
+              <div className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-2.5">
+                <p className="text-[12px] text-rose-700">
+                  Novo saldo:{" "}
+                  <strong>
+                    {new Intl.NumberFormat("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    }).format(debitModal.balance - parseFloat(debitAmount.replace(",", ".")))}
+                  </strong>
+                </p>
+              </div>
+            ) : null}
+
+            {debitError ? (
+              <p className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-2.5 text-[12px] text-rose-600">{debitError}</p>
+            ) : null}
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => {
+                  setDebitModal(null);
+                  setDebitAmount("");
+                  setDebitReason("");
+                  setDebitError("");
+                }}
+                className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-[13px] font-medium text-zinc-600 transition-colors hover:border-zinc-300"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDebit}
+                disabled={debiting || !debitAmount || parseFloat(debitAmount.replace(",", ".")) <= 0 || !debitReason.trim()}
+                className="flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-400"
+              >
+                {debiting ? "Debitando..." : "Confirmar débito"}
               </button>
             </div>
           </div>
@@ -675,17 +799,31 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                     <td className="px-4 py-4 text-right" onClick={(event) => event.stopPropagation()}>
                       <div className="flex flex-wrap items-center justify-end gap-1">
                         {user.role === "agency" ? (
-                          <button
-                            onClick={() => {
-                              setCreditModal({ userId: user.id, name: user.name, balance: user.walletBalance });
-                              setCreditAmount("");
-                              setCreditNote("");
-                            }}
-                            title="Adicionar saldo a carteira"
-                            className="rounded-lg px-2 py-1 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-800"
-                          >
-                            + Saldo
-                          </button>
+                          <>
+                            <button
+                              onClick={() => {
+                                setCreditModal({ userId: user.id, name: user.name, balance: user.walletBalance });
+                                setCreditAmount("");
+                                setCreditNote("");
+                              }}
+                              title="Adicionar saldo à carteira"
+                              className="rounded-lg px-2 py-1 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-800"
+                            >
+                              + Saldo
+                            </button>
+                            <button
+                              onClick={() => {
+                                setDebitModal({ userId: user.id, name: user.name, balance: user.walletBalance });
+                                setDebitAmount("");
+                                setDebitReason("");
+                                setDebitError("");
+                              }}
+                              title="Debitar saldo da carteira"
+                              className="rounded-lg px-2 py-1 text-[11px] font-medium text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-700"
+                            >
+                              − Saldo
+                            </button>
+                          </>
                         ) : null}
 
                         <button
