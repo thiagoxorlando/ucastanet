@@ -46,10 +46,12 @@ export default function AgencyTalentProfile({
   talent,
   jobs,
   appliedJobIds = [],
+  completedJobsCount = 0,
 }: {
   talent: TalentRow | null;
   jobs: Job[];
   appliedJobIds?: string[];
+  completedJobsCount?: number;
 }) {
   const { isActive } = useSubscription();
   const [selectedJob, setSelectedJob] = useState("");
@@ -211,6 +213,15 @@ export default function AgencyTalentProfile({
             )}
           </div>
         )}
+      </div>
+
+      {/* Platform résumé */}
+      <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04)] px-6 py-4 flex items-center justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Resumo na plataforma</p>
+        <div className="text-right">
+          <p className="text-[22px] font-black tracking-tight text-zinc-900 leading-none">{completedJobsCount}</p>
+          <p className="text-[11px] text-zinc-400 mt-0.5">trabalho{completedJobsCount !== 1 ? "s" : ""} concluído{completedJobsCount !== 1 ? "s" : ""}</p>
+        </div>
       </div>
 
       {/* Photos grid */}

@@ -12,7 +12,7 @@ export default async function AgencyTalentProfilePage({
   const { id } = await params;
   const supabase = createServerClient({ useServiceRole: true });
 
-  const [{ data: talent }, { data: jobs }, { data: submissions }] = await Promise.all([
+  const [{ data: talent }, { data: jobs }, { data: submissions }, { count: completedJobsCount }] = await Promise.all([
     supabase
       .from("talent_profiles")
       .select("*")
@@ -27,6 +27,12 @@ export default async function AgencyTalentProfilePage({
       .from("submissions")
       .select("job_id")
       .eq("talent_user_id", id),
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("talent_user_id", id)
+      .in("status", ["paid", "completed", "confirmed"])
+      .is("deleted_at", null),
   ]);
 
   const appliedJobIds = (submissions ?? []).map((s: { job_id: string }) => s.job_id);
@@ -36,6 +42,7 @@ export default async function AgencyTalentProfilePage({
       talent={talent}
       jobs={jobs ?? []}
       appliedJobIds={appliedJobIds}
+      completedJobsCount={completedJobsCount ?? 0}
     />
   );
 }
