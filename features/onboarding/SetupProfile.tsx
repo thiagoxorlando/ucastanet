@@ -1204,7 +1204,7 @@ export default function SetupProfile({ nextPath = null, initialPlan = "free" }: 
 
   return (
     <div className="min-h-screen bg-zinc-50 py-10 px-4">
-      <div className="max-w-xl mx-auto space-y-6">
+      <div className="max-w-2xl mx-auto space-y-6">
 
         {/* Header */}
         <div>
