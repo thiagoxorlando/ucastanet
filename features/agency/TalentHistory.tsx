@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import RehireModal from "@/components/agency/RehireModal";
+import InviteModal from "@/components/agency/InviteModal";
 import ReliabilityBadge from "@/components/agency/ReliabilityBadge";
 import { reliabilitySortScore } from "@/lib/reliability";
 import { talentCategoryLabel } from "@/lib/talentCategories";
@@ -75,6 +76,7 @@ export default function TalentHistory({
   const [history, setHistory]           = useState<HistoryEntry[]>(initialHistory);
   const [search, setSearch]             = useState("");
   const [rehireTarget, setRehireTarget] = useState<TalentProfile | null>(null);
+  const [inviteTarget, setInviteTarget] = useState<TalentProfile | null>(null);
   const [favoriteLoading, setFavLoading] = useState<string | null>(null);
   const [filterDate, setFilterDate]     = useState(initialFilterDate ?? today);
   const [showOnlyAvailable, setShowOnlyAvailable] = useState(false);
@@ -284,11 +286,20 @@ export default function TalentHistory({
 
         {/* CTAs */}
         <div className="flex-shrink-0 flex flex-col gap-2 items-stretch justify-center sm:flex-row lg:flex-col">
-          {/* Full modal — select job / amount */}
+          {/* Invite to an open job */}
+          <button
+            onClick={() => setInviteTarget(t ? { ...t, id: entry.talent_id } : null)}
+            disabled={!t}
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] active:scale-[0.97] text-white text-[13px] font-bold transition-all whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-40 shadow-[0_6px_16px_rgba(26,188,156,0.24)]"
+          >
+            Convidar para vaga
+          </button>
+
+          {/* Full rehire modal — select job / amount */}
           <button
             onClick={() => setRehireTarget(t ? { ...t, id: entry.talent_id } : null)}
             disabled={!t}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] active:scale-[0.97] text-white text-[13px] font-bold transition-all whitespace-nowrap disabled:cursor-not-allowed disabled:bg-[#E6F0F0] disabled:text-[#B8D4D4] shadow-[0_6px_16px_rgba(26,188,156,0.24)]"
+            className="px-4 py-2 rounded-xl border border-zinc-200 hover:bg-zinc-50 active:scale-[0.97] text-zinc-600 text-[13px] font-semibold transition-all whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-40"
           >
             Escolher vaga e valor
           </button>
@@ -436,6 +447,15 @@ export default function TalentHistory({
             {others.map((entry) => <TalentCard key={entry.id} entry={entry} />)}
           </div>
         </section>
+      )}
+
+      {/* Invite modal */}
+      {inviteTarget && (
+        <InviteModal
+          talent={inviteTarget}
+          agencyId={agencyId}
+          onClose={() => setInviteTarget(null)}
+        />
       )}
 
       {/* Rehire modal */}

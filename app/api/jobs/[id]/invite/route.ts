@@ -34,12 +34,16 @@ export async function POST(req: NextRequest, { params }: Props) {
 
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, title, job_date, agency_id")
+    .select("id, title, job_date, agency_id, status, deleted_at")
     .eq("id", jobId)
     .single();
 
   if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
   if (job.agency_id !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (job.deleted_at) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  if (job.status !== "open" && job.status !== "active") {
+    return NextResponse.json({ error: "Job is not open" }, { status: 422 });
+  }
 
   const { data: invite, error } = await supabase
     .from("job_invites")
@@ -62,8 +66,8 @@ export async function POST(req: NextRequest, { params }: Props) {
     : null;
 
   const msg = dateStr
-    ? `Você foi convidado para um trabalho em ${dateStr}: "${job.title}"`
-    : `Você foi convidado para uma vaga: "${job.title}"`;
+    ? `Você recebeu um convite para se candidatar à vaga "${job.title}" (${dateStr}).`
+    : `Você recebeu um convite para se candidatar à vaga "${job.title}".`;
 
   await notify(talent_id, "job_invite", msg, `/talent/jobs/${jobId}`);
 
