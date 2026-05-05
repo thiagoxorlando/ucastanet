@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import type { Metadata } from "next";
+import AccountActions from "@/features/profile/AccountActions";
 
 export default function AdminProfilePage() {
   const [name,     setName]     = useState("");
@@ -81,7 +81,7 @@ export default function AdminProfilePage() {
   }
 
   return (
-    <div className="max-w-lg space-y-8">
+    <div className="max-w-lg space-y-8 pb-8">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Admin da Plataforma</p>
         <h1 className="text-[1.75rem] font-semibold tracking-tight text-zinc-900 leading-tight">Meu Perfil</h1>
@@ -164,6 +164,8 @@ export default function AdminProfilePage() {
           {saving ? "Salvando…" : saved ? "Salvo!" : "Salvar Alterações"}
         </button>
       </form>
+
+      <AccountActions />
     </div>
   );
 }

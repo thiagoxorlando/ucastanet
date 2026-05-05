@@ -11,7 +11,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { company_name, avatar_url, phone, address, cpf_cnpj } = await req.json();
+  const { company_name, contact_name, avatar_url, phone, address, cpf_cnpj } = await req.json();
   const normalizedCpf = cpf_cnpj === undefined || cpf_cnpj === null ? undefined : normalizeCpfCnpj(String(cpf_cnpj));
 
   if (normalizedCpf !== undefined && !isValidCpfCnpj(normalizedCpf)) {
@@ -19,10 +19,11 @@ export async function PATCH(req: NextRequest) {
   }
 
   const updates: Record<string, string | null> = {};
-  if (company_name !== undefined) updates.company_name = company_name;
-  if (avatar_url   !== undefined) updates.avatar_url   = avatar_url;
-  if (phone        !== undefined) updates.phone        = phone;
-  if (address      !== undefined) updates.address      = address;
+  if (company_name  !== undefined) updates.company_name  = company_name;
+  if (contact_name  !== undefined) updates.contact_name  = contact_name;
+  if (avatar_url    !== undefined) updates.avatar_url    = avatar_url;
+  if (phone         !== undefined) updates.phone         = phone;
+  if (address       !== undefined) updates.address       = address;
 
   if (Object.keys(updates).length === 0 && normalizedCpf === undefined) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });

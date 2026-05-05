@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { useSubscription } from "@/lib/SubscriptionContext";
 import { formatCpfCnpj, isValidCpfCnpj } from "@/lib/cpf";
+import AccountActions from "@/features/profile/AccountActions";
 
 type Props = {
   userId: string;
@@ -108,7 +109,7 @@ export default function AgencyProfile({
   }
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="max-w-2xl space-y-8 pb-8">
       {/* Toast */}
       {toast && (
         <div className={[
@@ -259,6 +260,8 @@ export default function AgencyProfile({
           {saving ? "Salvando…" : "Salvar Alterações"}
         </button>
       </form>
+
+      <AccountActions />
     </div>
   );
 }

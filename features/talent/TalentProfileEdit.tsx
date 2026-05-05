@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { TALENT_CATEGORY_LABELS, talentCategoryLabel } from "@/lib/talentCategories";
 import { formatCpfCnpj, isValidCpfCnpj, normalizeCpfCnpj } from "@/lib/cpf";
+import AccountActions from "@/features/profile/AccountActions";
 
 const TALENT_CATEGORIES = TALENT_CATEGORY_LABELS;
 
@@ -283,7 +284,7 @@ export default function TalentProfileEdit() {
   const selectCls = `${inputBase} appearance-none pr-10 cursor-pointer`;
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-6 pb-8">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Conta</p>
         <h1 className="text-[1.75rem] font-semibold tracking-tight text-zinc-900 leading-tight">Meu Perfil</h1>
@@ -550,6 +551,8 @@ export default function TalentProfileEdit() {
           {saving ? "Salvando…" : "Salvar Perfil"}
         </button>
       </form>
+
+      <AccountActions />
     </div>
   );
 }
