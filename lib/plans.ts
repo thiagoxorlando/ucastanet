@@ -60,7 +60,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     key: "premium",
     label: "Premium",
     price: 5,
-    priceLabel: "R$5",
+    priceLabel: "Em breve",
     maxActiveJobs: null,
     maxHiresPerJob: null,
     commissionRate: 0.1,

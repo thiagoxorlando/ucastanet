@@ -853,7 +853,7 @@ function AgencySetup({ userId, onDone, initialPlan = "free" }: { userId: string;
     // it as a direct user gesture and don't block it as a popup.
     // We'll set its URL to the Asaas checkout link once we have it.
     let paymentWindow: Window | null = null;
-    if (form.plan === "pro" || form.plan === "premium") {
+    if (form.plan === "pro") {
       paymentWindow = window.open("", "_blank", "noopener,noreferrer");
     }
 
@@ -900,8 +900,9 @@ function AgencySetup({ userId, onDone, initialPlan = "free" }: { userId: string;
         return;
       }
 
-      // PRO / PREMIUM plan: call checkout and redirect the pre-opened blank tab
-      if (form.plan === "pro" || form.plan === "premium") {
+      // PRO plan: call checkout and redirect the pre-opened blank tab.
+      // Premium is unavailable — never start checkout for it.
+      if (form.plan === "pro") {
         const cleanDoc = normalizeCpfCnpj(form.cpfCnpj);
         if (!isValidCpfCnpj(cleanDoc)) {
           paymentWindow?.close();
@@ -1121,34 +1122,21 @@ function AgencySetup({ userId, onDone, initialPlan = "free" }: { userId: string;
               </div>
             )}
           </button>
-          {/* Premium */}
-          <button
-            type="button"
-            onClick={() => setForm((f) => ({ ...f, plan: "premium" }))}
-            className={[
-              "text-left rounded-2xl border p-4 transition-all relative",
-              form.plan === "premium"
-                ? "border-violet-600 bg-violet-50 shadow-sm"
-                : "border-zinc-200 hover:border-violet-300",
-            ].join(" ")}
+          {/* Premium — unavailable, shown as coming soon */}
+          <div
+            className="text-left rounded-2xl border p-4 relative bg-zinc-50 border-zinc-200 opacity-60 cursor-not-allowed"
           >
-            <span className="absolute top-3 right-3 text-[9px] font-bold px-2 py-0.5 rounded-full bg-violet-600 text-white tracking-wider">TESTE</span>
+            <span className="absolute top-3 right-3 text-[9px] font-bold px-2 py-0.5 rounded-full bg-zinc-400 text-white tracking-wider">EM BREVE</span>
             <div className="flex items-center justify-between mb-2 pr-16">
-              <span className="text-[14px] font-semibold text-zinc-900">{PLAN_DEFINITIONS.premium.label}</span>
-              <span className="text-[13px] font-bold text-violet-700">R$ {PLAN_DEFINITIONS.premium.price}/mês</span>
+              <span className="text-[14px] font-semibold text-zinc-500">{PLAN_DEFINITIONS.premium.label}</span>
+              <span className="text-[13px] text-zinc-400">Em breve</span>
             </div>
             <ul className="space-y-1">
               {PLAN_DEFINITIONS.premium.features.map((f) => (
-                <li key={f} className="text-[12px] text-zinc-500">· {f}</li>
+                <li key={f} className="text-[12px] text-zinc-400">· {f}</li>
               ))}
             </ul>
-            {form.plan === "premium" && (
-              <div className="mt-3 space-y-1">
-                <p className="text-[11px] font-semibold text-violet-700">✓ Selecionado</p>
-                <p className="text-[11px] text-zinc-500">Pagamento via cartão de crédito. Você será redirecionado para concluir o pagamento após salvar o perfil.</p>
-              </div>
-            )}
-          </button>
+          </div>
         </div>
       </div>
 
@@ -1166,8 +1154,8 @@ function AgencySetup({ userId, onDone, initialPlan = "free" }: { userId: string;
         className="w-full bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] disabled:opacity-50 disabled:cursor-not-allowed text-white text-[14px] font-semibold py-3.5 rounded-xl transition-colors cursor-pointer active:scale-[0.99]"
       >
         {loading
-          ? ((form.plan === "pro" || form.plan === "premium") ? "Redirecionando…" : "Salvando…")
-          : (form.plan === "pro" || form.plan === "premium")
+          ? (form.plan === "pro" ? "Redirecionando…" : "Salvando…")
+          : form.plan === "pro"
             ? "Salvar e ir para pagamento"
             : "Salvar Perfil"}
       </button>

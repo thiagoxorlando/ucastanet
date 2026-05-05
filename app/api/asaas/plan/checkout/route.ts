@@ -33,10 +33,18 @@ export async function POST(req: NextRequest) {
   const profileRaw = profileRow as Record<string, unknown> | null;
   const name       = (profileRaw?.full_name as string | undefined) ?? "Agência";
 
-  // Enforce plan price server-side — never trust the frontend value
-  const requestedPlan = (body.plan as string | undefined) === "premium" ? "premium" : "pro";
-  const planPrice     = requestedPlan === "premium" ? PLAN_DEFINITIONS.premium.price : PLAN_DEFINITIONS.pro.price;
-  const planLabel     = requestedPlan === "premium" ? "Premium" : "PRO";
+  // Premium is temporarily unavailable — reject it at the API level.
+  if ((body.plan as string | undefined) === "premium") {
+    return NextResponse.json(
+      { error: "Plano Premium ainda não está disponível." },
+      { status: 422 },
+    );
+  }
+
+  // Enforce plan as pro — never trust other frontend values
+  const requestedPlan = "pro";
+  const planPrice = PLAN_DEFINITIONS.pro.price;
+  const planLabel = "PRO";
 
   // ── Idempotency: return pending payment from existing subscription ────────────
   const existingSubId = (profileRaw?.asaas_subscription_id as string | null) ?? null;

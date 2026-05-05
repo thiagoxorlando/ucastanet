@@ -70,9 +70,9 @@ const PLANS = [
     key: "premium" as const,
     name: PLAN_DEFINITIONS.premium.label,
     price: PLAN_DEFINITIONS.premium.price,
-    priceLabel: "R$ 5",
-    period: "/mes",
-    badge: "TESTE" as const,
+    priceLabel: "Em breve",
+    period: "",
+    badge: null,
     gradient: "from-violet-500 to-purple-700",
     headline: "Operacao premium com cobranca recorrente",
     commission: "10% de comissao",
@@ -371,10 +371,10 @@ export default function BillingDashboard({
   }
 
   function handlePlanClick(p: PlanDef) {
+    if (p.key === "premium" && activePlan !== "premium") return; // unavailable
     if (p.key === "free" && activePlan !== "free") { setChangingTo(p); return; }
     if (p.key === activePlan) return;
-    if (p.key === "pro")      { void handleAsaasCheckout("pro");     return; }
-    if (p.key === "premium")  { void handleAsaasCheckout("premium"); return; }
+    if (p.key === "pro") { void handleAsaasCheckout("pro"); return; }
     setChangingTo(p);
   }
 
@@ -575,17 +575,21 @@ export default function BillingDashboard({
                   {!isCurrent && !isPending && (
                     <button
                       onClick={() => handlePlanClick(p)}
-                      disabled={(p.key === "pro" && proLoading) || (p.key === "premium" && premiumLoading)}
+                      disabled={p.key === "premium" || (p.key === "pro" && proLoading)}
                       className={[
                         "w-full mt-auto text-white text-[13px] font-semibold py-2.5 rounded-xl transition-colors",
-                        (p.key === "pro" && proLoading) || (p.key === "premium" && premiumLoading)
+                        p.key === "premium"
+                          ? "bg-zinc-200 text-zinc-400 cursor-not-allowed"
+                          : (p.key === "pro" && proLoading)
                           ? "bg-zinc-300 cursor-not-allowed"
                           : isDowngrade
                           ? "bg-zinc-500 hover:bg-zinc-600"
                           : "bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] cursor-pointer",
                       ].join(" ")}
                     >
-                      {(p.key === "pro" && proLoading) || (p.key === "premium" && premiumLoading)
+                      {p.key === "premium"
+                        ? "Em breve"
+                        : (p.key === "pro" && proLoading)
                         ? "Aguarde..."
                         : activePlan === "free"
                           ? `Assinar ${p.name}`
