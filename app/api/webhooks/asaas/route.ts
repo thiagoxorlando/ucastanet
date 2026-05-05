@@ -33,6 +33,8 @@ interface AsaasPayment {
   billingType?: string;
   customer?: string;
   externalReference?: string;
+  dueDate?: string;
+  subscriptionId?: string;
 }
 
 interface AsaasTransfer {
@@ -123,6 +125,52 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // ── PAYMENT_CREATED → pending plan_charge for new subscription cycle ──────────
+  // Asaas fires this when a new monthly subscription payment is generated.
+  // We create a pending wallet_transaction row so it appears in billing history.
+  if (event === "PAYMENT_CREATED") {
+    const payment = body.payment;
+
+    if (payment?.id) {
+      const extRef  = payment.externalReference ?? "";
+      if (extRef.startsWith("plan:")) {
+        const parts   = extRef.split(":");
+        const planKey = parts[1] ?? "";
+        const userId  = parts[2] ?? "";
+
+        if ((planKey === "pro" || planKey === "premium") && userId) {
+          const planLabel = planKey === "premium" ? "Premium" : "PRO";
+          const { error: insertErr } = await supabase.from("wallet_transactions").insert({
+            user_id:     userId,
+            type:        "plan_charge",
+            amount:      payment.value,
+            description: `Assinatura ${planLabel} - BrisaHub`,
+            payment_id:  payment.id,
+            provider:    "asaas",
+            status:      "pending",
+          } as Record<string, unknown>);
+
+          if (insertErr && insertErr.code !== "23505") {
+            log("warn", "[asaas webhook] PAYMENT_CREATED plan_charge insert failed (non-fatal)", {
+              userId, paymentId: payment.id, err: insertErr.message,
+            });
+          } else {
+            log("info", "[asaas webhook] PAYMENT_CREATED — pending plan_charge recorded", {
+              userId, planKey, paymentId: payment.id,
+            });
+          }
+        }
+      }
+    }
+
+    await supabase
+      .from("asaas_webhook_events")
+      .update({ processed_at: now } as Record<string, unknown>)
+      .eq("event_id", eventId);
+
+    return NextResponse.json({ ok: true });
+  }
+
   // ── PAYMENT_RECEIVED / PAYMENT_CONFIRMED → credit deposit wallet ──────────────
   if (event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED") {
     const payment = body.payment;
@@ -157,9 +205,22 @@ export async function POST(req: NextRequest) {
         const userId  = parts[2] ?? "";
 
         if ((planKey === "pro" || planKey === "premium") && userId) {
+          // Compute next billing date from this payment's dueDate + 1 month.
+          // This becomes plan_expires_at so the billing page shows the correct
+          // "Próxima cobrança" date without an extra Asaas API call.
+          let planExpiresAt: string | null = null;
+          if (payment.dueDate) {
+            const next = new Date(payment.dueDate);
+            next.setMonth(next.getMonth() + 1);
+            planExpiresAt = next.toISOString();
+          }
+
+          const profileUpdate: Record<string, unknown> = { plan: planKey, plan_status: "active" };
+          if (planExpiresAt) profileUpdate.plan_expires_at = planExpiresAt;
+
           const { error: planErr } = await supabase
             .from("profiles")
-            .update({ plan: planKey, plan_status: "active" } as Record<string, unknown>)
+            .update(profileUpdate)
             .eq("id", userId);
 
           if (planErr) {

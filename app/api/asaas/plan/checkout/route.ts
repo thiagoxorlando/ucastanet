@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import { ensureAsaasCustomer } from "@/lib/asaasCustomer";
-import { createPayment } from "@/lib/asaas";
+import { createSubscription, getSubscriptionPayments } from "@/lib/asaas";
 import { PLAN_DEFINITIONS } from "@/lib/plans";
 import { isValidCpfCnpj, normalizeCpfCnpj, digitsOnly } from "@/lib/cpf";
 
@@ -26,14 +26,47 @@ export async function POST(req: NextRequest) {
   const supabase = createServerClient({ useServiceRole: true });
 
   const [{ data: profileRow }, { data: agencyRow }] = await Promise.all([
-    supabase.from("profiles").select("full_name, cpf_cnpj").eq("id", user.id).single(),
+    supabase.from("profiles").select("full_name, cpf_cnpj, asaas_subscription_id").eq("id", user.id).single(),
     supabase.from("agencies").select("phone").eq("id", user.id).maybeSingle(),
   ]);
 
   const profileRaw = profileRow as Record<string, unknown> | null;
   const name       = (profileRaw?.full_name as string | undefined) ?? "Agência";
 
-  // CPF/CNPJ: request body takes priority (freshly typed), then DB fallback
+  // Enforce plan price server-side — never trust the frontend value
+  const requestedPlan = (body.plan as string | undefined) === "premium" ? "premium" : "pro";
+  const planPrice     = requestedPlan === "premium" ? PLAN_DEFINITIONS.premium.price : PLAN_DEFINITIONS.pro.price;
+  const planLabel     = requestedPlan === "premium" ? "Premium" : "PRO";
+
+  // ── Idempotency: return pending payment from existing subscription ────────────
+  const existingSubId = (profileRaw?.asaas_subscription_id as string | null) ?? null;
+  if (existingSubId) {
+    try {
+      const payments = await getSubscriptionPayments(existingSubId);
+      const pending  = (payments.data ?? []).find((p) => p.status === "PENDING");
+      if (pending?.invoiceUrl) {
+        console.log("[asaas/plan/checkout] returning pending payment for existing subscription", {
+          userId: user.id, subscriptionId: existingSubId, paymentId: pending.id,
+        });
+        return NextResponse.json({ url: pending.invoiceUrl });
+      }
+      // No pending payment → subscription may already be fully paid/active
+      console.log("[asaas/plan/checkout] existing subscription has no pending payment — plan likely already active", {
+        userId: user.id, subscriptionId: existingSubId,
+      });
+      return NextResponse.json(
+        { error: "Sua assinatura já está ativa. Acesse a página de cobrança para gerenciá-la." },
+        { status: 409 },
+      );
+    } catch (err) {
+      // Subscription not found in Asaas (e.g. sandbox reset) — fall through to create new
+      console.warn("[asaas/plan/checkout] existing subscription not found in Asaas — creating new", {
+        userId: user.id, subscriptionId: existingSubId, err: String(err),
+      });
+    }
+  }
+
+  // ── CPF/CNPJ validation ───────────────────────────────────────────────────────
   const rawDoc   = (body.cpfCnpj as string | undefined) ?? (profileRaw?.cpf_cnpj as string | undefined) ?? "";
   const cleanDoc = normalizeCpfCnpj(rawDoc);
 
@@ -45,7 +78,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Phone — digits only, no +55, no mask
+  // ── Ensure Asaas customer ─────────────────────────────────────────────────────
   const rawPhone    = (agencyRow as Record<string, unknown> | null)?.phone as string | undefined;
   const mobilePhone = rawPhone ? digitsOnly(rawPhone) : undefined;
 
@@ -61,66 +94,83 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Enforce plan price server-side — never trust the frontend value
-  const requestedPlan = (body.plan as string | undefined) === "premium" ? "premium" : "pro";
-  const planPrice     = requestedPlan === "premium" ? PLAN_DEFINITIONS.premium.price : PLAN_DEFINITIONS.pro.price;
-  const planLabel     = requestedPlan === "premium" ? "Premium" : "PRO";
+  // ── Create recurring subscription ─────────────────────────────────────────────
+  const nextDueDate = new Date();
+  nextDueDate.setDate(nextDueDate.getDate() + 1);
+  const nextDueDateStr = nextDueDate.toISOString().slice(0, 10);
 
-  const dueDate = new Date();
-  dueDate.setDate(dueDate.getDate() + 1);
-  const dueDateStr = dueDate.toISOString().slice(0, 10);
-
-  let payment: { id: string; invoiceUrl?: string };
+  let subscription: Awaited<ReturnType<typeof createSubscription>>;
   try {
-    payment = await createPayment({
+    subscription = await createSubscription({
       customer:          customerId,
       billingType:       "CREDIT_CARD",
       value:             planPrice,
-      dueDate:           dueDateStr,
-      description:       `Plano ${planLabel} - BrisaHub`,
+      nextDueDate:       nextDueDateStr,
+      cycle:             "MONTHLY",
+      description:       `Assinatura ${planLabel} - BrisaHub`,
       externalReference: `plan:${requestedPlan}:${user.id}`,
     });
   } catch (err) {
     const desc = extractAsaasError(err);
-    console.error("[asaas/plan/checkout] createPayment failed:", desc);
-    return NextResponse.json({ error: desc || "Erro ao gerar cobrança. Tente novamente." }, { status: 500 });
+    console.error("[asaas/plan/checkout] createSubscription failed:", desc);
+    return NextResponse.json({ error: desc || "Erro ao criar assinatura. Tente novamente." }, { status: 500 });
   }
 
-  if (!payment.invoiceUrl) {
-    console.error("[asaas/plan/checkout] no invoiceUrl returned, payment id:", payment.id);
+  // ── Fetch first payment's invoice URL ────────────────────────────────────────
+  let invoiceUrl: string | undefined;
+  let firstPaymentId: string | undefined;
+  try {
+    const payments    = await getSubscriptionPayments(subscription.id);
+    const firstPayment = payments.data?.[0];
+    invoiceUrl     = firstPayment?.invoiceUrl;
+    firstPaymentId = firstPayment?.id;
+  } catch (err) {
+    console.error("[asaas/plan/checkout] getSubscriptionPayments failed:", String(err));
+  }
+
+  if (!invoiceUrl) {
+    console.error("[asaas/plan/checkout] no invoiceUrl for subscription first payment", {
+      subscriptionId: subscription.id,
+    });
     return NextResponse.json({ error: "Erro ao obter link de pagamento." }, { status: 500 });
   }
 
-  // Store pending plan charge so billing history is visible immediately.
-  // Uses only columns confirmed to exist in production:
-  //   user_id, type, amount, description, payment_id — 20260417 migration
-  //   status, processed_at                           — 20260425 migration
-  //   provider                                       — 20260427 migration
-  //
-  // Uses INSERT (not upsert) because the unique index on payment_id is a
-  // PARTIAL index (WHERE payment_id IS NOT NULL), which PostgreSQL does not
-  // recognise in ON CONFLICT column-target syntax. 23505 = idempotent duplicate.
-  const { error: chargeInsertErr } = await supabase.from("wallet_transactions").insert({
-    user_id:     user.id,
-    type:        "plan_charge",
-    amount:      planPrice,
-    description: `Assinatura ${planLabel} - BrisaHub`,
-    payment_id:  payment.id,
-    provider:    "asaas",
-    status:      "pending",
-  } as Record<string, unknown>);
+  // ── Persist subscription ID to profiles ───────────────────────────────────────
+  const { error: subUpdateErr } = await supabase
+    .from("profiles")
+    .update({ asaas_subscription_id: subscription.id } as Record<string, unknown>)
+    .eq("id", user.id);
 
-  if (chargeInsertErr) {
-    if (chargeInsertErr.code === "23505") {
-      console.log("[asaas/plan/checkout] plan_charge already exists — skipping insert", {
-        userId: user.id, paymentId: payment.id,
-      });
-    } else {
+  if (subUpdateErr) {
+    console.error("[asaas/plan/checkout] failed to store subscription id (non-fatal)", {
+      userId: user.id, subscriptionId: subscription.id, err: subUpdateErr.message,
+    });
+  }
+
+  // ── Insert pending plan_charge for immediate billing history visibility ────────
+  // PAYMENT_CREATED webhook will also arrive shortly and upsert the same row.
+  // The 23505 guard makes this idempotent against the unique partial index on payment_id.
+  if (firstPaymentId) {
+    const { error: chargeErr } = await supabase.from("wallet_transactions").insert({
+      user_id:     user.id,
+      type:        "plan_charge",
+      amount:      planPrice,
+      description: `Assinatura ${planLabel} - BrisaHub`,
+      payment_id:  firstPaymentId,
+      provider:    "asaas",
+      status:      "pending",
+    } as Record<string, unknown>);
+
+    if (chargeErr && chargeErr.code !== "23505") {
       console.error("[asaas/plan/checkout] plan_charge insert failed (non-fatal)", {
-        userId: user.id, paymentId: payment.id, err: chargeInsertErr.message,
+        userId: user.id, paymentId: firstPaymentId, err: chargeErr.message,
       });
     }
   }
 
-  return NextResponse.json({ url: payment.invoiceUrl });
+  console.log("[asaas/plan/checkout] subscription created", {
+    userId: user.id, plan: requestedPlan, subscriptionId: subscription.id, firstPaymentId,
+  });
+
+  return NextResponse.json({ url: invoiceUrl });
 }

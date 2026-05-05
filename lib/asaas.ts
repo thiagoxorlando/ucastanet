@@ -38,6 +38,32 @@ export type AsaasPaymentInput = {
   externalReference?: string;
 };
 
+export type AsaasSubscriptionInput = {
+  customer: string;
+  billingType: "CREDIT_CARD";
+  value: number;
+  nextDueDate: string;
+  cycle: "MONTHLY";
+  description?: string;
+  externalReference?: string;
+};
+
+export type AsaasSubscriptionResponse = {
+  id: string;
+  status: string;
+  value: number;
+  nextDueDate?: string;
+  billingType: string;
+};
+
+export type AsaasSubscriptionPayment = {
+  id: string;
+  status: string;
+  value: number;
+  dueDate?: string;
+  invoiceUrl?: string;
+};
+
 export type AsaasPixTransferInput = {
   value: number;
   pixAddressKey: string;
@@ -62,6 +88,16 @@ export function createPayment(data: AsaasPaymentInput) {
 export function getPayment(id: string) {
   return request<{ id: string; status: string; value: number; billingType: string; paymentDate?: string }>(
     "GET", `/payments/${id}`,
+  );
+}
+
+export function createSubscription(data: AsaasSubscriptionInput) {
+  return request<AsaasSubscriptionResponse>("POST", "/subscriptions", data);
+}
+
+export function getSubscriptionPayments(subscriptionId: string) {
+  return request<{ data: AsaasSubscriptionPayment[]; totalCount?: number }>(
+    "GET", `/subscriptions/${subscriptionId}/payments?status=PENDING`,
   );
 }
 
