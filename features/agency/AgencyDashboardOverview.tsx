@@ -343,11 +343,10 @@ export default function AgencyDashboardOverview({
   const { t, lang } = useT();
 
   const statEntries: { key: string; label: string; value: number; isCurrency?: boolean }[] = [
-    { key: "totalJobs",      label: "Vagas abertas",                   value: stats.totalJobs },
-    { key: "submissions",    label: "Candidaturas recebidas",          value: stats.submissions },
-    { key: "pendingPayment", label: "Reservas em andamento",           value: stats.pendingPayment },
-    { key: "contractsPaid",  label: "Contratos pagos",                 value: stats.paidContracts },
-    { key: "activeEscrow",   label: "Valor em andamento",              value: stats.activeEscrowTotal, isCurrency: true },
+    { key: "totalJobs",      label: "Vagas abertas",          value: stats.totalJobs },
+    { key: "submissions",    label: "Candidaturas recebidas", value: stats.submissions },
+    { key: "pendingPayment", label: "Reservas em andamento",  value: stats.pendingPayment },
+    { key: "contractsPaid",  label: "Contratos pagos",        value: stats.paidContracts },
   ];
 
   return (
