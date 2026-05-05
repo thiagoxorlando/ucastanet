@@ -1099,17 +1099,17 @@ function AgencySetup({ userId, onDone, initialPlan = "free" }: { userId: string;
             type="button"
             onClick={() => setForm((f) => ({ ...f, plan: "pro" }))}
             className={[
-              "text-left rounded-2xl border p-4 transition-all relative",
+              "text-left rounded-2xl border p-4 transition-all",
               form.plan === "pro"
                 ? "border-indigo-600 bg-indigo-50 shadow-sm"
                 : "border-zinc-200 hover:border-indigo-300",
             ].join(" ")}
           >
-            <span className="absolute top-3 right-3 text-[9px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white tracking-wider">POPULAR</span>
-            <div className="flex items-center justify-between mb-2 pr-16">
+            <div className="flex items-center gap-2 mb-1">
               <span className="text-[14px] font-semibold text-zinc-900">{PLAN_DEFINITIONS.pro.label}</span>
-              <span className="text-[13px] font-bold text-indigo-700">R$ {PLAN_DEFINITIONS.pro.price}/mês</span>
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-indigo-600 text-white tracking-wider">POPULAR</span>
             </div>
+            <p className="text-[13px] font-bold text-indigo-700 mb-2">R$ {PLAN_DEFINITIONS.pro.price}/mês</p>
             <ul className="space-y-1">
               {PLAN_DEFINITIONS.pro.features.map((f) => (
                 <li key={f} className="text-[12px] text-zinc-500">· {f}</li>
@@ -1124,13 +1124,13 @@ function AgencySetup({ userId, onDone, initialPlan = "free" }: { userId: string;
           </button>
           {/* Premium — unavailable, shown as coming soon */}
           <div
-            className="text-left rounded-2xl border p-4 relative bg-zinc-50 border-zinc-200 opacity-60 cursor-not-allowed"
+            className="text-left rounded-2xl border p-4 bg-zinc-50 border-zinc-200 opacity-60 cursor-not-allowed"
           >
-            <span className="absolute top-3 right-3 text-[9px] font-bold px-2 py-0.5 rounded-full bg-zinc-400 text-white tracking-wider">EM BREVE</span>
-            <div className="flex items-center justify-between mb-2 pr-16">
+            <div className="flex items-center gap-2 mb-1">
               <span className="text-[14px] font-semibold text-zinc-500">{PLAN_DEFINITIONS.premium.label}</span>
-              <span className="text-[13px] text-zinc-400">Em breve</span>
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-zinc-400 text-white tracking-wider">EM BREVE</span>
             </div>
+            <p className="text-[13px] text-zinc-400 mb-2">Em breve</p>
             <ul className="space-y-1">
               {PLAN_DEFINITIONS.premium.features.map((f) => (
                 <li key={f} className="text-[12px] text-zinc-400">· {f}</li>
