@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
     .insert({
       event_id:    eventId,
       event_type:  event,
-      raw_payload: body as unknown as Record<string, unknown>,
+      payload: body as unknown as Record<string, unknown>,
     } as Record<string, unknown>);
 
   if (insertErr) {

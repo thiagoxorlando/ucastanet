@@ -38,7 +38,7 @@ export default async function BillingPage() {
     // may be the first (and only) one stored for a given credit-card payment.
     supabase
       .from("asaas_webhook_events")
-      .select("raw_payload, created_at")
+      .select("payload, created_at")
       .in("event_type", ["PAYMENT_RECEIVED", "PAYMENT_CONFIRMED"])
       .order("created_at", { ascending: false })
       .limit(200),
@@ -93,7 +93,7 @@ export default async function BillingPage() {
   // Fallback: synthesise charges from raw Asaas webhook events.
   // Match by externalReference containing userId OR by customer field matching asaas_customer_id.
   for (const evt of webhookEvents ?? []) {
-    const payload = evt.raw_payload as Record<string, unknown> | null;
+    const payload = evt.payload as Record<string, unknown> | null;
     const paymentRaw = payload?.payment as Record<string, unknown> | null;
     if (!paymentRaw) continue;
 

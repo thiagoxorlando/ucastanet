@@ -247,12 +247,12 @@ export default function AgencyFinances({
     setWithdrawError("");
     setWithdrawInfo("");
 
-    const res = await fetch("/api/agencies/withdraw", {
+    const res = await fetch("/api/asaas/withdraw", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ amount }),
     });
-    const data = await res.json().catch(() => ({})) as { error?: string; provider?: string; message?: string };
+    const data = await res.json().catch(() => ({})) as { error?: string };
 
     setWithdrawing(false);
     if (!res.ok) {
@@ -262,7 +262,7 @@ export default function AgencyFinances({
 
     setWithdrawAmount("");
     setWithdrawDone(true);
-    setWithdrawInfo(data.message ?? (data.provider === "stripe" ? "Saque enviado pelo Stripe. Acompanhe o status abaixo." : ""));
+    setWithdrawInfo("Saque via PIX solicitado. Acompanhe o status abaixo.");
     router.refresh();
     setTimeout(() => setWithdrawDone(false), 4000);
   }
