@@ -762,6 +762,48 @@ function AgencySetup({ userId, onDone, initialPlan = "free" }: { userId: string;
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [waitingForPayment, setWaitingForPayment] = useState(false);
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
+  const [popupBlocked, setPopupBlocked] = useState(false);
+  const [manualCheckMsg, setManualCheckMsg] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!waitingForPayment) return;
+    async function checkStatus() {
+      try {
+        const res  = await fetch("/api/asaas/plan/status");
+        const json = await res.json() as { paid?: boolean };
+        if (json.paid) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          onDone();
+        }
+      } catch { /* ignore network errors — keep polling */ }
+    }
+    pollRef.current = setInterval(() => { void checkStatus(); }, 4000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [waitingForPayment, onDone]);
+
+  function openPaymentTab(url: string) {
+    const popup = window.open(url, "_blank", "noopener,noreferrer");
+    setPopupBlocked(popup === null);
+  }
+
+  async function handleManualCheck() {
+    setManualCheckMsg(null);
+    try {
+      const res  = await fetch("/api/asaas/plan/status");
+      const json = await res.json() as { paid?: boolean };
+      if (json.paid) {
+        if (pollRef.current) clearInterval(pollRef.current);
+        onDone();
+      } else {
+        setManualCheckMsg("Pagamento ainda não confirmado. Aguarde alguns instantes.");
+      }
+    } catch {
+      setManualCheckMsg("Erro ao verificar pagamento. Tente novamente.");
+    }
+  }
 
   // Pre-populate from DB in case signup already saved some fields
   useEffect(() => {
@@ -869,7 +911,9 @@ function AgencySetup({ userId, onDone, initialPlan = "free" }: { userId: string;
           return;
         }
 
-        window.location.assign(checkoutJson.url);
+        setPaymentUrl(checkoutJson.url);
+        setWaitingForPayment(true);
+        openPaymentTab(checkoutJson.url);
         return;
       }
 
@@ -880,6 +924,70 @@ function AgencySetup({ userId, onDone, initialPlan = "free" }: { userId: string;
     } finally {
       setLoading(false);
     }
+  }
+
+  if (waitingForPayment) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] p-8 space-y-5 text-center">
+          <div className="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center mx-auto">
+            <svg className="w-7 h-7 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-[1.15rem] font-semibold text-zinc-900 mb-2">Aguardando pagamento</h2>
+            <p className="text-[13px] text-zinc-500 leading-relaxed max-w-sm mx-auto">
+              Finalize o pagamento na aba do Asaas. Assim que o pagamento for confirmado, continuaremos automaticamente.
+            </p>
+          </div>
+          {popupBlocked && (
+            <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-left">
+              <p className="text-[13px] text-amber-700">
+                Não foi possível abrir a aba de pagamento. Clique em &ldquo;Abrir pagamento novamente&rdquo;.
+              </p>
+            </div>
+          )}
+          {manualCheckMsg && (
+            <p className="text-[13px] text-zinc-500 bg-zinc-50 rounded-xl px-4 py-3">{manualCheckMsg}</p>
+          )}
+          <div className="flex items-center justify-center gap-2 text-[12px] text-zinc-400">
+            <div className="w-4 h-4 rounded-full border-2 border-zinc-200 border-t-amber-500 animate-spin" />
+            Verificando automaticamente…
+          </div>
+        </div>
+        <div className="space-y-2.5">
+          {paymentUrl && (
+            <button
+              type="button"
+              onClick={() => openPaymentTab(paymentUrl)}
+              className="w-full bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] text-white text-[14px] font-semibold py-3.5 rounded-xl transition-colors cursor-pointer"
+            >
+              Abrir pagamento novamente
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => { void handleManualCheck(); }}
+            className="w-full border border-zinc-200 text-zinc-700 hover:bg-zinc-50 text-[14px] font-semibold py-3.5 rounded-xl transition-colors cursor-pointer"
+          >
+            Verificar pagamento
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (pollRef.current) clearInterval(pollRef.current);
+              setWaitingForPayment(false);
+              setManualCheckMsg(null);
+              setPopupBlocked(false);
+            }}
+            className="w-full text-[13px] text-zinc-400 hover:text-zinc-600 py-2 cursor-pointer transition-colors"
+          >
+            Cancelar e voltar
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

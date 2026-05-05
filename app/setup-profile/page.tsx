@@ -32,5 +32,5 @@ export default async function SetupProfilePage({ searchParams }: Props) {
     redirect(profile.role === "talent" && nextPath ? nextPath : `/${profile.role}/dashboard`);
   }
 
-  return <SetupProfile nextPath={safeNextPath(next)} initialPlan={plan === "pro" ? "pro" : "free"} />;
+  return <SetupProfile nextPath={safeNextPath(next)} initialPlan={plan === "premium" ? "premium" : plan === "pro" ? "pro" : "free"} />;
 }
