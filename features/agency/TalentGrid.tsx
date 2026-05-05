@@ -154,12 +154,14 @@ function AgeInput({
 export default function TalentGrid({ talent: initialTalent }: { talent: Talent[] }) {
   const router = useRouter();
 
-  const [talent]                    = useState<Talent[]>(initialTalent);
-  const [search, setSearch]         = useState("");
-  const [gender, setGender]         = useState("");
-  const [category, setCategory]     = useState("");
-  const [ageMin, setAgeMin]         = useState("");
-  const [ageMax, setAgeMax]         = useState("");
+  const [talent]                      = useState<Talent[]>(initialTalent);
+  const [search, setSearch]           = useState("");
+  const [gender, setGender]           = useState("");
+  const [category, setCategory]       = useState("");
+  const [ageMin, setAgeMin]           = useState("");
+  const [ageMax, setAgeMax]           = useState("");
+  const [cityFilter, setCityFilter]   = useState("");
+  const [countryFilter, setCountryFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
   const filtered = talent.filter((t) => {
@@ -174,18 +176,21 @@ export default function TalentGrid({ talent: initialTalent }: { talent: Talent[]
         );
       if (!hit) return false;
     }
-    if (gender    && (t.gender    ?? "") !== gender)    return false;
-    if (category  && !(t.categories ?? []).some((c) => talentCategoryMatches(c, category))) return false;
-    if (ageMin    && (t.age ?? 0)   < parseInt(ageMin)) return false;
-    if (ageMax    && (t.age ?? 999) > parseInt(ageMax)) return false;
+    if (gender         && (t.gender    ?? "") !== gender)    return false;
+    if (category       && !(t.categories ?? []).some((c) => talentCategoryMatches(c, category))) return false;
+    if (ageMin         && (t.age ?? 0)   < parseInt(ageMin)) return false;
+    if (ageMax         && (t.age ?? 999) > parseInt(ageMax)) return false;
+    if (cityFilter     && !(t.city    ?? "").toLowerCase().includes(cityFilter.toLowerCase()))    return false;
+    if (countryFilter  && !(t.country ?? "").toLowerCase().includes(countryFilter.toLowerCase())) return false;
     return true;
   });
 
   function clearFilters() {
     setGender(""); setCategory(""); setAgeMin(""); setAgeMax("");
+    setCityFilter(""); setCountryFilter("");
   }
 
-  const activeFilters = [gender, category, ageMin, ageMax].filter(Boolean).length;
+  const activeFilters = [gender, category, ageMin, ageMax, cityFilter, countryFilter].filter(Boolean).length;
 
   return (
     <div className="max-w-7xl space-y-6">
@@ -247,6 +252,30 @@ export default function TalentGrid({ talent: initialTalent }: { talent: Talent[]
             </div>
           </div>
 
+          {/* Location filters */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">Cidade</label>
+              <input
+                type="text"
+                placeholder="Filtrar por cidade"
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="w-full px-3 py-2 text-[13px] rounded-xl border border-[#DDE6E6] bg-white hover:border-[#B8D4D4] focus:border-[#1ABC9C] focus:outline-none transition-colors"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">Estado</label>
+              <input
+                type="text"
+                placeholder="Filtrar por estado"
+                value={countryFilter}
+                onChange={(e) => setCountryFilter(e.target.value)}
+                className="w-full px-3 py-2 text-[13px] rounded-xl border border-[#DDE6E6] bg-white hover:border-[#B8D4D4] focus:border-[#1ABC9C] focus:outline-none transition-colors"
+              />
+            </div>
+          </div>
+
           {/* Age range */}
           <div className="flex gap-4 items-end">
             <AgeInput label="Idade Mín." placeholder="18" value={ageMin} onChange={setAgeMin} />
@@ -266,8 +295,10 @@ export default function TalentGrid({ talent: initialTalent }: { talent: Talent[]
       {/* ── Active filter summary ── */}
       {activeFilters > 0 && !showFilters && (
         <div className="flex items-center gap-2 flex-wrap">
-          {gender    && <span className="text-[12px] bg-[#1F2D2E] text-white px-3 py-1 rounded-full">{GENDERS.find((g) => g.value === gender)?.label ?? gender}</span>}
-          {category  && <span className="text-[12px] bg-[#1F2D2E] text-white px-3 py-1 rounded-full">{CATEGORIES.find((c) => c.value === category)?.label ?? category}</span>}
+          {gender       && <span className="text-[12px] bg-[#1F2D2E] text-white px-3 py-1 rounded-full">{GENDERS.find((g) => g.value === gender)?.label ?? gender}</span>}
+          {category     && <span className="text-[12px] bg-[#1F2D2E] text-white px-3 py-1 rounded-full">{CATEGORIES.find((c) => c.value === category)?.label ?? category}</span>}
+          {cityFilter   && <span className="text-[12px] bg-[#1F2D2E] text-white px-3 py-1 rounded-full">Cidade: {cityFilter}</span>}
+          {countryFilter && <span className="text-[12px] bg-[#1F2D2E] text-white px-3 py-1 rounded-full">Estado: {countryFilter}</span>}
           {(ageMin || ageMax) && (
             <span className="text-[12px] bg-[#1F2D2E] text-white px-3 py-1 rounded-full">
               Idade {ageMin || "qualquer"}–{ageMax || "qualquer"}

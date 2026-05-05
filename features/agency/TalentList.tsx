@@ -31,35 +31,59 @@ function initials(name: string) {
 }
 
 export default function TalentList({ talent }: { talent: TalentListItem[] }) {
-  const [search, setSearch] = useState("");
+  const [search, setSearch]               = useState("");
+  const [cityFilter, setCityFilter]       = useState("");
+  const [countryFilter, setCountryFilter] = useState("");
 
   const filtered = talent.filter((t) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      (t.full_name ?? "").toLowerCase().includes(q) ||
-      (t.instagram  ?? "").toLowerCase().includes(q) ||
-      (t.city       ?? "").toLowerCase().includes(q) ||
-      (t.categories ?? []).some((c: string) =>
-        c.toLowerCase().includes(q) || talentCategoryLabel(c).toLowerCase().includes(q)
-      )
-    );
+    if (search) {
+      const q = search.toLowerCase();
+      const hit =
+        (t.full_name ?? "").toLowerCase().includes(q) ||
+        (t.instagram  ?? "").toLowerCase().includes(q) ||
+        (t.city       ?? "").toLowerCase().includes(q) ||
+        (t.categories ?? []).some((c: string) =>
+          c.toLowerCase().includes(q) || talentCategoryLabel(c).toLowerCase().includes(q)
+        );
+      if (!hit) return false;
+    }
+    if (cityFilter    && !(t.city    ?? "").toLowerCase().includes(cityFilter.toLowerCase()))    return false;
+    if (countryFilter && !(t.country ?? "").toLowerCase().includes(countryFilter.toLowerCase())) return false;
+    return true;
   });
 
   return (
     <div className="space-y-5">
-      {/* ── Search ── */}
-      <div className="relative max-w-md">
-        <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#647B7B] pointer-events-none"
-          fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
-        </svg>
+      {/* ── Search + location filters ── */}
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#647B7B] pointer-events-none"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Buscar talento…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 text-[13px] bg-white border border-[#DDE6E6] rounded-2xl placeholder:text-[#647B7B] hover:border-[#B8D4D4] focus:border-[#1ABC9C] focus:ring-2 focus:ring-[#1ABC9C]/20 focus:outline-none transition-colors shadow-sm"
+          />
+        </div>
         <input
           type="text"
-          placeholder="Buscar talento…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 text-[13px] bg-white border border-[#DDE6E6] rounded-2xl placeholder:text-[#647B7B] hover:border-[#B8D4D4] focus:border-[#1ABC9C] focus:ring-2 focus:ring-[#1ABC9C]/20 focus:outline-none transition-colors shadow-sm"
+          placeholder="Filtrar por cidade"
+          value={cityFilter}
+          onChange={(e) => setCityFilter(e.target.value)}
+          aria-label="Cidade"
+          className="w-40 px-4 py-3 text-[13px] bg-white border border-[#DDE6E6] rounded-2xl placeholder:text-[#647B7B] hover:border-[#B8D4D4] focus:border-[#1ABC9C] focus:ring-2 focus:ring-[#1ABC9C]/20 focus:outline-none transition-colors shadow-sm"
+        />
+        <input
+          type="text"
+          placeholder="Filtrar por estado"
+          value={countryFilter}
+          onChange={(e) => setCountryFilter(e.target.value)}
+          aria-label="Estado"
+          className="w-40 px-4 py-3 text-[13px] bg-white border border-[#DDE6E6] rounded-2xl placeholder:text-[#647B7B] hover:border-[#B8D4D4] focus:border-[#1ABC9C] focus:ring-2 focus:ring-[#1ABC9C]/20 focus:outline-none transition-colors shadow-sm"
         />
       </div>
 
