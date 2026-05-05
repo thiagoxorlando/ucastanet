@@ -6,21 +6,23 @@ import { useRouter } from "next/navigation";
 import { useT } from "@/lib/LanguageContext";
 import { unifiedStatusInfo, type UnifiedBookingStatus } from "@/lib/bookingStatus";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
+import Avatar from "@/components/ui/Avatar";
 
 export type Booking = {
-  id:             string;
-  contractId:     string | null;
-  talentId:       string;
-  talentName:     string;
-  jobTitle:       string;
-  status:         string;
-  contractStatus: string | null;
-  derivedStatus:  string;
-  totalValue:     number;
-  createdAt:      string;
-  contractSigned: string | null;
-  jobDate:        string | null;
-  paidAt:         string | null;
+  id:              string;
+  contractId:      string | null;
+  talentId:        string;
+  talentName:      string;
+  talentAvatarUrl: string | null;
+  jobTitle:        string;
+  status:          string;
+  contractStatus:  string | null;
+  derivedStatus:   string;
+  totalValue:      number;
+  createdAt:       string;
+  contractSigned:  string | null;
+  jobDate:         string | null;
+  paidAt:          string | null;
 };
 
 function brl(n: number) {
@@ -33,18 +35,6 @@ function formatDate(s: string | null) {
 function formatJobDate(s: string | null) {
   if (!s) return null;
   return new Date(s + "T00:00:00").toLocaleDateString("pt-BR", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
-}
-function initials(name: string) {
-  return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
-}
-
-const AVATAR_GRADIENTS = [
-  "from-violet-500 to-indigo-600", "from-rose-400 to-pink-600",
-  "from-amber-400 to-orange-500",  "from-emerald-400 to-teal-600",
-  "from-sky-400 to-blue-600",      "from-fuchsia-400 to-purple-600",
-];
-function avatarGradient(name: string) {
-  return AVATAR_GRADIENTS[name.charCodeAt(0) % AVATAR_GRADIENTS.length];
 }
 
 // ── Timeline ──────────────────────────────────────────────────────────────────
@@ -205,9 +195,7 @@ function BookingRow({
           booking.id === focusBookingId ? "bg-[#D1F4EB]/70" : "",
         ].join(" ")}
       >
-        <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarGradient(booking.talentName)} flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-white`}>
-          {initials(booking.talentName)}
-        </div>
+        <Avatar name={booking.talentName} imageUrl={booking.talentAvatarUrl} size="sm" />
 
         <div className="flex-1 min-w-0">
           <p className="text-[14px] font-semibold text-zinc-900 leading-snug truncate">{booking.talentName}</p>

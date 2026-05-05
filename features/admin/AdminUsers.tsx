@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { MouseEvent } from "react";
 import { useRouter } from "next/navigation";
+import Avatar from "@/components/ui/Avatar";
 
 export type AdminUser = {
   id: string;
@@ -16,6 +17,7 @@ export type AdminUser = {
   totalSpent: number;
   commissionGenerated: number;
   walletBalance: number;
+  avatarUrl: string | null;
 };
 
 const ROLE_STYLES: Record<string, string> = {
@@ -559,16 +561,7 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div
-                          className={[
-                            "flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full",
-                            user.isFrozen ? "bg-sky-100" : "bg-zinc-100",
-                          ].join(" ")}
-                        >
-                          <span className={`text-[11px] font-bold ${user.isFrozen ? "text-sky-500" : "text-zinc-500"}`}>
-                            {initials(user.name)}
-                          </span>
-                        </div>
+                        <Avatar name={user.name || user.email} imageUrl={user.avatarUrl} size="sm" />
                         <div className="min-w-0">
                           <p className="max-w-[160px] truncate text-[13px] font-semibold text-zinc-900">
                             {user.name || <span className="font-normal text-zinc-400">Sem nome</span>}

@@ -40,11 +40,15 @@ export default async function BookingsPage({
   const talentIds = [...new Set((data ?? []).map((r) => r.talent_user_id).filter((id): id is string => !!id))];
 
   const { data: profilesData } = talentIds.length
-    ? await supabase.from("talent_profiles").select("id, full_name").in("id", talentIds)
+    ? await supabase.from("talent_profiles").select("id, full_name, avatar_url").in("id", talentIds)
     : { data: [] };
 
   const profileMap = new Map<string, string>();
-  for (const p of profilesData ?? []) profileMap.set(p.id, p.full_name ?? "");
+  const avatarMap  = new Map<string, string | null>();
+  for (const p of profilesData ?? []) {
+    profileMap.set(p.id, p.full_name ?? "");
+    avatarMap.set(p.id, (p as { avatar_url?: string | null }).avatar_url ?? null);
+  }
 
   const bookings = (data ?? []).map((row) => {
     // contracts is an array (reverse FK); in practice there is exactly one per booking
@@ -56,6 +60,7 @@ export default async function BookingsPage({
       contractId:     contract?.id ?? null,
       talentId:       String(row.talent_user_id ?? ""),
       talentName:     profileMap.get(String(row.talent_user_id ?? "")) || "Talento sem nome",
+      talentAvatarUrl: avatarMap.get(String(row.talent_user_id ?? "")) ?? null,
       status:         String(row.status ?? "pending"),
       contractStatus: contract?.status ?? null,
       derivedStatus:  getUnifiedBookingStatus(String(row.status ?? "pending"), contract?.status ?? null),
