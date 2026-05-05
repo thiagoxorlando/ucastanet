@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createPixTransfer } from "@/lib/asaas";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { notifyAdmins } from "@/lib/notify";
 
 export const runtime = "nodejs";
 
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
   const supabase = createServerClient({ useServiceRole: true });
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("role, wallet_balance")
+    .select("role, wallet_balance, full_name")
     .eq("id", user.id)
     .single();
 
@@ -146,6 +147,17 @@ export async function POST(req: NextRequest) {
       transferId: transfer.id,
       amount: roundedAmount,
     });
+
+    const talentName = (profile as Record<string, unknown>).full_name as string | null | undefined;
+    const displayName = talentName?.trim() || "Talent";
+    const amountStr = roundedAmount.toFixed(2).replace(".", ",");
+
+    notifyAdmins(
+      "payment",
+      `${displayName} solicitou saque de R$ ${amountStr} via PIX.`,
+      "/admin/finances?tab=saques",
+      `admin_withdraw_req_${tx.id}`,
+    ).catch((err) => console.error("[asaas withdraw] notifyAdmins failed (non-fatal)", String(err)));
 
     return NextResponse.json({
       success: true,

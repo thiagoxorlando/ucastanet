@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { notifyAdmins } from "@/lib/notify";
 
 // POST /api/webhooks/asaas
 //
@@ -412,6 +413,24 @@ export async function POST(req: NextRequest) {
       asaasPaymentId,
     });
 
+    // Notify admins of confirmed deposit (non-fatal, fire-and-forget)
+    void (async () => {
+      const { data: agencyRow } = await supabase
+        .from("agencies")
+        .select("company_name")
+        .eq("id", tx.user_id)
+        .maybeSingle();
+      const agencyName = (agencyRow as Record<string, unknown> | null)?.company_name as string | undefined;
+      const displayName = agencyName?.trim() || "Agência";
+      const amountStr = creditAmount.toFixed(2).replace(".", ",");
+      await notifyAdmins(
+        "payment",
+        `Agência ${displayName} depositou R$ ${amountStr} via PIX.`,
+        "/admin/finances?tab=depositos",
+        `admin_deposit_${asaasPaymentId}`,
+      );
+    })().catch((err) => log("warn", "[asaas deposit] notifyAdmins failed (non-fatal)", { err: String(err) }));
+
     return NextResponse.json({ ok: true });
   }
 
@@ -482,6 +501,24 @@ export async function POST(req: NextRequest) {
         asaasTransferId,
       });
 
+      // Notify admins — saque pago (non-fatal)
+      void (async () => {
+        const { data: p } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", tx.user_id)
+          .maybeSingle();
+        const name = (p as Record<string, unknown> | null)?.full_name as string | undefined;
+        const displayName = name?.trim() || "Talent";
+        const amountStr = Number(tx.amount).toFixed(2).replace(".", ",");
+        await notifyAdmins(
+          "payment",
+          `Saque de R$ ${amountStr} para ${displayName} foi pago via PIX.`,
+          "/admin/finances?tab=saques",
+          `admin_withdraw_paid_${asaasTransferId}`,
+        );
+      })().catch((err) => log("warn", "[asaas transfer] notifyAdmins paid failed (non-fatal)", { err: String(err) }));
+
       return NextResponse.json({ ok: true });
     }
 
@@ -528,6 +565,26 @@ export async function POST(req: NextRequest) {
         refundAmount,
         asaasTransferId,
       });
+
+      // Notify admins — saque falhou/cancelado (non-fatal)
+      void (async () => {
+        const { data: p } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", tx.user_id)
+          .maybeSingle();
+        const name = (p as Record<string, unknown> | null)?.full_name as string | undefined;
+        const displayName = name?.trim() || "Talent";
+        const amountStr = refundAmount.toFixed(2).replace(".", ",");
+        const title = newStatus === "cancelled" ? "Saque cancelado" : "Saque falhou";
+        const verb  = newStatus === "cancelled" ? "foi cancelado" : "falhou";
+        await notifyAdmins(
+          "payment",
+          `${title}: Saque de R$ ${amountStr} para ${displayName} ${verb}.`,
+          "/admin/finances?tab=saques",
+          `admin_withdraw_${newStatus}_${asaasTransferId}`,
+        );
+      })().catch((err) => log("warn", "[asaas transfer] notifyAdmins failed/cancelled (non-fatal)", { err: String(err) }));
 
       return NextResponse.json({ ok: true });
     }
