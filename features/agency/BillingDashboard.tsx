@@ -75,12 +75,12 @@ const PLANS = [
     badge: null,
     gradient: "from-violet-500 to-purple-700",
     headline: "Operacao premium com cobranca recorrente",
-    commission: "10% de comissao",
+    commission: "5% de comissao",
     features: [
       "Tudo do Pro",
       "Vagas fechadas",
       "Gerencie sua equipe internamente",
-      "Pool de talentos privado",
+      "Ambiente privado",
     ],
   },
 ] as const;
