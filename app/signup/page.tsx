@@ -67,12 +67,19 @@ function SignupPageContent() {
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [plan,     setPlan]     = useState<Plan>(initialPlan);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (!termsAccepted) {
+      setError("Você precisa aceitar os Termos de Uso para continuar.");
+      return;
+    }
+
     setLoading(true);
 
     // 1. Create user
@@ -88,7 +95,7 @@ function SignupPageContent() {
     const profileRes = await fetch("/api/auth/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: data.user.id, role }),
+      body: JSON.stringify({ user_id: data.user.id, role, termsAccepted }),
     });
 
     if (!profileRes.ok) {
@@ -223,6 +230,36 @@ function SignupPageContent() {
               />
             </div>
 
+            <label className="flex items-start gap-3 rounded-xl border border-zinc-200 px-4 py-3 hover:border-zinc-300 transition-colors cursor-pointer">
+              <input
+                id="termsAccepted"
+                name="termsAccepted"
+                type="checkbox"
+                required
+                checked={termsAccepted}
+                onInvalid={(e) => {
+                  e.currentTarget.setCustomValidity("Você precisa aceitar os Termos de Uso para continuar.");
+                }}
+                onChange={(e) => {
+                  e.currentTarget.setCustomValidity("");
+                  setTermsAccepted(e.target.checked);
+                }}
+                className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
+              />
+              <span className="text-[13px] leading-5 text-zinc-600">
+                Li e aceito os{" "}
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-zinc-900 underline underline-offset-2"
+                >
+                  Termos de Uso e Condições
+                </Link>{" "}
+                da BrisaHub.
+              </span>
+            </label>
+
 
             {error && (
               <p className="text-[13px] text-rose-500 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">
@@ -266,4 +303,3 @@ export default function SignupPage() {
     </Suspense>
   );
 }
-
