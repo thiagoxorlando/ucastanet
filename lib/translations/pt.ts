@@ -6,6 +6,7 @@ export const pt: Record<string, string> = {
   nav_bookings:    "Reservas",
   nav_post_job:    "Publicar Vaga",
   nav_finances:    "Financeiro",
+  nav_plans:       "Planos",
   nav_contracts:   "Contratos",
   nav_billing:     "Plano",
   nav_referrals:   "Indicações",

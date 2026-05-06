@@ -37,6 +37,7 @@ const pageMeta: Record<string, { title: string; description: string }> = {
   "/admin/users":           { title: "Usuários",             description: "Gerencie agências e talentos" },
   "/admin/bookings":        { title: "Reservas",             description: "Visualize todas as reservas da plataforma" },
   "/admin/finances":        { title: "Financeiro",           description: "Receita e comissões da plataforma" },
+  "/admin/plans":           { title: "Planos",               description: "Acompanhe planos, cobranças e histórico das agências" },
   "/admin/contracts":       { title: "Contratos",            description: "Visualize todos os contratos da plataforma" },
   "/admin/referrals":       { title: "Indicações",           description: "Acompanhe indicações e comissões da plataforma" },
   "/admin/trash":           { title: "Lixeira",              description: "Restaure ou exclua itens removidos da plataforma" },
