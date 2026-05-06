@@ -114,7 +114,7 @@ function dateFieldLabel(field: DateField) {
 function exportContract(contractId: string) {
   const link = document.createElement("a");
   link.href = `/api/admin/contracts/${contractId}/export`;
-  link.download = `contrato-${contractId}-backup.json`;
+  link.download = `contrato-${contractId}-backup.txt`;
   document.body.appendChild(link);
   link.click();
   link.remove();
