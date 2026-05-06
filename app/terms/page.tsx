@@ -519,9 +519,6 @@ export default function TermsPage() {
             <p>Versão 1.0</p>
             <p>Última atualização: Maio de 2026</p>
           </div>
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-            Este documento deve ser revisado por um advogado antes do lançamento público da plataforma.
-          </div>
         </header>
 
         <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
