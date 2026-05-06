@@ -21,7 +21,11 @@ export default async function AdminDashboardPage() {
       .from("bookings")
       .select("id, talent_user_id, job_id, job_title, price, status, created_at")
       .order("created_at", { ascending: false }),
-    supabase.from("jobs").select("id", { count: "exact", head: true }),
+    supabase
+      .from("jobs")
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .not("status", "in", "(cancelled,deleted,inactive)"),
     supabase.from("talent_profiles").select("id", { count: "exact", head: true }),
     supabase.from("agencies").select("id", { count: "exact", head: true }),
     supabase
