@@ -117,6 +117,22 @@ function getPlanDef(planKey: PlanKey) {
   return PLANS.find((plan) => plan.key === planKey) ?? PLANS[0];
 }
 
+function planStatusLabel(status: string | null) {
+  switch (status) {
+    case "active":    return "Ativo";
+    case "inactive":  return "Inativo";
+    case "pending":   return "Pendente";
+    case "cancelled":
+    case "canceled":  return "Cancelado";
+    case "past_due":
+    case "overdue":   return "Em atraso";
+    case "trialing":  return "Em teste";
+    case "paused":    return "Pausado";
+    case "cancelling": return "Cancelamento agendado";
+    default:          return "Indisponível";
+  }
+}
+
 function chargeStatusLabel(status: string | null) {
   switch (status) {
     case "paid":      return "Pago";
@@ -476,7 +492,7 @@ export default function BillingDashboard({
             <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Plano atual</p>
             <p className="text-[1.5rem] font-bold tracking-tight text-zinc-900">{currentPlanDef.name}</p>
             <p className="text-[13px] text-zinc-500">
-              Status: <strong className="text-zinc-800">{activePlanStatus ?? "inactive"}</strong>
+              Status: <strong className="text-zinc-800">{planStatusLabel(activePlanStatus ?? "inactive")}</strong>
               {expiresAt && activePlan !== "free" ? ` · renova em ${fmtDate(expiresAt)}` : ""}
             </p>
             <p className="text-[13px] text-zinc-400">Pagamentos processados com segurança via Asaas.</p>
