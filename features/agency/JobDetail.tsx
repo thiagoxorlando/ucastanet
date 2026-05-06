@@ -94,6 +94,27 @@ function initials(name: string) {
   return name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 }
 
+function normalizePublicBaseUrl(rawUrl: string) {
+  const base = new URL(rawUrl);
+  if (base.hostname === "brisahub.com.br") {
+    base.hostname = "www.brisahub.com.br";
+  }
+  return base.toString();
+}
+
+function buildPublicJobUrl(jobId: string) {
+  const configuredBaseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const fallbackBaseUrl = typeof window !== "undefined" ? window.location.origin : "https://www.brisahub.com.br";
+  const rawBaseUrl = configuredBaseUrl || fallbackBaseUrl;
+
+  try {
+    const normalizedBaseUrl = normalizePublicBaseUrl(rawBaseUrl);
+    return new URL(`/jobs/${jobId}`, normalizedBaseUrl).toString();
+  } catch {
+    return `${fallbackBaseUrl.replace(/\/$/, "")}/jobs/${jobId}`;
+  }
+}
+
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<Job["status"], string> = {
@@ -976,6 +997,8 @@ export default function JobDetail({
   const [bookings, setBookings]           = useState<JobBooking[]>(initialBookings ?? []);
   const [selected, setSelected]           = useState<Set<string>>(new Set());
   const [submissionList, setSubmissionList] = useState<Submission[]>(submissions ?? []);
+  const [copyFeedback, setCopyFeedback] = useState("");
+  const [manualCopyUrl, setManualCopyUrl] = useState("");
 
   if (!job) return <NotFound />;
 
@@ -1043,6 +1066,20 @@ export default function JobDetail({
     }
   }
 
+  async function handleCopyJobLink() {
+    if (!job) return;
+    const publicJobUrl = buildPublicJobUrl(job.id);
+
+    try {
+      await navigator.clipboard.writeText(publicJobUrl);
+      setManualCopyUrl("");
+      setCopyFeedback("Link copiado!");
+    } catch {
+      setManualCopyUrl(publicJobUrl);
+      setCopyFeedback("Copie o link abaixo manualmente.");
+    }
+  }
+
   return (
     <div className="max-w-5xl space-y-6">
 
@@ -1105,18 +1142,51 @@ export default function JobDetail({
             </div>
           </div>
 
-          {role === "agency" && job.status !== "closed" && (
-            <div className="flex items-center gap-3 flex-shrink-0">
-              <Link
-                href={`/agency/jobs/${job.id}/edit`}
-                className="inline-flex items-center gap-2 bg-white/10 border border-white/10 hover:bg-white/15 text-white text-[13px] font-bold px-5 py-2.5 rounded-xl transition-all duration-150"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                Editar Vaga
-              </Link>
+          {role === "agency" && (
+            <div className="space-y-3 flex-shrink-0">
+              <div className="flex items-center gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleCopyJobLink}
+                  className="inline-flex items-center gap-2 bg-white text-[#1F2D2E] text-[13px] font-bold px-5 py-2.5 rounded-xl transition-all duration-150 hover:bg-white/90 cursor-pointer"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16h8M8 12h8m-8-4h5m-6 12h10a2 2 0 002-2V6a2 2 0 00-2-2h-3.172a2 2 0 01-1.414-.586l-.828-.828A2 2 0 0010.172 2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  Copiar link da vaga
+                </button>
+
+                {job.status !== "closed" && (
+                  <Link
+                    href={`/agency/jobs/${job.id}/edit`}
+                    className="inline-flex items-center gap-2 bg-white/10 border border-white/10 hover:bg-white/15 text-white text-[13px] font-bold px-5 py-2.5 rounded-xl transition-all duration-150"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Editar Vaga
+                  </Link>
+                )}
+              </div>
+
+              {copyFeedback && (
+                <p className="text-[12px] font-medium text-white/80">{copyFeedback}</p>
+              )}
+
+              {manualCopyUrl && (
+                <div className="rounded-2xl border border-white/20 bg-white/10 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-white/70 mb-2">
+                    Copie manualmente
+                  </p>
+                  <input
+                    readOnly
+                    value={manualCopyUrl}
+                    onFocus={(event) => event.currentTarget.select()}
+                    className="w-full rounded-xl border border-white/15 bg-white px-3 py-2 text-[12px] font-medium text-[#1F2D2E] outline-none"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1250,7 +1320,5 @@ export default function JobDetail({
     </div>
   );
 }
-
-
 
 

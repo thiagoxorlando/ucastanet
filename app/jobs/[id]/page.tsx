@@ -31,8 +31,49 @@ function formatDate(value: string | null | undefined) {
   });
 }
 
+function formatTime(value: string | null | undefined) {
+  if (!value) return null;
+  return value.slice(0, 5);
+}
+
 function encodeNext(path: string) {
   return encodeURIComponent(path);
+}
+
+function UnavailableJobState() {
+  return (
+    <main className="min-h-screen bg-[#F8FAFC] text-[#1F2D2E]">
+      <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-5 py-8 sm:px-8">
+        <header className="mb-8 flex items-center justify-between">
+          <Link href="/" className="text-[15px] font-bold tracking-tight">
+            BrisaHub
+          </Link>
+        </header>
+
+        <section className="flex flex-1 items-center justify-center">
+          <div className="w-full max-w-xl rounded-[2rem] border border-[#DDE6E6] bg-white p-8 text-center shadow-sm sm:p-10">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-500">
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h1 className="mt-5 text-[1.65rem] font-semibold tracking-tight text-[#1F2D2E]">
+              Vaga não disponível.
+            </h1>
+            <p className="mt-3 text-[15px] leading-7 text-[#5E7374]">
+              Esta vaga pode ter sido encerrada, removida ou não está disponível para compartilhamento público.
+            </p>
+            <Link
+              href="/"
+              className="mt-6 inline-flex items-center justify-center rounded-xl border border-[#DDE6E6] bg-white px-5 py-3 text-[14px] font-bold text-[#1F2D2E] transition-colors hover:border-[#B8D4D4]"
+            >
+              Voltar para a BrisaHub
+            </Link>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -41,7 +82,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { data } = await supabase.from("jobs").select("title").eq("id", id).maybeSingle();
 
   return {
-    title: data?.title ? `${data.title} — BrisaHub` : "Oportunidade — BrisaHub",
+    title: data?.title ? `${data.title} — BrisaHub` : "Vaga não disponível — BrisaHub",
   };
 }
 
@@ -54,57 +95,178 @@ export default async function PublicJobPage({ params, searchParams }: Props) {
     data: { user },
   } = await session.auth.getUser();
 
+  if (referralToken) {
+    const { data: job } = await supabase
+      .from("jobs")
+      .select("id, title, description, category, budget, deadline, agency_id, location, visibility, status")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (!job || job.status === "inactive") notFound();
+
+    const { data: invite } = await supabase
+      .from("referral_invites")
+      .select("id, token, job_id, referrer_id, referred_user_id, status")
+      .eq("token", referralToken)
+      .eq("job_id", id)
+      .neq("status", "fraud_reported")
+      .maybeSingle();
+
+    if (job.visibility === "private" && !invite) notFound();
+
+    const [{ data: agency }, { data: referrer }] = await Promise.all([
+      job.agency_id
+        ? supabase.from("agencies").select("company_name").eq("id", job.agency_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      invite?.referrer_id
+        ? supabase.from("talent_profiles").select("full_name").eq("id", invite.referrer_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    const nextPath = `/talent/jobs/${id}`;
+    const signupHref = `/signup?role=talent&ref=${encodeURIComponent(referralToken)}&job=${encodeURIComponent(id)}&next=${encodeNext(nextPath)}`;
+    const loginHref = `/login?ref=${encodeURIComponent(referralToken)}&job=${encodeURIComponent(id)}&next=${encodeNext(nextPath)}`;
+    const dashboardHref = user ? nextPath : loginHref;
+    const deadline = formatDate(job.deadline);
+
+    return (
+      <main className="min-h-screen bg-[#F8FAFC] text-[#1F2D2E]">
+        <ReferralClaimOnView token={referralToken} />
+
+        <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-5 py-8 sm:px-8">
+          <header className="mb-8 flex items-center justify-between">
+            <Link href="/" className="text-[15px] font-bold tracking-tight">
+              BrisaHub
+            </Link>
+            {user ? (
+              <Link href={dashboardHref} className="text-[13px] font-semibold text-[#0E7C86]">
+                Acessar vaga
+              </Link>
+            ) : (
+              <Link href={loginHref} className="text-[13px] font-semibold text-[#0E7C86]">
+                Entrar
+              </Link>
+            )}
+          </header>
+
+          <section className="flex flex-1 flex-col justify-center">
+            {referrer?.full_name && (
+              <p className="mb-4 text-[13px] font-semibold uppercase tracking-[0.14em] text-[#0E7C86]">
+                Indicação de {referrer.full_name}
+              </p>
+            )}
+
+            <h1 className="text-[2rem] font-semibold leading-tight tracking-tight text-[#1F2D2E] sm:text-[2.75rem]">
+              {job.title}
+            </h1>
+
+            <div className="mt-5 flex flex-wrap gap-2 text-[13px] font-semibold text-[#647B7B]">
+              {agency?.company_name && (
+                <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">
+                  {agency.company_name}
+                </span>
+              )}
+              {job.location && (
+                <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">
+                  {job.location}
+                </span>
+              )}
+              {job.category && (
+                <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">
+                  {job.category}
+                </span>
+              )}
+              <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">
+                {formatBudget(job.budget)}
+              </span>
+              {deadline && (
+                <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">
+                  Prazo: {deadline}
+                </span>
+              )}
+            </div>
+
+            {job.description && (
+              <p className="mt-6 max-w-2xl whitespace-pre-line text-[15px] leading-7 text-[#475D5E]">
+                {job.description}
+              </p>
+            )}
+
+            <div className="mt-7 rounded-2xl border border-[#DDE6E6] bg-white px-5 py-4">
+              <p className="text-[14px] leading-6 text-[#475D5E]">
+                Para participar, crie sua conta ou faça login usando este link. Se esta indicação resultar em contratação/conclusão paga do job, quem indicou você poderá receber 2% de comissão conforme as regras da plataforma.
+              </p>
+            </div>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              {user ? (
+                <Link
+                  href={dashboardHref}
+                  className="inline-flex items-center justify-center rounded-xl bg-[#1F2D2E] px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-[#2D4142]"
+                >
+                  Ver oportunidade
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href={signupHref}
+                    className="inline-flex items-center justify-center rounded-xl bg-[#1F2D2E] px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-[#2D4142]"
+                  >
+                    Criar conta para participar
+                  </Link>
+                  <Link
+                    href={loginHref}
+                    className="inline-flex items-center justify-center rounded-xl border border-[#DDE6E6] bg-white px-5 py-3 text-[14px] font-bold text-[#1F2D2E] transition-colors hover:border-[#B8D4D4]"
+                  >
+                    Já tenho conta
+                  </Link>
+                </>
+              )}
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, title, description, category, budget, deadline, agency_id, location, visibility, status")
+    .select("id, title, description, category, budget, job_date, job_time, agency_id, location, visibility, status, deleted_at")
     .eq("id", id)
     .maybeSingle();
 
-  if (!job || job.status === "inactive") notFound();
+  if (!job || job.visibility !== "public" || job.status !== "open" || job.deleted_at) {
+    return <UnavailableJobState />;
+  }
 
-  const { data: invite } = referralToken
-    ? await supabase
-        .from("referral_invites")
-        .select("id, token, job_id, referrer_id, referred_user_id, status")
-        .eq("token", referralToken)
-        .eq("job_id", id)
-        .neq("status", "fraud_reported")
-        .maybeSingle()
-    : { data: null };
-
-  if (job.visibility === "private" && !invite) notFound();
-
-  const [{ data: agency }, { data: referrer }] = await Promise.all([
+  const [{ data: agency }, { data: profile }] = await Promise.all([
     job.agency_id
       ? supabase.from("agencies").select("company_name").eq("id", job.agency_id).maybeSingle()
       : Promise.resolve({ data: null }),
-    invite?.referrer_id
-      ? supabase.from("talent_profiles").select("full_name").eq("id", invite.referrer_id).maybeSingle()
+    user
+      ? supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
 
   const nextPath = `/talent/jobs/${id}`;
-  const signupHref = referralToken
-    ? `/signup?role=talent&ref=${encodeURIComponent(referralToken)}&job=${encodeURIComponent(id)}&next=${encodeNext(nextPath)}`
-    : `/signup?role=talent&next=${encodeNext(nextPath)}`;
-  const loginHref = referralToken
-    ? `/login?ref=${encodeURIComponent(referralToken)}&job=${encodeURIComponent(id)}&next=${encodeNext(nextPath)}`
-    : `/login?next=${encodeNext(nextPath)}`;
-  const dashboardHref = user ? nextPath : loginHref;
-  const deadline = formatDate(job.deadline);
+  const signupHref = `/signup?role=talent&next=${encodeNext(nextPath)}`;
+  const loginHref = `/login?next=${encodeNext(nextPath)}`;
+  const role = profile?.role ?? null;
+  const isTalent = role === "talent";
+  const isAgencyOrAdmin = role === "agency" || role === "admin";
+  const jobDate = formatDate(job.job_date);
+  const jobTime = formatTime(job.job_time);
 
   return (
     <main className="min-h-screen bg-[#F8FAFC] text-[#1F2D2E]">
-      {referralToken && <ReferralClaimOnView token={referralToken} />}
-
-      <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-5 py-8 sm:px-8">
+      <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-5 py-8 sm:px-8">
         <header className="mb-8 flex items-center justify-between">
           <Link href="/" className="text-[15px] font-bold tracking-tight">
             BrisaHub
           </Link>
           {user ? (
-            <Link href={dashboardHref} className="text-[13px] font-semibold text-[#0E7C86]">
-              Acessar vaga
+            <Link href={nextPath} className="text-[13px] font-semibold text-[#0E7C86]">
+              Abrir fluxo da vaga
             </Link>
           ) : (
             <Link href={loginHref} className="text-[13px] font-semibold text-[#0E7C86]">
@@ -113,81 +275,105 @@ export default async function PublicJobPage({ params, searchParams }: Props) {
           )}
         </header>
 
-        <section className="flex flex-1 flex-col justify-center">
-          {referrer?.full_name && (
-            <p className="mb-4 text-[13px] font-semibold uppercase tracking-[0.14em] text-[#0E7C86]">
-              Indicação de {referrer.full_name}
-            </p>
-          )}
-
-          <h1 className="text-[2rem] font-semibold leading-tight tracking-tight text-[#1F2D2E] sm:text-[2.75rem]">
-            {job.title}
-          </h1>
-
-          <div className="mt-5 flex flex-wrap gap-2 text-[13px] font-semibold text-[#647B7B]">
-            {agency?.company_name && (
-              <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">
-                {agency.company_name}
+        <section className="flex flex-1 items-center">
+          <div className="w-full rounded-[2rem] border border-[#DDE6E6] bg-white p-7 shadow-sm sm:p-10">
+            <div className="flex flex-wrap items-center gap-2 text-[13px] font-semibold text-[#647B7B]">
+              {agency?.company_name && (
+                <span className="rounded-full border border-[#DDE6E6] bg-[#F8FAFC] px-3 py-1">
+                  {agency.company_name}
+                </span>
+              )}
+              {job.category && (
+                <span className="rounded-full border border-[#DDE6E6] bg-[#F8FAFC] px-3 py-1">
+                  {job.category}
+                </span>
+              )}
+              {job.location && (
+                <span className="rounded-full border border-[#DDE6E6] bg-[#F8FAFC] px-3 py-1">
+                  {job.location}
+                </span>
+              )}
+              <span className="rounded-full border border-[#DDE6E6] bg-[#F8FAFC] px-3 py-1">
+                {formatBudget(job.budget)}
               </span>
-            )}
-            {job.location && (
-              <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">
-                {job.location}
-              </span>
-            )}
-            {job.category && (
-              <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">
-                {job.category}
-              </span>
-            )}
-            <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">
-              {formatBudget(job.budget)}
-            </span>
-            {deadline && (
-              <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">
-                Prazo: {deadline}
-              </span>
-            )}
-          </div>
-
-          {job.description && (
-            <p className="mt-6 max-w-2xl whitespace-pre-line text-[15px] leading-7 text-[#475D5E]">
-              {job.description}
-            </p>
-          )}
-
-          {referralToken && (
-            <div className="mt-7 rounded-2xl border border-[#DDE6E6] bg-white px-5 py-4">
-              <p className="text-[14px] leading-6 text-[#475D5E]">
-                Para participar, crie sua conta ou faça login usando este link. Se esta indicação resultar em contratação/conclusão paga do job, quem indicou você poderá receber 2% de comissão conforme as regras da plataforma.
-              </p>
             </div>
-          )}
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            {user ? (
-              <Link
-                href={dashboardHref}
-                className="inline-flex items-center justify-center rounded-xl bg-[#1F2D2E] px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-[#2D4142]"
-              >
-                Ver oportunidade
-              </Link>
-            ) : (
-              <>
+            <h1 className="mt-5 text-[2rem] font-semibold leading-tight tracking-tight text-[#1F2D2E] sm:text-[2.75rem]">
+              {job.title}
+            </h1>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              {jobDate && (
+                <div className="rounded-2xl border border-[#DDE6E6] bg-[#F8FAFC] px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6A8081]">
+                    Data
+                  </p>
+                  <p className="mt-1 text-[15px] font-semibold text-[#1F2D2E]">{jobDate}</p>
+                </div>
+              )}
+              {jobTime && (
+                <div className="rounded-2xl border border-[#DDE6E6] bg-[#F8FAFC] px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6A8081]">
+                    Horário
+                  </p>
+                  <p className="mt-1 text-[15px] font-semibold text-[#1F2D2E]">{jobTime}</p>
+                </div>
+              )}
+            </div>
+
+            {job.description && (
+              <div className="mt-7">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6A8081]">
+                  Descrição
+                </p>
+                <p className="mt-3 whitespace-pre-line text-[15px] leading-7 text-[#475D5E]">
+                  {job.description}
+                </p>
+              </div>
+            )}
+
+            <div className="mt-8 flex flex-col gap-3">
+              {!user && (
+                <>
+                  <Link
+                    href={signupHref}
+                    className="inline-flex items-center justify-center rounded-xl bg-[#1F2D2E] px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-[#2D4142]"
+                  >
+                    Candidatar-se
+                  </Link>
+                  <Link
+                    href={loginHref}
+                    className="inline-flex items-center justify-center rounded-xl border border-[#DDE6E6] bg-white px-5 py-3 text-[14px] font-bold text-[#1F2D2E] transition-colors hover:border-[#B8D4D4]"
+                  >
+                    Já tenho conta
+                  </Link>
+                </>
+              )}
+
+              {user && isTalent && (
                 <Link
-                  href={signupHref}
+                  href={nextPath}
                   className="inline-flex items-center justify-center rounded-xl bg-[#1F2D2E] px-5 py-3 text-[14px] font-bold text-white transition-colors hover:bg-[#2D4142]"
                 >
-                  Criar conta para participar
+                  Candidatar-se
                 </Link>
-                <Link
-                  href={loginHref}
-                  className="inline-flex items-center justify-center rounded-xl border border-[#DDE6E6] bg-white px-5 py-3 text-[14px] font-bold text-[#1F2D2E] transition-colors hover:border-[#B8D4D4]"
-                >
-                  Já tenho conta
-                </Link>
-              </>
-            )}
+              )}
+
+              {user && isAgencyOrAdmin && (
+                <>
+                  <button
+                    type="button"
+                    disabled
+                    className="inline-flex items-center justify-center rounded-xl bg-zinc-200 px-5 py-3 text-[14px] font-bold text-zinc-500 cursor-not-allowed"
+                  >
+                    Candidatar-se
+                  </button>
+                  <p className="text-[14px] text-[#5E7374]">
+                    Entre como talento para se candidatar.
+                  </p>
+                </>
+              )}
+            </div>
           </div>
         </section>
       </div>
