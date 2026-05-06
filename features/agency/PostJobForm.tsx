@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase";
 import { useSubscription } from "@/lib/SubscriptionContext";
 
 // ─── Types & constants ────────────────────────────────────────────────────────
@@ -371,13 +370,16 @@ export default function PostJobForm() {
     return submitAttempted || touched[k] ? errors[k] : undefined;
   }
 
+  function getApiError(status: number, body?: { error?: string; message?: string } | null) {
+    if (status === 401) {
+      return "Não autenticado. Faça login novamente.";
+    }
+
+    return body?.message ?? body?.error ?? "Algo deu errado. Tente novamente.";
+  }
+
   async function postJob(status: "open" | "draft") {
     setSubmitError(null);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setSubmitError("Não autenticado. Faça login novamente.");
-      return false;
-    }
     const res = await fetch("/api/jobs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -390,7 +392,6 @@ export default function PostJobForm() {
         job_date: form.job_date || null,
         job_time: form.job_time.trim() || null,
         job_role: form.job_role.trim() || null,
-        agency_id: user.id,
         location: form.location.trim() || null,
         gender: form.gender !== "any" ? form.gender : null,
         age_min: form.age_min ? Number(form.age_min) : null,
@@ -403,12 +404,17 @@ export default function PostJobForm() {
       }),
     });
     if (!res.ok) {
-      const body = await res.json();
-      if (body.error === "plan_limit") {
+      let body: { error?: string; message?: string } | null = null;
+      try {
+        body = await res.json();
+      } catch {
+        body = null;
+      }
+      if (body?.error === "plan_limit") {
         setPlanLimitError(body.message ?? "O plano Free permite 1 vaga. Faça upgrade para publicar mais vagas.");
         return false;
       }
-      setSubmitError(body.error ?? "Algo deu errado. Tente novamente.");
+      setSubmitError(getApiError(res.status, body));
       return false;
     }
     return true;
@@ -923,6 +929,3 @@ export default function PostJobForm() {
     </div>
   );
 }
-
-
-

@@ -6,6 +6,16 @@ import { requireJobLimit } from "@/lib/requireActiveSubscription";
 import { getJobSuggestions } from "@/lib/getJobSuggestions";
 import { resolvePlanInfo } from "@/lib/plans";
 
+function mapJobCreationError(message: string) {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("row-level security")) {
+    return "Você não tem permissão para criar vagas com esta conta.";
+  }
+
+  return message;
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
@@ -19,23 +29,49 @@ export async function POST(req: NextRequest) {
 
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user) {
+    return NextResponse.json({ error: "Não autenticado. Faça login novamente." }, { status: 401 });
+  }
 
   const supabase = createServerClient({ useServiceRole: true });
-  const { data: caller } = await supabase
+  const { data: caller, error: callerError } = await supabase
     .from("profiles")
     .select("role")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
+
+  if (callerError) {
+    console.error("[POST /api/jobs] profile lookup error:", callerError);
+    return NextResponse.json({ error: mapJobCreationError(callerError.message) }, { status: 400 });
+  }
+
+  if (!caller) {
+    return NextResponse.json({ error: "Perfil da conta não encontrado. Complete seu cadastro novamente." }, { status: 404 });
+  }
 
   if (caller?.role !== "agency") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "Apenas contas de agência podem publicar vagas." }, { status: 403 });
   }
   if (agency_id && agency_id !== user.id) {
-    return NextResponse.json({ error: "Cannot create jobs for another agency" }, { status: 403 });
+    return NextResponse.json({ error: "Você não pode publicar vagas para outra agência." }, { status: 403 });
   }
 
   const agencyId = user.id;
+  const { data: agency, error: agencyError } = await supabase
+    .from("agencies")
+    .select("id")
+    .eq("id", agencyId)
+    .maybeSingle();
+
+  if (agencyError) {
+    console.error("[POST /api/jobs] agency lookup error:", agencyError);
+    return NextResponse.json({ error: mapJobCreationError(agencyError.message) }, { status: 400 });
+  }
+
+  if (!agency) {
+    return NextResponse.json({ error: "Cadastro de agência não encontrado. Atualize seu perfil antes de publicar uma vaga." }, { status: 404 });
+  }
+
   const limited = await requireJobLimit(agencyId);
   if (limited) return limited;
 
@@ -88,7 +124,7 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     console.error("[POST /api/jobs] Supabase error:", error);
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ error: mapJobCreationError(error.message) }, { status: 400 });
   }
 
   const isPublished = !status || status === "open";
