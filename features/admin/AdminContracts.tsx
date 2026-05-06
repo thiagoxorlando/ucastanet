@@ -111,66 +111,101 @@ function dateFieldLabel(field: DateField) {
   return "Data da vaga";
 }
 
-function downloadContract(contract: AdminContractRow) {
-  const lines = [
-    "CONTRACT",
-    "",
-    `ID: ${contract.id}`,
-    `Enviado: ${formatDate(contract.createdAt)}`,
-    `Status: ${STATUS_LABEL[contract.status] ?? contract.status}`,
-    "",
-    "PARTES",
-    `Agencia: ${contract.agencyName}`,
-    `Talento: ${contract.talentName}`,
-    "",
-    "DETALHES DA VAGA",
-    `Data: ${formatJobDate(contract.jobDate)}`,
-    `Local: ${contract.location ?? "-"}`,
-    `Descricao: ${contract.jobDescription ?? "-"}`,
-    "",
-    "PAGAMENTO",
-    `Valor: ${brl(contract.paymentAmount)}`,
-    `Metodo: ${contract.paymentMethod ?? "-"}`,
-    "",
-    contract.additionalNotes ? `OBSERVACOES\n${contract.additionalNotes}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  const blob = new Blob([lines], { type: "text/plain" });
-  const url = URL.createObjectURL(blob);
+function exportContract(contractId: string) {
   const link = document.createElement("a");
-  link.href = url;
-  link.download = `contract-${contract.id.slice(0, 8)}.txt`;
+  link.href = `/api/admin/contracts/${contractId}/export`;
+  link.download = `contrato-${contractId}-backup.json`;
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
 }
 
-function ConfirmDialog({
-  message,
+function DeleteContractDialog({
+  contract,
+  onDownload,
   onConfirm,
   onCancel,
+  loading,
 }: {
-  message: string;
+  contract: AdminContractRow;
+  onDownload: () => void;
   onConfirm: () => void;
   onCancel: () => void;
+  loading: boolean;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="mx-4 w-full max-w-sm space-y-4 rounded-2xl bg-white p-6 shadow-xl">
-        <p className="text-[14px] font-medium text-zinc-700">{message}</p>
-        <div className="flex gap-3">
+      <div className="mx-4 w-full max-w-lg space-y-5 rounded-2xl bg-white p-6 shadow-xl">
+        <div className="space-y-2">
+          <p className="text-[15px] font-semibold text-zinc-900">Mover contrato para a lixeira</p>
+          <p className="text-[14px] text-zinc-700">
+            Antes de mover este contrato para a lixeira, você pode baixar um arquivo com todas as informações do contrato, vaga, agência e talento.
+          </p>
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3">
+            <p className="text-[13px] font-semibold text-zinc-900">{contract.jobTitle}</p>
+            <p className="mt-1 text-[12px] text-zinc-500">{contract.agencyName} • {contract.talentName}</p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <button
+            onClick={onDownload}
+            disabled={loading}
+            className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-[13px] font-semibold text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-50 disabled:opacity-50"
+          >
+            Baixar arquivo
+          </button>
           <button
             onClick={onCancel}
-            className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-[13px] font-medium text-zinc-600 transition-colors hover:border-zinc-300"
+            disabled={loading}
+            className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-[13px] font-medium text-zinc-600 transition-colors hover:border-zinc-300 disabled:opacity-50"
           >
             Cancelar
           </button>
           <button
             onClick={onConfirm}
-            className="flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-rose-700"
+            disabled={loading}
+            className="flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-rose-700 disabled:opacity-50"
           >
-            Mover para lixeira
+            {loading ? "Movendo..." : "Mover para lixeira"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BulkDeleteDialog({
+  count,
+  onConfirm,
+  onCancel,
+  loading,
+}: {
+  count: number;
+  onConfirm: () => void;
+  onCancel: () => void;
+  loading: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="mx-4 w-full max-w-lg space-y-5 rounded-2xl bg-white p-6 shadow-xl">
+        <p className="text-[14px] font-medium text-zinc-700">
+          Para baixar arquivos individuais, exporte cada contrato antes. Deseja mover os contratos selecionados para a lixeira?
+        </p>
+        <p className="text-[12px] font-medium text-zinc-500">{count} contrato{count !== 1 ? "s" : ""} selecionado{count !== 1 ? "s" : ""}</p>
+        <div className="flex gap-3">
+          <button
+            onClick={onCancel}
+            disabled={loading}
+            className="flex-1 rounded-xl border border-zinc-200 px-4 py-2.5 text-[13px] font-medium text-zinc-600 transition-colors hover:border-zinc-300 disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className="flex-1 rounded-xl bg-rose-600 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-rose-700 disabled:opacity-50"
+          >
+            {loading ? "Movendo..." : "Mover para lixeira"}
           </button>
         </div>
       </div>
@@ -192,6 +227,7 @@ function ContractRow({
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editAmount, setEditAmount] = useState(String(contract.paymentAmount));
   const [editLocation, setEditLocation] = useState(contract.location ?? "");
@@ -228,8 +264,10 @@ function ContractRow({
   }
 
   async function handleDelete() {
+    setDeleting(true);
     const response = await fetch(`/api/admin/contracts/${contract.id}`, { method: "DELETE" });
     if (response.ok) onDelete(contract.id);
+    setDeleting(false);
     setConfirm(false);
   }
 
@@ -241,10 +279,12 @@ function ContractRow({
   return (
     <Fragment>
       {confirm ? (
-        <ConfirmDialog
-          message={`Mover contrato entre ${local.agencyName} e ${local.talentName} para a lixeira?`}
+        <DeleteContractDialog
+          contract={local}
+          onDownload={() => exportContract(local.id)}
           onConfirm={handleDelete}
           onCancel={() => setConfirm(false)}
+          loading={deleting}
         />
       ) : null}
 
@@ -324,32 +364,23 @@ function ContractRow({
         </td>
         <td className="px-4 py-4 text-right">
           <div className="flex items-center justify-end gap-2" onClick={(event) => event.stopPropagation()}>
-            {isPaid ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-600 ring-1 ring-emerald-100">
-                <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                Somente leitura
-              </span>
-            ) : (
-              <>
-                <button
-                  onClick={() => {
-                    setEditing((current) => !current);
-                    setExpanded(true);
-                  }}
-                  className="rounded-lg px-2 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-800"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => setConfirm(true)}
-                  className="rounded-lg px-2 py-1 text-[11px] font-medium text-rose-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
-                >
-                  Excluir
-                </button>
-              </>
-            )}
+            {!isPaid ? (
+              <button
+                onClick={() => {
+                  setEditing((current) => !current);
+                  setExpanded(true);
+                }}
+                className="rounded-lg px-2 py-1 text-[11px] font-medium text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-800"
+              >
+                Editar
+              </button>
+            ) : null}
+            <button
+              onClick={() => setConfirm(true)}
+              className="rounded-lg px-2 py-1 text-[11px] font-medium text-rose-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+            >
+              Excluir
+            </button>
           </div>
         </td>
       </tr>
@@ -417,17 +448,6 @@ function ContractRow({
               </div>
             ) : (
               <div className="space-y-4">
-                {isPaid ? (
-                  <div className="flex items-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2.5">
-                    <svg className="h-3.5 w-3.5 flex-shrink-0 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                    <p className="text-[12px] font-semibold text-emerald-700">
-                      Este contrato foi pago e agora esta somente para leitura.
-                    </p>
-                  </div>
-                ) : null}
-
                 <div className="grid grid-cols-2 gap-4 text-[12px] sm:grid-cols-4">
                   <div>
                     <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">ID do contrato</p>
@@ -508,14 +528,14 @@ function ContractRow({
                 <button
                   onClick={(event) => {
                     event.stopPropagation();
-                    downloadContract(local);
+                    exportContract(local.id);
                   }}
                   className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3.5 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:border-zinc-300"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
-                  Baixar contrato
+                  Baixar arquivo
                 </button>
               </div>
             )}
@@ -535,6 +555,7 @@ export default function AdminContracts({ contracts: initialContracts }: { contra
   const [toDate, setToDate] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
   const [error, setError] = useState("");
 
   function handleDelete(id: string) {
@@ -591,7 +612,6 @@ export default function AdminContracts({ contracts: initialContracts }: { contra
 
   async function handleBulkDelete() {
     if (selectedCount === 0) return;
-    if (!window.confirm(`Tem certeza que deseja mover ${selectedCount} contratos selecionados para a lixeira?`)) return;
 
     setBulkDeleting(true);
     setError("");
@@ -613,10 +633,20 @@ export default function AdminContracts({ contracts: initialContracts }: { contra
     }
 
     setBulkDeleting(false);
+    setBulkConfirmOpen(false);
   }
 
   return (
     <div className="max-w-7xl space-y-6">
+      {bulkConfirmOpen ? (
+        <BulkDeleteDialog
+          count={selectedCount}
+          onConfirm={handleBulkDelete}
+          onCancel={() => setBulkConfirmOpen(false)}
+          loading={bulkDeleting}
+        />
+      ) : null}
+
       <div>
         <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Admin da plataforma</p>
         <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-zinc-900">Contratos</h1>
@@ -693,11 +723,11 @@ export default function AdminContracts({ contracts: initialContracts }: { contra
           <p className="text-[13px] font-semibold text-zinc-900">{selectedCount} contratos selecionados</p>
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={handleBulkDelete}
+              onClick={() => setBulkConfirmOpen(true)}
               disabled={bulkDeleting}
               className="rounded-xl bg-rose-600 px-3.5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {bulkDeleting ? "Movendo..." : "Mover selecionados para lixeira"}
+              Mover selecionados para lixeira
             </button>
             <button
               onClick={() => setSelectedIds(new Set())}

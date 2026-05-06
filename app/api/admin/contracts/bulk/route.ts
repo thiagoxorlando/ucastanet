@@ -19,17 +19,6 @@ export async function DELETE(req: NextRequest) {
   }
 
   const supabase = createServerClient({ useServiceRole: true });
-  const { data: contracts, error: contractsError } = await supabase
-    .from("contracts")
-    .select("id, status")
-    .in("id", ids);
-
-  if (contractsError) return NextResponse.json({ error: contractsError.message }, { status: 400 });
-
-  if ((contracts ?? []).some((contract) => contract.status === "paid")) {
-    return NextResponse.json({ error: "Contratos pagos não podem ser excluídos." }, { status: 409 });
-  }
-
   const { error } = await supabase
     .from("contracts")
     .update({ deleted_at: new Date().toISOString() })

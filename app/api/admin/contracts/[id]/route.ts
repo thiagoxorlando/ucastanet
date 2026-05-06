@@ -79,13 +79,6 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   if (!contract) {
     return NextResponse.json({ error: "Contract not found" }, { status: 404 });
   }
-  if (contract.status === "paid") {
-    return NextResponse.json(
-      { error: "Contract is paid and cannot be deleted" },
-      { status: 409 }
-    );
-  }
-
   const { error } = await supabase
     .from("contracts")
     .update({ deleted_at: new Date().toISOString() })
