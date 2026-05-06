@@ -825,9 +825,10 @@ function SubmissionCard({
 
 // ─── Booking row ──────────────────────────────────────────────────────────────
 
-function BookingRow({ booking, onCancel, onMarkPaid }: {
+function BookingRow({ booking, onCancel, onConfirm, onMarkPaid }: {
   booking: JobBooking;
   onCancel: (id: string) => void;
+  onConfirm: (id: string) => void;
   onMarkPaid: (id: string) => void;
 }) {
   const [busy, setBusy] = useState<"cancel" | "confirm" | "paid" | null>(null);
@@ -866,12 +867,24 @@ function BookingRow({ booking, onCancel, onMarkPaid }: {
     setBalanceError(null);
     setBusy("confirm");
     if (!booking.contractId) { setBusy(null); return; }
-    const res = await fetch(`/api/contracts/${booking.contractId}/stripe-checkout`, { method: "POST" });
+
+    const res = await contractFetch("agency_sign");
     if (!res) { setBusy(null); return; }
-    const data = await res.json().catch(() => ({})) as { url?: string };
-    if (res.ok && data.url) {
-      window.location.href = data.url;
+
+    if (res.ok) {
+      onConfirm(booking.id);
+      setBusy(null);
+      return;
     }
+
+    const data = await res.json().catch(() => ({})) as { error?: string; required?: number; available?: number };
+    if (res.status === 402 && data.error === "insufficient_balance") {
+      setBalanceError({
+        required: Number(data.required ?? booking.price ?? 0),
+        available: Number(data.available ?? 0),
+      });
+    }
+
     setBusy(null);
   }
 
@@ -902,7 +915,7 @@ function BookingRow({ booking, onCancel, onMarkPaid }: {
               disabled={busy === "confirm"}
               className="text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white transition-colors cursor-pointer disabled:opacity-50"
             >
-              {busy === "confirm" ? "Abrindo..." : "Pagar via Stripe"}
+              {busy === "confirm" ? "Confirmando..." : "Confirmar reserva"}
             </button>
           )}
           {canMarkPaid && (
@@ -934,7 +947,7 @@ function BookingRow({ booking, onCancel, onMarkPaid }: {
               d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
           </svg>
           <div className="flex-1 min-w-0">
-            <p className="text-[12px] font-semibold text-amber-800">Saldo insuficiente</p>
+            <p className="text-[12px] font-semibold text-amber-800">Saldo insuficiente na carteira.</p>
             <p className="text-[11px] text-amber-700 mt-0.5">
               Necessário: <strong>{brl(balanceError.required)}</strong> · Disponível: <strong>{brl(balanceError.available)}</strong>
             </p>
@@ -1055,6 +1068,10 @@ export default function JobDetail({
 
   function handleMarkPaid(id: string) {
     setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status: "paid" } : b));
+  }
+
+  function handleConfirmBooking(id: string) {
+    setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status: "confirmed" } : b));
   }
 
   async function handleDeleteSubmission(submissionId: string) {
@@ -1244,6 +1261,7 @@ export default function JobDetail({
                 key={b.id}
                 booking={b}
                 onCancel={handleCancelBooking}
+                onConfirm={handleConfirmBooking}
                 onMarkPaid={handleMarkPaid}
               />
             ))}
@@ -1320,5 +1338,3 @@ export default function JobDetail({
     </div>
   );
 }
-
-
