@@ -857,7 +857,7 @@ function SignupPageContent() {
                     </SectionCard>
 
                     <SectionCard eyebrow="Plano" title="Escolha como quer começar">
-                      <div className="grid gap-4 lg:grid-cols-3">
+                      <div className="space-y-3">
 
                         {/* ── Free ── */}
                         {(() => {
@@ -867,35 +867,34 @@ function SignupPageContent() {
                               type="button"
                               onClick={() => setAgencyField("plan", "free")}
                               className={[
-                                "group relative rounded-3xl border-2 p-5 text-left transition-all duration-200",
+                                "w-full flex items-center gap-4 rounded-2xl border-2 px-5 py-4 text-left transition-all duration-200",
                                 active
-                                  ? "border-[#1ABC9C] bg-white shadow-[0_0_0_4px_rgba(26,188,156,0.12),0_8px_24px_rgba(0,0,0,0.06)]"
-                                  : "border-[#E2ECED] bg-white hover:border-[#1ABC9C]/40 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)]",
+                                  ? "border-[#1ABC9C] bg-[#F0FDF9] shadow-[0_0_0_3px_rgba(26,188,156,0.1)]"
+                                  : "border-[#E2ECED] bg-white hover:border-[#A8D8D8] hover:bg-[#FAFEFE]",
                               ].join(" ")}
                             >
-                              {/* Selected ring indicator */}
-                              {active && (
-                                <span className="absolute right-4 top-4 flex h-5 w-5 items-center justify-center rounded-full bg-[#1ABC9C]">
-                                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                </span>
-                              )}
-                              <p className="text-[11px] font-bold uppercase tracking-widest text-zinc-400 mb-3">Grátis</p>
-                              <p className="text-[2rem] font-black tracking-tight text-zinc-900 leading-none">R$0</p>
-                              <p className="text-[12px] text-zinc-400 mt-0.5">por mês</p>
-                              <div className="my-4 border-t border-zinc-100" />
-                              <p className="text-[11px] font-semibold text-zinc-400 mb-2.5">Comissão de 20%</p>
-                              <ul className="space-y-2">
-                                {PLAN_DEFINITIONS.free.features.map((f) => (
-                                  <li key={f} className="flex items-start gap-2 text-[12px] leading-5 text-zinc-500">
-                                    <svg className="w-3.5 h-3.5 mt-0.5 text-[#1ABC9C] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    {f}
-                                  </li>
-                                ))}
-                              </ul>
+                              {/* Radio */}
+                              <span className={["flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors", active ? "border-[#1ABC9C] bg-[#1ABC9C]" : "border-zinc-300 bg-white"].join(" ")}>
+                                {active && <span className="w-2 h-2 rounded-full bg-white" />}
+                              </span>
+
+                              {/* Price block */}
+                              <div className="flex-shrink-0 w-24 text-left">
+                                <p className="text-[18px] font-black tracking-tight text-zinc-900 leading-none">R$0</p>
+                                <p className="text-[11px] text-zinc-400 mt-0.5">por mês</p>
+                              </div>
+
+                              {/* Divider */}
+                              <div className="flex-shrink-0 h-10 w-px bg-zinc-200" />
+
+                              {/* Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <p className="text-[14px] font-bold text-zinc-800">Free</p>
+                                  <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">20% comissão</span>
+                                </div>
+                                <p className="text-[12px] text-zinc-500 leading-relaxed">1 vaga ativa · até 3 contratações por vaga</p>
+                              </div>
                             </button>
                           );
                         })()}
@@ -907,75 +906,61 @@ function SignupPageContent() {
                             <button
                               type="button"
                               onClick={() => setAgencyField("plan", "pro")}
-                              className={[
-                                "group relative rounded-3xl p-5 text-left transition-all duration-200 overflow-hidden",
-                                active
-                                  ? "shadow-[0_16px_40px_rgba(26,188,156,0.32)] scale-[1.02]"
-                                  : "hover:scale-[1.01] hover:shadow-[0_12px_32px_rgba(26,188,156,0.22)] shadow-[0_8px_24px_rgba(26,188,156,0.16)]",
-                              ].join(" ")}
-                              style={{ background: "linear-gradient(145deg, #0E9E88 0%, #1ABC9C 45%, #27C1D6 100%)" }}
+                              className="w-full flex items-center gap-4 rounded-2xl px-5 py-4 text-left transition-all duration-200 relative overflow-hidden shadow-[0_4px_20px_rgba(26,188,156,0.2)] hover:shadow-[0_8px_28px_rgba(26,188,156,0.3)]"
+                              style={{ background: "linear-gradient(135deg, #0C9E87 0%, #1ABC9C 50%, #22BDD0 100%)" }}
                             >
-                              {/* Subtle pattern overlay */}
-                              <div className="absolute inset-0 opacity-[0.06]" style={{backgroundImage: "radial-gradient(circle at 80% 20%, white 1px, transparent 1px)", backgroundSize: "24px 24px"}} />
+                              <div className="absolute inset-0 opacity-[0.05]" style={{backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "18px 18px"}} />
+                              <div className="relative flex items-center gap-4 w-full">
+                                {/* Radio */}
+                                <span className={["flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors", active ? "border-white bg-white" : "border-white/50 bg-white/10"].join(" ")}>
+                                  {active && <span className="w-2 h-2 rounded-full bg-[#1ABC9C]" />}
+                                </span>
 
-                              <div className="relative">
-                                <div className="flex items-start justify-between mb-3">
-                                  <p className="text-[11px] font-bold uppercase tracking-widest text-white/70">Mais popular</p>
-                                  <span className="rounded-full bg-white/20 backdrop-blur-sm px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white border border-white/30">
-                                    POPULAR
-                                  </span>
+                                {/* Price block */}
+                                <div className="flex-shrink-0 w-24 text-left">
+                                  <p className="text-[18px] font-black tracking-tight text-white leading-none">R$287</p>
+                                  <p className="text-[11px] text-white/60 mt-0.5">por mês</p>
                                 </div>
-                                <p className="text-[2rem] font-black tracking-tight text-white leading-none">R$287</p>
-                                <p className="text-[12px] text-white/60 mt-0.5">por mês</p>
-                                <div className="my-4 border-t border-white/20" />
-                                <p className="text-[11px] font-semibold text-white/70 mb-2.5">Comissão de 10%</p>
-                                <ul className="space-y-2">
-                                  {PLAN_DEFINITIONS.pro.features.map((f) => (
-                                    <li key={f} className="flex items-start gap-2 text-[12px] leading-5 text-white/90">
-                                      <svg className="w-3.5 h-3.5 mt-0.5 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                      </svg>
-                                      {f}
-                                    </li>
-                                  ))}
-                                </ul>
-                                {active && (
-                                  <div className="mt-4 flex items-center gap-1.5 text-white/80 text-[11px] font-semibold">
-                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                    Plano selecionado
+
+                                {/* Divider */}
+                                <div className="flex-shrink-0 h-10 w-px bg-white/20" />
+
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <p className="text-[14px] font-bold text-white">Pro</p>
+                                    <span className="text-[10px] font-black text-[#0C9E87] bg-white px-2 py-0.5 rounded-full tracking-wide">POPULAR</span>
+                                    <span className="text-[10px] font-semibold text-white/70 bg-white/15 px-2 py-0.5 rounded-full">10% comissão</span>
                                   </div>
-                                )}
+                                  <p className="text-[12px] text-white/80 leading-relaxed">Vagas e contratações ilimitadas · marketplace completo</p>
+                                </div>
                               </div>
                             </button>
                           );
                         })()}
 
                         {/* ── Premium (coming soon) ── */}
-                        <div className="relative rounded-3xl border-2 border-zinc-200 bg-gradient-to-br from-zinc-800 to-zinc-900 p-5 text-left overflow-hidden select-none">
-                          <div className="absolute inset-0 opacity-[0.04]" style={{backgroundImage: "radial-gradient(circle at 20% 80%, white 1px, transparent 1px)", backgroundSize: "20px 20px"}} />
-                          <div className="relative">
-                            <div className="flex items-start justify-between mb-3">
-                              <p className="text-[11px] font-bold uppercase tracking-widest text-white/40">Em breve</p>
-                              <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-white/50 border border-white/10">
-                                PREMIUM
-                              </span>
+                        <div className="w-full flex items-center gap-4 rounded-2xl border-2 border-zinc-200 bg-zinc-50 px-5 py-4 text-left opacity-60 select-none cursor-not-allowed">
+                          {/* Radio (disabled) */}
+                          <span className="flex-shrink-0 w-5 h-5 rounded-full border-2 border-zinc-300 bg-white" />
+
+                          {/* Price block */}
+                          <div className="flex-shrink-0 w-24 text-left">
+                            <p className="text-[18px] font-black tracking-tight text-zinc-400 leading-none">—</p>
+                            <p className="text-[11px] text-zinc-400 mt-0.5">em breve</p>
+                          </div>
+
+                          {/* Divider */}
+                          <div className="flex-shrink-0 h-10 w-px bg-zinc-200" />
+
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-[14px] font-bold text-zinc-500">Premium</p>
+                              <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-200 px-2 py-0.5 rounded-full">Em breve</span>
+                              <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-200 px-2 py-0.5 rounded-full">5% comissão</span>
                             </div>
-                            <p className="text-[2rem] font-black tracking-tight text-white/50 leading-none">—</p>
-                            <p className="text-[12px] text-white/30 mt-0.5">preço a definir</p>
-                            <div className="my-4 border-t border-white/10" />
-                            <p className="text-[11px] font-semibold text-white/30 mb-2.5">Comissão de 5%</p>
-                            <ul className="space-y-2">
-                              {PLAN_DEFINITIONS.premium.features.map((f) => (
-                                <li key={f} className="flex items-start gap-2 text-[12px] leading-5 text-white/30">
-                                  <svg className="w-3.5 h-3.5 mt-0.5 text-white/20 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                  {f}
-                                </li>
-                              ))}
-                            </ul>
+                            <p className="text-[12px] text-zinc-400 leading-relaxed">Ambiente privado · vagas fechadas · equipe interna</p>
                           </div>
                         </div>
 
