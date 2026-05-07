@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Logo from "@/components/Logo";
 import { getAgencyLanding } from "@/lib/getAgencyLanding";
+import heroBrandImage from "@/public/landing/brisahub-hero-brand.png";
 
 type Role = "agency" | "talent";
 
@@ -164,12 +165,15 @@ export default function OnboardingFlow({
             <div className="relative overflow-hidden border-b border-white/8 px-6 py-8 sm:px-8 lg:border-b-0 lg:border-r lg:px-10 lg:py-10">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(39,193,214,0.24),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(26,188,156,0.18),transparent_28%)]" />
               <div className="relative flex h-full flex-col">
-                <div className="flex items-center gap-3">
-                  <Logo size="lg" />
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/50">BrisaHub</p>
-                    <p className="text-sm font-medium text-white/82">Boas-vindas</p>
-                  </div>
+                <div>
+                  <Image
+                    src={heroBrandImage}
+                    alt="BrisaHub"
+                    width={heroBrandImage.width}
+                    height={heroBrandImage.height}
+                    priority
+                    className="h-auto w-full max-w-[120px]"
+                  />
                 </div>
 
                 <div className="mt-10 space-y-5">
