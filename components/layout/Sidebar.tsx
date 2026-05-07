@@ -382,13 +382,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="absolute inset-y-0 right-0 w-px bg-white/8" />
         {/* Logo */}
         <div className="relative flex items-center justify-between px-5 h-16 border-b border-white/8 flex-shrink-0">
-          <Link href="/" className="flex items-center gap-2 min-w-0">
+          <Link href="/" className="flex flex-1 items-center justify-center">
             <Image
               src={heroBrandImage}
               alt="BrisaHub"
               width={heroBrandImage.width}
               height={heroBrandImage.height}
-              className="h-auto w-full max-w-[90px] flex-shrink-0"
+              className="h-auto w-full max-w-[72px]"
             />
           </Link>
 
