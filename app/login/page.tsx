@@ -156,7 +156,14 @@ function LoginPageContent() {
 
           {/* Mobile logo */}
           <div className="flex justify-center mb-10 lg:hidden">
-            <Logo size="xl" />
+            <Image
+              src={heroBrandImage}
+              alt="BrisaHub"
+              width={heroBrandImage.width}
+              height={heroBrandImage.height}
+              priority
+              className="h-auto w-full max-w-[140px]"
+            />
           </div>
 
           {/* Form card */}

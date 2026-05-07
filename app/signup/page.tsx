@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Logo from "@/components/Logo";
+import heroBrandImage from "@/public/landing/brisahub-hero-brand.png";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { supabase } from "@/lib/supabase";
 import { TALENT_CATEGORY_LABELS } from "@/lib/talentCategories";
@@ -618,12 +619,15 @@ function SignupPageContent() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(39,193,214,0.28),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(26,188,156,0.2),transparent_28%),linear-gradient(180deg,#081718_0%,#041012_100%)]" />
           <div className="absolute inset-0 opacity-40 [background-image:linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:32px_32px]" />
           <div className="relative flex h-full flex-col">
-            <div className="flex items-center gap-3">
-              <Logo size="lg" />
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">BrisaHub</p>
-                <h1 className="text-lg font-semibold tracking-tight text-white">Conta e perfil no mesmo fluxo</h1>
-              </div>
+            <div>
+              <Image
+                src={heroBrandImage}
+                alt="BrisaHub"
+                width={heroBrandImage.width}
+                height={heroBrandImage.height}
+                priority
+                className="h-auto w-full max-w-[120px]"
+              />
             </div>
 
             <div className="mt-10 space-y-5 lg:mt-16">

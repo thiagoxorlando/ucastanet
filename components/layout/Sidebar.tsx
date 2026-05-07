@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -7,7 +8,7 @@ import { useRole } from "@/lib/RoleProvider";
 import { supabase } from "@/lib/supabase";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { useT } from "@/lib/LanguageContext";
-import Logo from "@/components/Logo";
+import heroBrandImage from "@/public/landing/brisahub-hero-brand.png";
 
 type NavItem = {
   labelKey: string;
@@ -382,10 +383,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Logo */}
         <div className="relative flex items-center justify-between px-5 h-16 border-b border-white/8 flex-shrink-0">
           <Link href="/" className="flex items-center gap-2 min-w-0">
-            <Logo size="md" src="/logo1.png" />
-            <p className="text-[10px] text-[#9DB8B3] leading-none tracking-wide uppercase">
-              {portalLabel}
-            </p>
+            <Image
+              src={heroBrandImage}
+              alt="BrisaHub"
+              width={heroBrandImage.width}
+              height={heroBrandImage.height}
+              className="h-auto w-full max-w-[90px] flex-shrink-0"
+            />
           </Link>
 
           <button
