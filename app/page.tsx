@@ -461,52 +461,40 @@ export default function Home() {
 
       {/* ── Features ── */}
       <section className="relative overflow-hidden px-5 py-20 lg:px-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_60%,rgba(26,188,156,0.10),transparent_35%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_60%,rgba(26,188,156,0.10),transparent_35%),radial-gradient(circle_at_90%_40%,rgba(39,193,214,0.07),transparent_35%)]" />
         <GridTexture />
         <div className="relative mx-auto max-w-7xl">
-          <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
-            <div className="mx-auto max-w-xl">
-              <div className="mb-10 hidden justify-center lg:flex">
-                <Image
-                  src={heroBrandImage}
-                  alt="Marca BrisaHub"
-                  width={heroBrandImage.width}
-                  height={heroBrandImage.height}
-                  className="h-auto w-full max-w-[180px] opacity-90"
-                  sizes="180px"
-                />
-              </div>
-              <Pill>Recursos principais</Pill>
-              <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
-                Tudo o que a agência precisa para contratar com mais segurança
-              </h2>
-              <p className="mt-5 text-base leading-7 text-white/50">
-                Da publicação da vaga ao pagamento final, a plataforma mantém contexto, documentos e
-                status no mesmo fluxo para a agência não perder tempo em controles paralelos.
-              </p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {FEATURES.map((feature) => (
-                <GlassCard key={feature.title}>
-                  <FeatureIcon path={feature.icon} />
-                  <h3 className="mt-5 text-base font-black text-white">{feature.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-white/50">{feature.description}</p>
-                </GlassCard>
-              ))}
-            </div>
+          <div className="mx-auto max-w-2xl text-center">
+            <Pill>Recursos principais</Pill>
+            <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
+              Tudo o que a agência precisa para contratar com mais segurança
+            </h2>
+            <p className="mt-5 text-base leading-7 text-white/50">
+              Da publicação da vaga ao pagamento final, a plataforma mantém contexto, documentos e
+              status no mesmo fluxo para a agência não perder tempo em controles paralelos.
+            </p>
+          </div>
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURES.map((feature) => (
+              <GlassCard key={feature.title}>
+                <FeatureIcon path={feature.icon} />
+                <h3 className="mt-5 text-base font-black text-white">{feature.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-white/50">{feature.description}</p>
+              </GlassCard>
+            ))}
           </div>
         </div>
       </section>
 
       {/* ── Use cases ── */}
-      <section className="relative overflow-hidden px-5 pb-20 lg:px-10">
+      <section className="relative overflow-hidden px-5 py-20 lg:px-10">
         <GridTexture />
         <div className="relative mx-auto max-w-7xl">
-          <div className="rounded-[2rem] border border-white/8 bg-[radial-gradient(circle_at_14%_0%,rgba(26,188,156,0.16),transparent_30%)] p-8 lg:p-12">
-            <div className="grid gap-10 lg:grid-cols-[0.88fr_1.12fr] lg:items-start">
+          <div className="rounded-[2rem] border border-white/8 bg-[radial-gradient(circle_at_14%_0%,rgba(26,188,156,0.12),transparent_40%)] p-8 lg:p-14">
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
               <div>
                 <Pill>Uso profissional</Pill>
-                <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
+                <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-4xl lg:text-5xl">
                   Contratação segura para diferentes tipos de negócio
                 </h2>
                 <p className="mt-5 text-base leading-7 text-white/50">
@@ -529,13 +517,17 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-1">
+              <div className="grid gap-4">
                 {TRUST_PILLARS.map((pillar) => (
-                  <GlassCard key={pillar.title}>
-                    <CheckIcon />
-                    <h3 className="mt-4 text-base font-black text-white">{pillar.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-white/50">{pillar.description}</p>
-                  </GlassCard>
+                  <div key={pillar.title} className="rounded-2xl border border-white/8 bg-white/5 px-6 py-5 flex items-start gap-4">
+                    <div className="flex-shrink-0 mt-0.5 w-8 h-8 rounded-xl bg-[#1ABC9C]/15 flex items-center justify-center">
+                      <CheckIcon />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-white">{pillar.title}</h3>
+                      <p className="mt-1.5 text-sm leading-6 text-white/50">{pillar.description}</p>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
