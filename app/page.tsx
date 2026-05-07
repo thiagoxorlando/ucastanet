@@ -389,60 +389,73 @@ export default function Home() {
       </nav>
 
       {/* ── Hero ── */}
-      <section className="relative overflow-hidden px-5 py-16 sm:py-20 lg:px-10 lg:py-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(26,188,156,0.22),transparent_32%),radial-gradient(circle_at_88%_8%,rgba(39,193,214,0.15),transparent_28%),linear-gradient(180deg,#061214_0%,#081718_100%)]" />
-        <GridTexture />
-        <div className="relative mx-auto grid max-w-7xl items-center gap-14 lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[minmax(0,0.84fr)_minmax(0,1.16fr)] lg:gap-16">
-          <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center text-center lg:max-w-lg">
-            <div className="flex justify-center">
+      <section className="relative overflow-hidden">
+        {/* Background — matches login left panel */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(39,193,214,0.22),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(26,188,156,0.18),transparent_35%),linear-gradient(180deg,#081718_0%,#041012_100%)]" />
+        <div className="absolute inset-0 opacity-[0.04]" style={{backgroundImage:"linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)",backgroundSize:"48px 48px"}} />
+
+        <div className="relative mx-auto grid max-w-7xl lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)]">
+
+          {/* ── Left panel (login-style) ── */}
+          <div className="flex flex-col justify-between px-6 py-14 sm:px-10 lg:px-12 lg:py-12">
+
+            {/* Logo — top */}
+            <div>
               <Image
                 src={heroBrandImage}
-                alt="Marca BrisaHub"
+                alt="BrisaHub"
                 width={heroBrandImage.width}
                 height={heroBrandImage.height}
                 priority
-                className="h-auto w-full max-w-[94px] sm:max-w-[112px] lg:max-w-[132px]"
-                sizes="(min-width: 1024px) 132px, (min-width: 640px) 112px, 94px"
+                className="h-auto w-full max-w-[110px] lg:max-w-[120px]"
               />
             </div>
 
-            <h1 className="mt-8 max-w-[11ch] text-[2.35rem] font-black leading-[0.98] tracking-[-0.05em] text-white sm:text-[3rem] lg:text-[4rem]">
-              Contrate{" "}
-              <span className="bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] bg-clip-text text-transparent">
-                talentos
-              </span>{" "}
-              com segurança.
-            </h1>
-
-            <p className="mt-5 max-w-2xl text-base leading-7 text-white/50 sm:text-lg sm:leading-8">
-              Contratos, pagamentos e gestão em um só lugar para seu negócio contratar com mais controle.
-            </p>
-
-            <div className="mt-8 flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row sm:justify-center">
-              <Link href="/signup?role=agency" className={`${primaryLink} w-full sm:w-auto`}>
-                Começar como agência
-              </Link>
-              <Link href="/signup?role=talent" className={`${ghostLink} w-full sm:w-auto`}>
-                Entrar como talento
-              </Link>
+            {/* Center content */}
+            <div className="space-y-6 py-10 lg:py-0">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/8 border border-white/10 px-4 py-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#1ABC9C]" />
+                <span className="text-[12px] font-semibold text-white/60 tracking-wide">Plataforma de talentos</span>
+              </div>
+              <h1 className="text-[2.2rem] font-black tracking-[-0.04em] leading-[1.1] text-white sm:text-[2.6rem]">
+                O lugar onde<br />
+                <span className="bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] bg-clip-text text-transparent">
+                  talentos e agências
+                </span><br />
+                se encontram.
+              </h1>
+              <p className="text-[15px] leading-7 text-white/50 max-w-sm">
+                Gerencie contratações, contratos e pagamentos em um só lugar — rápido, seguro e sem burocracia.
+              </p>
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+                <Link href="/signup?role=agency" className={primaryLink}>
+                  Começar como agência
+                </Link>
+                <Link href="/signup?role=talent" className={ghostLink}>
+                  Entrar como talento
+                </Link>
+              </div>
             </div>
 
-            {/* Stats row */}
-            <div className="mt-10 flex items-center gap-8 justify-center">
+            {/* Stats — bottom */}
+            <div className="flex items-center gap-8">
               {[
                 { value: "100%", label: "Seguro" },
-                { value: "PIX", label: "Pagamentos" },
-                { value: "24h", label: "Suporte" },
+                { value: "PIX",  label: "Pagamentos" },
+                { value: "24h",  label: "Suporte" },
               ].map(({ value, label }) => (
-                <div key={label} className="text-center">
-                  <p className="text-[1.15rem] font-black text-white tracking-tight">{value}</p>
+                <div key={label}>
+                  <p className="text-[1.25rem] font-black text-white tracking-tight">{value}</p>
                   <p className="text-[11px] text-white/40 font-medium mt-0.5">{label}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <ProductPreview />
+          {/* ── Right: product preview ── */}
+          <div className="hidden lg:flex items-center justify-center px-6 py-12 lg:px-10">
+            <ProductPreview />
+          </div>
         </div>
       </section>
 
