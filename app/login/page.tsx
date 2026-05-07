@@ -1,11 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Logo from "@/components/Logo";
 import { getAgencyLanding } from "@/lib/getAgencyLanding";
+import heroBrandImage from "@/public/landing/brisahub-hero-brand.png";
 
 const ROLE_HOME: Record<string, string> = {
   talent: "/talent/dashboard",
@@ -105,7 +107,14 @@ function LoginPageContent() {
 
         {/* Logo */}
         <div className="relative">
-          <Logo size="xl" />
+          <Image
+            src={heroBrandImage}
+            alt="BrisaHub"
+            width={heroBrandImage.width}
+            height={heroBrandImage.height}
+            className="h-auto w-full max-w-[120px]"
+            priority
+          />
         </div>
 
         {/* Center content */}
