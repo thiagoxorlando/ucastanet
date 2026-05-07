@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import AdminPlans, { type AdminPlansAgency } from "@/features/admin/AdminPlans";
+import AdminPlans, { type AdminPlansAgency, type PlanSetting } from "@/features/admin/AdminPlans";
 import { getPlanLabel, parsePlan } from "@/lib/plans";
 import { createServerClient } from "@/lib/supabase";
 
@@ -33,6 +33,15 @@ type PlanChargeRow = {
   processed_at: string | null;
   provider: string | null;
   invoice_url?: string | null;
+};
+
+type PlanSettingRow = {
+  plan_key: string;
+  name: string;
+  price: number;
+  commission_percent: number;
+  is_available: boolean;
+  job_limit: number | null;
 };
 
 async function fetchPlanChargeRows(supabase: ReturnType<typeof createServerClient>) {
@@ -78,7 +87,13 @@ function inferPlanName(description: string | null | undefined, currentPlan: stri
 export default async function AdminPlansPage() {
   const supabase = createServerClient({ useServiceRole: true });
 
-  const [{ data: profiles }, { data: agencies }, chargeRows] = await Promise.all([
+  const [
+    { data: profiles },
+    { data: agencies },
+    chargeRows,
+    { data: planSettingsRows },
+    authUsers,
+  ] = await Promise.all([
     supabase
       .from("profiles")
       .select("id, plan, plan_status, plan_expires_at, asaas_customer_id, asaas_subscription_id")
@@ -88,7 +103,22 @@ export default async function AdminPlansPage() {
       .select("id, user_id, company_name, contact_name, deleted_at")
       .is("deleted_at", null),
     fetchPlanChargeRows(supabase),
+    Promise.resolve(
+      supabase
+        .from("plan_settings")
+        .select("plan_key, name, price, commission_percent, is_available, job_limit")
+        .order("plan_key"),
+    )
+      .then((r) => ({ data: (r.data ?? []) as PlanSettingRow[] }))
+      .catch(() => ({ data: [] as PlanSettingRow[] })),
+    Promise.resolve(supabase.auth.admin.listUsers({ perPage: 1000 }))
+      .then((r) => (r.data?.users ?? []) as { id: string; email?: string }[])
+      .catch(() => [] as { id: string; email?: string }[]),
   ]);
+
+  const emailMap = new Map<string, string>(
+    authUsers.map((u) => [u.id, u.email ?? ""]),
+  );
 
   const agencyMap = new Map<string, AgencyRow>();
   for (const agency of (agencies ?? []) as AgencyRow[]) {
@@ -134,6 +164,7 @@ export default async function AdminPlansPage() {
 
       return {
         id: profile.id,
+        email: emailMap.get(profile.id) ?? null,
         agencyName: agency?.company_name?.trim() || "Agencia sem nome",
         contactName: agency?.contact_name?.trim() || null,
         currentPlan,
@@ -144,6 +175,7 @@ export default async function AdminPlansPage() {
         asaasSubscriptionId: profile.asaas_subscription_id ?? null,
         totalPaid: paidCharges.reduce((sum, charge) => sum + Math.abs(Number(charge.amount ?? 0)), 0),
         paidChargeCount: paidCharges.length,
+        lastPaidAt: paidCharges[0]?.created_at ?? null,
         paidCharges: paidCharges.map(serializeCharge),
         pendingCharges: pendingCharges.map(serializeCharge),
         failedCharges: failedCharges.map(serializeCharge),
@@ -161,7 +193,17 @@ export default async function AdminPlansPage() {
       (sum, agency) => sum + agency.pendingCharges.reduce((inner, charge) => inner + charge.amount, 0),
       0,
     ),
+    failedChargeCount: agenciesData.reduce((sum, agency) => sum + agency.failedCharges.length, 0),
   };
 
-  return <AdminPlans agencies={agenciesData} summary={summary} />;
+  const planSettings: PlanSetting[] = (planSettingsRows as PlanSettingRow[]).map((row) => ({
+    plan_key: row.plan_key,
+    name: row.name,
+    price: Number(row.price),
+    commission_percent: Number(row.commission_percent),
+    is_available: row.is_available,
+    job_limit: row.job_limit ?? null,
+  }));
+
+  return <AdminPlans agencies={agenciesData} summary={summary} planSettings={planSettings} />;
 }

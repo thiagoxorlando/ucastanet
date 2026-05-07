@@ -35,14 +35,6 @@ export async function POST(req: NextRequest) {
 
   const requestedBodyPlan = body.plan as string | undefined;
 
-  // Premium is temporarily unavailable — reject it at the API level.
-  if (requestedBodyPlan === "premium") {
-    return NextResponse.json(
-      { error: "Plano Premium ainda não está disponível." },
-      { status: 422 },
-    );
-  }
-
   if (requestedBodyPlan && requestedBodyPlan !== "pro") {
     return NextResponse.json(
       { error: "Plano inválido para checkout." },
@@ -52,7 +44,29 @@ export async function POST(req: NextRequest) {
 
   // Enforce plan as pro — never trust other frontend values
   const requestedPlan = "pro";
-  const planPrice = PLAN_DEFINITIONS.pro.price;
+
+  // Fetch live price from plan_settings; fall back to hardcoded default if table unavailable
+  let planPrice = PLAN_DEFINITIONS.pro.price;
+  try {
+    const { data: planSettingRow } = await supabase
+      .from("plan_settings")
+      .select("price, is_available")
+      .eq("plan_key", "pro")
+      .single();
+
+    if (planSettingRow) {
+      if (!(planSettingRow as Record<string, unknown>).is_available) {
+        return NextResponse.json(
+          { error: "Plano Pro não está disponível no momento." },
+          { status: 422 },
+        );
+      }
+      planPrice = Number((planSettingRow as Record<string, unknown>).price) || planPrice;
+    }
+  } catch {
+    // plan_settings table may not exist yet — use hardcoded price
+  }
+
   const planLabel = "PRO";
 
   // ── Idempotency: return pending payment from existing subscription ────────────
