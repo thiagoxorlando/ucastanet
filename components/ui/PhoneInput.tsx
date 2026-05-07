@@ -111,16 +111,16 @@ export default function PhoneInput({
 
   return (
     <div className={`flex rounded-xl border transition-colors overflow-hidden bg-white ${borderCls}`}>
-      {/* Country code dropdown */}
-      <div className="relative flex-shrink-0 border-r border-zinc-200">
+      {/* Country code dropdown — fixed width so it never squeezes the number field */}
+      <div className="relative flex-shrink-0 w-[88px] border-r border-zinc-200">
         <select
           value={code}
           onChange={(e) => handleCodeChange(e.target.value)}
-          className="h-full pl-3 pr-7 text-[13px] font-medium text-zinc-700 bg-transparent appearance-none cursor-pointer focus:outline-none"
+          className="w-full h-full pl-2.5 pr-6 text-[13px] font-medium text-zinc-700 bg-transparent appearance-none cursor-pointer focus:outline-none"
         >
           {PHONE_COUNTRY_CODES.map((cc) => (
             <option key={`${cc.flag}-${cc.code}-${cc.label}`} value={cc.code}>
-              {cc.flag} {cc.code} {cc.label}
+              {cc.flag} {cc.code}
             </option>
           ))}
         </select>
@@ -130,14 +130,14 @@ export default function PhoneInput({
           </svg>
         </div>
       </div>
-      {/* Number field */}
+      {/* Number field — flex-1 takes all remaining space */}
       <input
         type="tel"
         required={required}
         placeholder={placeholder}
         value={num}
         onChange={(e) => handleNumChange(e.target.value)}
-        className="flex-1 px-3 py-3 text-[14px] bg-transparent focus:outline-none placeholder:text-zinc-400 min-w-0"
+        className="flex-1 min-w-0 px-3 py-3 text-[14px] bg-transparent focus:outline-none placeholder:text-zinc-400"
       />
     </div>
   );
