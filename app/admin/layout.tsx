@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import DashboardShell from "@/components/layout/DashboardShell";
+import AdminShell from "@/components/layout/AdminShell";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 
@@ -24,5 +24,5 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect("/login");
   }
 
-  return <DashboardShell>{children}</DashboardShell>;
+  return <AdminShell>{children}</AdminShell>;
 }
