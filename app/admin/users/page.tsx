@@ -18,7 +18,11 @@ export default async function AdminUsersPage() {
     { data: openJobsData },
   ] = await Promise.all([
     supabase.auth.admin.listUsers({ perPage: 1000 }),
-    supabase.from("profiles").select("id, role, full_name, wallet_balance"),
+    // Only active (non-frozen, non-deleted) profiles
+    supabase.from("profiles")
+      .select("id, role, full_name, wallet_balance")
+      .is("deleted_at", null)
+      .or("is_frozen.is.null,is_frozen.eq.false"),
     supabase.from("talent_profiles").select("id, user_id, full_name, avatar_url, deleted_at").is("deleted_at", null),
     supabase.from("agencies").select("id, user_id, company_name, avatar_url, deleted_at").is("deleted_at", null),
     supabase.from("bookings").select("talent_user_id, agency_id, price, status"),
