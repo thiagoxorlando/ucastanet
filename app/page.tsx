@@ -270,10 +270,26 @@ function GridTexture() {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
+type LivePriceMap = Record<string, { price: number; commission_percent: number }>;
+
+function livePriceLabel(prices: LivePriceMap, key: string, fallback: string) {
+  const p = prices[key];
+  if (!p) return fallback;
+  if (p.price === 0) return "R$0";
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(p.price);
+}
+
+function liveCommissionLabel(prices: LivePriceMap, key: string, fallback: string) {
+  const p = prices[key];
+  if (!p) return fallback;
+  return `${p.commission_percent}%`;
+}
+
 export default function Home() {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
   const [showRoleMenu, setShowRoleMenu] = useState(false);
+  const [livePrices, setLivePrices] = useState<LivePriceMap>({});
 
   useEffect(() => {
     getUserRole().then(async (role) => {
@@ -283,6 +299,14 @@ export default function Home() {
       else setChecking(false);
     });
   }, [router]);
+
+  useEffect(() => {
+    void fetch("/api/plan-settings").then(async (res) => {
+      if (!res.ok) return;
+      const data = await res.json() as LivePriceMap;
+      setLivePrices(data);
+    }).catch(() => undefined);
+  }, []);
 
   if (checking) {
     return (
@@ -637,13 +661,13 @@ export default function Home() {
                   <h3 className="mt-4 text-2xl font-black text-white">{plan.name}</h3>
                   <p className="mt-3 text-sm leading-6 text-white/50">{plan.summary}</p>
                   <div className="mt-4 flex items-end gap-1">
-                    <span className="text-4xl font-black tracking-[-0.04em] text-white">{plan.price}</span>
+                    <span className="text-4xl font-black tracking-[-0.04em] text-white">{livePriceLabel(livePrices, plan.key, plan.price)}</span>
                     {plan.period && <span className="pb-1 text-sm font-semibold text-white/40">{plan.period}</span>}
                   </div>
                   {!plan.premium && (
                     <div className="mt-5 rounded-2xl border border-[#1ABC9C]/20 bg-[#1ABC9C]/8 px-4 py-3 flex items-center justify-between gap-3">
                       <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#1ABC9C]/80">Comissão da plataforma</p>
-                      <p className="text-xl font-black text-white flex-shrink-0">{plan.commission}</p>
+                      <p className="text-xl font-black text-white flex-shrink-0">{liveCommissionLabel(livePrices, plan.key, plan.commission)}</p>
                     </div>
                   )}
                   <ul className="mt-6 space-y-3 pb-7">

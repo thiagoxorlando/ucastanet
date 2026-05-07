@@ -101,6 +101,10 @@ export function getSubscriptionPayments(subscriptionId: string) {
   );
 }
 
+export function updateSubscription(subscriptionId: string, data: { value: number }) {
+  return request<AsaasSubscriptionResponse>("PUT", `/subscriptions/${subscriptionId}`, data);
+}
+
 export function createPixTransfer(data: AsaasPixTransferInput) {
   return request<{ id: string; status: string; value: number; transferFee?: number }>(
     "POST", "/transfers", data,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PLAN_DEFINITIONS, type Plan } from "@/lib/plans";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -87,6 +87,8 @@ const PLANS = [
 
 type PlanKey = Plan;
 type PlanDef = typeof PLANS[number];
+
+type LivePriceMap = Record<string, { price: number; commission_percent: number }>;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -343,6 +345,30 @@ export default function BillingDashboard({
   const [premiumLoading, setPremiumLoading] = useState(false);
   const [receiptCharge, setReceiptCharge] = useState<PlanCharge | null>(null);
 
+  const [livePrices, setLivePrices] = useState<LivePriceMap>({});
+  useEffect(() => {
+    void fetch("/api/plan-settings").then(async (res) => {
+      if (!res.ok) return;
+      const data = await res.json() as LivePriceMap;
+      setLivePrices(data);
+    }).catch(() => undefined);
+  }, []);
+
+  function effectivePrice(p: PlanDef) {
+    return livePrices[p.key]?.price ?? p.price;
+  }
+  function effectivePriceLabel(p: PlanDef) {
+    const price = livePrices[p.key]?.price;
+    if (price === undefined) return p.priceLabel;
+    if (price === 0) return "R$ 0";
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price);
+  }
+  function effectiveCommission(p: PlanDef) {
+    const pct = livePrices[p.key]?.commission_percent;
+    if (pct === undefined) return p.commission;
+    return `${pct}% de comissao`;
+  }
+
   const currentPlanDef = getPlanDef(activePlan);
   const isCancellationScheduled = activePlan !== "free" && activePlanStatus === "cancelling";
   const latestCharge = planCharges[0] ?? null;
@@ -530,7 +556,7 @@ export default function BillingDashboard({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {PLANS.map((p) => {
             const isCurrent  = activePlan === p.key;
-            const isDowngrade = p.price < currentPlanDef.price;
+            const isDowngrade = effectivePrice(p) < effectivePrice(currentPlanDef);
             const isPending  = pendingChange?.plan === p.key;
             return (
               <div
@@ -564,13 +590,13 @@ export default function BillingDashboard({
                   </div>
                   <p className="text-[11px] text-zinc-400 mb-3 leading-snug">{p.headline}</p>
                   <div className="mb-1">
-                    <span className="text-[1.75rem] font-bold tracking-tighter text-zinc-900">{p.priceLabel}</span>
+                    <span className="text-[1.75rem] font-bold tracking-tighter text-zinc-900">{effectivePriceLabel(p)}</span>
                     {p.period && <span className="text-[12px] text-zinc-400 ml-1">{p.period}</span>}
                   </div>
                   <p className={[
                     "text-[11px] font-semibold mb-4",
                     p.key === "free" ? "text-zinc-400" : "text-indigo-600",
-                  ].join(" ")}>{p.commission}</p>
+                  ].join(" ")}>{effectiveCommission(p)}</p>
                   <ul className="space-y-1.5 mb-5 flex-1">
                     {p.features.map((feature) => (
                       <li key={feature} className="flex items-center gap-2 text-[12px] text-zinc-600">

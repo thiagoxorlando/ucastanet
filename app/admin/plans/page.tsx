@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import AdminPlans, { type AdminPlansAgency, type PlanSetting } from "@/features/admin/AdminPlans";
+import AdminPlans, {
+  type AdminPlansAgency,
+  type PlanSetting,
+  type PlanSettingHistoryEntry,
+} from "@/features/admin/AdminPlans";
 import { getPlanLabel, parsePlan } from "@/lib/plans";
 import { createServerClient } from "@/lib/supabase";
 
@@ -44,6 +48,21 @@ type PlanSettingRow = {
   job_limit: number | null;
 };
 
+type PlanHistoryRow = {
+  id: string;
+  plan_key: string;
+  changed_by: string;
+  changed_at: string;
+  old_price: number;
+  new_price: number;
+  old_commission_percent: number;
+  new_commission_percent: number;
+  old_is_available: boolean;
+  new_is_available: boolean;
+  old_job_limit: number | null;
+  new_job_limit: number | null;
+};
+
 async function fetchPlanChargeRows(supabase: ReturnType<typeof createServerClient>) {
   const baseSelect = "id, user_id, amount, description, created_at, status, payment_id, processed_at, provider";
   const withInvoice = await supabase
@@ -52,13 +71,8 @@ async function fetchPlanChargeRows(supabase: ReturnType<typeof createServerClien
     .eq("type", "plan_charge")
     .order("created_at", { ascending: false });
 
-  if (!withInvoice.error) {
-    return (withInvoice.data ?? []) as PlanChargeRow[];
-  }
-
-  if (!withInvoice.error.message.includes("invoice_url")) {
-    throw withInvoice.error;
-  }
+  if (!withInvoice.error) return (withInvoice.data ?? []) as PlanChargeRow[];
+  if (!withInvoice.error.message.includes("invoice_url")) throw withInvoice.error;
 
   const fallback = await supabase
     .from("wallet_transactions")
@@ -66,10 +80,7 @@ async function fetchPlanChargeRows(supabase: ReturnType<typeof createServerClien
     .eq("type", "plan_charge")
     .order("created_at", { ascending: false });
 
-  if (fallback.error) {
-    throw fallback.error;
-  }
-
+  if (fallback.error) throw fallback.error;
   return (fallback.data ?? []) as PlanChargeRow[];
 }
 
@@ -91,7 +102,8 @@ export default async function AdminPlansPage() {
     { data: profiles },
     { data: agencies },
     chargeRows,
-    { data: planSettingsRows },
+    planSettingsResult,
+    planHistoryResult,
     authUsers,
   ] = await Promise.all([
     supabase
@@ -111,14 +123,21 @@ export default async function AdminPlansPage() {
     )
       .then((r) => ({ data: (r.data ?? []) as PlanSettingRow[] }))
       .catch(() => ({ data: [] as PlanSettingRow[] })),
+    Promise.resolve(
+      supabase
+        .from("plan_settings_history")
+        .select("id, plan_key, changed_by, changed_at, old_price, new_price, old_commission_percent, new_commission_percent, old_is_available, new_is_available, old_job_limit, new_job_limit")
+        .order("changed_at", { ascending: false })
+        .limit(30),
+    )
+      .then((r) => ({ data: (r.data ?? []) as PlanHistoryRow[] }))
+      .catch(() => ({ data: [] as PlanHistoryRow[] })),
     Promise.resolve(supabase.auth.admin.listUsers({ perPage: 1000 }))
       .then((r) => (r.data?.users ?? []) as { id: string; email?: string }[])
       .catch(() => [] as { id: string; email?: string }[]),
   ]);
 
-  const emailMap = new Map<string, string>(
-    authUsers.map((u) => [u.id, u.email ?? ""]),
-  );
+  const emailMap = new Map<string, string>(authUsers.map((u) => [u.id, u.email ?? ""]));
 
   const agencyMap = new Map<string, AgencyRow>();
   for (const agency of (agencies ?? []) as AgencyRow[]) {
@@ -139,15 +158,14 @@ export default async function AdminPlansPage() {
       const currentPlan = parsePlan(profile.plan);
       const agencyCharges = chargesByUser.get(profile.id) ?? [];
 
-      const paidCharges = agencyCharges.filter((charge) => normalizeStatus(charge.status) === "paid");
-      const pendingCharges = agencyCharges.filter((charge) => {
-        const status = normalizeStatus(charge.status);
-        return status === "pending" || status === "processing" || status === "awaiting_payment" || status === "pending_payment";
+      const paidCharges = agencyCharges.filter((c) => normalizeStatus(c.status) === "paid");
+      const pendingCharges = agencyCharges.filter((c) => {
+        const s = normalizeStatus(c.status);
+        return s === "pending" || s === "processing" || s === "awaiting_payment" || s === "pending_payment";
       });
-      const failedCharges = agencyCharges.filter((charge) => {
-        const status = normalizeStatus(charge.status);
-        return status !== "paid" && !pendingCharges.includes(charge);
-      });
+      const failedCharges = agencyCharges.filter(
+        (c) => normalizeStatus(c.status) !== "paid" && !pendingCharges.includes(c),
+      );
 
       const serializeCharge = (charge: PlanChargeRow) => ({
         id: charge.id,
@@ -171,32 +189,38 @@ export default async function AdminPlansPage() {
         currentPlanLabel: getPlanLabel(currentPlan),
         planStatus: normalizeStatus(profile.plan_status) || (currentPlan === "free" ? "inactive" : "active"),
         nextChargeDate: profile.plan_expires_at ?? null,
+        lastPaidAt: paidCharges[0]?.created_at ?? null,
         asaasCustomerId: profile.asaas_customer_id ?? null,
         asaasSubscriptionId: profile.asaas_subscription_id ?? null,
-        totalPaid: paidCharges.reduce((sum, charge) => sum + Math.abs(Number(charge.amount ?? 0)), 0),
+        totalPaid: paidCharges.reduce((sum, c) => sum + Math.abs(Number(c.amount ?? 0)), 0),
         paidChargeCount: paidCharges.length,
-        lastPaidAt: paidCharges[0]?.created_at ?? null,
         paidCharges: paidCharges.map(serializeCharge),
         pendingCharges: pendingCharges.map(serializeCharge),
         failedCharges: failedCharges.map(serializeCharge),
       };
     })
-    .sort((left, right) => left.agencyName.localeCompare(right.agencyName, "pt-BR"));
+    .sort((a, b) => a.agencyName.localeCompare(b.agencyName, "pt-BR"));
 
-  const summary = {
-    freeCount: agenciesData.filter((agency) => agency.currentPlan === "free").length,
-    proCount: agenciesData.filter((agency) => agency.currentPlan === "pro").length,
-    premiumCount: agenciesData.filter((agency) => agency.currentPlan === "premium").length,
-    totalRevenuePaid: agenciesData.reduce((sum, agency) => sum + agency.totalPaid, 0),
-    pendingChargeCount: agenciesData.reduce((sum, agency) => sum + agency.pendingCharges.length, 0),
-    pendingChargeAmount: agenciesData.reduce(
-      (sum, agency) => sum + agency.pendingCharges.reduce((inner, charge) => inner + charge.amount, 0),
-      0,
-    ),
-    failedChargeCount: agenciesData.reduce((sum, agency) => sum + agency.failedCharges.length, 0),
+  const activeByPlan = {
+    free: agenciesData.filter((a) => a.currentPlan === "free" && a.planStatus === "active").length,
+    pro: agenciesData.filter((a) => a.currentPlan === "pro" && a.planStatus === "active").length,
+    premium: agenciesData.filter((a) => a.currentPlan === "premium" && a.planStatus === "active").length,
   };
 
-  const planSettings: PlanSetting[] = (planSettingsRows as PlanSettingRow[]).map((row) => ({
+  const summary = {
+    freeCount: agenciesData.filter((a) => a.currentPlan === "free").length,
+    proCount: agenciesData.filter((a) => a.currentPlan === "pro").length,
+    premiumCount: agenciesData.filter((a) => a.currentPlan === "premium").length,
+    totalRevenuePaid: agenciesData.reduce((sum, a) => sum + a.totalPaid, 0),
+    pendingChargeCount: agenciesData.reduce((sum, a) => sum + a.pendingCharges.length, 0),
+    pendingChargeAmount: agenciesData.reduce(
+      (sum, a) => sum + a.pendingCharges.reduce((inner, c) => inner + c.amount, 0),
+      0,
+    ),
+    failedChargeCount: agenciesData.reduce((sum, a) => sum + a.failedCharges.length, 0),
+  };
+
+  const planSettings: PlanSetting[] = planSettingsResult.data.map((row) => ({
     plan_key: row.plan_key,
     name: row.name,
     price: Number(row.price),
@@ -205,5 +229,29 @@ export default async function AdminPlansPage() {
     job_limit: row.job_limit ?? null,
   }));
 
-  return <AdminPlans agencies={agenciesData} summary={summary} planSettings={planSettings} />;
+  const planHistory: PlanSettingHistoryEntry[] = planHistoryResult.data.map((row) => ({
+    id: row.id,
+    plan_key: row.plan_key,
+    changed_by: row.changed_by,
+    changed_by_email: emailMap.get(row.changed_by) ?? null,
+    changed_at: row.changed_at,
+    old_price: Number(row.old_price),
+    new_price: Number(row.new_price),
+    old_commission_percent: Number(row.old_commission_percent),
+    new_commission_percent: Number(row.new_commission_percent),
+    old_is_available: row.old_is_available,
+    new_is_available: row.new_is_available,
+    old_job_limit: row.old_job_limit ?? null,
+    new_job_limit: row.new_job_limit ?? null,
+  }));
+
+  return (
+    <AdminPlans
+      agencies={agenciesData}
+      summary={summary}
+      planSettings={planSettings}
+      planHistory={planHistory}
+      activeByPlan={activeByPlan}
+    />
+  );
 }

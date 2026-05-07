@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Logo from "@/components/Logo";
 import PhoneInput from "@/components/ui/PhoneInput";
@@ -9,6 +9,8 @@ import { supabase } from "@/lib/supabase";
 import { TALENT_CATEGORY_LABELS } from "@/lib/talentCategories";
 import { formatCpf, formatCpfCnpj, isValidCpf, isValidCpfCnpj, normalizeCpfCnpj, digitsOnly } from "@/lib/cpf";
 import { PLAN_DEFINITIONS } from "@/lib/plans";
+
+type LivePrices = { free: { price: number; commission_percent: number }; pro: { price: number; commission_percent: number }; premium: { price: number; commission_percent: number } };
 
 type Role = "agency" | "talent";
 type Plan = "free" | "pro" | "premium";
@@ -276,6 +278,23 @@ function SignupPageContent() {
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [manualCheckMsg, setManualCheckMsg] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [livePrices, setLivePrices] = useState<LivePrices>({
+    free:    { price: PLAN_DEFINITIONS.free.price,    commission_percent: PLAN_DEFINITIONS.free.commissionRate * 100 },
+    pro:     { price: PLAN_DEFINITIONS.pro.price,     commission_percent: PLAN_DEFINITIONS.pro.commissionRate * 100 },
+    premium: { price: PLAN_DEFINITIONS.premium.price, commission_percent: PLAN_DEFINITIONS.premium.commissionRate * 100 },
+  });
+  useEffect(() => {
+    void fetch("/api/plan-settings").then(async (res) => {
+      if (!res.ok) return;
+      const data = await res.json() as Record<string, { price: number; commission_percent: number }>;
+      setLivePrices((prev) => ({
+        free:    data.free    ? { price: data.free.price,    commission_percent: data.free.commission_percent }    : prev.free,
+        pro:     data.pro     ? { price: data.pro.price,     commission_percent: data.pro.commission_percent }     : prev.pro,
+        premium: data.premium ? { price: data.premium.price, commission_percent: data.premium.commission_percent } : prev.premium,
+      }));
+    }).catch(() => undefined);
+  }, []);
 
   const roleCopy = ROLE_COPY[account.role];
   const selectedPlan = useMemo(() => PLAN_DEFINITIONS[agency.plan], [agency.plan]);
@@ -880,7 +899,9 @@ function SignupPageContent() {
 
                               {/* Price block */}
                               <div className="flex-shrink-0 w-24 text-left">
-                                <p className="text-[18px] font-black tracking-tight text-zinc-900 leading-none">R$0</p>
+                                <p className="text-[18px] font-black tracking-tight text-zinc-900 leading-none">
+                                  {livePrices.free.price === 0 ? "R$0" : `R$${livePrices.free.price}`}
+                                </p>
                                 <p className="text-[11px] text-zinc-400 mt-0.5">por mês</p>
                               </div>
 
@@ -891,7 +912,7 @@ function SignupPageContent() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                   <p className="text-[14px] font-bold text-zinc-800">Free</p>
-                                  <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">20% comissão</span>
+                                  <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">{livePrices.free.commission_percent}% comissão</span>
                                 </div>
                                 <p className="text-[12px] text-zinc-500 leading-relaxed">1 vaga ativa · até 3 contratações por vaga</p>
                               </div>
@@ -918,7 +939,7 @@ function SignupPageContent() {
 
                                 {/* Price block */}
                                 <div className="flex-shrink-0 w-24 text-left">
-                                  <p className="text-[18px] font-black tracking-tight text-white leading-none">R$287</p>
+                                  <p className="text-[18px] font-black tracking-tight text-white leading-none">R${livePrices.pro.price}</p>
                                   <p className="text-[11px] text-white/60 mt-0.5">por mês</p>
                                 </div>
 
@@ -930,7 +951,7 @@ function SignupPageContent() {
                                   <div className="flex items-center gap-2 mb-1">
                                     <p className="text-[14px] font-bold text-white">Pro</p>
                                     <span className="text-[10px] font-black text-[#0C9E87] bg-white px-2 py-0.5 rounded-full tracking-wide">POPULAR</span>
-                                    <span className="text-[10px] font-semibold text-white/70 bg-white/15 px-2 py-0.5 rounded-full">10% comissão</span>
+                                    <span className="text-[10px] font-semibold text-white/70 bg-white/15 px-2 py-0.5 rounded-full">{livePrices.pro.commission_percent}% comissão</span>
                                   </div>
                                   <p className="text-[12px] text-white/80 leading-relaxed">Vagas e contratações ilimitadas · marketplace completo</p>
                                 </div>

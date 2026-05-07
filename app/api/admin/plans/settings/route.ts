@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { createServerClient } from "@/lib/supabase";
+import { updateSubscription } from "@/lib/asaas";
+import { notify } from "@/lib/notify";
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -18,6 +20,14 @@ export async function GET() {
 
 const VALID_PLAN_KEYS = ["free", "pro", "premium"] as const;
 
+function brlFormat(n: number) {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
+}
+
+function planLabel(key: string) {
+  return key.charAt(0).toUpperCase() + key.slice(1);
+}
+
 export async function PATCH(req: NextRequest) {
   const auth = await requireAdmin();
   if (auth instanceof NextResponse) return auth;
@@ -29,6 +39,24 @@ export async function PATCH(req: NextRequest) {
 
   const supabase = createServerClient({ useServiceRole: true });
 
+  // Fetch all current settings before making any changes
+  const { data: currentRows } = await supabase
+    .from("plan_settings")
+    .select("plan_key, name, price, commission_percent, is_available, job_limit");
+
+  const currentMap = new Map(
+    (currentRows ?? []).map((row) => [
+      row.plan_key as string,
+      {
+        price: Number(row.price),
+        commission_percent: Number(row.commission_percent),
+        is_available: Boolean(row.is_available),
+        job_limit: (row.job_limit as number | null) ?? null,
+        name: String(row.name ?? row.plan_key),
+      },
+    ]),
+  );
+
   for (const setting of body as Record<string, unknown>[]) {
     const planKey = setting.plan_key as string;
     if (!VALID_PLAN_KEYS.includes(planKey as (typeof VALID_PLAN_KEYS)[number])) {
@@ -37,7 +65,6 @@ export async function PATCH(req: NextRequest) {
 
     const price = Number(setting.price);
     const commission = Number(setting.commission_percent);
-
     if (!Number.isFinite(price) || price < 0) {
       return NextResponse.json({ error: "price must be a non-negative number." }, { status: 400 });
     }
@@ -51,19 +78,99 @@ export async function PATCH(req: NextRequest) {
         ? null
         : Number(jobLimitRaw);
 
-    const { error } = await supabase
+    const current = currentMap.get(planKey);
+    if (!current) {
+      return NextResponse.json({ error: `Plan settings for "${planKey}" not found. Run the migration first.` }, { status: 404 });
+    }
+
+    const newIsAvailable = Boolean(setting.is_available);
+    const newName = String(setting.name ?? planKey);
+
+    const priceChanged = price !== current.price;
+    const commissionChanged = commission !== current.commission_percent;
+    const availabilityChanged = newIsAvailable !== current.is_available;
+    const jobLimitChanged = jobLimit !== current.job_limit;
+    const anythingChanged = priceChanged || commissionChanged || availabilityChanged || jobLimitChanged;
+
+    // 1. Update the plan_settings row
+    const { error: updateError } = await supabase
       .from("plan_settings")
       .update({
-        name: String(setting.name ?? planKey),
+        name: newName,
         price,
         commission_percent: commission,
-        is_available: Boolean(setting.is_available),
+        is_available: newIsAvailable,
         job_limit: jobLimit,
         updated_at: new Date().toISOString(),
       } as Record<string, unknown>)
       .eq("plan_key", planKey);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
+
+    // 2. Insert audit record
+    if (anythingChanged) {
+      const { error: historyError } = await supabase
+        .from("plan_settings_history")
+        .insert({
+          plan_key: planKey,
+          changed_by: auth.userId,
+          old_price: current.price,
+          new_price: price,
+          old_commission_percent: current.commission_percent,
+          new_commission_percent: commission,
+          old_is_available: current.is_available,
+          new_is_available: newIsAvailable,
+          old_job_limit: current.job_limit,
+          new_job_limit: jobLimit,
+        } as Record<string, unknown>);
+
+      if (historyError) {
+        console.error("[plan-settings/patch] audit insert failed (non-fatal):", historyError.message);
+      }
+    }
+
+    // 3. If price changed for a paid plan: update Asaas subscriptions + notify agencies
+    if (priceChanged && planKey !== "free") {
+      const { data: affectedProfiles } = await supabase
+        .from("profiles")
+        .select("id, asaas_subscription_id, plan_expires_at")
+        .eq("plan", planKey)
+        .in("plan_status", ["active", "trialing"])
+        .not("asaas_subscription_id", "is", null);
+
+      const affected = (affectedProfiles ?? []) as {
+        id: string;
+        asaas_subscription_id: string;
+        plan_expires_at: string | null;
+      }[];
+
+      if (affected.length > 0) {
+        // Notify all affected agencies
+        const affectedIds = affected.map((a) => a.id);
+        const nextBillingNote =
+          affected[0].plan_expires_at
+            ? ` na renovação de ${new Date(affected[0].plan_expires_at).toLocaleDateString("pt-BR")}`
+            : " na próxima renovação";
+
+        const message = `O preço do plano ${planLabel(planKey)} foi atualizado de ${brlFormat(current.price)} para ${brlFormat(price)}. O novo valor será cobrado${nextBillingNote}.`;
+
+        await notify(affectedIds, "plan_price_change", message, "/agency/billing").catch((err) => {
+          console.error("[plan-settings/patch] notify failed (non-fatal):", err);
+        });
+
+        // Update Asaas subscription for each affected agency
+        if (price > 0) {
+          for (const profile of affected) {
+            try {
+              await updateSubscription(profile.asaas_subscription_id, { value: price });
+              console.log(`[plan-settings/patch] Updated Asaas sub ${profile.asaas_subscription_id} → ${price} for agency ${profile.id}`);
+            } catch (err) {
+              console.error(`[plan-settings/patch] Asaas update failed for sub ${profile.asaas_subscription_id} (non-fatal):`, String(err));
+            }
+          }
+        }
+      }
+    }
   }
 
   return NextResponse.json({ ok: true });

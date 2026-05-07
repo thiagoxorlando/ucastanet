@@ -45,6 +45,22 @@ export type PlanSetting = {
   job_limit: number | null;
 };
 
+export type PlanSettingHistoryEntry = {
+  id: string;
+  plan_key: string;
+  changed_by: string;
+  changed_by_email: string | null;
+  changed_at: string;
+  old_price: number;
+  new_price: number;
+  old_commission_percent: number;
+  new_commission_percent: number;
+  old_is_available: boolean;
+  new_is_available: boolean;
+  old_job_limit: number | null;
+  new_job_limit: number | null;
+};
+
 type AdminPlansProps = {
   agencies: AdminPlansAgency[];
   summary: {
@@ -57,6 +73,8 @@ type AdminPlansProps = {
     failedChargeCount: number;
   };
   planSettings: PlanSetting[];
+  planHistory: PlanSettingHistoryEntry[];
+  activeByPlan: { free: number; pro: number; premium: number };
 };
 
 const PLAN_OPTIONS: Array<{ value: "all" | Plan; label: string }> = [
@@ -67,87 +85,68 @@ const PLAN_OPTIONS: Array<{ value: "all" | Plan; label: string }> = [
 ];
 
 const STATUS_OPTIONS = [
-  "all",
-  "active",
-  "inactive",
-  "pending",
-  "cancelled",
-  "canceled",
-  "past_due",
-  "overdue",
-  "trialing",
+  "all", "active", "inactive", "pending", "cancelled", "canceled", "past_due", "overdue", "trialing",
 ] as const;
 
 function formatDateTime(value: string | null) {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
 }
 
 function formatDate(value: string | null) {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(date);
+  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
 }
 
 function planStatusLabel(status: string) {
   switch (status) {
-    case "active":     return "Ativo";
-    case "inactive":   return "Inativo";
-    case "pending":    return "Pendente";
+    case "active":    return "Ativo";
+    case "inactive":  return "Inativo";
+    case "pending":   return "Pendente";
     case "cancelled":
-    case "canceled":   return "Cancelado";
+    case "canceled":  return "Cancelado";
     case "past_due":
-    case "overdue":    return "Em atraso";
-    case "trialing":   return "Em teste";
-    default:           return status ? status.replaceAll("_", " ") : "—";
+    case "overdue":   return "Em atraso";
+    case "trialing":  return "Em teste";
+    default:          return status ? status.replaceAll("_", " ") : "—";
   }
 }
 
 function chargeStatusLabel(status: string) {
   switch (status) {
-    case "paid":                 return "Pago";
-    case "pending":              return "Pendente";
-    case "processing":           return "Processando";
+    case "paid":             return "Pago";
+    case "pending":          return "Pendente";
+    case "processing":       return "Processando";
     case "awaiting_payment":
-    case "pending_payment":      return "Aguardando pagamento";
-    case "failed":               return "Falha";
+    case "pending_payment":  return "Aguardando pagamento";
+    case "failed":           return "Falha";
     case "cancelled":
-    case "canceled":             return "Cancelado";
+    case "canceled":         return "Cancelado";
     case "past_due":
-    case "overdue":              return "Em atraso";
-    default:                     return status ? status.replaceAll("_", " ") : "—";
+    case "overdue":          return "Em atraso";
+    default:                 return status ? status.replaceAll("_", " ") : "—";
   }
 }
 
 function statusBadgeClass(status: string) {
   switch (status) {
     case "active":
-    case "paid":
-      return "badge-success";
+    case "paid":          return "badge-success";
     case "pending":
     case "processing":
     case "awaiting_payment":
     case "pending_payment":
-    case "trialing":
-      return "badge-pending";
+    case "trialing":      return "badge-pending";
     case "cancelled":
     case "canceled":
     case "failed":
     case "past_due":
-    case "overdue":
-      return "badge-error";
-    default:
-      return "badge-info";
+    case "overdue":       return "badge-error";
+    default:              return "badge-info";
   }
 }
 
@@ -172,14 +171,12 @@ function DetailRow({ label, value, mono = false }: { label: string; value: strin
 
 function ChargeSection({ title, charges }: { title: string; charges: AdminPlansCharge[] }) {
   if (charges.length === 0) return null;
-
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[13px] font-semibold text-[#1F2D2E]">{title}</p>
         <p className="text-[11px] text-[#647B7B]">{charges.length} registro{charges.length !== 1 ? "s" : ""}</p>
       </div>
-
       <div className="space-y-3">
         {charges.map((charge) => (
           <div key={charge.id} className="rounded-2xl border border-[#DDE6E6] bg-[#F8FAFC] p-4">
@@ -190,26 +187,18 @@ function ChargeSection({ title, charges }: { title: string; charges: AdminPlansC
                   <span className={statusBadgeClass(charge.status)}>{chargeStatusLabel(charge.status)}</span>
                 </div>
                 <p className="text-[12px] text-[#647B7B]">{formatDateTime(charge.createdAt)}</p>
-                {charge.description ? (
-                  <p className="text-[12px] text-[#647B7B]">{charge.description}</p>
-                ) : null}
+                {charge.description ? <p className="text-[12px] text-[#647B7B]">{charge.description}</p> : null}
               </div>
-
               <div className="flex items-center gap-3 flex-wrap">
                 <p className="text-[15px] font-semibold text-[#0E7C86] tabular-nums">{brl(charge.amount)}</p>
                 {charge.invoiceUrl ? (
-                  <a
-                    href={charge.invoiceUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center rounded-xl border border-[#DDE6E6] bg-white px-3 py-2 text-[12px] font-semibold text-[#0E7C86] hover:bg-[#E6F0F0] transition-colors"
-                  >
+                  <a href={charge.invoiceUrl} target="_blank" rel="noreferrer"
+                    className="inline-flex items-center rounded-xl border border-[#DDE6E6] bg-white px-3 py-2 text-[12px] font-semibold text-[#0E7C86] hover:bg-[#E6F0F0] transition-colors">
                     Comprovante
                   </a>
                 ) : null}
               </div>
             </div>
-
             <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
               <DetailRow label="Data" value={formatDate(charge.createdAt)} />
               <DetailRow label="Hora" value={formatDateTime(charge.createdAt).split(" ").slice(-1)[0] ?? "—"} />
@@ -225,11 +214,25 @@ function ChargeSection({ title, charges }: { title: string; charges: AdminPlansC
   );
 }
 
-// ── Plan Settings Section ─────────────────────────────────────────────────────
+// ── Plan Settings Editor ──────────────────────────────────────────────────────
 
 const PLAN_KEY_ORDER = ["free", "pro", "premium"];
 
-function PlanSettingsSection({ initialSettings }: { initialSettings: PlanSetting[] }) {
+const PLAN_THEME: Record<string, { border: string; badge: string; label: string }> = {
+  free:    { border: "border-[#DDE6E6]",     badge: "bg-zinc-100 text-zinc-600",                       label: "Free" },
+  pro:     { border: "border-[#1ABC9C]/30",  badge: "bg-[#E6F7F4] text-[#0E7C86]",                    label: "Pro" },
+  premium: { border: "border-amber-200",     badge: "bg-amber-50 text-amber-700",                      label: "Premium" },
+};
+
+function PlanSettingsSection({
+  initialSettings,
+  activeByPlan,
+  history,
+}: {
+  initialSettings: PlanSetting[];
+  activeByPlan: { free: number; pro: number; premium: number };
+  history: PlanSettingHistoryEntry[];
+}) {
   const [settings, setSettings] = useState<PlanSetting[]>(
     PLAN_KEY_ORDER.map((key) => {
       const found = initialSettings.find((s) => s.plan_key === key);
@@ -239,9 +242,10 @@ function PlanSettingsSection({ initialSettings }: { initialSettings: PlanSetting
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   function updateSetting(index: number, field: keyof PlanSetting, value: unknown) {
-    setSettings((prev) => prev.map((s, i) => i === index ? { ...s, [field]: value } : s));
+    setSettings((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
     setSaveSuccess(false);
     setSaveError(null);
   }
@@ -250,21 +254,15 @@ function PlanSettingsSection({ initialSettings }: { initialSettings: PlanSetting
     setSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
-
     try {
       const res = await fetch("/api/admin/plans/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });
-
       const data = await res.json() as { error?: string };
-
-      if (!res.ok) {
-        setSaveError(data.error ?? "Erro ao salvar configurações.");
-      } else {
-        setSaveSuccess(true);
-      }
+      if (!res.ok) setSaveError(data.error ?? "Erro ao salvar configurações.");
+      else setSaveSuccess(true);
     } catch {
       setSaveError("Erro de rede ao salvar configurações.");
     } finally {
@@ -272,123 +270,146 @@ function PlanSettingsSection({ initialSettings }: { initialSettings: PlanSetting
     }
   }
 
-  const PLAN_COLORS: Record<string, string> = {
-    free: "border-[#DDE6E6]",
-    pro: "border-[#1ABC9C]/30",
-    premium: "border-amber-200",
-  };
-
-  const PLAN_LABELS: Record<string, string> = {
-    free: "Free",
-    pro: "Pro",
-    premium: "Premium",
-  };
+  const totalActive = activeByPlan.free + activeByPlan.pro + activeByPlan.premium;
 
   return (
-    <div className="card p-6 space-y-5">
-      <div>
-        <h2 className="text-[16px] font-semibold text-[#1F2D2E]">Configuração de Planos</h2>
-        <p className="text-[13px] text-[#647B7B] mt-0.5">Preço e comissão usados em novas assinaturas e no checkout.</p>
+    <div className="card p-6 space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-[16px] font-semibold text-[#1F2D2E]">Configuração de Planos</h2>
+          <p className="text-[13px] text-[#647B7B] mt-0.5">
+            Fonte canônica de preço e comissão para novas assinaturas e contratos.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowHistory((v) => !v)}
+          className="flex items-center gap-1.5 rounded-xl border border-[#DDE6E6] bg-white px-3 py-2 text-[12px] font-semibold text-[#647B7B] hover:bg-[#F8FAFC] transition-colors"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Histórico {history.length > 0 ? `(${history.length})` : ""}
+        </button>
       </div>
 
+      {/* Warning */}
       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
         <svg className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <p className="text-[12px] text-amber-700 leading-relaxed">
-          <strong>Atenção:</strong> alterações de preço <strong>não</strong> afetam assinaturas já ativas no Asaas. Somente novas assinaturas usarão o valor atualizado.
-        </p>
+        <div className="text-[12px] text-amber-700 leading-relaxed">
+          <strong>Atenção:</strong> alterações de preço afetam <strong>novas assinaturas imediatamente</strong> e atualizam o valor da próxima cobrança no Asaas para assinantes ativos.{" "}
+          {totalActive > 0 && (
+            <span>Há <strong>{totalActive} agência{totalActive !== 1 ? "s" : ""} com plano ativo</strong> — elas receberão uma notificação in-app ao salvar.</span>
+          )}
+          {" "}Faturas já pagas não são afetadas.
+        </div>
       </div>
 
+      {/* Plan cards */}
       <div className="space-y-4">
-        {settings.map((setting, index) => (
-          <div key={setting.plan_key} className={`rounded-2xl border-2 ${PLAN_COLORS[setting.plan_key] ?? "border-[#DDE6E6]"} bg-white p-5`}>
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-[13px] font-bold text-[#1F2D2E] tracking-wide">
-                {PLAN_LABELS[setting.plan_key] ?? setting.plan_key}
-              </span>
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">
-                {setting.plan_key}
-              </span>
-            </div>
+        {settings.map((setting, index) => {
+          const theme = PLAN_THEME[setting.plan_key] ?? PLAN_THEME.free;
+          const activeCount = activeByPlan[setting.plan_key as keyof typeof activeByPlan] ?? 0;
 
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {/* Price */}
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1.5">
-                  Preço (R$)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-[#647B7B]">R$</span>
+          return (
+            <div key={setting.plan_key} className={`rounded-2xl border-2 ${theme.border} bg-white p-5`}>
+              <div className="flex items-center gap-3 mb-5">
+                <span className={`inline-flex items-center rounded-full px-3 py-1 text-[12px] font-bold ${theme.badge}`}>
+                  {theme.label}
+                </span>
+                {activeCount > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#E6F7F4] border border-[#1ABC9C]/20 px-2.5 py-0.5 text-[11px] font-semibold text-[#0E7C86]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#1ABC9C]" />
+                    {activeCount} ativa{activeCount !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                {/* Price — fixed R$ prefix with flex, no absolute overlap */}
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1.5">
+                    Preço (BRL)
+                  </label>
+                  <div className="flex items-stretch rounded-xl border border-zinc-200 overflow-hidden focus-within:border-[#0E7C86] transition-colors">
+                    <span className="flex items-center px-3 text-[13px] font-medium text-zinc-500 bg-zinc-50 border-r border-zinc-200 select-none flex-shrink-0">
+                      R$
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={setting.price}
+                      onChange={(e) => updateSetting(index, "price", Number(e.target.value))}
+                      className="flex-1 min-w-0 px-3 py-2.5 text-[13px] text-[#1F2D2E] bg-white focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Commission */}
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1.5">
+                    Comissão
+                  </label>
+                  <div className="flex items-stretch rounded-xl border border-zinc-200 overflow-hidden focus-within:border-[#0E7C86] transition-colors">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={setting.commission_percent}
+                      onChange={(e) => updateSetting(index, "commission_percent", Number(e.target.value))}
+                      className="flex-1 min-w-0 px-3 py-2.5 text-[13px] text-[#1F2D2E] bg-white focus:outline-none"
+                    />
+                    <span className="flex items-center px-3 text-[13px] font-medium text-zinc-500 bg-zinc-50 border-l border-zinc-200 select-none flex-shrink-0">
+                      %
+                    </span>
+                  </div>
+                </div>
+
+                {/* Job limit */}
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1.5">
+                    Limite de vagas
+                  </label>
                   <input
                     type="number"
-                    min="0"
+                    min="1"
                     step="1"
-                    value={setting.price}
-                    onChange={(e) => updateSetting(index, "price", Number(e.target.value))}
-                    className="input-base pl-8 w-full"
+                    placeholder="Ilimitado"
+                    value={setting.job_limit === null ? "" : setting.job_limit}
+                    onChange={(e) => updateSetting(index, "job_limit", e.target.value === "" ? null : Number(e.target.value))}
+                    className="w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-[13px] text-[#1F2D2E] focus:outline-none focus:border-[#0E7C86] transition-colors"
                   />
                 </div>
-              </div>
 
-              {/* Commission */}
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1.5">
-                  Comissão (%)
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    value={setting.commission_percent}
-                    onChange={(e) => updateSetting(index, "commission_percent", Number(e.target.value))}
-                    className="input-base pr-8 w-full"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-[#647B7B]">%</span>
+                {/* Availability */}
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1.5">
+                    Disponível
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => updateSetting(index, "is_available", !setting.is_available)}
+                    className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-[13px] font-semibold transition-all ${
+                      setting.is_available
+                        ? "border-[#1ABC9C]/40 bg-[#E6F7F4] text-[#0E7C86]"
+                        : "border-zinc-200 bg-zinc-50 text-zinc-400"
+                    }`}
+                  >
+                    <span className={`w-2.5 h-2.5 rounded-full ${setting.is_available ? "bg-[#1ABC9C]" : "bg-zinc-300"}`} />
+                    {setting.is_available ? "Ativo" : "Inativo"}
+                  </button>
                 </div>
-              </div>
-
-              {/* Job limit */}
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1.5">
-                  Limite de vagas
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  placeholder="Ilimitado"
-                  value={setting.job_limit === null ? "" : setting.job_limit}
-                  onChange={(e) => updateSetting(index, "job_limit", e.target.value === "" ? null : Number(e.target.value))}
-                  className="input-base w-full"
-                />
-              </div>
-
-              {/* Available toggle */}
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1.5">
-                  Disponível
-                </label>
-                <button
-                  type="button"
-                  onClick={() => updateSetting(index, "is_available", !setting.is_available)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 text-[13px] font-semibold transition-all ${
-                    setting.is_available
-                      ? "border-[#1ABC9C]/40 bg-[#E6F7F4] text-[#0E7C86]"
-                      : "border-zinc-200 bg-zinc-50 text-zinc-400"
-                  }`}
-                >
-                  <span className={`w-2.5 h-2.5 rounded-full ${setting.is_available ? "bg-[#1ABC9C]" : "bg-zinc-300"}`} />
-                  {setting.is_available ? "Ativo" : "Inativo"}
-                </button>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
+      {/* Save */}
       <div className="flex items-center gap-4">
         <button
           type="button"
@@ -405,7 +426,6 @@ function PlanSettingsSection({ initialSettings }: { initialSettings: PlanSetting
             </>
           ) : "Salvar configurações"}
         </button>
-
         {saveSuccess && (
           <div className="flex items-center gap-2 text-[#0E7C86]">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -414,18 +434,63 @@ function PlanSettingsSection({ initialSettings }: { initialSettings: PlanSetting
             <span className="text-[13px] font-semibold">Salvo com sucesso</span>
           </div>
         )}
-
-        {saveError && (
-          <p className="text-[13px] text-rose-600 font-medium">{saveError}</p>
-        )}
+        {saveError && <p className="text-[13px] text-rose-600 font-medium">{saveError}</p>}
       </div>
+
+      {/* Audit history */}
+      {showHistory && (
+        <div className="pt-2 border-t border-[#DDE6E6]">
+          <p className="text-[13px] font-semibold text-[#1F2D2E] mb-3">Histórico de alterações</p>
+          {history.length === 0 ? (
+            <p className="text-[13px] text-[#647B7B]">Nenhuma alteração registrada ainda.</p>
+          ) : (
+            <div className="space-y-2">
+              {history.map((entry) => {
+                const priceChanged = entry.old_price !== entry.new_price;
+                const commChanged = entry.old_commission_percent !== entry.new_commission_percent;
+                const availChanged = entry.old_is_available !== entry.new_is_available;
+                return (
+                  <div key={entry.id} className="rounded-xl border border-[#DDE6E6] bg-[#F8FAFC] px-4 py-3">
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[12px] font-bold text-[#1F2D2E] uppercase">{entry.plan_key}</span>
+                          {priceChanged && (
+                            <span className="text-[11px] text-[#647B7B]">
+                              Preço: <span className="font-mono">{brl(entry.old_price)}</span> → <span className="font-mono font-semibold text-[#0E7C86]">{brl(entry.new_price)}</span>
+                            </span>
+                          )}
+                          {commChanged && (
+                            <span className="text-[11px] text-[#647B7B]">
+                              Comissão: {entry.old_commission_percent}% → <span className="font-semibold text-[#0E7C86]">{entry.new_commission_percent}%</span>
+                            </span>
+                          )}
+                          {availChanged && (
+                            <span className="text-[11px] text-[#647B7B]">
+                              Disponível: {entry.old_is_available ? "Sim" : "Não"} → <span className="font-semibold text-[#0E7C86]">{entry.new_is_available ? "Sim" : "Não"}</span>
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[#647B7B] font-mono">
+                          {entry.changed_by_email ?? entry.changed_by}
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-[#7FA9A8] flex-shrink-0">{formatDateTime(entry.changed_at)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function AdminPlans({ agencies, summary, planSettings }: AdminPlansProps) {
+export default function AdminPlans({ agencies, summary, planSettings, planHistory, activeByPlan }: AdminPlansProps) {
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState<"all" | Plan>("all");
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_OPTIONS)[number]>("all");
@@ -438,9 +503,7 @@ export default function AdminPlans({ agencies, summary, planSettings }: AdminPla
       agency.agencyName.toLowerCase().includes(query) ||
       (agency.contactName ?? "").toLowerCase().includes(query) ||
       (agency.email ?? "").toLowerCase().includes(query);
-
     const matchesPlan = planFilter === "all" || agency.currentPlan === planFilter;
-
     const matchesStatus =
       statusFilter === "all" ||
       agency.planStatus === statusFilter ||
@@ -448,7 +511,6 @@ export default function AdminPlans({ agencies, summary, planSettings }: AdminPla
       (statusFilter === "canceled" && agency.planStatus === "cancelled") ||
       (statusFilter === "past_due" && agency.planStatus === "overdue") ||
       (statusFilter === "overdue" && agency.planStatus === "past_due");
-
     return matchesSearch && matchesPlan && matchesStatus;
   });
 
@@ -458,7 +520,7 @@ export default function AdminPlans({ agencies, summary, planSettings }: AdminPla
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1">Admin da Plataforma</p>
           <h1 className="text-[1.75rem] font-semibold tracking-tight text-[#1F2D2E] leading-tight">Planos</h1>
-          <p className="text-[13px] text-[#647B7B] mt-1">Acompanhe planos de agencias e confira o historico real de cobrancas.</p>
+          <p className="text-[13px] text-[#647B7B] mt-1">Gerencie preços, comissões e acompanhe cobranças de agências.</p>
         </div>
         <div className="rounded-2xl border border-[#DDE6E6] bg-white px-4 py-3">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">Agencias visiveis</p>
@@ -484,8 +546,12 @@ export default function AdminPlans({ agencies, summary, planSettings }: AdminPla
         />
       </div>
 
-      {/* Plan settings */}
-      <PlanSettingsSection initialSettings={planSettings} />
+      {/* Plan settings editor */}
+      <PlanSettingsSection
+        initialSettings={planSettings}
+        activeByPlan={activeByPlan}
+        history={planHistory}
+      />
 
       {/* Filter bar */}
       <div className="card p-5">
@@ -497,31 +563,17 @@ export default function AdminPlans({ agencies, summary, planSettings }: AdminPla
             <input
               type="text"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por agencia, contato ou email"
               className="input-base pl-10"
             />
           </div>
-
-          <select
-            value={planFilter}
-            onChange={(event) => setPlanFilter(event.target.value as "all" | Plan)}
-            className="input-base"
-          >
-            {PLAN_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
+          <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value as "all" | Plan)} className="input-base">
+            {PLAN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as (typeof STATUS_OPTIONS)[number])}
-            className="input-base"
-          >
-            {STATUS_OPTIONS.map((status) => (
-              <option key={status} value={status}>
-                {status === "all" ? "Todos os status" : planStatusLabel(status)}
-              </option>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as (typeof STATUS_OPTIONS)[number])} className="input-base">
+            {STATUS_OPTIONS.map((s) => (
+              <option key={s} value={s}>{s === "all" ? "Todos os status" : planStatusLabel(s)}</option>
             ))}
           </select>
         </div>
@@ -547,14 +599,9 @@ export default function AdminPlans({ agencies, summary, planSettings }: AdminPla
                       <span className={statusBadgeClass(agency.planStatus)}>{planStatusLabel(agency.planStatus)}</span>
                       <span className="badge-info">{agency.currentPlanLabel}</span>
                     </div>
-                    {agency.contactName ? (
-                      <p className="text-[12px] text-[#647B7B]">Responsavel: {agency.contactName}</p>
-                    ) : null}
-                    {agency.email ? (
-                      <p className="text-[12px] text-[#647B7B] font-mono">{agency.email}</p>
-                    ) : null}
+                    {agency.contactName ? <p className="text-[12px] text-[#647B7B]">Responsavel: {agency.contactName}</p> : null}
+                    {agency.email ? <p className="text-[12px] text-[#647B7B] font-mono">{agency.email}</p> : null}
                   </div>
-
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 xl:min-w-[720px]">
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1">Proxima cobranca</p>
@@ -589,7 +636,6 @@ export default function AdminPlans({ agencies, summary, planSettings }: AdminPla
                     <DetailRow label="Status do plano" value={planStatusLabel(agency.planStatus)} />
                     {agency.email ? <DetailRow label="Email" value={agency.email} mono /> : null}
                   </div>
-
                   {totalHistoryCount > 0 ? (
                     <div className="space-y-6">
                       <ChargeSection title="Pagas" charges={agency.paidCharges} />
@@ -607,7 +653,6 @@ export default function AdminPlans({ agencies, summary, planSettings }: AdminPla
             </div>
           );
         })}
-
         {filteredAgencies.length === 0 ? (
           <div className="card px-6 py-14 text-center">
             <p className="text-[14px] font-semibold text-[#647B7B]">Nenhuma agencia encontrada</p>

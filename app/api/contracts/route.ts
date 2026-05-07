@@ -3,7 +3,8 @@ import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { notify, notifyAdmins } from "@/lib/notify";
 import { requireHireLimit } from "@/lib/requireActiveSubscription";
-import { calculateCommission, calculateNetAmount, resolvePlanInfo } from "@/lib/plans";
+import { resolvePlanInfo } from "@/lib/plans";
+import { getLivePlanSetting } from "@/lib/planSettings.server";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -73,8 +74,9 @@ export async function POST(req: NextRequest) {
   const planInfo = resolvePlanInfo(profile);
 
   const amount            = Number(payment_amount);
-  const commission_amount = calculateCommission(amount, planInfo.plan);
-  const net_amount        = calculateNetAmount(amount, planInfo.plan);
+  const liveSetting       = await getLivePlanSetting(planInfo.plan);
+  const commission_amount = Math.round(amount * liveSetting.commission_rate * 100) / 100;
+  const net_amount        = amount - commission_amount;
 
   console.log("[plan] create_contract", {
     agencyId: agency_id,
