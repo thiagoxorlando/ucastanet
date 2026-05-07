@@ -318,6 +318,7 @@ function SignupPageContent() {
     if (!talent.state.trim()) nextErrors.state = "Selecione seu estado.";
     if (talent.bio.length > 300) nextErrors.bio = "A bio deve ter no máximo 300 caracteres.";
     if (talent.categories.includes("Outro") && !customOtherText.trim()) nextErrors.customOther = "Descreva sua categoria personalizada.";
+    if (talent.categories.length === 0) nextErrors.categories = "Selecione pelo menos uma categoria.";
     if (!account.termsAccepted) nextErrors.termsAccepted = "Você precisa aceitar os Termos de Uso para continuar.";
     return nextErrors;
   }

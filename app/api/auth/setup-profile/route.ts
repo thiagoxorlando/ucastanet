@@ -30,23 +30,24 @@ export async function POST(req: NextRequest) {
     const t = (body.talent ?? {}) as Record<string, unknown>;
 
     const upsertPayload: Record<string, unknown> = {
-      id:         user.id,
+      id: user.id,
       deleted_at: null,
-      full_name:  t.full_name  ?? null,
-      phone:      t.phone      ?? null,
-      country:    t.country    ?? null,
-      city:       t.city       ?? null,
-      gender:     t.gender     ?? null,
-      age:        t.age        ?? null,
-      bio:        t.bio        ?? null,
-      categories: t.categories ?? [],
-      instagram:  t.instagram  ?? null,
-      tiktok:     t.tiktok     ?? null,
-      youtube:    t.youtube    ?? null,
-      linkedin:   t.linkedin   ?? null,
-      website:    t.website    ?? null,
-      main_role:  t.main_role  ?? null,
     };
+    if (t.full_name) upsertPayload.full_name = t.full_name;
+    if (t.phone) upsertPayload.phone = t.phone;
+    if (t.country) upsertPayload.country = t.country;
+    if (t.city) upsertPayload.city = t.city;
+    if (t.state) upsertPayload.state = t.state;
+    if (t.gender) upsertPayload.gender = t.gender;
+    if (t.age !== undefined && t.age !== null && t.age !== "") upsertPayload.age = t.age;
+    if (t.bio !== undefined && t.bio !== null && t.bio !== "") upsertPayload.bio = t.bio;
+    if (Array.isArray(t.categories) && t.categories.length > 0) upsertPayload.categories = t.categories;
+    if (t.instagram) upsertPayload.instagram = t.instagram;
+    if (t.tiktok) upsertPayload.tiktok = t.tiktok;
+    if (t.youtube) upsertPayload.youtube = t.youtube;
+    if (t.linkedin) upsertPayload.linkedin = t.linkedin;
+    if (t.website) upsertPayload.website = t.website;
+    if (t.main_role) upsertPayload.main_role = t.main_role;
     if (t.avatar_url) upsertPayload.avatar_url = t.avatar_url;
 
     const { error: talentErr } = await supabase
@@ -80,14 +81,15 @@ export async function POST(req: NextRequest) {
       user_id:             user.id,
       deleted_at:          null,
       subscription_status: existing?.subscription_status ?? "inactive",
-      company_name:        a.company_name ?? null,
-      contact_name:        a.contact_name ?? null,
-      phone:               a.phone        ?? null,
-      country:             a.country      ?? null,
-      city:                a.city         ?? null,
-      description:         a.description  ?? null,
-      website:             a.website      ?? null,
     };
+    if (a.company_name) upsertPayload.company_name = a.company_name;
+    if (a.contact_name) upsertPayload.contact_name = a.contact_name;
+    if (a.phone) upsertPayload.phone = a.phone;
+    if (a.country) upsertPayload.country = a.country;
+    if (a.city) upsertPayload.city = a.city;
+    if (a.state) upsertPayload.state = a.state;
+    if (a.description !== undefined && a.description !== null && a.description !== "") upsertPayload.description = a.description;
+    if (a.website) upsertPayload.website = a.website;
     if (a.avatar_url) upsertPayload.avatar_url = a.avatar_url;
 
     const { error: agencyErr } = await supabase

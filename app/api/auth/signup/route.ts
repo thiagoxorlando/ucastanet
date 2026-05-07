@@ -87,6 +87,7 @@ export async function POST(req: NextRequest) {
     if (agencyData.phone) agencyPayload.phone = agencyData.phone;
     if (agencyData.country) agencyPayload.country = agencyData.country;
     if (agencyData.city) agencyPayload.city = agencyData.city;
+    if (agencyData.state) agencyPayload.state = agencyData.state;
     if (agencyData.description) agencyPayload.description = agencyData.description;
     if (agencyData.website) agencyPayload.website = agencyData.website;
     if (agencyData.avatar_url) agencyPayload.avatar_url = agencyData.avatar_url;
@@ -140,6 +141,7 @@ export async function POST(req: NextRequest) {
           phone: talentData.phone ?? null,
           country: talentData.country ?? null,
           city: talentData.city ?? null,
+          state: talentData.state ?? null,
           gender: talentData.gender ?? null,
           age: talentData.age ?? null,
           bio: talentData.bio ?? null,

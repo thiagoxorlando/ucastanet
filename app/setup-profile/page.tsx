@@ -37,7 +37,7 @@ export default async function SetupProfilePage({ searchParams }: Props) {
     const [{ data: talentRow }, { data: profileRow }] = await Promise.all([
       supabase
         .from("talent_profiles")
-        .select("full_name, phone, country, city")
+        .select("full_name, phone, country, city, state, categories")
         .eq("id", user.id)
         .maybeSingle(),
       supabase
@@ -52,6 +52,9 @@ export default async function SetupProfilePage({ searchParams }: Props) {
       talentRow?.phone &&
       talentRow?.country &&
       talentRow?.city &&
+      talentRow?.state &&
+      Array.isArray(talentRow?.categories) &&
+      talentRow.categories.length > 0 &&
       profileRow?.cpf_cnpj,
     );
 
@@ -64,7 +67,7 @@ export default async function SetupProfilePage({ searchParams }: Props) {
     const [{ data: agencyRow }, { data: profileRow }] = await Promise.all([
       supabase
         .from("agencies")
-        .select("company_name, contact_name, phone, country, city")
+        .select("company_name, contact_name, phone, country, city, state")
         .eq("id", user.id)
         .maybeSingle(),
       supabase
@@ -80,6 +83,7 @@ export default async function SetupProfilePage({ searchParams }: Props) {
       agencyRow?.phone &&
       agencyRow?.country &&
       agencyRow?.city &&
+      agencyRow?.state &&
       profileRow?.cpf_cnpj,
     );
 
