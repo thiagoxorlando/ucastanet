@@ -33,11 +33,20 @@ export async function POST(req: NextRequest) {
   const profileRaw = profileRow as Record<string, unknown> | null;
   const name       = (profileRaw?.full_name as string | undefined) ?? "Agência";
 
+  const requestedBodyPlan = body.plan as string | undefined;
+
   // Premium is temporarily unavailable — reject it at the API level.
-  if ((body.plan as string | undefined) === "premium") {
+  if (requestedBodyPlan === "premium") {
     return NextResponse.json(
       { error: "Plano Premium ainda não está disponível." },
       { status: 422 },
+    );
+  }
+
+  if (requestedBodyPlan && requestedBodyPlan !== "pro") {
+    return NextResponse.json(
+      { error: "Plano inválido para checkout." },
+      { status: 400 },
     );
   }
 

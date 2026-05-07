@@ -40,7 +40,7 @@ const PLANS: { id: Plan; name: string; price: string; features: string[]; highli
   {
     id: "premium",
     name: "Premium",
-    price: "Sob consulta",
+    price: "Em breve",
     features: [
       "Tudo do Pro",
       "Ambiente privado",
@@ -153,9 +153,14 @@ function SignupPageContent() {
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => setPlan(p.id)}
+                  onClick={() => {
+                    if (p.id === "premium") return;
+                    setPlan(p.id);
+                  }}
+                  disabled={p.id === "premium"}
                   className={[
-                    "text-left px-4 py-4 rounded-2xl border-2 transition-all duration-150 cursor-pointer",
+                    "text-left px-4 py-4 rounded-2xl border-2 transition-all duration-150",
+                    p.id === "premium" ? "cursor-not-allowed opacity-60" : "cursor-pointer",
                     plan === p.id
                       ? p.highlight
                         ? "border-[#1F2D2E] bg-[#1F2D2E] text-white shadow-lg"
@@ -170,6 +175,11 @@ function SignupPageContent() {
                     {p.highlight && (
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${plan === p.id ? "bg-white/20 text-white" : "bg-[#1F2D2E] text-white"}`}>
                         POPULAR
+                      </span>
+                    )}
+                    {p.id === "premium" && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-zinc-200 text-zinc-500">
+                        EM BREVE
                       </span>
                     )}
                   </div>

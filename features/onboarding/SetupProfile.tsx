@@ -1130,7 +1130,7 @@ function AgencySetup({ userId, onDone, initialPlan = "free" }: { userId: string;
               <span className="text-[14px] font-semibold text-zinc-500">{PLAN_DEFINITIONS.premium.label}</span>
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-zinc-400 text-white tracking-wider">EM BREVE</span>
             </div>
-            <p className="text-[13px] text-zinc-400 mb-2">Em breve</p>
+            <p className="text-[13px] text-zinc-400 mb-2">{PLAN_DEFINITIONS.premium.priceLabel}</p>
             <ul className="space-y-1">
               {PLAN_DEFINITIONS.premium.features.map((f) => (
                 <li key={f} className="text-[12px] text-zinc-400">· {f}</li>
@@ -1243,6 +1243,5 @@ export default function SetupProfile({ nextPath = null, initialPlan = "free" }: 
     </div>
   );
 }
-
 
 

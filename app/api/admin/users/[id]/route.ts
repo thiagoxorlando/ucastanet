@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { ensureUserDeletionFinancialSafety } from "@/lib/admin/deleteUserDeep";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -92,6 +93,15 @@ export async function DELETE(req: NextRequest, { params }: Params) {
 
   const supabase = createServerClient({ useServiceRole: true });
   const now = new Date().toISOString();
+
+  try {
+    await ensureUserDeletionFinancialSafety(id);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Não foi possível excluir o usuário." },
+      { status: 422 },
+    );
+  }
 
   // 1. Freeze the account so the user cannot log in while in trash
   await supabase.from("profiles").update({ is_frozen: true }).eq("id", id);

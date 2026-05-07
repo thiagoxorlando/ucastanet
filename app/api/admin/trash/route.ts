@@ -10,7 +10,10 @@ function isValidTable(value: unknown): value is TrashTable {
   return typeof value === "string" && TABLES.includes(value as TrashTable);
 }
 
-// GET — list all soft-deleted items
+function deletionStatusFromMessage(message: string) {
+  return message.includes("saldo") || message.includes("pendentes") ? 422 : 500;
+}
+
 export async function GET() {
   const auth = await requireAdmin();
   if (auth instanceof NextResponse) return auth;
@@ -26,19 +29,14 @@ export async function GET() {
   ]);
 
   return NextResponse.json({
-    jobs:      jobs.data      ?? [],
-    bookings:  bookings.data  ?? [],
+    jobs: jobs.data ?? [],
+    bookings: bookings.data ?? [],
     contracts: contracts.data ?? [],
-    talent:    talent.data    ?? [],
-    agencies:  agencies.data  ?? [],
+    talent: talent.data ?? [],
+    agencies: agencies.data ?? [],
   });
 }
 
-// DELETE — permanently delete item(s) from trash
-//
-// For agencies and talent_profiles, calls deleteUserDeep() which removes
-// the auth account, all linked records, and frees up the email for reuse.
-// For other types (jobs, bookings, contracts), performs a direct hard-delete.
 export async function DELETE(req: NextRequest) {
   const auth = await requireAdmin();
   if (auth instanceof NextResponse) return auth;
@@ -70,6 +68,7 @@ export async function DELETE(req: NextRequest) {
 
   const supabase = createServerClient({ useServiceRole: true });
   const grouped = new Map<TrashTable, string[]>();
+
   for (const item of items) {
     const table = item.table as TrashTable;
     const ids = grouped.get(table) ?? [];
@@ -79,8 +78,6 @@ export async function DELETE(req: NextRequest) {
 
   for (const [table, ids] of grouped) {
     if (table === "agencies") {
-      // Permanent delete of an agency must go through deleteUserDeep so the
-      // auth account is removed and the email can be reused.
       for (const id of ids) {
         const { data: agency } = await supabase
           .from("agencies")
@@ -92,31 +89,24 @@ export async function DELETE(req: NextRequest) {
         if (userId) {
           try {
             await deleteUserDeep(userId);
-          } catch (err) {
-            return NextResponse.json(
-              { error: err instanceof Error ? err.message : "Falha ao excluir agência." },
-              { status: 500 },
-            );
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Falha ao excluir agência.";
+            return NextResponse.json({ error: message }, { status: deletionStatusFromMessage(message) });
           }
         } else {
-          // Orphan row with no linked user — just hard-delete the row
           await supabase.from("agencies").delete().eq("id", id);
         }
       }
     } else if (table === "talent_profiles") {
-      // talent_profiles.id === Supabase Auth user id
       for (const id of ids) {
         try {
           await deleteUserDeep(id);
-        } catch (err) {
-          return NextResponse.json(
-            { error: err instanceof Error ? err.message : "Falha ao excluir talento." },
-            { status: 500 },
-          );
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Falha ao excluir talento.";
+          return NextResponse.json({ error: message }, { status: deletionStatusFromMessage(message) });
         }
       }
     } else {
-      // jobs, bookings, contracts — simple hard-delete
       const { error } = await supabase.from(table).delete().in("id", ids);
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     }
@@ -125,10 +115,6 @@ export async function DELETE(req: NextRequest) {
   return NextResponse.json({ ok: true, count: items.length });
 }
 
-// POST — restore an item (clear deleted_at)
-//
-// For agencies and talent_profiles, also unfreezes the user account so
-// the user can log in again after being restored from trash.
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin();
   if (auth instanceof NextResponse) return auth;
@@ -151,7 +137,6 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  // Unfreeze the linked user account so they can log in again
   if (table === "agencies") {
     const { data: agency } = await supabase
       .from("agencies")

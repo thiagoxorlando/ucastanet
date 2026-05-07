@@ -5,6 +5,7 @@ export type PlanDefinition = {
   label: string;
   price: number;
   priceLabel: string;
+  available: boolean;
   maxActiveJobs: number | null;
   maxHiresPerJob: number | null;
   commissionRate: number;
@@ -29,6 +30,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     label: "Free",
     price: 0,
     priceLabel: "R$0",
+    available: true,
     maxActiveJobs: 1,
     maxHiresPerJob: 3,
     commissionRate: 0.2,
@@ -45,6 +47,7 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
     label: "Pro",
     price: 287,
     priceLabel: "R$287",
+    available: true,
     maxActiveJobs: null,
     maxHiresPerJob: null,
     commissionRate: 0.1,
@@ -59,8 +62,9 @@ export const PLAN_DEFINITIONS: Record<Plan, PlanDefinition> = {
   premium: {
     key: "premium",
     label: "Premium",
-    price: 5,
-    priceLabel: "Em breve",
+    price: 0,
+    priceLabel: "Preço a definir",
+    available: false,
     maxActiveJobs: null,
     maxHiresPerJob: null,
     commissionRate: 0.1,

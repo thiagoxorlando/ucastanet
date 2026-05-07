@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { ensureUserDeletionFinancialSafety } from "@/lib/admin/deleteUserDeep";
 
 function parseIds(value: unknown) {
   if (!Array.isArray(value)) return [];
@@ -54,6 +55,17 @@ export async function DELETE(req: NextRequest) {
 
   const supabase = createServerClient({ useServiceRole: true });
   const now = new Date().toISOString();
+
+  for (const id of ids) {
+    try {
+      await ensureUserDeletionFinancialSafety(id);
+    } catch (error) {
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Não foi possível excluir um dos usuários." },
+        { status: 422 },
+      );
+    }
+  }
 
   // Freeze all accounts
   await supabase.from("profiles").update({ is_frozen: true }).in("id", ids);

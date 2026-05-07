@@ -70,7 +70,7 @@ const PLANS = [
     key: "premium" as const,
     name: PLAN_DEFINITIONS.premium.label,
     price: PLAN_DEFINITIONS.premium.price,
-    priceLabel: "Em breve",
+    priceLabel: PLAN_DEFINITIONS.premium.priceLabel,
     period: "",
     badge: null,
     gradient: "from-violet-500 to-purple-700",
@@ -245,33 +245,23 @@ interface ModalProps {
   currentPrice: number;
   planExpiresAt: string | null;
   onSuccess: (newPlan: PlanKey, result: PlanChangeResponse) => void;
+  onUnavailable: (message: string) => void;
   onClose: () => void;
 }
 
 function PlanChangeModal({
   plan,
-  onSuccess,
+  onUnavailable,
   onClose,
-}: Pick<ModalProps, "plan" | "onSuccess" | "onClose">) {
+}: Pick<ModalProps, "plan" | "onUnavailable" | "onClose">) {
   const isToFree = plan.key === "free";
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
 
   async function handleConfirm() {
     setSubmitting(true);
-    setError("");
-
-    const res = await fetch("/api/agencies/plan-change", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan: plan.key, chargeImmediately: false }),
-    });
-    const data = await res.json().catch(() => ({})) as PlanChangeResponse & { error?: string };
-
     setSubmitting(false);
-    if (!res.ok) { setError(data.error ?? "Erro ao alterar plano. Tente novamente."); return; }
-    if (data.url) { window.location.assign(data.url); return; }
-    onSuccess(plan.key, data);
+    onClose();
+    onUnavailable("Alteração de plano pelo painel ainda não está disponível. Entre em contato com o suporte.");
   }
 
   return (
@@ -305,11 +295,9 @@ function PlanChangeModal({
               </p>
             </div>
           )}
-          {error && (
-            <p className="text-[13px] text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">
-              {error}
-            </p>
-          )}
+          <p className="text-[13px] text-zinc-600 bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3">
+            Alteração de plano pelo painel ainda não está disponível. Entre em contato com o suporte.
+          </p>
         </div>
 
         <div className="px-6 pb-6 pt-3 flex gap-3 border-t border-zinc-100">
@@ -366,6 +354,11 @@ export default function BillingDashboard({
   }
 
   async function handleAsaasCheckout(plan: "pro" | "premium") {
+    if (plan === "premium") {
+      showToast("Plano Premium em breve. Preço a definir.", false);
+      return;
+    }
+
     if (plan === "pro") setProLoading(true);
     else setPremiumLoading(true);
 
@@ -387,7 +380,7 @@ export default function BillingDashboard({
   }
 
   function handlePlanClick(p: PlanDef) {
-    if (p.key === "premium" && activePlan !== "premium") return; // unavailable
+    if (p.key === "premium") return;
     if (p.key === "free" && activePlan !== "free") { setChangingTo(p); return; }
     if (p.key === activePlan) return;
     if (p.key === "pro") { void handleAsaasCheckout("pro"); return; }
@@ -471,7 +464,7 @@ export default function BillingDashboard({
       {changingTo && (
         <PlanChangeModal
           plan={changingTo}
-          onSuccess={handleSuccess}
+          onUnavailable={(message) => showToast(message, false)}
           onClose={() => setChangingTo(null)}
         />
       )}
@@ -662,7 +655,9 @@ export default function BillingDashboard({
           <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-3">Proxima cobranca</p>
           {(expiresAt || nextChargeDate) && activePlan !== "free" ? (
             <div className="space-y-1.5">
-              <p className="text-[1.5rem] font-bold tracking-tight text-zinc-900">{brl(currentPlanDef.price)}</p>
+              <p className="text-[1.5rem] font-bold tracking-tight text-zinc-900">
+                {activePlan === "premium" ? currentPlanDef.priceLabel : brl(currentPlanDef.price)}
+              </p>
               <p className="text-[13px] text-zinc-600">Renovacao do plano {currentPlanDef.name}</p>
               <p className="text-[12px] text-zinc-400">{fmtDate((expiresAt ?? nextChargeDate)!)}</p>
               <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
