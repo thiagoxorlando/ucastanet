@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/Logo";
+import { getAgencyLanding } from "@/lib/getAgencyLanding";
 
 type Role = "agency" | "talent";
 
@@ -15,7 +17,7 @@ type StepCard = {
 const AGENCY_CARDS: StepCard[] = [
   {
     title: "Publique sua vaga",
-    body: "Descreva o briefing, categoria, local e valor para abrir a oportunidade com clareza.",
+    body: "Abra oportunidades com briefing claro, categoria definida e valor bem comunicado desde o início.",
     tone: "from-cyan-500/18 to-cyan-300/8 text-cyan-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -25,7 +27,7 @@ const AGENCY_CARDS: StepCard[] = [
   },
   {
     title: "Receba candidaturas",
-    body: "Os talentos visualizam a vaga pública ou privada e enviam suas candidaturas pela plataforma.",
+    body: "Talentos se candidatam dentro da plataforma e você acompanha tudo centralizado em um só painel.",
     tone: "from-emerald-500/18 to-emerald-300/8 text-emerald-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,7 +37,7 @@ const AGENCY_CARDS: StepCard[] = [
   },
   {
     title: "Escolha um talento",
-    body: "Compare perfis, histórico e disponibilidade antes de fechar sua decisão com confiança.",
+    body: "Compare perfis, histórico e disponibilidade antes de confirmar a contratação com segurança.",
     tone: "from-teal-500/18 to-teal-300/8 text-teal-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -45,7 +47,7 @@ const AGENCY_CARDS: StepCard[] = [
   },
   {
     title: "Confirme a reserva com saldo na carteira",
-    body: "A contratação usa saldo disponível em carteira para reservar o valor com segurança.",
+    body: "A reserva usa o saldo disponível em carteira para travar o valor da contratação dentro do fluxo seguro.",
     tone: "from-amber-500/18 to-amber-300/8 text-amber-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -55,7 +57,7 @@ const AGENCY_CARDS: StepCard[] = [
   },
   {
     title: "Libere o pagamento com segurança",
-    body: "Depois da entrega, a liberação segue o fluxo interno da plataforma até a carteira do talento.",
+    body: "Depois da entrega, a liberação segue o fluxo interno até a carteira do talento, sem atalhos por fora.",
     tone: "from-fuchsia-500/18 to-fuchsia-300/8 text-fuchsia-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,8 +69,8 @@ const AGENCY_CARDS: StepCard[] = [
 
 const TALENT_CARDS: StepCard[] = [
   {
-    title: "Complete seu perfil",
-    body: "Finalize foto, bio, categorias e links para aumentar a qualidade das suas candidaturas.",
+    title: "Seu perfil já entra pronto",
+    body: "Os dados principais já foram salvos no cadastro para você começar sem retrabalho.",
     tone: "from-cyan-500/18 to-cyan-300/8 text-cyan-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -78,7 +80,7 @@ const TALENT_CARDS: StepCard[] = [
   },
   {
     title: "Candidate-se a vagas",
-    body: "Explore oportunidades e envie candidatura direto pela plataforma quando o perfil combinar.",
+    body: "Explore oportunidades abertas e envie candidatura quando o trabalho combinar com seu perfil.",
     tone: "from-emerald-500/18 to-emerald-300/8 text-emerald-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,7 +90,7 @@ const TALENT_CARDS: StepCard[] = [
   },
   {
     title: "Aceite contratos",
-    body: "Quando for escolhido, acompanhe a formalização e os próximos passos do trabalho com clareza.",
+    body: "Quando for escolhido, acompanhe o contrato e os próximos passos do trabalho dentro da BrisaHub.",
     tone: "from-teal-500/18 to-teal-300/8 text-teal-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,7 +100,7 @@ const TALENT_CARDS: StepCard[] = [
   },
   {
     title: "Receba na carteira",
-    body: "Depois da liberação pela agência, o valor entra no seu saldo dentro da BrisaHub.",
+    body: "Depois da liberação pela agência, o valor entra no seu saldo dentro da plataforma.",
     tone: "from-amber-500/18 to-amber-300/8 text-amber-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,7 +110,7 @@ const TALENT_CARDS: StepCard[] = [
   },
   {
     title: "Saque via PIX",
-    body: "Com a chave PIX configurada, você poderá solicitar saque do saldo disponível para sua conta.",
+    body: "Com a chave PIX já configurada, você consegue sacar o saldo disponível quando quiser.",
     tone: "from-fuchsia-500/18 to-fuchsia-300/8 text-fuchsia-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -118,33 +120,41 @@ const TALENT_CARDS: StepCard[] = [
   },
 ];
 
-function continueHref(role: Role, nextPath: string | null, initialPlan: "free" | "pro") {
-  const params = new URLSearchParams();
-  if (nextPath) params.set("next", nextPath);
-  if (role === "agency" && initialPlan === "pro") params.set("plan", "pro");
-  const qs = params.toString();
-  return qs ? `/setup-profile?${qs}` : "/setup-profile";
-}
-
 export default function OnboardingFlow({
   role,
   nextPath,
-  initialPlan,
 }: {
   role: Role;
   nextPath: string | null;
   initialPlan: "free" | "pro";
 }) {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const cards = role === "agency" ? AGENCY_CARDS : TALENT_CARDS;
-  const primaryLabel = role === "agency" ? "Começar como agência" : "Começar como talento";
+  const primaryLabel = role === "agency" ? "Entrar como agência" : "Entrar como talento";
   const eyebrow = role === "agency" ? "Fluxo da agência" : "Fluxo do talento";
   const heading = role === "agency"
-    ? "Antes de entrar, veja como sua operação vai funcionar na BrisaHub"
-    : "Antes de entrar, veja como sua jornada de trabalho acontece na BrisaHub";
+    ? "Tudo certo. Agora veja rapidamente como sua operação acontece na BrisaHub"
+    : "Tudo certo. Agora veja rapidamente como sua jornada funciona na BrisaHub";
   const subheading = role === "agency"
-    ? "Você já criou a conta. Agora falta só completar o setup detalhado para publicar vagas, confirmar reservas e liberar pagamentos com segurança."
-    : "Você já criou a conta. Agora falta só completar o setup detalhado para ter acesso a vagas, candidaturas, contratos e saques.";
+    ? "Sua conta e o perfil base já foram salvos. Este passo é apenas uma explicação visual antes de seguir para a área da agência."
+    : "Sua conta e o perfil base já foram salvos. Este passo é apenas uma explicação visual antes de seguir para a área do talento.";
+
+  async function finish() {
+    if (loading) return;
+    setLoading(true);
+
+    try {
+      await fetch("/api/auth/complete-onboarding", { method: "POST" });
+      if (role === "agency") {
+        router.push(await getAgencyLanding());
+        return;
+      }
+      router.push(nextPath ?? "/talent/dashboard");
+    } catch {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#071416] px-4 py-8 sm:px-6 lg:px-8">
@@ -179,20 +189,10 @@ export default function OnboardingFlow({
                     <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-white/45">Próximo passo</p>
                     <p className="mt-2 text-sm leading-6 text-white/82">
                       {role === "agency"
-                        ? "Completar os dados da empresa, revisar o plano e seguir para publicar sua primeira vaga."
-                        : "Completar os dados do perfil, adicionar informações profissionais e entrar no painel de talento."}
+                        ? "Você segue direto para publicar sua primeira vaga ou cair no painel, sem preencher o perfil de novo."
+                        : "Você segue direto para o painel do talento ou para o destino inicial correto, sem preencher o perfil de novo."}
                     </p>
                   </div>
-                  {role === "agency" ? (
-                    <div className="rounded-[28px] border border-emerald-400/18 bg-emerald-400/8 p-5 text-sm leading-6 text-emerald-100">
-                      <p className="font-semibold">Plano inicial escolhido: {initialPlan === "pro" ? "Pro" : "Free"}</p>
-                      <p className="mt-1 text-emerald-100/80">
-                        {initialPlan === "pro"
-                          ? "O setup vai preservar essa escolha e continuar para a etapa de assinatura."
-                          : "Você seguirá com o plano Free e poderá começar sem pagamento imediato."}
-                      </p>
-                    </div>
-                  ) : null}
                 </div>
               </div>
             </div>
@@ -212,17 +212,18 @@ export default function OnboardingFlow({
 
               <div className="mt-6 flex flex-col gap-3 rounded-[28px] border border-white/8 bg-white/[0.04] p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-[15px] font-semibold text-white">Conta criada com sucesso</p>
+                  <p className="text-[15px] font-semibold text-white">Conta e perfil base criados com sucesso</p>
                   <p className="mt-1 text-[13px] text-white/65">
-                    Você segue agora para o setup detalhado sem perder os dados já preenchidos.
+                    Nenhum segundo formulário é necessário no fluxo normal de novos usuários.
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => router.push(continueHref(role, nextPath, initialPlan))}
-                  className="rounded-2xl bg-gradient-to-r from-[#0E7C86] via-[#15A6A8] to-[#1ABC9C] px-5 py-3 text-[14px] font-semibold text-white shadow-[0_14px_28px_rgba(18,150,153,0.22)] transition-all hover:translate-y-[-1px]"
+                  onClick={() => { void finish(); }}
+                  disabled={loading}
+                  className="rounded-2xl bg-gradient-to-r from-[#0E7C86] via-[#15A6A8] to-[#1ABC9C] px-5 py-3 text-[14px] font-semibold text-white shadow-[0_14px_28px_rgba(18,150,153,0.22)] transition-all hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {primaryLabel}
+                  {loading ? "Entrando..." : primaryLabel}
                 </button>
               </div>
             </div>

@@ -87,6 +87,9 @@ export async function POST(req: NextRequest) {
     if (agencyData.phone) agencyPayload.phone = agencyData.phone;
     if (agencyData.country) agencyPayload.country = agencyData.country;
     if (agencyData.city) agencyPayload.city = agencyData.city;
+    if (agencyData.description) agencyPayload.description = agencyData.description;
+    if (agencyData.website) agencyPayload.website = agencyData.website;
+    if (agencyData.avatar_url) agencyPayload.avatar_url = agencyData.avatar_url;
 
     const { error: agencyErr } = await supabase
       .from("agencies")
@@ -137,6 +140,16 @@ export async function POST(req: NextRequest) {
           phone: talentData.phone ?? null,
           country: talentData.country ?? null,
           city: talentData.city ?? null,
+          gender: talentData.gender ?? null,
+          age: talentData.age ?? null,
+          bio: talentData.bio ?? null,
+          categories: Array.isArray(talentData.categories) ? talentData.categories : [],
+          instagram: talentData.instagram ?? null,
+          tiktok: talentData.tiktok ?? null,
+          youtube: talentData.youtube ?? null,
+          linkedin: talentData.linkedin ?? null,
+          website: talentData.website ?? null,
+          avatar_url: talentData.avatar_url ?? null,
         },
         { onConflict: "id" },
       );

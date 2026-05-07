@@ -27,10 +27,70 @@ export default async function SetupProfilePage({ searchParams }: Props) {
     .eq("id", user.id)
     .single();
 
+  const nextPath = safeNextPath(next);
+
   if (profile?.onboarding_completed) {
-    const nextPath = safeNextPath(next);
     redirect(profile.role === "talent" && nextPath ? nextPath : `/${profile.role}/dashboard`);
   }
 
-  return <SetupProfile nextPath={safeNextPath(next)} initialPlan={plan === "pro" ? "pro" : "free"} />;
+  if (profile?.role === "talent") {
+    const [{ data: talentRow }, { data: profileRow }] = await Promise.all([
+      supabase
+        .from("talent_profiles")
+        .select("full_name, phone, country, city")
+        .eq("id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("profiles")
+        .select("cpf_cnpj")
+        .eq("id", user.id)
+        .maybeSingle(),
+    ]);
+
+    const isComplete = Boolean(
+      talentRow?.full_name &&
+      talentRow?.phone &&
+      talentRow?.country &&
+      talentRow?.city &&
+      profileRow?.cpf_cnpj,
+    );
+
+    if (isComplete) {
+      redirect(nextPath ? `/onboarding?next=${encodeURIComponent(nextPath)}` : "/onboarding");
+    }
+  }
+
+  if (profile?.role === "agency") {
+    const [{ data: agencyRow }, { data: profileRow }] = await Promise.all([
+      supabase
+        .from("agencies")
+        .select("company_name, contact_name, phone, country, city")
+        .eq("id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("profiles")
+        .select("cpf_cnpj")
+        .eq("id", user.id)
+        .maybeSingle(),
+    ]);
+
+    const isComplete = Boolean(
+      agencyRow?.company_name &&
+      agencyRow?.contact_name &&
+      agencyRow?.phone &&
+      agencyRow?.country &&
+      agencyRow?.city &&
+      profileRow?.cpf_cnpj,
+    );
+
+    if (isComplete) {
+      const params = new URLSearchParams();
+      if (nextPath) params.set("next", nextPath);
+      if (plan === "pro") params.set("plan", "pro");
+      const qs = params.toString();
+      redirect(qs ? `/onboarding?${qs}` : "/onboarding");
+    }
+  }
+
+  return <SetupProfile nextPath={nextPath} initialPlan={plan === "pro" ? "pro" : "free"} />;
 }
