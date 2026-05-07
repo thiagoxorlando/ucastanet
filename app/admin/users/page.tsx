@@ -15,6 +15,7 @@ export default async function AdminUsersPage() {
     { data: agencies },
     { data: bookingsData },
     { data: frozenProfiles },
+    { data: openJobsData },
   ] = await Promise.all([
     supabase.auth.admin.listUsers({ perPage: 1000 }),
     supabase.from("profiles").select("id, role, full_name, wallet_balance"),
@@ -22,6 +23,7 @@ export default async function AdminUsersPage() {
     supabase.from("agencies").select("id, user_id, company_name, avatar_url, deleted_at").is("deleted_at", null),
     supabase.from("bookings").select("talent_user_id, agency_id, price, status"),
     supabase.from("profiles").select("id, is_frozen"),
+    supabase.from("jobs").select("agency_id").eq("status", "open").is("deleted_at", null),
   ]);
 
   const planMap = new Map<string, string>();
@@ -32,6 +34,13 @@ export default async function AdminUsersPage() {
     }
   } catch {
     // Ignore environments where the plan column is still missing.
+  }
+
+  const openJobCountMap = new Map<string, number>();
+  for (const job of (openJobsData ?? []) as Array<{ agency_id?: string | null }>) {
+    if (job.agency_id) {
+      openJobCountMap.set(job.agency_id, (openJobCountMap.get(job.agency_id) ?? 0) + 1);
+    }
   }
 
   const roleMap = new Map<string, string>();
@@ -117,6 +126,7 @@ export default async function AdminUsersPage() {
       totalSpent: spentMap.get(user.id) ?? 0,
       commissionGenerated: commissionMap.get(user.id) ?? 0,
       walletBalance: walletMap.get(user.id) ?? 0,
+      openJobCount: openJobCountMap.get(user.id) ?? 0,
       plan:      planMap.get(user.id) ?? null,
       avatarUrl: avatarMap.get(user.id) ?? null,
     };

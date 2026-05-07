@@ -1,9 +1,17 @@
 import { createServerClient } from "@/lib/supabase";
 
-const BLOCKED_MSG =
+const FINANCIAL_BLOCKED_MSG =
   "O usuário ainda possui saldo ou ações financeiras pendentes. Finalize as pendências antes de excluir.";
 
-async function assertDeletionFinancialSafety(userId: string) {
+// Statuses that represent money at risk in bookings/contracts
+const BOOKING_MONEY_STATUSES  = ["pending_payment", "confirmed", "awaiting_deposit", "awaiting_payment", "processing_payment"];
+const CONTRACT_MONEY_STATUSES = ["signed", "awaiting_deposit", "awaiting_payment", "processing_payment"];
+
+export type SafetyCheckResult =
+  | { ok: false; reason: string }
+  | { ok: true; hasOpenJobs: boolean; openJobIds: string[] };
+
+async function checkDeletionSafety(userId: string): Promise<SafetyCheckResult> {
   const supabase = createServerClient({ useServiceRole: true });
 
   const { data: profile } = await supabase
@@ -12,13 +20,15 @@ async function assertDeletionFinancialSafety(userId: string) {
     .eq("id", userId)
     .maybeSingle();
 
-  if (!profile) return;
+  if (!profile) return { ok: true, hasOpenJobs: false, openJobIds: [] };
 
+  // 1. Wallet balance
   const balance = Number(profile.wallet_balance ?? 0);
   if (balance > 0) {
-    throw new Error(BLOCKED_MSG);
+    return { ok: false, reason: `${FINANCIAL_BLOCKED_MSG} (saldo em carteira: R$ ${balance.toFixed(2)})` };
   }
 
+  // 2. Pending / processing withdrawals
   const { count: pendingWithdrawals } = await supabase
     .from("wallet_transactions")
     .select("id", { count: "exact", head: true })
@@ -27,60 +37,82 @@ async function assertDeletionFinancialSafety(userId: string) {
     .in("status", ["pending", "processing"]);
 
   if ((pendingWithdrawals ?? 0) > 0) {
-    throw new Error(BLOCKED_MSG);
+    return { ok: false, reason: `${FINANCIAL_BLOCKED_MSG} (saque pendente)` };
   }
 
   const role = typeof profile.role === "string" ? profile.role : null;
 
   if (role === "agency") {
-    const [{ count: openJobs }, { count: pendingBookings }, { count: pendingContracts }] = await Promise.all([
-      supabase
-        .from("jobs")
-        .select("id", { count: "exact", head: true })
-        .eq("agency_id", userId)
-        .eq("status", "open")
-        .is("deleted_at", null),
+    const [
+      { count: bookingsWithMoney },
+      { count: contractsWithMoney },
+      { data: openJobRows },
+    ] = await Promise.all([
+      // Bookings with actual money at risk (NOT just "pending" status with no payment)
       supabase
         .from("bookings")
         .select("id", { count: "exact", head: true })
         .eq("agency_id", userId)
-        .in("status", ["pending", "pending_payment"])
+        .in("status", BOOKING_MONEY_STATUSES)
         .is("deleted_at", null),
+      // Contracts with money at risk
       supabase
         .from("contracts")
         .select("id", { count: "exact", head: true })
         .eq("agency_id", userId)
-        .in("status", ["sent", "signed"])
+        .in("status", CONTRACT_MONEY_STATUSES)
+        .is("deleted_at", null),
+      // Open jobs — NOT a financial blocker, but we need them to soft-delete
+      supabase
+        .from("jobs")
+        .select("id")
+        .eq("agency_id", userId)
+        .eq("status", "open")
         .is("deleted_at", null),
     ]);
 
-    if ((openJobs ?? 0) > 0 || (pendingBookings ?? 0) > 0 || (pendingContracts ?? 0) > 0) {
-      throw new Error(BLOCKED_MSG);
+    if ((bookingsWithMoney ?? 0) > 0) {
+      return { ok: false, reason: `${FINANCIAL_BLOCKED_MSG} (reserva com pagamento pendente)` };
     }
-  } else if (role === "talent") {
+    if ((contractsWithMoney ?? 0) > 0) {
+      return { ok: false, reason: `${FINANCIAL_BLOCKED_MSG} (contrato com pagamento pendente)` };
+    }
+
+    const openJobIds = (openJobRows ?? []).map((r) => r.id as string);
+    return { ok: true, hasOpenJobs: openJobIds.length > 0, openJobIds };
+  }
+
+  if (role === "talent") {
     const [{ count: pendingBookings }, { count: pendingContracts }] = await Promise.all([
       supabase
         .from("bookings")
         .select("id", { count: "exact", head: true })
         .eq("talent_user_id", userId)
-        .in("status", ["pending", "pending_payment"])
+        .in("status", ["pending", "pending_payment", "confirmed"])
         .is("deleted_at", null),
       supabase
         .from("contracts")
         .select("id", { count: "exact", head: true })
         .eq("talent_id", userId)
-        .in("status", ["sent", "signed"])
+        .in("status", CONTRACT_MONEY_STATUSES)
         .is("deleted_at", null),
     ]);
 
-    if ((pendingBookings ?? 0) > 0 || (pendingContracts ?? 0) > 0) {
-      throw new Error(BLOCKED_MSG);
+    if ((pendingBookings ?? 0) > 0) {
+      return { ok: false, reason: `${FINANCIAL_BLOCKED_MSG} (reserva pendente)` };
+    }
+    if ((pendingContracts ?? 0) > 0) {
+      return { ok: false, reason: `${FINANCIAL_BLOCKED_MSG} (contrato com pagamento pendente)` };
     }
   }
+
+  return { ok: true, hasOpenJobs: false, openJobIds: [] };
 }
 
-export async function ensureUserDeletionFinancialSafety(userId: string) {
-  await assertDeletionFinancialSafety(userId);
+export async function ensureUserDeletionFinancialSafety(userId: string): Promise<{ hasOpenJobs: boolean; openJobIds: string[] }> {
+  const result = await checkDeletionSafety(userId);
+  if (!result.ok) throw new Error(result.reason);
+  return { hasOpenJobs: result.hasOpenJobs, openJobIds: result.openJobIds };
 }
 
 /**
@@ -93,7 +125,8 @@ export async function deleteUserDeep(userId: string): Promise<void> {
   const supabase = createServerClient({ useServiceRole: true });
   const now = new Date().toISOString();
 
-  await assertDeletionFinancialSafety(userId);
+  const safety = await checkDeletionSafety(userId);
+  if (!safety.ok) throw new Error(safety.reason);
 
   const candidateIds = new Set<string>([userId]);
 

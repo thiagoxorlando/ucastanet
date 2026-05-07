@@ -94,8 +94,10 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const supabase = createServerClient({ useServiceRole: true });
   const now = new Date().toISOString();
 
+  let openJobIds: string[] = [];
   try {
-    await ensureUserDeletionFinancialSafety(id);
+    const safety = await ensureUserDeletionFinancialSafety(id);
+    openJobIds = safety.openJobIds;
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Não foi possível excluir o usuário." },
@@ -103,10 +105,19 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     );
   }
 
-  // 1. Freeze the account so the user cannot log in while in trash
+  // 1. Soft-delete the agency's open jobs (no money involved — safe to trash)
+  if (openJobIds.length > 0) {
+    await supabase
+      .from("jobs")
+      .update({ deleted_at: now, status: "closed" })
+      .in("id", openJobIds)
+      .is("deleted_at", null);
+  }
+
+  // 2. Freeze the account so the user cannot log in while in trash
   await supabase.from("profiles").update({ is_frozen: true }).eq("id", id);
 
-  // 2. Soft-delete the role-specific record
+  // 3. Soft-delete the role-specific record
   //    Agency row is keyed by user_id; talent_profile id === auth user id.
   await supabase
     .from("agencies")
@@ -120,5 +131,5 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     .eq("id", id)
     .is("deleted_at", null);
 
-  return NextResponse.json({ ok: true, deletedIds: [id], count: 1 });
+  return NextResponse.json({ ok: true, deletedIds: [id], count: 1, closedJobs: openJobIds.length });
 }

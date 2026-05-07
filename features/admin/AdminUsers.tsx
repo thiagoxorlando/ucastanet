@@ -17,6 +17,7 @@ export type AdminUser = {
   totalSpent: number;
   commissionGenerated: number;
   walletBalance: number;
+  openJobCount: number;
   avatarUrl: string | null;
 };
 
@@ -359,9 +360,15 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
             <p className="text-[14px] font-medium text-zinc-700">
               Mover <strong>{userToDelete.name || userToDelete.email}</strong> para a lixeira?
             </p>
-            <p className="text-[12px] text-zinc-400">
-              O usuário será congelado e movido para a lixeira. Você poderá restaurá-lo ou excluí-lo permanentemente a partir de <strong>/admin/lixeira</strong>.
-            </p>
+            {userToDelete.role === "agency" && userToDelete.openJobCount > 0 ? (
+              <p className="text-[12px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                Esta agência possui {userToDelete.openJobCount} vaga{userToDelete.openJobCount > 1 ? "s" : ""} aberta{userToDelete.openJobCount > 1 ? "s" : ""}. Ao mover a agência para a lixeira, as vagas abertas também serão movidas para a lixeira. Registros financeiros serão preservados.
+              </p>
+            ) : (
+              <p className="text-[12px] text-zinc-400">
+                O usuário será congelado e movido para a lixeira. Você poderá restaurá-lo ou excluí-lo permanentemente a partir de <strong>/admin/lixeira</strong>.
+              </p>
+            )}
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleting(null)}
