@@ -296,14 +296,14 @@ export default function AdminDashboard({ bookings, stats }: { bookings: Booking[
             <p className="text-[13px] font-semibold text-[#1F2D2E]">{filtered.length} reserva{filtered.length !== 1 ? "s" : ""}</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#7FA9A8] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center gap-2 rounded-xl border border-[#DDE6E6] bg-white px-3 py-2.5 w-48 focus-within:border-[#1ABC9C] focus-within:ring-2 focus-within:ring-[#1ABC9C]/20 transition-colors">
+              <svg className="w-3.5 h-3.5 text-[#7FA9A8] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
                 type="text" placeholder="Buscar reservas…" value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="input-base pl-9 w-48"
+                className="flex-1 min-w-0 bg-transparent text-[14px] text-[#1F2D2E] placeholder-[#7FA9A8] outline-none"
               />
             </div>
             <div className="flex items-center gap-1 bg-[#E6F0F0] rounded-xl p-1">

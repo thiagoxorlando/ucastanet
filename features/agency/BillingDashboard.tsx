@@ -589,10 +589,12 @@ export default function BillingDashboard({
                     )}
                   </div>
                   <p className="text-[11px] text-zinc-400 mb-3 leading-snug">{p.headline}</p>
-                  <div className="mb-1">
-                    <span className="text-[1.75rem] font-bold tracking-tighter text-zinc-900">{effectivePriceLabel(p)}</span>
-                    {p.period && <span className="text-[12px] text-zinc-400 ml-1">{p.period}</span>}
-                  </div>
+                  {p.key !== "premium" && (
+                    <div className="mb-1">
+                      <span className="text-[1.75rem] font-bold tracking-tighter text-zinc-900">{effectivePriceLabel(p)}</span>
+                      {"period" in p && p.period && <span className="text-[12px] text-zinc-400 ml-1">{p.period}</span>}
+                    </div>
+                  )}
                   <p className={[
                     "text-[11px] font-semibold mb-4",
                     p.key === "free" ? "text-zinc-400" : "text-indigo-600",

@@ -660,10 +660,12 @@ export default function Home() {
                   <p className="text-sm font-bold text-white/40">{plan.audience}</p>
                   <h3 className="mt-4 text-2xl font-black text-white">{plan.name}</h3>
                   <p className="mt-3 text-sm leading-6 text-white/50">{plan.summary}</p>
-                  <div className="mt-4 flex items-end gap-1">
-                    <span className="text-4xl font-black tracking-[-0.04em] text-white">{livePriceLabel(livePrices, plan.key, plan.price)}</span>
-                    {plan.period && <span className="pb-1 text-sm font-semibold text-white/40">{plan.period}</span>}
-                  </div>
+                  {!plan.premium && (
+                    <div className="mt-4 flex items-end gap-1">
+                      <span className="text-4xl font-black tracking-[-0.04em] text-white">{livePriceLabel(livePrices, plan.key, plan.price)}</span>
+                      {plan.period && <span className="pb-1 text-sm font-semibold text-white/40">{plan.period}</span>}
+                    </div>
+                  )}
                   {!plan.premium && (
                     <div className="mt-5 rounded-2xl border border-[#1ABC9C]/20 bg-[#1ABC9C]/8 px-4 py-3 flex items-center justify-between gap-3">
                       <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#1ABC9C]/80">Comissão da plataforma</p>
