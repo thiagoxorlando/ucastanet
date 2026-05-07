@@ -3,25 +3,39 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import OnboardingFlow from "./OnboardingFlow";
 
-export default async function OnboardingPage() {
+type Props = { searchParams: Promise<{ next?: string; plan?: string }> };
+
+function safeNextPath(value?: string) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
+  return value;
+}
+
+export default async function OnboardingPage({ searchParams }: Props) {
+  const { next, plan } = await searchParams;
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
 
   if (!user) redirect("/login");
 
   const supabase = createServerClient({ useServiceRole: true });
-
   const { data: profile } = await supabase
     .from("profiles")
     .select("role, onboarding_completed")
     .eq("id", user.id)
     .single();
 
-  // Non-agency roles have nothing to onboard
-  if (!profile || profile.role !== "agency") redirect("/");
+  if (!profile?.role) redirect("/onboarding/role");
 
-  // Already completed — redirect to smart landing
+  const nextPath = safeNextPath(next);
+
+  if (profile.role !== "agency" && profile.role !== "talent") {
+    redirect(`/${profile.role}/dashboard`);
+  }
+
   if (profile.onboarding_completed) {
+    if (profile.role === "talent") redirect(nextPath ?? "/talent/dashboard");
+    if (profile.role !== "agency") redirect(`/${profile.role}/dashboard`);
+
     const { count: jobCount } = await supabase
       .from("jobs")
       .select("id", { count: "exact", head: true })
@@ -31,5 +45,11 @@ export default async function OnboardingPage() {
     redirect("/agency/first-job");
   }
 
-  return <OnboardingFlow />;
+  return (
+    <OnboardingFlow
+      role={profile.role as "agency" | "talent"}
+      nextPath={nextPath}
+      initialPlan={plan === "pro" ? "pro" : "free"}
+    />
+  );
 }

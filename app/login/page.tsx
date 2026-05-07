@@ -17,6 +17,13 @@ function safeNextPath(value: string | null) {
   return value;
 }
 
+function onboardingHref(nextPath: string | null) {
+  const params = new URLSearchParams();
+  if (nextPath) params.set("next", nextPath);
+  const qs = params.toString();
+  return qs ? `/onboarding?${qs}` : "/onboarding";
+}
+
 function LoginPageContent() {
   const searchParams = useSearchParams();
   const refToken = searchParams.get("ref")?.trim() || null;
@@ -70,14 +77,14 @@ function LoginPageContent() {
 
     if (profile?.role === "agency") {
       if (profile.onboarding_completed === false) {
-        destination = "/onboarding";
+        destination = onboardingHref(null);
       } else {
         destination = await getAgencyLanding(data.user.id);
       }
     } else if (profile?.role === "talent") {
       await linkReferral(data.user.id);
       destination = profile.onboarding_completed === false
-        ? (nextPath ? `/setup-profile?next=${encodeURIComponent(nextPath)}` : "/setup-profile")
+        ? onboardingHref(nextPath)
         : (nextPath ?? ROLE_HOME.talent);
     } else {
       destination = "/onboarding/role";

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { isValidCpf, isValidCpfCnpj, normalizeCpfCnpj } from "@/lib/cpf";
 
 const VALID_ROLES = ["agency", "talent"] as const;
 const TERMS_VERSION = "terms_v1_2026_05";
@@ -16,7 +17,7 @@ function getIpAddress(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { user_id, role, termsAccepted } = await req.json();
+  const { user_id, role, termsAccepted, agency, talent } = await req.json();
 
   if (!user_id || !role) {
     return NextResponse.json({ error: "Missing user_id or role" }, { status: 400 });
@@ -60,6 +61,13 @@ export async function POST(req: NextRequest) {
   }
 
   if (role === "agency") {
+    const agencyData = (agency ?? {}) as Record<string, unknown>;
+    const agencyCpfCnpj = normalizeCpfCnpj((agencyData.cpf_cnpj as string | null | undefined) ?? null);
+
+    if (agencyCpfCnpj && !isValidCpfCnpj(agencyCpfCnpj)) {
+      return NextResponse.json({ error: "CPF/CNPJ inválido." }, { status: 400 });
+    }
+
     // Reactivate if soft-deleted, create if missing
     const { data: existing } = await supabase
       .from("agencies")
@@ -74,6 +82,12 @@ export async function POST(req: NextRequest) {
       deleted_at:          null,
     };
 
+    if (agencyData.company_name) agencyPayload.company_name = agencyData.company_name;
+    if (agencyData.contact_name) agencyPayload.contact_name = agencyData.contact_name;
+    if (agencyData.phone) agencyPayload.phone = agencyData.phone;
+    if (agencyData.country) agencyPayload.country = agencyData.country;
+    if (agencyData.city) agencyPayload.city = agencyData.city;
+
     const { error: agencyErr } = await supabase
       .from("agencies")
       .upsert(agencyPayload, { onConflict: "id" });
@@ -82,17 +96,72 @@ export async function POST(req: NextRequest) {
       console.error("[signup/route] agency upsert failed:", agencyErr.message);
       return NextResponse.json({ error: agencyErr.message }, { status: 400 });
     }
+
+    const profileUpdate: Record<string, unknown> = {};
+    const companyName = agencyData.company_name as string | undefined;
+    const contactName = agencyData.contact_name as string | undefined;
+
+    if (companyName?.trim()) profileUpdate.full_name = companyName.trim();
+    else if (contactName?.trim()) profileUpdate.full_name = contactName.trim();
+    if (agencyCpfCnpj) profileUpdate.cpf_cnpj = agencyCpfCnpj;
+
+    if (Object.keys(profileUpdate).length > 0) {
+      const { error: profileUpdateErr } = await supabase
+        .from("profiles")
+        .update(profileUpdate)
+        .eq("id", user.id);
+
+      if (profileUpdateErr) {
+        console.error("[signup/route] agency profile update failed:", profileUpdateErr.message);
+        return NextResponse.json({ error: profileUpdateErr.message }, { status: 400 });
+      }
+    }
   }
 
   if (role === "talent") {
+    const talentData = (talent ?? {}) as Record<string, unknown>;
+    const talentCpf = normalizeCpfCnpj((talentData.cpf as string | null | undefined) ?? null);
+
+    if (talentCpf && !isValidCpf(talentCpf)) {
+      return NextResponse.json({ error: "CPF inválido." }, { status: 400 });
+    }
+
     // Reactivate if soft-deleted, create if missing
     const { error: talentErr } = await supabase
       .from("talent_profiles")
-      .upsert({ id: user.id, deleted_at: null }, { onConflict: "id" });
+      .upsert(
+        {
+          id: user.id,
+          deleted_at: null,
+          full_name: talentData.full_name ?? null,
+          phone: talentData.phone ?? null,
+          country: talentData.country ?? null,
+          city: talentData.city ?? null,
+        },
+        { onConflict: "id" },
+      );
 
     if (talentErr) {
       console.error("[signup/route] talent_profile upsert failed:", talentErr.message);
       return NextResponse.json({ error: talentErr.message }, { status: 400 });
+    }
+
+    const profileUpdate: Record<string, unknown> = {};
+    const fullName = talentData.full_name as string | undefined;
+
+    if (fullName?.trim()) profileUpdate.full_name = fullName.trim();
+    if (talentCpf) profileUpdate.cpf_cnpj = talentCpf;
+
+    if (Object.keys(profileUpdate).length > 0) {
+      const { error: profileUpdateErr } = await supabase
+        .from("profiles")
+        .update(profileUpdate)
+        .eq("id", user.id);
+
+      if (profileUpdateErr) {
+        console.error("[signup/route] talent profile update failed:", profileUpdateErr.message);
+        return NextResponse.json({ error: profileUpdateErr.message }, { status: 400 });
+      }
     }
   }
 

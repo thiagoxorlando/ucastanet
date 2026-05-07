@@ -54,6 +54,27 @@ type AgencyRow = {
   avatar_url?: string | null;
 };
 
+type TalentRow = {
+  full_name?: string | null;
+  phone?: string | null;
+  country?: string | null;
+  city?: string | null;
+  gender?: string | null;
+  age?: number | null;
+  bio?: string | null;
+  categories?: string[] | null;
+  instagram?: string | null;
+  tiktok?: string | null;
+  youtube?: string | null;
+  linkedin?: string | null;
+  website?: string | null;
+  avatar_url?: string | null;
+};
+
+type ProfileRow = {
+  cpf_cnpj?: string | null;
+};
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const TALENT_CATEGORIES = TALENT_CATEGORY_LABELS;
@@ -559,6 +580,55 @@ function TalentSetup({ userId, onDone }: { userId: string; onDone: () => void })
     setPreview(URL.createObjectURL(file));
   }
 
+  useEffect(() => {
+    async function loadInitialData() {
+      const [talentResult, profileResult] = await Promise.all([
+        supabase
+          .from("talent_profiles")
+          .select("full_name, phone, country, city, gender, age, bio, categories, instagram, tiktok, youtube, linkedin, website, avatar_url")
+          .eq("id", userId)
+          .maybeSingle(),
+        supabase
+          .from("profiles")
+          .select("cpf_cnpj")
+          .eq("id", userId)
+          .maybeSingle(),
+      ]);
+
+      const talent = talentResult.data as TalentRow | null;
+      const profile = profileResult.data as ProfileRow | null;
+
+      if (talent) {
+        setForm((current) => ({
+          ...current,
+          fullName: talent.full_name ?? current.fullName,
+          cpf: formatCpf(profile?.cpf_cnpj ?? current.cpf),
+          phone: talent.phone ?? current.phone,
+          country: talent.country ?? current.country,
+          city: talent.city ?? current.city,
+          gender: talent.gender ?? current.gender,
+          age: talent.age != null ? String(talent.age) : current.age,
+          bio: talent.bio ?? current.bio,
+          categories: talent.categories ?? current.categories,
+          instagram: talent.instagram ?? current.instagram,
+          tiktok: talent.tiktok ?? current.tiktok,
+          youtube: talent.youtube ?? current.youtube,
+          linkedin: talent.linkedin ?? current.linkedin,
+          website: talent.website ?? current.website,
+        }));
+
+        if (talent.avatar_url) setPreview(talent.avatar_url);
+        return;
+      }
+
+      if (profile?.cpf_cnpj) {
+        setForm((current) => ({ ...current, cpf: formatCpf(profile.cpf_cnpj ?? current.cpf) }));
+      }
+    }
+
+    void loadInitialData();
+  }, [userId]);
+
   function handleNext() {
     if (loading) return;
     if (step === 0) {
@@ -807,25 +877,33 @@ function AgencySetup({ userId, onDone, initialPlan = "free" }: { userId: string;
 
   // Pre-populate from DB in case signup already saved some fields
   useEffect(() => {
-    supabase
-      .from("agencies")
-      .select("company_name, contact_name, phone, country, city, description, website, avatar_url")
-      .eq("id", userId)
-      .single()
-      .then(({ data }) => {
-        if (!data) return;
-        const agency = data as AgencyRow;
+    Promise.all([
+      supabase
+        .from("agencies")
+        .select("company_name, contact_name, phone, country, city, description, website, avatar_url")
+        .eq("id", userId)
+        .single(),
+      supabase
+        .from("profiles")
+        .select("cpf_cnpj")
+        .eq("id", userId)
+        .maybeSingle(),
+    ]).then(([agencyResult, profileResult]) => {
+        const agency = agencyResult.data as AgencyRow | null;
+        const profile = profileResult.data as ProfileRow | null;
+        if (!agency && !profile) return;
         setForm((prev) => ({
           ...prev,
-          companyName:  agency.company_name ?? "",
-          contactName:  agency.contact_name ?? "",
-          phone:        agency.phone ?? "",
-          country:      agency.country ?? "",
-          city:         agency.city ?? "",
-          description:  agency.description ?? "",
-          website:      agency.website ?? "",
+          companyName:  agency?.company_name ?? prev.companyName,
+          contactName:  agency?.contact_name ?? prev.contactName,
+          phone:        agency?.phone ?? prev.phone,
+          country:      agency?.country ?? prev.country,
+          city:         agency?.city ?? prev.city,
+          description:  agency?.description ?? prev.description,
+          website:      agency?.website ?? prev.website,
+          cpfCnpj:      formatCpfCnpj(profile?.cpf_cnpj ?? prev.cpfCnpj),
         }));
-        if (agency.avatar_url) setPreview(agency.avatar_url);
+        if (agency?.avatar_url) setPreview(agency.avatar_url);
       });
   }, [userId]);
 
@@ -1243,5 +1321,3 @@ export default function SetupProfile({ nextPath = null, initialPlan = "free" }: 
     </div>
   );
 }
-
-
