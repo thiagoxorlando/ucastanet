@@ -12,6 +12,7 @@ export default async function AgencyTalentPage() {
   const { data, error } = await supabase
     .from("talent_profiles")
     .select("id, full_name, bio, country, city, categories, avatar_url, photo_front_url, gender, age, instagram")
+    .is("deleted_at", null)
     .order("full_name");
 
   if (error) {

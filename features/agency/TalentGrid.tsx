@@ -12,7 +12,7 @@ import {
 
 type Talent = {
   id: string;
-  full_name: string;
+  full_name: string | null;
   bio: string | null;
   country: string | null;
   city: string | null;
@@ -76,7 +76,7 @@ function Pill({
 
 function TalentCard({ talent, onClick }: { talent: Talent; onClick: () => void }) {
   const cover = talent.photo_front_url ?? talent.avatar_url;
-  const name  = talent.full_name;
+  const name  = talent.full_name ?? "Talento";
 
   return (
     <button
@@ -168,7 +168,7 @@ export default function TalentGrid({ talent: initialTalent }: { talent: Talent[]
     if (search) {
       const q = search.toLowerCase();
       const hit =
-        t.full_name.toLowerCase().includes(q) ||
+        (t.full_name ?? "").toLowerCase().includes(q) ||
         (t.city ?? "").toLowerCase().includes(q) ||
         (t.country ?? "").toLowerCase().includes(q) ||
         (t.categories ?? []).some((c) =>
