@@ -710,9 +710,11 @@ function SignupPageContent() {
                           <LabeledInput label="CPF" error={errors.cpf} hint="Somente números — 11 dígitos">
                             <input className={inputClass(!!errors.cpf)} placeholder="000.000.000-00" inputMode="numeric" maxLength={14} value={talent.cpf} onChange={(event) => setTalentField("cpf", formatCpf(event.target.value))} />
                           </LabeledInput>
-                          <LabeledInput label="Telefone" error={errors.phone}>
-                            <PhoneInput value={talent.phone} onChange={(value) => setTalentField("phone", value)} hasError={!!errors.phone} required />
-                          </LabeledInput>
+                          <div className="sm:col-span-2">
+                            <LabeledInput label="Telefone" error={errors.phone}>
+                              <PhoneInput value={talent.phone} onChange={(value) => setTalentField("phone", value)} hasError={!!errors.phone} required />
+                            </LabeledInput>
+                          </div>
                           <LabeledInput label="País" error={errors.country}>
                             <input className={inputClass(!!errors.country)} placeholder="Brasil" value={talent.country} onChange={(event) => setTalentField("country", event.target.value)} />
                           </LabeledInput>
@@ -822,9 +824,11 @@ function SignupPageContent() {
                           <LabeledInput label="CPF / CNPJ" error={errors.cpfCnpj}>
                             <input className={inputClass(!!errors.cpfCnpj)} inputMode="numeric" maxLength={18} placeholder="00.000.000/0001-00" value={agency.cpfCnpj} onChange={(event) => setAgencyField("cpfCnpj", formatCpfCnpj(event.target.value))} />
                           </LabeledInput>
-                          <LabeledInput label="Telefone" error={errors.phone}>
-                            <PhoneInput value={agency.phone} onChange={(value) => setAgencyField("phone", value)} hasError={!!errors.phone} required />
-                          </LabeledInput>
+                          <div className="sm:col-span-2">
+                            <LabeledInput label="Telefone" error={errors.phone}>
+                              <PhoneInput value={agency.phone} onChange={(value) => setAgencyField("phone", value)} hasError={!!errors.phone} required />
+                            </LabeledInput>
+                          </div>
                           <LabeledInput label="País" error={errors.country}>
                             <input className={inputClass(!!errors.country)} placeholder="Brasil" value={agency.country} onChange={(event) => setAgencyField("country", event.target.value)} />
                           </LabeledInput>
