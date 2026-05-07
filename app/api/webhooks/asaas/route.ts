@@ -150,6 +150,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  async function okProcessed(payload: Record<string, unknown> = { ok: true }) {
+    await markWebhookEventProcessed();
+    return NextResponse.json(payload);
+  }
+
   const { error: insertErr } = await supabase
     .from("asaas_webhook_events")
     .insert({
@@ -219,8 +224,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    await markWebhookEventProcessed();
-    return NextResponse.json({ ok: true });
+    return okProcessed();
   }
 
   if (event === "PAYMENT_RECEIVED" || event === "PAYMENT_CONFIRMED") {
@@ -228,7 +232,7 @@ export async function POST(req: NextRequest) {
 
     if (!payment?.id) {
       log("warn", "[asaas webhook] ignored - missing payment object", { event, eventId });
-      return NextResponse.json({ ok: true });
+      return okProcessed();
     }
 
     const asaasPaymentId = payment.id;
@@ -348,8 +352,6 @@ export async function POST(req: NextRequest) {
             }
           }
 
-          await markWebhookEventProcessed();
-
           log("info", "[asaas webhook] plan activated", {
             userId,
             planKey,
@@ -359,11 +361,11 @@ export async function POST(req: NextRequest) {
           log("warn", "[asaas webhook] ignored - unrecognized plan ref", { extRef, asaasPaymentId });
         }
 
-        return NextResponse.json({ ok: true });
+        return okProcessed();
       }
 
       log("warn", "[asaas webhook] ignored - no matching wallet_transaction", { asaasPaymentId });
-      return NextResponse.json({ ok: true });
+      return okProcessed();
     }
 
     if (tx.type !== "deposit") {
@@ -371,12 +373,12 @@ export async function POST(req: NextRequest) {
         txId: tx.id,
         type: tx.type,
       });
-      return NextResponse.json({ ok: true });
+      return okProcessed();
     }
 
     if (tx.status === "paid") {
       log("info", "[asaas webhook] ignored - deposit already credited", { txId: tx.id });
-      return NextResponse.json({ ok: true });
+      return okProcessed();
     }
 
     const creditAmount = Number(tx.amount);
@@ -413,7 +415,7 @@ export async function POST(req: NextRequest) {
       asaasPaymentId,
     });
 
-    // Notify admins of confirmed deposit (non-fatal, fire-and-forget)
+      // Notify admins of confirmed deposit (non-fatal, fire-and-forget)
     void (async () => {
       const { data: agencyRow } = await supabase
         .from("agencies")
@@ -440,7 +442,7 @@ export async function POST(req: NextRequest) {
 
     if (!transfer?.id) {
       log("warn", "[asaas webhook] ignored - missing transfer object", { event, eventId });
-      return NextResponse.json({ ok: true });
+      return okProcessed();
     }
 
     const asaasTransferId = transfer.id;
@@ -464,7 +466,7 @@ export async function POST(req: NextRequest) {
       log("warn", "[asaas webhook] ignored - no matching withdrawal for transfer", {
         asaasTransferId,
       });
-      return NextResponse.json({ ok: true });
+      return okProcessed();
     }
 
     if (tx.type !== "withdrawal") {
@@ -472,7 +474,7 @@ export async function POST(req: NextRequest) {
         txId: tx.id,
         type: tx.type,
       });
-      return NextResponse.json({ ok: true });
+      return okProcessed();
     }
 
     const currentStatus = tx.status ?? "";
@@ -480,7 +482,7 @@ export async function POST(req: NextRequest) {
     if (newStatus === "paid") {
       if (currentStatus === "paid") {
         log("info", "[asaas transfer] already marked paid - skipping", { txId: tx.id });
-        return NextResponse.json({ ok: true });
+        return okProcessed();
       }
 
       await supabase
@@ -528,7 +530,7 @@ export async function POST(req: NextRequest) {
           txId: tx.id,
           currentStatus,
         });
-        return NextResponse.json({ ok: true });
+        return okProcessed();
       }
 
       const refundAmount = Number(tx.amount);
@@ -595,7 +597,7 @@ export async function POST(req: NextRequest) {
         currentStatus,
         newStatus,
       });
-      return NextResponse.json({ ok: true });
+      return okProcessed();
     }
 
     await supabase
@@ -618,5 +620,5 @@ export async function POST(req: NextRequest) {
   }
 
   log("info", "[asaas webhook] ignored - unhandled event", { event, eventId });
-  return NextResponse.json({ ok: true });
+  return okProcessed();
 }
