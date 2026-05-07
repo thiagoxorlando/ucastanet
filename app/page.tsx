@@ -7,8 +7,6 @@ import { useRouter } from "next/navigation";
 import { getUserRole } from "@/lib/getUserRole";
 import { getAgencyLanding } from "@/lib/getAgencyLanding";
 import { PLAN_DEFINITIONS } from "@/lib/plans";
-import Badge from "@/components/ui/Badge";
-import Card from "@/components/ui/Card";
 import heroBrandImage from "@/public/landing/brisahub-hero-brand.png";
 import dashboardScreenshot from "@/public/landing/dashboard.png";
 import financesScreenshot from "@/public/landing/finances.png";
@@ -163,13 +161,18 @@ const PLANS = [
   },
 ] as const;
 
-const primaryLink =
-  "inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-6 py-4 text-[15px] font-black text-white shadow-[0_16px_36px_rgba(26,188,156,0.28)] transition-all hover:-translate-y-0.5 hover:brightness-105";
+// ── Reusable primitives ───────────────────────────────────────────────────────
 
-const secondaryDarkLink =
-  "inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/10 px-6 py-4 text-[15px] font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-white/15";
+function Pill({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full bg-white/8 border border-white/10 px-4 py-1.5">
+      <span className="w-1.5 h-1.5 rounded-full bg-[#1ABC9C]" />
+      <span className="text-[12px] font-semibold text-white/60 tracking-wide uppercase">{children}</span>
+    </div>
+  );
+}
 
-function CheckIcon({ className = "text-[var(--brand-green)]" }: { className?: string }) {
+function CheckIcon({ className = "text-[#1ABC9C]" }: { className?: string }) {
   return (
     <svg className={`h-4 w-4 flex-shrink-0 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7" />
@@ -179,64 +182,44 @@ function CheckIcon({ className = "text-[var(--brand-green)]" }: { className?: st
 
 function FeatureIcon({ path }: { path: string }) {
   return (
-    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--brand-green)] text-[var(--brand-surface)] shadow-[0_10px_24px_rgba(72,242,154,0.22)]">
-      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1ABC9C] to-[#27C1D6] shadow-[0_8px_20px_rgba(26,188,156,0.28)]">
+      <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={path} />
       </svg>
     </div>
   );
 }
 
+function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`rounded-2xl border border-white/8 bg-white/5 backdrop-blur-sm p-6 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
 function ScreenshotFrame({
-  src,
-  alt,
-  width,
-  height,
-  priority = false,
-  tone = "dark",
-  className = "",
-  imageClassName = "",
-  sizes,
-  aspectRatio,
+  src, alt, width, height, priority = false, className = "", sizes, aspectRatio,
 }: {
   src: string | StaticImageData;
   alt: string;
   width: number;
   height: number;
   priority?: boolean;
-  tone?: "dark" | "light";
   className?: string;
-  imageClassName?: string;
   sizes: string;
   aspectRatio?: string;
 }) {
-  const toneClass =
-    tone === "light"
-      ? "border-zinc-200/80 bg-white shadow-[0_16px_36px_rgba(15,23,42,0.10)]"
-      : "border-white/12 bg-white/[0.04] shadow-[0_18px_42px_rgba(0,0,0,0.18)]";
-
   return (
-    <div
-      className={[
-        "overflow-hidden rounded-[1.25rem] border p-1.5",
-        toneClass,
-        className,
-      ].join(" ")}
-    >
-      <div
-        className="relative w-full overflow-hidden rounded-[1rem]"
-        style={{ aspectRatio: aspectRatio ?? `${width} / ${height}` }}
-      >
+    <div className={`overflow-hidden rounded-[1.25rem] border border-white/10 bg-white/[0.04] p-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.28)] ${className}`}>
+      <div className="relative w-full overflow-hidden rounded-[1rem]" style={{ aspectRatio: aspectRatio ?? `${width} / ${height}` }}>
         <Image
           src={src}
           alt={alt}
           width={width}
           height={height}
           priority={priority}
-          className={[
-            "h-full w-full object-cover object-top",
-            imageClassName,
-          ].join(" ")}
+          className="h-full w-full object-cover object-top"
           sizes={sizes}
         />
       </div>
@@ -247,16 +230,16 @@ function ScreenshotFrame({
 function ProductPreview() {
   return (
     <div className="relative mx-auto w-full max-w-xl lg:mx-0 lg:max-w-2xl lg:justify-self-end">
-      <div className="absolute -left-6 top-10 h-40 w-40 rounded-full bg-[var(--brand-green)]/30 blur-3xl lg:-left-10 lg:top-12 lg:h-48 lg:w-48" />
-      <div className="absolute -right-6 bottom-8 h-44 w-44 rounded-full bg-white/10 blur-3xl lg:-right-8 lg:bottom-10 lg:h-56 lg:w-56" />
-      <div className="relative rounded-[2.1rem] bg-[linear-gradient(135deg,rgba(72,242,154,0.22),rgba(255,255,255,0.10)_42%,rgba(255,255,255,0.03))] p-px shadow-[0_22px_54px_rgba(0,0,0,0.22)]">
+      <div className="absolute -left-6 top-10 h-40 w-40 rounded-full bg-[#1ABC9C]/20 blur-3xl lg:-left-10 lg:h-48 lg:w-48" />
+      <div className="absolute -right-6 bottom-8 h-44 w-44 rounded-full bg-[#27C1D6]/10 blur-3xl lg:-right-8 lg:h-56 lg:w-56" />
+      <div className="relative rounded-[2.1rem] bg-[linear-gradient(135deg,rgba(26,188,156,0.20),rgba(255,255,255,0.06)_42%,rgba(255,255,255,0.02))] p-px shadow-[0_22px_54px_rgba(0,0,0,0.32)]">
         <ScreenshotFrame
           src={dashboardScreenshot}
           alt="Dashboard da agência na BrisaHub"
           width={dashboardScreenshot.width}
           height={dashboardScreenshot.height}
           priority
-          className="rounded-[2rem] bg-white/[0.05] backdrop-blur-sm"
+          className="rounded-[2rem] bg-white/[0.04] backdrop-blur-sm"
           sizes="(min-width: 1024px) 52vw, 94vw"
           aspectRatio={`${dashboardScreenshot.width} / ${dashboardScreenshot.height}`}
         />
@@ -264,6 +247,28 @@ function ProductPreview() {
     </div>
   );
 }
+
+const primaryLink =
+  "inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-6 py-4 text-[15px] font-black text-white shadow-[0_16px_36px_rgba(26,188,156,0.28)] transition-all hover:-translate-y-0.5 hover:brightness-105";
+
+const ghostLink =
+  "inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/8 px-6 py-4 text-[15px] font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-white/12";
+
+// ── Grid texture overlay ──────────────────────────────────────────────────────
+function GridTexture() {
+  return (
+    <div
+      className="absolute inset-0 opacity-[0.04] pointer-events-none"
+      style={{
+        backgroundImage:
+          "linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)",
+        backgroundSize: "48px 48px",
+      }}
+    />
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Home() {
   const router = useRouter();
@@ -281,66 +286,74 @@ export default function Home() {
 
   if (checking) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-white">
-        <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-200 border-t-[var(--brand-green)]" />
+      <div className="flex min-h-screen items-center justify-center bg-[#061214]">
+        <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/10 border-t-[#1ABC9C]" />
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[var(--brand-paper)] text-zinc-950">
-      <nav className="sticky top-0 z-20 border-b border-white/10 bg-[var(--brand-surface)]/92 px-5 backdrop-blur-md lg:px-10">
+    <main className="min-h-screen overflow-hidden bg-[#061214] text-white">
+
+      {/* ── Nav ── */}
+      <nav className="sticky top-0 z-20 border-b border-white/8 bg-[#061214]/95 px-5 backdrop-blur-md lg:px-10">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between">
           <Link href="/" aria-label="BrisaHub">
-            <span className="text-[15px] font-bold tracking-tight text-white">BrisaHub</span>
+            <Image
+              src={heroBrandImage}
+              alt="BrisaHub"
+              width={heroBrandImage.width}
+              height={heroBrandImage.height}
+              className="h-auto w-full max-w-[80px]"
+            />
           </Link>
           <div className="flex items-center gap-2">
             <Link
               href="/login"
-              className="rounded-xl px-3 py-2 text-[13px] font-semibold text-zinc-300 transition-colors hover:bg-white/10 hover:text-white"
+              className="rounded-xl px-3 py-2 text-[13px] font-semibold text-white/50 transition-colors hover:bg-white/8 hover:text-white"
             >
               Entrar
             </Link>
             <div className="relative hidden sm:block">
               <button
                 onClick={() => setShowRoleMenu((v) => !v)}
-                className="rounded-xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-4 py-2 text-[13px] font-black text-white shadow-sm transition-all hover:brightness-105 cursor-pointer"
+                className="rounded-xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-4 py-2 text-[13px] font-black text-white shadow-[0_4px_16px_rgba(26,188,156,0.28)] transition-all hover:brightness-105 cursor-pointer"
               >
                 Criar conta
               </button>
               {showRoleMenu && (
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setShowRoleMenu(false)} />
-                  <div className="absolute right-0 top-full mt-2 z-40 w-48 rounded-2xl border border-white/10 bg-[var(--brand-surface)] shadow-[0_8px_32px_rgba(0,0,0,0.32)] overflow-hidden">
+                  <div className="absolute right-0 top-full mt-2 z-40 w-48 rounded-2xl border border-white/10 bg-[#081718] shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden">
                     <Link
                       href="/signup?role=agency"
                       onClick={() => setShowRoleMenu(false)}
-                      className="flex items-center gap-3 px-4 py-3.5 text-[13px] font-semibold text-white hover:bg-white/10 transition-colors"
+                      className="flex items-center gap-3 px-4 py-3.5 text-[13px] font-semibold text-white hover:bg-white/8 transition-colors"
                     >
-                      <span className="w-7 h-7 rounded-lg bg-[var(--brand-green)]/15 flex items-center justify-center flex-shrink-0">
-                        <svg className="w-3.5 h-3.5 text-[var(--brand-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <span className="w-7 h-7 rounded-lg bg-[#1ABC9C]/15 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-3.5 h-3.5 text-[#1ABC9C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                         </svg>
                       </span>
                       <div>
                         <p>Agência</p>
-                        <p className="text-[11px] font-normal text-zinc-400">Publique vagas e contrate</p>
+                        <p className="text-[11px] font-normal text-white/40">Publique vagas e contrate</p>
                       </div>
                     </Link>
                     <div className="h-px bg-white/8 mx-4" />
                     <Link
                       href="/signup?role=talent"
                       onClick={() => setShowRoleMenu(false)}
-                      className="flex items-center gap-3 px-4 py-3.5 text-[13px] font-semibold text-white hover:bg-white/10 transition-colors"
+                      className="flex items-center gap-3 px-4 py-3.5 text-[13px] font-semibold text-white hover:bg-white/8 transition-colors"
                     >
-                      <span className="w-7 h-7 rounded-lg bg-[var(--brand-green)]/15 flex items-center justify-center flex-shrink-0">
-                        <svg className="w-3.5 h-3.5 text-[var(--brand-green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <span className="w-7 h-7 rounded-lg bg-[#1ABC9C]/15 flex items-center justify-center flex-shrink-0">
+                        <svg className="w-3.5 h-3.5 text-[#1ABC9C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                       </span>
                       <div>
                         <p>Talento</p>
-                        <p className="text-[11px] font-normal text-zinc-400">Candidate-se a vagas</p>
+                        <p className="text-[11px] font-normal text-white/40">Candidate-se a vagas</p>
                       </div>
                     </Link>
                   </div>
@@ -351,8 +364,10 @@ export default function Home() {
         </div>
       </nav>
 
-      <section className="relative bg-[var(--brand-surface)] px-5 py-16 text-white sm:py-20 lg:px-10 lg:py-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(72,242,154,0.22),transparent_28%),radial-gradient(circle_at_85%_12%,rgba(255,255,255,0.10),transparent_24%),linear-gradient(180deg,#07110d_0%,#0b1711_70%,#f7f8f2_100%)]" />
+      {/* ── Hero ── */}
+      <section className="relative overflow-hidden px-5 py-16 sm:py-20 lg:px-10 lg:py-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(26,188,156,0.22),transparent_32%),radial-gradient(circle_at_88%_8%,rgba(39,193,214,0.15),transparent_28%),linear-gradient(180deg,#061214_0%,#081718_100%)]" />
+        <GridTexture />
         <div className="relative mx-auto grid max-w-7xl items-center gap-14 lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[minmax(0,0.84fr)_minmax(0,1.16fr)] lg:gap-16">
           <div className="mx-auto flex w-full max-w-xl flex-col items-center justify-center text-center lg:max-w-lg">
             <div className="flex justify-center">
@@ -361,17 +376,21 @@ export default function Home() {
                 alt="Marca BrisaHub"
                 width={heroBrandImage.width}
                 height={heroBrandImage.height}
-                preload
+                priority
                 className="h-auto w-full max-w-[94px] sm:max-w-[112px] lg:max-w-[132px]"
                 sizes="(min-width: 1024px) 132px, (min-width: 640px) 112px, 94px"
               />
             </div>
 
             <h1 className="mt-8 max-w-[11ch] text-[2.35rem] font-black leading-[0.98] tracking-[-0.05em] text-white sm:text-[3rem] lg:text-[4rem]">
-              Contrate talentos com segurança.
+              Contrate{" "}
+              <span className="bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] bg-clip-text text-transparent">
+                talentos
+              </span>{" "}
+              com segurança.
             </h1>
 
-            <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-300 sm:text-lg sm:leading-8">
+            <p className="mt-5 max-w-2xl text-base leading-7 text-white/50 sm:text-lg sm:leading-8">
               Contratos, pagamentos e gestão em um só lugar para seu negócio contratar com mais controle.
             </p>
 
@@ -379,9 +398,23 @@ export default function Home() {
               <Link href="/signup?role=agency" className={`${primaryLink} w-full sm:w-auto`}>
                 Começar como agência
               </Link>
-              <Link href="/signup?role=talent" className={`${secondaryDarkLink} w-full sm:w-auto`}>
+              <Link href="/signup?role=talent" className={`${ghostLink} w-full sm:w-auto`}>
                 Entrar como talento
               </Link>
+            </div>
+
+            {/* Stats row */}
+            <div className="mt-10 flex items-center gap-8 justify-center">
+              {[
+                { value: "100%", label: "Seguro" },
+                { value: "PIX", label: "Pagamentos" },
+                { value: "24h", label: "Suporte" },
+              ].map(({ value, label }) => (
+                <div key={label} className="text-center">
+                  <p className="text-[1.15rem] font-black text-white tracking-tight">{value}</p>
+                  <p className="text-[11px] text-white/40 font-medium mt-0.5">{label}</p>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -389,42 +422,48 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="bg-[var(--brand-paper)] px-5 py-20 lg:px-10">
-        <div className="mx-auto max-w-7xl">
+      {/* ── How it works ── */}
+      <section className="relative overflow-hidden px-5 py-20 lg:px-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_50%,rgba(39,193,214,0.08),transparent_40%)]" />
+        <GridTexture />
+        <div className="relative mx-auto max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
-            <Badge variant="success" className="uppercase tracking-[0.24em]">Sem WhatsApp. Sem planilhas.</Badge>
-            <h2 className="mt-4 text-3xl font-black tracking-[-0.04em] text-zinc-950 sm:text-5xl">
+            <Pill>Sem WhatsApp. Sem planilhas.</Pill>
+            <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
               Um fluxo único para sair do briefing e chegar à contratação
             </h2>
-            <p className="mt-5 text-base leading-7 text-zinc-600">
+            <p className="mt-5 text-base leading-7 text-white/50">
               A Brisa substitui mensagens soltas, planilhas e comprovantes dispersos por um processo estruturado
               para a agência publicar, selecionar, contratar e pagar com mais previsibilidade.
             </p>
           </div>
 
-          <div className="mx-auto mt-16 max-w-2xl text-center">
-            <Badge variant="success" className="uppercase tracking-[0.24em]">Como funciona</Badge>
-            <h2 className="mt-4 text-3xl font-black tracking-[-0.04em] text-zinc-950 sm:text-5xl">
+          <div className="mx-auto mt-14 max-w-2xl text-center">
+            <Pill>Como funciona</Pill>
+            <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
               Um fluxo claro para conduzir cada contratação
             </h2>
           </div>
 
           <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {HOW_IT_WORKS.map((item) => (
-              <Card key={item.step} variant="default" padding="lg" className="group transition-transform duration-200 hover:-translate-y-1">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-[var(--brand-surface)] text-sm font-black text-[var(--brand-green)]">
+              <GlassCard key={item.step} className="transition-transform duration-200 hover:-translate-y-1">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1ABC9C]/20 to-[#27C1D6]/20 text-sm font-black text-[#1ABC9C] border border-[#1ABC9C]/20">
                   {item.step}
                 </span>
-                <h3 className="mt-6 text-lg font-black text-zinc-950">{item.title}</h3>
-                <p className="mt-3 text-sm leading-6 text-zinc-600">{item.description}</p>
-              </Card>
+                <h3 className="mt-6 text-base font-black text-white">{item.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-white/50">{item.description}</p>
+              </GlassCard>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="bg-[var(--brand-surface)] px-5 py-20 text-white lg:px-10">
-        <div className="mx-auto max-w-7xl">
+      {/* ── Features ── */}
+      <section className="relative overflow-hidden px-5 py-20 lg:px-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_60%,rgba(26,188,156,0.10),transparent_35%)]" />
+        <GridTexture />
+        <div className="relative mx-auto max-w-7xl">
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
             <div className="mx-auto max-w-xl">
               <div className="mb-10 hidden justify-center lg:flex">
@@ -433,60 +472,58 @@ export default function Home() {
                   alt="Marca BrisaHub"
                   width={heroBrandImage.width}
                   height={heroBrandImage.height}
-                  className="h-auto w-full max-w-[220px]"
-                  sizes="220px"
+                  className="h-auto w-full max-w-[180px] opacity-90"
+                  sizes="180px"
                 />
               </div>
-              <Badge variant="muted" className="uppercase tracking-[0.24em]">Recursos principais</Badge>
-              <h2 className="mt-4 text-3xl font-black tracking-[-0.04em] sm:text-5xl">
+              <Pill>Recursos principais</Pill>
+              <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
                 Tudo o que a agência precisa para contratar com mais segurança
               </h2>
-              <p className="mt-5 text-base leading-7 text-zinc-400">
+              <p className="mt-5 text-base leading-7 text-white/50">
                 Da publicação da vaga ao pagamento final, a plataforma mantém contexto, documentos e
                 status no mesmo fluxo para a agência não perder tempo em controles paralelos.
               </p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {FEATURES.map((feature) => (
-                <Card key={feature.title} variant="dark" padding="md" className="bg-white/[0.055]">
+                <GlassCard key={feature.title}>
                   <FeatureIcon path={feature.icon} />
                   <h3 className="mt-5 text-base font-black text-white">{feature.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-zinc-400">{feature.description}</p>
-                </Card>
+                  <p className="mt-2 text-sm leading-6 text-white/50">{feature.description}</p>
+                </GlassCard>
               ))}
             </div>
           </div>
         </div>
       </section>
 
-      <section className="bg-[var(--brand-surface)] px-5 pb-20 text-white lg:px-10">
-        <div className="mx-auto max-w-7xl">
-          <Card
-            variant="dark"
-            padding="lg"
-            className="overflow-hidden rounded-[2rem] bg-[radial-gradient(circle_at_14%_0%,rgba(72,242,154,0.20),transparent_30%),linear-gradient(135deg,var(--brand-surface-soft)_0%,var(--brand-surface)_70%)]"
-          >
+      {/* ── Use cases ── */}
+      <section className="relative overflow-hidden px-5 pb-20 lg:px-10">
+        <GridTexture />
+        <div className="relative mx-auto max-w-7xl">
+          <div className="rounded-[2rem] border border-white/8 bg-[radial-gradient(circle_at_14%_0%,rgba(26,188,156,0.16),transparent_30%)] p-8 lg:p-12">
             <div className="grid gap-10 lg:grid-cols-[0.88fr_1.12fr] lg:items-start">
               <div>
-                <Badge variant="muted" className="uppercase tracking-[0.24em]">Uso profissional</Badge>
-                <h2 className="mt-4 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
+                <Pill>Uso profissional</Pill>
+                <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
                   Contratação segura para diferentes tipos de negócio
                 </h2>
-                <p className="mt-5 text-base leading-7 text-zinc-400">
+                <p className="mt-5 text-base leading-7 text-white/50">
                   A BrisaHub substitui processos informais em WhatsApp, planilhas e comprovantes soltos
                   por um fluxo estruturado: da criação da vaga à contratação, contrato e pagamento.
                 </p>
 
-                <div className="mt-8 rounded-[1.5rem] border border-white/10 bg-white/[0.06] p-5">
+                <div className="mt-8 rounded-2xl border border-white/8 bg-white/5 p-5">
                   <p className="text-sm font-black text-white">Para quem é</p>
-                  <p className="mt-2 text-sm leading-6 text-zinc-400">
+                  <p className="mt-2 text-sm leading-6 text-white/50">
                     Para equipes e profissionais que contratam, indicam ou prestam serviços criativos com frequência.
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {BUSINESS_TYPES.map((type) => (
-                      <Badge key={type} variant="muted" className="capitalize">
+                      <span key={type} className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[12px] font-medium text-white/60 capitalize">
                         {type}
-                      </Badge>
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -494,28 +531,31 @@ export default function Home() {
 
               <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-1">
                 {TRUST_PILLARS.map((pillar) => (
-                  <Card key={pillar.title} variant="dark" padding="md" className="bg-white/[0.07]">
+                  <GlassCard key={pillar.title}>
                     <CheckIcon />
                     <h3 className="mt-4 text-base font-black text-white">{pillar.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-zinc-400">{pillar.description}</p>
-                  </Card>
+                    <p className="mt-2 text-sm leading-6 text-white/50">{pillar.description}</p>
+                  </GlassCard>
                 ))}
               </div>
             </div>
-          </Card>
+          </div>
         </div>
       </section>
 
-      <section className="bg-white px-5 pb-20 pt-16 lg:px-10">
-        <div className="mx-auto max-w-7xl">
+      {/* ── Screenshots ── */}
+      <section className="relative overflow-hidden px-5 pb-20 pt-16 lg:px-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_60%_30%,rgba(39,193,214,0.08),transparent_40%)]" />
+        <GridTexture />
+        <div className="relative mx-auto max-w-7xl">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
-              <Badge variant="success" className="uppercase tracking-[0.24em]">Veja a plataforma em ação</Badge>
-              <h2 className="mt-4 text-3xl font-black tracking-[-0.04em] text-zinc-950 sm:text-5xl">
+              <Pill>Veja a plataforma em ação</Pill>
+              <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
                 Uma visão rápida do que a agência acompanha
               </h2>
             </div>
-            <p className="max-w-md text-sm leading-6 text-zinc-500">
+            <p className="max-w-md text-sm leading-6 text-white/40">
               Screenshots do produto organizados para mostrar, sem ruído, como a agência acompanha
               vagas, financeiro e talentos no dia a dia.
             </p>
@@ -524,21 +564,17 @@ export default function Home() {
           <div className="mt-12 grid gap-6 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)]">
             <article className="flex flex-col gap-4">
               <ScreenshotFrame
-                tone="light"
                 src={SHOWCASE[0].image}
                 alt={SHOWCASE[0].alt}
                 width={SHOWCASE[0].width}
                 height={SHOWCASE[0].height}
-                className="bg-white"
                 sizes="(min-width: 1024px) 58vw, 92vw"
                 aspectRatio={`${SHOWCASE[0].width} / ${SHOWCASE[0].height}`}
               />
               <div className="space-y-2 px-1">
-                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[var(--brand-green)]">
-                  {SHOWCASE[0].eyebrow}
-                </p>
-                <h3 className="text-lg font-black text-zinc-950">{SHOWCASE[0].title}</h3>
-                <p className="max-w-2xl text-sm leading-6 text-zinc-600">{SHOWCASE[0].description}</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#1ABC9C]">{SHOWCASE[0].eyebrow}</p>
+                <h3 className="text-lg font-black text-white">{SHOWCASE[0].title}</h3>
+                <p className="max-w-2xl text-sm leading-6 text-white/50">{SHOWCASE[0].description}</p>
               </div>
             </article>
 
@@ -546,21 +582,17 @@ export default function Home() {
               {SHOWCASE.slice(1).map((item) => (
                 <article key={item.title} className="flex flex-col gap-4">
                   <ScreenshotFrame
-                    tone="light"
                     src={item.image}
                     alt={item.alt}
                     width={item.width}
                     height={item.height}
-                    className="bg-white"
                     sizes="(min-width: 1024px) 34vw, 92vw"
                     aspectRatio={`${item.width} / ${item.height}`}
                   />
                   <div className="space-y-2 px-1">
-                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[var(--brand-green)]">
-                      {item.eyebrow}
-                    </p>
-                    <h3 className="text-lg font-black text-zinc-950">{item.title}</h3>
-                    <p className="text-sm leading-6 text-zinc-600">{item.description}</p>
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#1ABC9C]">{item.eyebrow}</p>
+                    <h3 className="text-lg font-black text-white">{item.title}</h3>
+                    <p className="text-sm leading-6 text-white/50">{item.description}</p>
                   </div>
                 </article>
               ))}
@@ -569,14 +601,17 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="bg-[var(--brand-paper)] px-5 pb-20 pt-24 lg:px-10 lg:pt-28">
-        <div className="mx-auto max-w-7xl">
+      {/* ── Plans ── */}
+      <section className="relative overflow-hidden px-5 pb-20 pt-24 lg:px-10 lg:pt-28">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(26,188,156,0.12),transparent_40%)]" />
+        <GridTexture />
+        <div className="relative mx-auto max-w-7xl">
           <div className="mx-auto max-w-2xl text-center">
-            <Badge variant="success" className="uppercase tracking-[0.24em]">Planos</Badge>
-            <h2 className="mt-4 text-3xl font-black tracking-[-0.04em] text-zinc-950 sm:text-5xl">
+            <Pill>Planos</Pill>
+            <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
               Escolha o plano pelo ritmo da sua operação
             </h2>
-            <p className="mt-5 text-base leading-7 text-zinc-600">
+            <p className="mt-5 text-base leading-7 text-white/50">
               Comece sem mensalidade para validar a primeira vaga, evolua para o Pro quando a agência
               precisar contratar com frequência e use o Premium para processos privados e seleções mais reservadas.
             </p>
@@ -584,126 +619,138 @@ export default function Home() {
 
           <div className="mt-14 grid items-stretch gap-6 lg:grid-cols-3">
             {PLANS.map((plan) => (
-              <Card
+              <div
                 key={plan.key}
-                variant={plan.premium ? "dark" : "default"}
-                padding="lg"
                 className={[
-                  "relative flex h-full flex-col",
-                  plan.featured ? "border-[var(--brand-green)] shadow-[0_24px_70px_rgba(72,242,154,0.20)]" : "",
-                  plan.premium ? "bg-[linear-gradient(145deg,var(--brand-surface)_0%,#101c15_58%,#17251d_100%)]" : "",
+                  "relative flex h-full flex-col rounded-[1.5rem] border p-8 transition-all",
+                  plan.featured
+                    ? "border-[#1ABC9C]/40 bg-[radial-gradient(circle_at_50%_0%,rgba(26,188,156,0.15),transparent_50%)] shadow-[0_24px_70px_rgba(26,188,156,0.18)]"
+                    : plan.premium
+                    ? "border-white/8 bg-white/[0.03]"
+                    : "border-white/8 bg-white/5",
                 ].join(" ")}
               >
                 {plan.featured && (
-                  <span className="absolute right-5 top-5 rounded-full bg-[var(--brand-green)] px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--brand-surface)] shadow-[0_10px_24px_rgba(72,242,154,0.24)]">
+                  <span className="absolute right-5 top-5 rounded-full bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-[0_4px_16px_rgba(26,188,156,0.28)]">
                     Mais popular
                   </span>
                 )}
                 {plan.premium && (
-                  <span className="absolute right-5 top-5 rounded-full border border-zinc-600 bg-zinc-800 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-zinc-300">
+                  <span className="absolute right-5 top-5 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-white/50">
                     Em breve
                   </span>
                 )}
-                <div className={plan.featured || plan.premium ? "flex h-full flex-col pt-10" : "flex h-full flex-col"}>
-                <p className={plan.premium ? "text-sm font-bold text-zinc-400" : "text-sm font-bold text-zinc-500"}>{plan.audience}</p>
-                <h3 className={plan.premium ? "mt-4 text-2xl font-black text-white" : "mt-4 text-2xl font-black text-zinc-950"}>{plan.name}</h3>
-                <p className={plan.premium ? "mt-3 text-sm leading-6 text-zinc-400" : "mt-3 text-sm leading-6 text-zinc-600"}>
-                  {plan.summary}
-                </p>
-                <div className="mt-4 flex items-end gap-1">
-                  <span className={plan.premium ? "text-4xl font-black tracking-[-0.04em] text-white" : "text-4xl font-black tracking-[-0.04em] text-zinc-950"}>{plan.price}</span>
-                  {plan.period && <span className={plan.premium ? "pb-1 text-sm font-semibold text-zinc-400" : "pb-1 text-sm font-semibold text-zinc-500"}>{plan.period}</span>}
-                </div>
-                {!plan.premium && (
-                  <div className="mt-5 rounded-2xl bg-[var(--brand-green-soft)] px-4 py-3 flex items-center justify-between gap-3">
-                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-800">Comissão da plataforma</p>
-                    <p className="text-xl font-black text-zinc-950 flex-shrink-0">{plan.commission}</p>
+                <div className={plan.featured || plan.premium ? "flex h-full flex-col pt-8" : "flex h-full flex-col"}>
+                  <p className="text-sm font-bold text-white/40">{plan.audience}</p>
+                  <h3 className="mt-4 text-2xl font-black text-white">{plan.name}</h3>
+                  <p className="mt-3 text-sm leading-6 text-white/50">{plan.summary}</p>
+                  <div className="mt-4 flex items-end gap-1">
+                    <span className="text-4xl font-black tracking-[-0.04em] text-white">{plan.price}</span>
+                    {plan.period && <span className="pb-1 text-sm font-semibold text-white/40">{plan.period}</span>}
                   </div>
-                )}
-                <ul className="mt-6 space-y-3 pb-7">
-                  {plan.highlights.map((feature) => (
-                    <li key={feature} className={plan.premium ? "flex gap-3 text-sm leading-6 text-zinc-300" : "flex gap-3 text-sm leading-6 text-zinc-600"}>
-                      <CheckIcon />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                {plan.premium ? (
-                  <span className="mt-auto inline-flex w-full items-center justify-center rounded-2xl px-5 py-3.5 text-sm font-black bg-white/10 text-zinc-400 cursor-not-allowed">
-                    Em breve
-                  </span>
-                ) : (
-                  <Link
-                    href={`/signup?role=agency&plan=${plan.key}`}
-                    className={[
-                      "mt-auto inline-flex w-full items-center justify-center rounded-2xl px-5 py-3.5 text-sm font-black transition-all",
-                      plan.featured
-                        ? "bg-[var(--brand-green)] text-[var(--brand-surface)] hover:bg-[var(--brand-green-strong)]"
-                        : "border border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50",
-                    ].join(" ")}
-                  >
-                    Começar com {plan.name}
-                  </Link>
-                )}
+                  {!plan.premium && (
+                    <div className="mt-5 rounded-2xl border border-[#1ABC9C]/20 bg-[#1ABC9C]/8 px-4 py-3 flex items-center justify-between gap-3">
+                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#1ABC9C]/80">Comissão da plataforma</p>
+                      <p className="text-xl font-black text-white flex-shrink-0">{plan.commission}</p>
+                    </div>
+                  )}
+                  <ul className="mt-6 space-y-3 pb-7">
+                    {plan.highlights.map((feature) => (
+                      <li key={feature} className="flex gap-3 text-sm leading-6 text-white/60">
+                        <CheckIcon />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {plan.premium ? (
+                    <span className="mt-auto inline-flex w-full items-center justify-center rounded-2xl px-5 py-3.5 text-sm font-black border border-white/10 bg-white/5 text-white/30 cursor-not-allowed">
+                      Em breve
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/signup?role=agency&plan=${plan.key}`}
+                      className={[
+                        "mt-auto inline-flex w-full items-center justify-center rounded-2xl px-5 py-3.5 text-sm font-black transition-all",
+                        plan.featured
+                          ? "bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] text-white shadow-[0_8px_24px_rgba(26,188,156,0.28)] hover:brightness-105"
+                          : "border border-white/12 bg-white/8 text-white hover:bg-white/12",
+                      ].join(" ")}
+                    >
+                      Começar com {plan.name}
+                    </Link>
+                  )}
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="bg-white px-5 py-20 lg:px-10">
-        <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+      {/* ── Trust ── */}
+      <section className="relative overflow-hidden px-5 py-20 lg:px-10">
+        <GridTexture />
+        <div className="relative mx-auto grid max-w-7xl gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
-            <Badge variant="success" className="uppercase tracking-[0.24em]">Confiança</Badge>
-            <h2 className="mt-4 text-3xl font-black tracking-[-0.04em] text-zinc-950 sm:text-5xl">
+            <Pill>Confiança</Pill>
+            <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
               Segurança jurídica e financeira para contratar com mais tranquilidade
             </h2>
-            <p className="mt-5 max-w-xl text-base leading-7 text-zinc-600">
+            <p className="mt-5 max-w-xl text-base leading-7 text-white/50">
               Contrato, pagamento e histórico ficam registrados para a agência ter previsibilidade operacional
               e o talento saber exatamente em que etapa está.
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             {["Escopo e valores registrados", "Pagamento com status rastreável", "Histórico para decisão e recontratação"].map((item) => (
-              <Card key={item} variant="soft" padding="md">
+              <GlassCard key={item}>
                 <CheckIcon />
-                <p className="mt-4 text-sm font-black leading-6 text-zinc-800">{item}</p>
-              </Card>
+                <p className="mt-4 text-sm font-black leading-6 text-white">{item}</p>
+              </GlassCard>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="bg-[var(--brand-paper)] px-5 py-20 lg:px-10">
-        <Card variant="dark" padding="lg" className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-[radial-gradient(circle_at_20%_0%,rgba(72,242,154,0.22),transparent_32%),var(--brand-surface)] px-6 py-14 text-center sm:px-10">
-          <Badge variant="muted" className="uppercase tracking-[0.24em]">Estruture a próxima contratação</Badge>
-          <h2 className="mx-auto mt-4 max-w-3xl text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
-            Abra sua conta de agência e conduza a próxima vaga com contrato, pagamento seguro e menos retrabalho.
-          </h2>
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-zinc-300">
-            Se você contrata com frequência, o Pro já deixa claro o ganho operacional. Se você é talento,
-            também pode criar seu perfil para receber convites e acompanhar oportunidades.
-          </p>
-          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link href="/signup?role=agency" className={primaryLink}>
-              Começar como agência
-            </Link>
-            <Link href="/signup?role=talent" className={secondaryDarkLink}>
-              Entrar como talento
-            </Link>
+      {/* ── CTA ── */}
+      <section className="relative overflow-hidden px-5 py-20 lg:px-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(26,188,156,0.18),transparent_32%),radial-gradient(circle_at_80%_100%,rgba(39,193,214,0.12),transparent_32%)]" />
+        <GridTexture />
+        <div className="relative mx-auto max-w-7xl">
+          <div className="rounded-[2rem] border border-white/8 bg-white/[0.03] px-6 py-14 text-center sm:px-10">
+            <Pill>Estruture a próxima contratação</Pill>
+            <h2 className="mx-auto mt-5 max-w-3xl text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
+              Abra sua conta de agência e conduza a próxima vaga com contrato, pagamento seguro e menos retrabalho.
+            </h2>
+            <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-white/50">
+              Se você contrata com frequência, o Pro já deixa claro o ganho operacional. Se você é talento,
+              também pode criar seu perfil para receber convites e acompanhar oportunidades.
+            </p>
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link href="/signup?role=agency" className={primaryLink}>
+                Começar como agência
+              </Link>
+              <Link href="/signup?role=talent" className={ghostLink}>
+                Entrar como talento
+              </Link>
+            </div>
           </div>
-        </Card>
+        </div>
       </section>
 
-      <footer className="border-t border-zinc-900/10 bg-[var(--brand-paper)] px-5 py-7 lg:px-10">
-          <div className="mx-auto flex max-w-7xl flex-col gap-4 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
-            <div className="flex items-center justify-center sm:justify-start">
-              <span className="text-[13px] font-bold tracking-tight text-zinc-950">BrisaHub</span>
-            </div>
-            <p className="text-[12px] text-zinc-500">© 2026 BrisaHub. Todos os direitos reservados.</p>
-          </div>
+      {/* ── Footer ── */}
+      <footer className="border-t border-white/8 px-5 py-7 lg:px-10">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+          <Image
+            src={heroBrandImage}
+            alt="BrisaHub"
+            width={heroBrandImage.width}
+            height={heroBrandImage.height}
+            className="h-auto w-full max-w-[64px] mx-auto sm:mx-0 opacity-70"
+          />
+          <p className="text-[12px] text-white/30">© 2026 BrisaHub. Todos os direitos reservados.</p>
+        </div>
       </footer>
+
     </main>
   );
 }
