@@ -368,14 +368,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       <aside
         className={[
-          "fixed left-0 top-0 z-30 h-screen w-64 bg-[#102325] border-r border-white/10 flex flex-col text-[#EAF4F2]",
+          "fixed left-0 top-0 z-30 h-screen w-64 flex flex-col text-[#EAF4F2] overflow-hidden",
           "transition-transform duration-300 ease-in-out",
           "lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
       >
+        {/* Background — login left-panel style */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(39,193,214,0.22),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(26,188,156,0.18),transparent_35%),linear-gradient(180deg,#081718_0%,#041012_100%)]" />
+        <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{backgroundImage:"linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)",backgroundSize:"48px 48px"}} />
+        {/* Right border */}
+        <div className="absolute inset-y-0 right-0 w-px bg-white/8" />
         {/* Logo */}
-        <div className="flex items-center justify-between px-5 h-16 border-b border-white/10 flex-shrink-0">
+        <div className="relative flex items-center justify-between px-5 h-16 border-b border-white/8 flex-shrink-0">
           <Link href="/" className="flex items-center gap-2 min-w-0">
             <Logo size="md" src="/logo1.png" />
             <p className="text-[10px] text-[#9DB8B3] leading-none tracking-wide uppercase">
@@ -395,7 +400,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-5 overflow-y-auto">
+        <nav className="relative flex-1 px-3 py-5 overflow-y-auto">
           <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#88A6A1] px-3 mb-2.5">
             {t("nav_menu")}
           </p>
@@ -429,12 +434,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         {/* Divider */}
-        <div className="px-5 pb-1">
-          <div className="h-px bg-white/10" />
+        <div className="relative px-5 pb-1">
+          <div className="h-px bg-white/8" />
         </div>
 
         {/* User + Logout */}
-        <div className="px-3 py-3 flex-shrink-0 space-y-1">
+        <div className="relative px-3 py-3 flex-shrink-0 space-y-1">
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5">
             <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden">
               {!loading && avatarUrl && !imgError ? (
