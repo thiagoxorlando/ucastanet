@@ -6,6 +6,8 @@ import { useState } from "react";
 import { useT } from "@/lib/LanguageContext";
 import { useRole } from "@/lib/RoleProvider";
 import { useSubscription } from "@/lib/SubscriptionContext";
+import { supabase } from "@/lib/supabase";
+import { CONTRACTS_BUCKET } from "@/lib/contractFiles";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -323,28 +325,33 @@ function ContractModal({
 
     let uploadedContractPath: string | null = null;
     if (contractFile) {
-      const fd = new FormData();
-      fd.append("file", contractFile);
-      fd.append("job_id", job.id);
+      // Step 1: ask the server for a signed upload URL (no file body → no 413)
+      const signRes = await fetch("/api/contracts/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: job.id, filename: contractFile.name, filesize: contractFile.size }),
+      });
+      if (!signRes.ok) {
+        const body = await signRes.json().catch(() => ({})) as { error?: string };
+        setError(body.error ?? "Falha ao iniciar upload do contrato.");
+        setSubmitting(false);
+        return;
+      }
+      const { signedUrl, token, path } = await signRes.json() as { signedUrl: string; token: string; path: string };
 
-      const uploadRes = await fetch("/api/contracts/upload", { method: "POST", body: fd });
-      if (!uploadRes.ok) {
-        const body = await uploadRes.json().catch(() => ({})) as { error?: string; message?: string; details?: string };
-        console.error("[contract upload ui]", body);
-        const message = resolveApiError(body, "Não foi possível enviar o PDF do contrato.");
-        setError(body.details ? `${message}\n${body.details}` : message);
+      // Step 2: upload PDF directly to Supabase Storage — bypasses Vercel entirely
+      const { error: storageError } = await supabase.storage
+        .from(CONTRACTS_BUCKET)
+        .uploadToSignedUrl(path, token, contractFile, { contentType: "application/pdf" });
+
+      if (storageError) {
+        console.error("[contract upload ui] storage", storageError);
+        setError("Falha ao enviar arquivo para o Storage. Tente novamente.");
         setSubmitting(false);
         return;
       }
 
-      const uploadJson = await uploadRes.json().catch(() => ({})) as { path?: string | null };
-      if (!uploadJson.path) {
-        setError("O upload do contrato foi concluído sem retornar o arquivo salvo.");
-        setSubmitting(false);
-        return;
-      }
-
-      uploadedContractPath = uploadJson.path;
+      uploadedContractPath = path;
     }
 
     const payload = {
@@ -603,15 +610,15 @@ function ContractModal({
                           setContractFile(null);
                           return;
                         }
-                        const validPdf = file.type === "application/pdf" && /\.pdf$/i.test(file.name);
+                        const validPdf = (file.type === "application/pdf" || !file.type) && /\.pdf$/i.test(file.name);
                         if (!validPdf) {
                           setContractFile(null);
-                          setError("Envie um arquivo PDF válido.");
+                          setError("Envie um arquivo PDF válido de até 20MB.");
                           return;
                         }
-                        if (file.size > 10 * 1024 * 1024) {
+                        if (file.size > 20 * 1024 * 1024) {
                           setContractFile(null);
-                          setError("O PDF deve ter no máximo 10 MB.");
+                          setError("Arquivo muito grande. Envie um PDF de até 20MB.");
                           return;
                         }
                         setError("");
