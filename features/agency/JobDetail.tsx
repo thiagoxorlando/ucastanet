@@ -680,6 +680,7 @@ function SubmissionCard({
   hasSentContract,
   isAgency,
   isSelected,
+  bookingStatus,
   onSelect,
   onToggleSelect,
   onDelete,
@@ -689,27 +690,39 @@ function SubmissionCard({
   hasSentContract: boolean;
   isAgency: boolean;
   isSelected?: boolean;
+  bookingStatus?: string | null;
   onSelect: () => void;
   onToggleSelect?: () => void;
   onDelete?: () => void;
 }) {
   const { t } = useT();
   const [expanded, setExpanded] = useState(false);
-  const statusCls = SUBMISSION_STATUS[submission.status] ?? SUBMISSION_STATUS["pending"];
   const hasMedia = !!(submission.photoFrontUrl || submission.photoLeftUrl || submission.photoRightUrl || submission.videoUrl);
   const photos = [submission.photoFrontUrl, submission.photoLeftUrl, submission.photoRightUrl].filter(Boolean) as string[];
   const displayName =
     submission.talentName || (submission.isReferral ? t("submission_referral_fallback_name") : t("general_unknown"));
-  const statusLabel =
-    submission.isReferral && !submission.talentId && submission.status === "pending"
-      ? t("submission_status_signup_pending")
-      : submission.status === "pending"
-        ? t("status_pending")
-        : submission.status === "approved"
-          ? t("status_approved")
-          : submission.status === "rejected"
-            ? t("status_rejected")
-            : submission.status;
+
+  // Derive display status from booking state first, then fall back to submission status.
+  const { statusLabel, statusCls } = (() => {
+    if (bookingStatus && bookingStatus !== "cancelled" && bookingStatus !== "rejected") {
+      if (bookingStatus === "paid") {
+        return { statusLabel: "Pago", statusCls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" };
+      }
+      return { statusLabel: "Contratado", statusCls: "bg-teal-50 text-teal-700 ring-1 ring-teal-100" };
+    }
+    const cls = SUBMISSION_STATUS[submission.status] ?? SUBMISSION_STATUS["pending"];
+    const label =
+      submission.isReferral && !submission.talentId && submission.status === "pending"
+        ? t("submission_status_signup_pending")
+        : submission.status === "pending"
+          ? t("status_pending")
+          : submission.status === "approved"
+            ? t("status_approved")
+            : submission.status === "rejected"
+              ? t("status_rejected")
+              : submission.status;
+    return { statusLabel: label, statusCls: cls };
+  })();
 
   return (
     <div className={hasSentContract ? "border-l-2 border-emerald-400" : ""}>
@@ -1070,6 +1083,15 @@ export default function JobDetail({
 
   if (!job) return <NotFound />;
 
+  // Map talentId → booking status so submission cards can show the correct derived state
+  // (Contratado / Pago) instead of the stale application-level status.
+  const bookingStatusByTalentId = new Map<string, string>();
+  for (const b of bookings) {
+    if (b.talentId && b.status !== "cancelled") {
+      bookingStatusByTalentId.set(b.talentId, b.status);
+    }
+  }
+
   const safeSubmissions      = submissionList;
   const numberOfTalentsRequired = job.numberOfTalentsRequired ?? 1;
   const days   = daysUntil(job.deadline);
@@ -1429,6 +1451,7 @@ export default function JobDetail({
                 hasSentContract={sentContracts.has(s.id)}
                 isAgency={!!agencyId || role === "agency"}
                 isSelected={selected.has(s.id)}
+                bookingStatus={s.talentId ? (bookingStatusByTalentId.get(s.talentId) ?? null) : null}
                 onSelect={() => openContractModal(s)}
                 onToggleSelect={() => toggleSelect(s.id)}
                 onDelete={(!!agencyId || role === "agency") ? () => handleDeleteSubmission(s.id) : undefined}
