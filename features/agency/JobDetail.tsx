@@ -1064,6 +1064,7 @@ export default function JobDetail({
   const [copyFeedback, setCopyFeedback] = useState("");
   const [manualCopyUrl, setManualCopyUrl] = useState("");
   const [currentStatus, setCurrentStatus] = useState<Job["status"]>(job?.status ?? "open");
+  const [pendingStatus, setPendingStatus]  = useState<Job["status"]>(job?.status ?? "open");
   const [statusChanging, setStatusChanging] = useState(false);
   const [statusFeedback, setStatusFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
 
@@ -1149,14 +1150,15 @@ export default function JobDetail({
       });
       if (res.ok) {
         setCurrentStatus(newStatus);
+        setPendingStatus(newStatus);
         setStatusFeedback({ ok: true, msg: "Status da vaga atualizado." });
         router.refresh();
       } else {
         const d = await res.json().catch(() => ({})) as { error?: string };
-        setStatusFeedback({ ok: false, msg: d.error ?? "Erro ao atualizar status." });
+        setStatusFeedback({ ok: false, msg: d.error ?? "Não foi possível atualizar o status da vaga." });
       }
     } catch {
-      setStatusFeedback({ ok: false, msg: "Erro ao atualizar status." });
+      setStatusFeedback({ ok: false, msg: "Não foi possível atualizar o status da vaga." });
     }
     setStatusChanging(false);
   }
@@ -1322,39 +1324,41 @@ export default function JobDetail({
             icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
           />
 
-          {/* Status change actions — agency only */}
-          {(role === "agency" || !!agencyId) && currentStatus !== "inactive" && (
-            <div className="pt-3 mt-1 border-t border-zinc-50">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2.5">Status da vaga</p>
-              <div className="flex flex-wrap gap-2">
-                {currentStatus !== "open" && (
-                  <button
-                    onClick={() => handleChangeStatus("open")}
-                    disabled={statusChanging}
-                    className="text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-                  >
-                    {statusChanging ? "…" : currentStatus === "draft" ? "Publicar vaga" : "Reabrir vaga"}
-                  </button>
-                )}
-                {currentStatus === "open" && (
-                  <button
-                    onClick={() => handleChangeStatus("closed")}
-                    disabled={statusChanging}
-                    className="text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-zinc-100 border border-zinc-200 text-zinc-700 hover:bg-zinc-200 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-                  >
-                    {statusChanging ? "…" : "Fechar vaga"}
-                  </button>
-                )}
-              </div>
-              {statusFeedback && (
-                <p className={`text-[11px] font-medium mt-2 ${statusFeedback.ok ? "text-emerald-600" : "text-rose-600"}`}>
-                  {statusFeedback.msg}
-                </p>
-              )}
-            </div>
-          )}
         </div>
       </div>
+
+      {/* ── Status management — agency only ── */}
+      {(role === "agency" || !!agencyId) && currentStatus !== "inactive" && (
+        <div className="bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] p-5">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-4">
+            Status da vaga
+          </p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <select
+              value={pendingStatus}
+              onChange={(e) => { setPendingStatus(e.target.value as Job["status"]); setStatusFeedback(null); }}
+              disabled={statusChanging}
+              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] font-medium text-zinc-800 hover:border-zinc-300 focus:outline-none focus:border-[#1F2D2E] transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {currentStatus === "draft" && <option value="draft">Rascunho</option>}
+              <option value="open">Aberta</option>
+              <option value="closed">Fechada</option>
+            </select>
+            <button
+              onClick={() => handleChangeStatus(pendingStatus)}
+              disabled={pendingStatus === currentStatus || statusChanging}
+              className="px-5 py-2.5 rounded-xl bg-[#1F2D2E] text-white text-[13px] font-semibold hover:bg-[#2a3d3e] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {statusChanging ? "Salvando…" : "Salvar status"}
+            </button>
+          </div>
+          {statusFeedback && (
+            <p className={`text-[12px] font-medium mt-3 ${statusFeedback.ok ? "text-emerald-600" : "text-rose-600"}`}>
+              {statusFeedback.msg}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ── Bookings ── */}
       {bookings.length > 0 && (

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { requireTalentsNeededForJob } from "@/lib/requireActiveSubscription";
+import { getLivePlanSetting } from "@/lib/planSettings.server";
+import type { Plan } from "@/lib/plans";
 
 const PATCH_ALLOWED = ["title", "description", "category", "budget", "deadline", "job_date", "status", "location", "gender", "age_min", "age_max", "number_of_talents_required", "visibility"];
 
@@ -44,17 +46,38 @@ export async function PATCH(
 
   if (!existingJob) return NextResponse.json({ error: "Vaga não encontrada." }, { status: 404 });
   if (existingJob.deleted_at) return NextResponse.json({ error: "Vaga não encontrada ou foi removida." }, { status: 404 });
-  if (existingJob.agency_id !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (existingJob.agency_id !== user.id) return NextResponse.json({ error: "Você não tem permissão para alterar esta vaga." }, { status: 403 });
 
   if (update.visibility === "private" && caller.plan !== "premium") {
     return NextResponse.json({ error: "Premium plan required for private jobs" }, { status: 403 });
   }
 
-  // Agency may only set valid, non-admin statuses
+  // Agency may only set valid statuses
   if (update.status !== undefined) {
     const validStatuses = ["open", "closed", "draft", "inactive"];
     if (!validStatuses.includes(update.status as string)) {
       return NextResponse.json({ error: "Status inválido." }, { status: 400 });
+    }
+
+    // Block reopening if the agency has already reached the active-job limit
+    if (update.status === "open") {
+      const liveSetting = await getLivePlanSetting((caller.plan ?? "free") as Plan);
+      const jobLimit = liveSetting.job_limit;
+      if (jobLimit !== null) {
+        const { count } = await supabase
+          .from("jobs")
+          .select("id", { count: "exact", head: true })
+          .eq("agency_id", user.id)
+          .eq("status", "open")
+          .neq("id", id)
+          .is("deleted_at", null);
+        if ((count ?? 0) >= jobLimit) {
+          return NextResponse.json(
+            { error: `O plano Free permite ${jobLimit} vaga${jobLimit > 1 ? "s" : ""} ativa${jobLimit > 1 ? "s" : ""}. Faça upgrade para reabrir esta vaga.` },
+            { status: 402 },
+          );
+        }
+      }
     }
   }
 
