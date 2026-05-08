@@ -44,6 +44,10 @@ export function sanitizeContractFileName(fileName: string) {
 export function getContractBucket(kind: ContractFileKind, fileRef?: string | null) {
   const extracted = fileRef ? tryExtractStorageRef(fileRef) : null;
   if (extracted?.bucket) return extracted.bucket;
+  // Storage paths starting with "contracts/" always belong to the contracts bucket —
+  // both original (contracts/{agencyId}/...) and signed (contracts/signed/{talentId}/...).
+  if (fileRef && !isAbsoluteUrl(fileRef) && fileRef.startsWith("contracts/")) return CONTRACTS_BUCKET;
+  // Legacy signed contracts were stored in talent-media before the signed-URL upload refactor.
   return kind === "original" ? CONTRACTS_BUCKET : LEGACY_CONTRACTS_BUCKET;
 }
 
@@ -76,7 +80,7 @@ export async function resolveContractFileUrl(
     .createSignedUrl(storagePath, expiresInSeconds);
 
   if (error) {
-    console.error("[resolveContractFileUrl]", error.message);
+    console.error("[resolveContractFileUrl] createSignedUrl error", { bucket, storagePath, message: error.message });
     return isAbsoluteUrl(fileRef) ? fileRef : null;
   }
 
