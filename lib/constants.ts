@@ -1,1 +1,1 @@
-export const APP_NAME = "Brisa Digital";
+export const APP_NAME = "BrisaHub";

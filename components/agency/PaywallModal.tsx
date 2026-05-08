@@ -1,42 +1,32 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { PLAN_DEFINITIONS } from "@/lib/plans";
 
-const PRO_PLAN = PLAN_DEFINITIONS.pro;
+const PRO_FALLBACK = PLAN_DEFINITIONS.pro;
 
-const VARIANTS = {
-  hiring: {
-    title: "Limite do plano atual",
-    message: `O plano gratuito permite ate 1 vaga ativa e 3 contratacoes por vaga. Faca upgrade para o plano ${PRO_PLAN.label} e remova os limites.`,
-    features: [
-      "Vagas ilimitadas",
-      "Contratacoes ilimitadas por vaga",
-      `Comissao da plataforma de ${PRO_PLAN.commissionLabel}`,
-    ],
-  },
-  limit: {
-    title: "Limite do plano gratuito",
-    message: `Gerencie vagas e contratacoes sem limites com o plano ${PRO_PLAN.label} por ${PRO_PLAN.priceLabel}/mes.`,
-    features: [
-      "Vagas ilimitadas",
-      "Contratacoes ilimitadas por vaga",
-      "Historico completo de pagamentos e contratos",
-    ],
-  },
-} as const;
-
-type Variant = keyof typeof VARIANTS;
-
-interface Props {
+type Props = {
   onClose: () => void;
-  variant?: Variant;
-}
+  variant?: "hiring" | "limit";
+};
 
 export default function PaywallModal({ onClose, variant = "hiring" }: Props) {
   const router = useRouter();
-  const copy = VARIANTS[variant];
+  const [proPrice, setProPrice]           = useState(PRO_FALLBACK.priceLabel);
+  const [proCommission, setProCommission] = useState(PRO_FALLBACK.commissionLabel);
+
+  useEffect(() => {
+    void fetch("/api/plan-settings").then(async (res) => {
+      if (!res.ok) return;
+      const data = await res.json() as Record<string, { price: number; commission_percent: number }>;
+      if (data.pro) {
+        const { price, commission_percent } = data.pro;
+        setProPrice(price === 0 ? "Gratuito" : `R$ ${price.toLocaleString("pt-BR")}`);
+        setProCommission(`${commission_percent}%`);
+      }
+    }).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -45,6 +35,14 @@ export default function PaywallModal({ onClose, variant = "hiring" }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  const title = variant === "hiring" ? "Limite do plano atual" : "Limite do plano gratuito";
+  const message = variant === "hiring"
+    ? `O plano gratuito permite ate 1 vaga ativa e 3 contratacoes por vaga. Faca upgrade para o plano Pro e remova os limites.`
+    : `Gerencie vagas e contratacoes sem limites com o plano Pro por ${proPrice}/mes.`;
+  const features = variant === "hiring"
+    ? ["Vagas ilimitadas", "Contratacoes ilimitadas por vaga", `Comissao da plataforma de ${proCommission}`]
+    : ["Vagas ilimitadas", "Contratacoes ilimitadas por vaga", "Historico completo de pagamentos e contratos"];
 
   function handleUpgrade() {
     onClose();
@@ -71,12 +69,12 @@ export default function PaywallModal({ onClose, variant = "hiring" }: Props) {
         </div>
 
         <div className="text-center space-y-2">
-          <h2 className="text-[18px] font-semibold text-zinc-900 tracking-tight">{copy.title}</h2>
-          <p className="text-[14px] text-zinc-500 leading-relaxed">{copy.message}</p>
+          <h2 className="text-[18px] font-semibold text-zinc-900 tracking-tight">{title}</h2>
+          <p className="text-[14px] text-zinc-500 leading-relaxed">{message}</p>
         </div>
 
         <ul className="space-y-2">
-          {copy.features.map((feat) => (
+          {features.map((feat) => (
             <li key={feat} className="flex items-center gap-2.5 text-[13px] text-zinc-600">
               <div className="w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center flex-shrink-0">
                 <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,7 +99,7 @@ export default function PaywallModal({ onClose, variant = "hiring" }: Props) {
                 d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
               />
             </svg>
-            Ativar Plano {PRO_PLAN.label}
+            Ativar Plano Pro
           </button>
           <button
             onClick={onClose}

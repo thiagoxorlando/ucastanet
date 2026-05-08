@@ -57,7 +57,7 @@ export default function TalentProfilePreview({ talent }: { talent: TalentProfile
             </svg>
             Elenco de Talentos
           </Link>
-          <span className="text-[13px] font-semibold tracking-tight text-zinc-900">Brisa Digital</span>
+          <span className="text-[13px] font-semibold tracking-tight text-zinc-900">BrisaHub</span>
         </div>
       </div>
 

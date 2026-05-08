@@ -13,10 +13,10 @@ import { createServerClient } from "@/lib/supabase";
 import {
   calculateCommission,
   calculateNetAmount,
-  getPlanDefinition,
   parsePlan,
   REFERRAL_RATE,
 } from "@/lib/plans";
+import { getLivePlanSettings } from "@/lib/planSettings.server";
 
 export const metadata: Metadata = { title: "Administração — Financeiro — BrisaHub" };
 
@@ -98,6 +98,7 @@ export default async function AdminFinancesPage() {
     { data: withdrawalTxs },
     { data: talentWalletsData },
     { data: depositsData },
+    liveSettings,
   ] = await Promise.all([
     supabase
       .from("bookings")
@@ -142,6 +143,7 @@ export default async function AdminFinancesPage() {
       .select("id, user_id, amount, status, provider, asaas_payment_id, description, created_at, processed_at")
       .eq("type", "deposit")
       .order("created_at", { ascending: false }),
+    getLivePlanSettings(),
   ]);
 
   const depositUserIds = [...new Set((depositsData ?? []).map((d) => d.user_id).filter(Boolean))] as string[];
@@ -509,16 +511,16 @@ export default async function AdminFinancesPage() {
     minimumRequired,
     planBreakdown: {
       free: {
-        commissionLabel: getPlanDefinition("free").commissionLabel,
-        priceLabel: getPlanDefinition("free").priceLabel,
+        commissionLabel: `${liveSettings.free.commission_percent.toFixed(0)}%`,
+        priceLabel: liveSettings.free.price === 0 ? "Gratuito" : `R$ ${liveSettings.free.price.toLocaleString("pt-BR")}`,
       },
       pro: {
-        commissionLabel: getPlanDefinition("pro").commissionLabel,
-        priceLabel: `${getPlanDefinition("pro").priceLabel}/mes`,
+        commissionLabel: `${liveSettings.pro.commission_percent.toFixed(0)}%`,
+        priceLabel: `R$ ${liveSettings.pro.price.toLocaleString("pt-BR")}/mês`,
       },
       premium: {
-        commissionLabel: getPlanDefinition("premium").commissionLabel,
-        priceLabel: `${getPlanDefinition("premium").priceLabel}/mes`,
+        commissionLabel: `${liveSettings.premium.commission_percent.toFixed(0)}%`,
+        priceLabel: `R$ ${liveSettings.premium.price.toLocaleString("pt-BR")}/mês`,
       },
     },
   };

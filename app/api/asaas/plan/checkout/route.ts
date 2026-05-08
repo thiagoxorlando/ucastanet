@@ -36,10 +36,10 @@ export async function POST(req: NextRequest) {
   const requestedBodyPlan = body.plan as string | undefined;
 
   if (requestedBodyPlan && requestedBodyPlan !== "pro") {
-    return NextResponse.json(
-      { error: "Plano inválido para checkout." },
-      { status: 400 },
-    );
+    const msg = requestedBodyPlan === "premium"
+      ? "Plano Premium ainda não está disponível."
+      : "Plano inválido para checkout.";
+    return NextResponse.json({ error: msg }, { status: 400 });
   }
 
   // Enforce plan as pro — never trust other frontend values

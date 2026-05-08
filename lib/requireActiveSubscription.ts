@@ -1,6 +1,7 @@
 import { createServerClient } from "@/lib/supabase";
 import { NextResponse } from "next/server";
-import { getPlanDefinition, resolvePlanInfo } from "@/lib/plans";
+import { resolvePlanInfo, type Plan } from "@/lib/plans";
+import { getLivePlanSetting } from "@/lib/planSettings.server";
 
 /**
  * Returns null if the agency has an active paid plan (pro or premium).
@@ -43,8 +44,7 @@ export async function requireActiveSubscription(agencyId: string): Promise<NextR
 
 /**
  * Returns null if the agency may create another job.
- * Returns a 402 NextResponse with error="plan_limit" if they're on FREE
- * and already have 1 active job.
+ * Reads job_limit from plan_settings (source of truth). null = unlimited.
  */
 export async function requireJobLimit(agencyId: string): Promise<NextResponse | null> {
   if (!agencyId) return null;
@@ -57,9 +57,12 @@ export async function requireJobLimit(agencyId: string): Promise<NextResponse | 
     .eq("id", agencyId)
     .single();
 
-  const plan = profile?.plan ?? "free";
-  const planDefinition = getPlanDefinition(plan);
-  if (planDefinition.maxActiveJobs === null) return null;
+  const plan = (profile?.plan ?? "free") as Plan;
+
+  // Live plan_settings is the source of truth; null job_limit = unlimited
+  const liveSetting = await getLivePlanSetting(plan);
+  const jobLimit = liveSetting.job_limit;
+  if (jobLimit === null) return null;
 
   const { count } = await supabase
     .from("jobs")
@@ -71,15 +74,15 @@ export async function requireJobLimit(agencyId: string): Promise<NextResponse | 
     agencyId,
     plan,
     currentJobs: count ?? 0,
-    maxActiveJobs: planDefinition.maxActiveJobs,
+    jobLimit,
   });
 
-  if ((count ?? 0) >= planDefinition.maxActiveJobs) {
+  if ((count ?? 0) >= jobLimit) {
     return NextResponse.json(
       {
         error: "plan_limit",
-        message: "O plano Free permite 1 vaga. Faça upgrade para publicar mais vagas.",
-        limit: planDefinition.maxActiveJobs,
+        message: `O plano Free permite ${jobLimit} vaga${jobLimit > 1 ? "s" : ""}. Faça upgrade para publicar mais vagas.`,
+        limit: jobLimit,
         resource: "jobs",
         plan,
       },
@@ -107,6 +110,11 @@ export async function requireHireLimit(agencyId: string, jobId: string | null): 
     .single();
 
   const plan = profile?.plan ?? "free";
+  const liveSetting = await getLivePlanSetting(plan as Plan);
+
+  // Use live job_limit as proxy for hire limits (null = unlimited)
+  // Hire limit is not stored in plan_settings yet; keep using PLAN_DEFINITIONS for this one
+  const { getPlanDefinition } = await import("@/lib/plans");
   const planDefinition = getPlanDefinition(plan);
   if (planDefinition.maxHiresPerJob === null) return null;
 
@@ -153,8 +161,9 @@ export async function getPlanInfo(userId: string) {
     .eq("id", userId)
     .single();
 
-  const plan = profile?.plan ?? "free";
+  const plan = (profile?.plan ?? "free") as Plan;
   const planInfo = resolvePlanInfo({ plan });
+  const liveSetting = await getLivePlanSetting(plan);
 
   return {
     plan:               planInfo.plan,
@@ -163,11 +172,11 @@ export async function getPlanInfo(userId: string) {
     planExpiresAt:      null,
     walletBalance:      Number(profile?.wallet_balance ?? 0),
     isActive:           planInfo.isPaid,
-    isUnlimited:        planInfo.isUnlimited,
-    maxActiveJobs:      planInfo.maxActiveJobs,
+    isUnlimited:        liveSetting.job_limit === null,
+    maxActiveJobs:      liveSetting.job_limit,
     maxHiresPerJob:     planInfo.maxHiresPerJob,
-    commissionRate:     planInfo.commissionRate,
-    commissionLabel:    planInfo.commissionLabel,
+    commissionRate:     liveSetting.commission_rate,
+    commissionLabel:    `${liveSetting.commission_percent.toFixed(0)}%`,
     talentShareLabel:   planInfo.talentShareLabel,
     privateEnvironment: planInfo.privateEnvironment,
   };

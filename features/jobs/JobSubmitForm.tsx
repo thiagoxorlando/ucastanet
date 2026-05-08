@@ -313,7 +313,7 @@ export default function JobSubmitForm({ job }: { job: Job | null }) {
             </svg>
             Voltar para Vaga
           </Link>
-          <span className="text-[14px] font-semibold text-zinc-900 tracking-tight">Brisa Digital</span>
+          <span className="text-[14px] font-semibold text-zinc-900 tracking-tight">BrisaHub</span>
         </div>
       </nav>
 
@@ -489,7 +489,7 @@ export default function JobSubmitForm({ job }: { job: Job | null }) {
             )}
           </button>
           <p className="text-center text-[12px] text-zinc-400 mt-3">
-            Ao enviar você concorda com os termos de submissão da Brisa Digital.
+            Ao enviar você concorda com os termos de submissão da BrisaHub.
           </p>
         </form>
       </div>
