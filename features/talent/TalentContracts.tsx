@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { CONTRACTS_BUCKET } from "@/lib/contractFiles";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -189,6 +191,7 @@ function ContractRow({
   const [showReject, setShowReject] = useState(false);
   const [signedFile, setSignedFile] = useState<File | null>(null);
   const [uploading, setUploading]   = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   const st          = STATUS[c.status] ?? STATUS_FALLBACK;
   const isPending   = c.status === "sent";
@@ -208,18 +211,33 @@ function ContractRow({
   async function handleSignAndUpload() {
     if (!signedFile) return;
     setUploading(true);
+    setUploadError("");
+
     try {
-      const fd = new FormData();
-      fd.append("file", signedFile);
-      fd.append("path", `contracts/signed/${c.id}_${Date.now()}_${signedFile.name}`);
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-      if (!uploadRes.ok) {
-        const j = await uploadRes.json().catch(() => ({}));
-        console.error("[sign upload]", j.error);
-        setUploading(false);
+      // Step 1: get signed upload URL — sends only metadata, no file body through Vercel
+      const signRes = await fetch("/api/contracts/upload-signed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contract_id: c.id, filename: signedFile.name, filesize: signedFile.size }),
+      });
+      if (!signRes.ok) {
+        const j = await signRes.json().catch(() => ({})) as { error?: string };
+        setUploadError(j.error ?? "Falha ao iniciar upload do contrato assinado.");
         return;
       }
-      const { path } = await uploadRes.json();
+      const { signedUrl, token, path } = await signRes.json() as { signedUrl: string; token: string; path: string };
+
+      // Step 2: upload PDF directly to Supabase Storage — bypasses Vercel entirely
+      const { error: storageError } = await supabase.storage
+        .from(CONTRACTS_BUCKET)
+        .uploadToSignedUrl(path, token, signedFile, { contentType: "application/pdf" });
+
+      if (storageError) {
+        console.error("[sign upload] storage", storageError);
+        setUploadError("Falha ao enviar arquivo para o Storage. Tente novamente.");
+        return;
+      }
+
       onAction(c.id, "sign", path);
     } finally {
       setUploading(false);
@@ -413,8 +431,23 @@ function ContractRow({
                     </button>
                   )}
                   <input
-                    type="file" accept=".pdf,.doc,.docx" className="sr-only"
-                    onChange={(e) => setSignedFile(e.target.files?.[0] ?? null)}
+                    type="file" accept=".pdf,application/pdf" className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setUploadError("");
+                      if (!file) { setSignedFile(null); return; }
+                      if (!/\.pdf$/i.test(file.name)) {
+                        setSignedFile(null);
+                        setUploadError("Envie um arquivo PDF válido de até 20MB.");
+                        return;
+                      }
+                      if (file.size > 20 * 1024 * 1024) {
+                        setSignedFile(null);
+                        setUploadError("Arquivo muito grande. Envie um PDF de até 20MB.");
+                        return;
+                      }
+                      setSignedFile(file);
+                    }}
                   />
                 </label>
 
@@ -433,6 +466,9 @@ function ContractRow({
                     {uploading || acting === c.id ? "Enviando…" : "Enviar Contrato Assinado"}
                   </button>
                 </div>
+                {uploadError && (
+                  <p className="text-[12px] text-rose-600 mt-1">{uploadError}</p>
+                )}
               </div>
             )}
 
