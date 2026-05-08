@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { requireTalentsNeededForJob } from "@/lib/requireActiveSubscription";
 
 const PATCH_ALLOWED = ["title", "description", "category", "budget", "deadline", "job_date", "status", "location", "gender", "age_min", "age_max", "number_of_talents_required", "visibility"];
 
@@ -37,15 +38,30 @@ export async function PATCH(
 
   const { data: existingJob } = await supabase
     .from("jobs")
-    .select("agency_id")
+    .select("agency_id, deleted_at")
     .eq("id", id)
     .single();
 
-  if (!existingJob) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  if (!existingJob) return NextResponse.json({ error: "Vaga não encontrada." }, { status: 404 });
+  if (existingJob.deleted_at) return NextResponse.json({ error: "Vaga não encontrada ou foi removida." }, { status: 404 });
   if (existingJob.agency_id !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   if (update.visibility === "private" && caller.plan !== "premium") {
     return NextResponse.json({ error: "Premium plan required for private jobs" }, { status: 403 });
+  }
+
+  // Agency may only set valid, non-admin statuses
+  if (update.status !== undefined) {
+    const validStatuses = ["open", "closed", "draft", "inactive"];
+    if (!validStatuses.includes(update.status as string)) {
+      return NextResponse.json({ error: "Status inválido." }, { status: 400 });
+    }
+  }
+
+  // Enforce per-job hire limit when updating number_of_talents_required
+  if (typeof update.number_of_talents_required === "number") {
+    const hiresLimited = await requireTalentsNeededForJob(user.id, update.number_of_talents_required);
+    if (hiresLimited) return hiresLimited;
   }
 
   const { data, error } = await supabase

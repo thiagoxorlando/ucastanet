@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useSubscription } from "@/lib/SubscriptionContext";
 
 export type EditableJob = {
   id: string;
@@ -31,6 +32,7 @@ const disabledBase = `${base} opacity-50 cursor-not-allowed bg-zinc-100 hover:bo
 
 export default function EditJobForm({ job }: { job: EditableJob }) {
   const router = useRouter();
+  const { maxHiresPerJob } = useSubscription();
 
   // If open/draft → only deadline editable; if inactive → all editable
   const allEditable = job.status === "inactive" || job.status === "draft";
@@ -57,6 +59,12 @@ export default function EditJobForm({ job }: { job: EditableJob }) {
     const payload: Record<string, unknown> = { deadline };
 
     if (allEditable) {
+      const talentsNum = Number(talentsRequired) || 1;
+      if (maxHiresPerJob != null && talentsNum > maxHiresPerJob) {
+        setError(`O plano Free permite contratar até ${maxHiresPerJob} talentos por vaga.`);
+        setSaving(false);
+        return;
+      }
       payload.title       = title.trim();
       payload.description = description.trim();
       payload.category    = category;
@@ -65,7 +73,7 @@ export default function EditJobForm({ job }: { job: EditableJob }) {
       payload.gender      = gender || null;
       payload.age_min     = ageMin  ? Number(ageMin)  : null;
       payload.age_max     = ageMax  ? Number(ageMax)  : null;
-      payload.number_of_talents_required = Number(talentsRequired) || 1;
+      payload.number_of_talents_required = talentsNum;
     }
 
     const res = await fetch(`/api/jobs/${job.id}`, {
@@ -250,6 +258,7 @@ export default function EditJobForm({ job }: { job: EditableJob }) {
           <input
             type="number"
             min={1}
+            max={maxHiresPerJob ?? undefined}
             value={talentsRequired}
             onChange={(e) => setTalentsRequired(e.target.value)}
             disabled={!allEditable}

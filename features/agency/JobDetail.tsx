@@ -1063,6 +1063,9 @@ export default function JobDetail({
   const [submissionList, setSubmissionList] = useState<Submission[]>(submissions ?? []);
   const [copyFeedback, setCopyFeedback] = useState("");
   const [manualCopyUrl, setManualCopyUrl] = useState("");
+  const [currentStatus, setCurrentStatus] = useState<Job["status"]>(job?.status ?? "open");
+  const [statusChanging, setStatusChanging] = useState(false);
+  const [statusFeedback, setStatusFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
 
   if (!job) return <NotFound />;
 
@@ -1134,6 +1137,30 @@ export default function JobDetail({
     }
   }
 
+  async function handleChangeStatus(newStatus: Job["status"]) {
+    if (!job) return;
+    setStatusChanging(true);
+    setStatusFeedback(null);
+    try {
+      const res = await fetch(`/api/jobs/${job.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        setCurrentStatus(newStatus);
+        setStatusFeedback({ ok: true, msg: "Status da vaga atualizado." });
+        router.refresh();
+      } else {
+        const d = await res.json().catch(() => ({})) as { error?: string };
+        setStatusFeedback({ ok: false, msg: d.error ?? "Erro ao atualizar status." });
+      }
+    } catch {
+      setStatusFeedback({ ok: false, msg: "Erro ao atualizar status." });
+    }
+    setStatusChanging(false);
+  }
+
   async function handleCopyJobLink() {
     if (!job) return;
     const publicJobUrl = buildPublicJobUrl(job.id);
@@ -1141,7 +1168,7 @@ export default function JobDetail({
     try {
       await navigator.clipboard.writeText(publicJobUrl);
       setManualCopyUrl("");
-      setCopyFeedback("Link copiado!");
+      setCopyFeedback("Link da vaga copiado. Envie para quem quiser se candidatar.");
     } catch {
       setManualCopyUrl(publicJobUrl);
       setCopyFeedback("Copie o link abaixo manualmente.");
@@ -1221,7 +1248,7 @@ export default function JobDetail({
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16h8M8 12h8m-8-4h5m-6 12h10a2 2 0 002-2V6a2 2 0 00-2-2h-3.172a2 2 0 01-1.414-.586l-.828-.828A2 2 0 0010.172 2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
-                  Copiar link da vaga
+                  Compartilhar vaga
                 </button>
 
                 {job.status !== "closed" && (
@@ -1291,9 +1318,41 @@ export default function JobDetail({
           <DetailRow label="Candidaturas" value={`${safeSubmissions.length} recebida${safeSubmissions.length !== 1 ? "s" : ""}`}
             icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2h5M12 12a4 4 0 100-8 4 4 0 000 8z" /></svg>}
           />
-          <DetailRow label="Status" value={{ open: "Aberta", closed: "Fechada", draft: "Rascunho", inactive: "Inativa" }[job.status] ?? job.status}
+          <DetailRow label="Status" value={{ open: "Aberta", closed: "Fechada", draft: "Rascunho", inactive: "Inativa" }[currentStatus] ?? currentStatus}
             icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
           />
+
+          {/* Status change actions — agency only */}
+          {(role === "agency" || !!agencyId) && currentStatus !== "inactive" && (
+            <div className="pt-3 mt-1 border-t border-zinc-50">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2.5">Status da vaga</p>
+              <div className="flex flex-wrap gap-2">
+                {currentStatus !== "open" && (
+                  <button
+                    onClick={() => handleChangeStatus("open")}
+                    disabled={statusChanging}
+                    className="text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-700 hover:bg-emerald-100 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    {statusChanging ? "…" : currentStatus === "draft" ? "Publicar vaga" : "Reabrir vaga"}
+                  </button>
+                )}
+                {currentStatus === "open" && (
+                  <button
+                    onClick={() => handleChangeStatus("closed")}
+                    disabled={statusChanging}
+                    className="text-[12px] font-semibold px-3.5 py-2 rounded-xl bg-zinc-100 border border-zinc-200 text-zinc-700 hover:bg-zinc-200 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    {statusChanging ? "…" : "Fechar vaga"}
+                  </button>
+                )}
+              </div>
+              {statusFeedback && (
+                <p className={`text-[11px] font-medium mt-2 ${statusFeedback.ok ? "text-emerald-600" : "text-rose-600"}`}>
+                  {statusFeedback.msg}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

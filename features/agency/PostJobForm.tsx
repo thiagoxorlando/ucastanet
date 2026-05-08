@@ -90,7 +90,7 @@ const INITIAL: FormData = {
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
-function validate(f: FormData): FormErrors {
+function validate(f: FormData, maxHiresPerJob?: number | null): FormErrors {
   const e: FormErrors = {};
   if (!f.title.trim()) e.title = "Título da vaga é obrigatório.";
   else if (f.title.trim().length < 5) e.title = "Mínimo de 5 caracteres.";
@@ -104,6 +104,10 @@ function validate(f: FormData): FormErrors {
   if (f.age_min && (isNaN(Number(f.age_min)) || Number(f.age_min) < 1)) e.age_min = "Idade inválida.";
   if (f.age_max && (isNaN(Number(f.age_max)) || Number(f.age_max) < 1)) e.age_max = "Idade inválida.";
   if (f.age_min && f.age_max && Number(f.age_min) > Number(f.age_max)) e.age_max = "Deve ser ≥ idade mínima.";
+  const hiresNeeded = Number(f.number_of_talents_required) || 1;
+  if (maxHiresPerJob != null && hiresNeeded > maxHiresPerJob) {
+    e.number_of_talents_required = `O plano Free permite contratar até ${maxHiresPerJob} talentos por vaga.`;
+  }
   return e;
 }
 
@@ -343,7 +347,7 @@ function SuccessScreen({ title, draft }: { title: string; draft?: boolean }) {
 
 export default function PostJobForm() {
   const router = useRouter();
-  const { isActive, isPremium } = useSubscription();
+  const { isActive, isPremium, maxHiresPerJob } = useSubscription();
   const [form, setForm]       = useState<FormData>(INITIAL);
   const [touched, setTouched] = useState<Partial<Record<keyof FormData, boolean>>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
@@ -354,7 +358,7 @@ export default function PostJobForm() {
   const [postedTitle, setPostedTitle] = useState("");
   const [planLimitError, setPlanLimitError] = useState("");
 
-  const errors    = validate(form);
+  const errors    = validate(form, maxHiresPerJob);
   const hasErrors = Object.keys(errors).length > 0;
 
   function set<K extends keyof FormData>(k: K, v: string) {
@@ -411,7 +415,13 @@ export default function PostJobForm() {
         body = null;
       }
       if (body?.error === "plan_limit") {
-        setPlanLimitError(body.message ?? "O plano Free permite 1 vaga. Faça upgrade para publicar mais vagas.");
+        const msg = body.message ?? "Limite do plano atingido. Faça upgrade para continuar.";
+        const resource = (body as { resource?: string }).resource;
+        if (resource === "hires_per_job") {
+          setSubmitError(msg);
+        } else {
+          setPlanLimitError(msg);
+        }
         return false;
       }
       setSubmitError(getApiError(res.status, body));
@@ -709,14 +719,16 @@ export default function PostJobForm() {
             </div>
 
             {/* Talents required */}
-            <Field label="Talentos Necessários" hint="Quantos talentos você precisa para esta vaga?">
+            <Field label="Talentos Necessários" hint="Quantos talentos você precisa para esta vaga?" error={err("number_of_talents_required")}>
               <input
                 type="number"
                 min="1"
+                max={maxHiresPerJob ?? undefined}
                 value={form.number_of_talents_required}
                 onChange={(e) => set("number_of_talents_required", e.target.value)}
+                onBlur={() => touch("number_of_talents_required")}
                 placeholder="1"
-                className={`${base} ${ring()} px-4 py-3`}
+                className={`${base} ${ring(!!err("number_of_talents_required"))} px-4 py-3`}
               />
             </Field>
 

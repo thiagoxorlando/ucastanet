@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { notify } from "@/lib/notify";
-import { requireJobLimit } from "@/lib/requireActiveSubscription";
+import { requireJobLimit, requireTalentsNeededForJob } from "@/lib/requireActiveSubscription";
 import { getJobSuggestions } from "@/lib/getJobSuggestions";
 import { resolvePlanInfo } from "@/lib/plans";
 
@@ -74,6 +74,9 @@ export async function POST(req: NextRequest) {
 
   const limited = await requireJobLimit(agencyId);
   if (limited) return limited;
+
+  const hiresLimited = await requireTalentsNeededForJob(agencyId, Number(number_of_talents_required) || 1);
+  if (hiresLimited) return hiresLimited;
 
   const { data: profile } = await supabase
     .from("profiles")

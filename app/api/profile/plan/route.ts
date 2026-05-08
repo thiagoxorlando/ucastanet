@@ -42,7 +42,7 @@ export async function GET() {
     is_active:           true,
     is_unlimited:        liveSetting.job_limit === null,
     max_active_jobs:     liveSetting.job_limit,
-    max_hires_per_job:   planInfo.maxHiresPerJob,
+    max_hires_per_job:   liveSetting.max_hires_per_job ?? planInfo.maxHiresPerJob,
     commission_rate:     liveSetting.commission_rate,
     commission_label:    `${liveSetting.commission_percent.toFixed(0)}%`,
     talent_share_label:  planInfo.talentShareLabel,

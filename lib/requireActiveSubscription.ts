@@ -109,14 +109,10 @@ export async function requireHireLimit(agencyId: string, jobId: string | null): 
     .eq("id", agencyId)
     .single();
 
-  const plan = profile?.plan ?? "free";
-  const liveSetting = await getLivePlanSetting(plan as Plan);
-
-  // Use live job_limit as proxy for hire limits (null = unlimited)
-  // Hire limit is not stored in plan_settings yet; keep using PLAN_DEFINITIONS for this one
-  const { getPlanDefinition } = await import("@/lib/plans");
-  const planDefinition = getPlanDefinition(plan);
-  if (planDefinition.maxHiresPerJob === null) return null;
+  const plan = (profile?.plan ?? "free") as Plan;
+  const liveSetting = await getLivePlanSetting(plan);
+  const maxHiresPerJob = liveSetting.max_hires_per_job;
+  if (maxHiresPerJob === null) return null;
 
   const { count } = await supabase
     .from("contracts")
@@ -126,23 +122,53 @@ export async function requireHireLimit(agencyId: string, jobId: string | null): 
     .not("status", "in", '("cancelled","rejected")')
     .is("deleted_at", null);
 
-  console.log("[plan] hire_limit_check", {
-    agencyId,
-    jobId,
-    plan,
-    currentHires: count ?? 0,
-    maxHiresPerJob: planDefinition.maxHiresPerJob,
-  });
+  console.log("[plan] hire_limit_check", { agencyId, jobId, plan, currentHires: count ?? 0, maxHiresPerJob });
 
-  if ((count ?? 0) >= planDefinition.maxHiresPerJob) {
+  if ((count ?? 0) >= maxHiresPerJob) {
     return NextResponse.json(
       {
         error: "plan_limit",
-        limit: planDefinition.maxHiresPerJob,
+        message: `O plano Free permite contratar até ${maxHiresPerJob} talentos por vaga.`,
+        limit: maxHiresPerJob,
         resource: "hires",
         plan,
       },
       { status: 402 }
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Returns null if number_of_talents_required is within the plan's per-job limit.
+ * Returns a 402 NextResponse with error="plan_limit" if it exceeds the limit.
+ * Uses plan_settings as the source of truth (null = unlimited).
+ */
+export async function requireTalentsNeededForJob(
+  agencyId: string,
+  talentsNeeded: number | null | undefined,
+): Promise<NextResponse | null> {
+  if (!agencyId || !talentsNeeded || talentsNeeded <= 1) return null;
+
+  const supabase = createServerClient({ useServiceRole: true });
+  const { data: profile } = await supabase.from("profiles").select("plan").eq("id", agencyId).single();
+  const plan = (profile?.plan ?? "free") as Plan;
+  const liveSetting = await getLivePlanSetting(plan);
+  const maxHires = liveSetting.max_hires_per_job;
+
+  if (maxHires === null) return null;
+
+  if (talentsNeeded > maxHires) {
+    return NextResponse.json(
+      {
+        error: "plan_limit",
+        message: `O plano Free permite contratar até ${maxHires} talentos por vaga.`,
+        limit: maxHires,
+        resource: "hires_per_job",
+        plan,
+      },
+      { status: 402 },
     );
   }
 
