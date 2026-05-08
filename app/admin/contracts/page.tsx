@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { createServerClient } from "@/lib/supabase";
+import { buildContractFileAccessUrl } from "@/lib/contractFiles";
 import AdminContracts from "@/features/admin/AdminContracts";
 import type { AdminContractRow } from "@/features/admin/AdminContracts";
 
@@ -62,8 +63,8 @@ export default async function AdminContractsPage() {
     agencySignedAt:  c.agency_signed_at ?? null,
     depositPaidAt:     c.deposit_paid_at    ?? null,
     paidAt:            c.paid_at            ?? null,
-    contractFileUrl:   c.contract_file_url  ?? null,
-    signedContractUrl: c.signed_contract_url ?? null,
+    contractFileUrl:   c.contract_file_url ? buildContractFileAccessUrl(c.id, "original") : null,
+    signedContractUrl: c.signed_contract_url ? buildContractFileAccessUrl(c.id, "signed") : null,
   }));
 
   return <AdminContracts contracts={contracts} />;

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 
 export type TalentContract = {
   id:                 string;
+  jobId:              string | null;
   agencyName:         string;
   jobDate:            string | null;
   jobTime:            string | null;
@@ -218,8 +219,8 @@ function ContractRow({
         setUploading(false);
         return;
       }
-      const { url } = await uploadRes.json();
-      onAction(c.id, "sign", url);
+      const { path } = await uploadRes.json();
+      onAction(c.id, "sign", path);
     } finally {
       setUploading(false);
     }
@@ -322,7 +323,11 @@ function ContractRow({
 
           {/* ── File version indicator ── */}
           {(hasOriginal || hasSigned) && (
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
+                Contrato enviado pela agência
+              </p>
+              <div className="flex items-center gap-3 flex-wrap">
               {hasOriginal && (
                 <a
                   href={c.contractFileUrl!}
@@ -334,7 +339,7 @@ function ContractRow({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                       d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Original
+                  Ver contrato
                 </a>
               )}
               {hasSigned && (
@@ -350,6 +355,7 @@ function ContractRow({
                   Versão assinada
                 </a>
               )}
+            </div>
             </div>
           )}
 
@@ -369,7 +375,7 @@ function ContractRow({
                   <div className="flex-1">
                     <p className="text-[13px] font-semibold text-indigo-900">Aguardando Assinatura</p>
                     <p className="text-[12px] text-indigo-600 leading-relaxed mt-0.5">
-                      Baixe o contrato, assine via DocuSign ou outra ferramenta, e envie a versão assinada abaixo.
+                      Contrato enviado pela agência. Baixe o PDF, assine via DocuSign ou outra ferramenta, e envie a versão assinada abaixo.
                     </p>
                   </div>
                   <a
@@ -382,7 +388,7 @@ function ContractRow({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    Baixar
+                    Baixar contrato
                   </a>
                 </div>
 
@@ -812,5 +818,4 @@ export default function TalentContracts({
     </div>
   );
 }
-
 

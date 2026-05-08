@@ -313,9 +313,34 @@ function ContractModal({
     setSubmitting(true);
     setError("");
 
+    let uploadedContractPath: string | null = null;
+    if (contractFile) {
+      const fd = new FormData();
+      fd.append("file", contractFile);
+      fd.append("path", `contracts/${Date.now()}_${contractFile.name}`);
+
+      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!uploadRes.ok) {
+        const body = await uploadRes.json().catch(() => ({})) as { error?: string };
+        setError(body.error ?? "Não foi possível enviar o PDF do contrato.");
+        setSubmitting(false);
+        return;
+      }
+
+      const uploadJson = await uploadRes.json().catch(() => ({})) as { path?: string | null };
+      if (!uploadJson.path) {
+        setError("O upload do contrato foi concluído sem retornar o arquivo salvo.");
+        setSubmitting(false);
+        return;
+      }
+
+      uploadedContractPath = uploadJson.path;
+    }
+
     const payload = {
       job_id:           job.id,
       agency_id:        agencyId,
+      contract_file_url: uploadedContractPath,
       job_date:         form.job_date        || null,
       job_time:         form.job_time        || null,
       location:         form.location        || null,
@@ -351,35 +376,6 @@ function ContractModal({
       setError(`${failed.length} contrato(s) não puderam ser enviados. Tente novamente.`);
       setSubmitting(false);
       return;
-    }
-
-    // Capture contract IDs for file upload
-    const contractIds: string[] = [];
-    for (const r of responses) {
-      try {
-        const data = await r.clone().json();
-        if (data?.contract?.id) contractIds.push(data.contract.id);
-      } catch {}
-    }
-
-    // Upload contract file and attach to all created contracts
-    if (contractFile && contractIds.length > 0) {
-      const fd = new FormData();
-      fd.append("file", contractFile);
-      fd.append("path", `contracts/${Date.now()}_${contractFile.name}`);
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-      if (uploadRes.ok) {
-        const { url } = await uploadRes.json();
-        await Promise.all(
-          contractIds.map((cId) =>
-            fetch(`/api/contracts/${cId}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ action: "set_file_url", contract_file_url: url }),
-            })
-          )
-        );
-      }
     }
 
     setSent(true);
@@ -1006,7 +1002,20 @@ export default function JobDetail({
   const router = useRouter();
   const { role } = useRole();
   const [contractModal, setContractModal] = useState<ContractTarget[] | null>(null);
-  const [sentContracts, setSentContracts] = useState<Set<string>>(new Set());
+  const [sentContracts, setSentContracts] = useState<Set<string>>(() => {
+    const bookedTalentIds = new Set(
+      (initialBookings ?? [])
+        .filter((booking) => booking.contractId)
+        .map((booking) => booking.talentId)
+        .filter((talentId): talentId is string => !!talentId),
+    );
+
+    return new Set(
+      (submissions ?? [])
+        .filter((submission) => submission.talentId && bookedTalentIds.has(submission.talentId))
+        .map((submission) => submission.id),
+    );
+  });
   const [bookings, setBookings]           = useState<JobBooking[]>(initialBookings ?? []);
   const [selected, setSelected]           = useState<Set<string>>(new Set());
   const [submissionList, setSubmissionList] = useState<Submission[]>(submissions ?? []);

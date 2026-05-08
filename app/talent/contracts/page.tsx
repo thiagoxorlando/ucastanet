@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { buildContractFileAccessUrl } from "@/lib/contractFiles";
 import TalentContracts from "@/features/talent/TalentContracts";
 import type { TalentContract, ApprovedSubmission } from "@/features/talent/TalentContracts";
 
@@ -82,6 +83,7 @@ export default async function TalentContractsPage() {
 
   const contracts: TalentContract[] = rows.map((c) => ({
     id:              c.id,
+    jobId:           c.job_id ?? null,
     agencyName:      c.agency_id ? (agencyMap.get(c.agency_id) ?? "Agência sem nome")  : "Agência sem nome",
     jobDate:         c.job_date          ?? null,
     jobTime:         c.job_time          ?? null,
@@ -92,8 +94,8 @@ export default async function TalentContractsPage() {
     additionalNotes: c.additional_notes  ?? null,
     status:          c.status               ?? "sent",
     createdAt:       c.created_at           ?? "",
-    contractFileUrl:   c.contract_file_url   ?? null,
-    signedContractUrl: c.signed_contract_url ?? null,
+    contractFileUrl:   c.contract_file_url ? buildContractFileAccessUrl(c.id, "original") : null,
+    signedContractUrl: c.signed_contract_url ? buildContractFileAccessUrl(c.id, "signed") : null,
   }));
 
   return <TalentContracts contracts={contracts} approvedSubmissions={approvedSubmissions} />;

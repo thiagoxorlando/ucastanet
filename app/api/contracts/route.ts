@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
     job_id,
     talent_id,
     agency_id,
+    contract_file_url,
     job_date,
     job_time,
     location,
@@ -134,6 +135,7 @@ export async function POST(req: NextRequest) {
       net_amount,
       payment_method:   payment_method  ?? null,
       additional_notes: additional_notes ?? null,
+      contract_file_url: contract_file_url ?? null,
       status:           "sent",
     })
     .select()

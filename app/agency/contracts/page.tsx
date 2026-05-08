@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { buildContractFileAccessUrl } from "@/lib/contractFiles";
 import AgencyContracts from "@/features/agency/AgencyContracts";
 import type { AgencyContract } from "@/features/agency/AgencyContracts";
 
@@ -58,8 +59,8 @@ export default async function AgencyContractsPage() {
     agencySignedAt:  c.agency_signed_at  ?? null,
     depositPaidAt:   c.deposit_paid_at   ?? null,
     paidAt:          c.paid_at           ?? null,
-    contractFileUrl:       c.contract_file_url    ?? null,
-    signedContractUrl:     (c as any).signed_contract_url ?? null,
+    contractFileUrl:       c.contract_file_url ? buildContractFileAccessUrl(c.id, "original") : null,
+    signedContractUrl:     (c as any).signed_contract_url ? buildContractFileAccessUrl(c.id, "signed") : null,
   }));
 
   return <AgencyContracts contracts={contracts} />;

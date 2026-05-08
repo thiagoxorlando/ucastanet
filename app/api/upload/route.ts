@@ -79,5 +79,5 @@ export async function POST(req: NextRequest) {
   }
 
   const { data } = supabase.storage.from("talent-media").getPublicUrl(path);
-  return NextResponse.json({ url: data.publicUrl });
+  return NextResponse.json({ path, url: data.publicUrl });
 }
