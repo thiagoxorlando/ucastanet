@@ -299,6 +299,14 @@ function ContractModal({
   const [error, setError]           = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
 
+  function resolveApiError(
+    payload: { error?: string; message?: string; details?: string } | null | undefined,
+    fallback: string,
+  ) {
+    if (!payload) return fallback;
+    return payload.error ?? payload.message ?? payload.details ?? fallback;
+  }
+
   function set(key: keyof ContractForm, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
   }
@@ -321,8 +329,10 @@ function ContractModal({
 
       const uploadRes = await fetch("/api/contracts/upload", { method: "POST", body: fd });
       if (!uploadRes.ok) {
-        const body = await uploadRes.json().catch(() => ({})) as { error?: string };
-        setError(body.error ?? "Não foi possível enviar o PDF do contrato.");
+        const body = await uploadRes.json().catch(() => ({})) as { error?: string; message?: string; details?: string };
+        console.error("[contract upload ui]", body);
+        const message = resolveApiError(body, "Não foi possível enviar o PDF do contrato.");
+        setError(body.details ? `${message}\n${body.details}` : message);
         setSubmitting(false);
         return;
       }
@@ -362,9 +372,9 @@ function ContractModal({
 
     for (const r of responses) {
       if (r.status === 402) {
-        const body = await r.clone().json().catch(() => ({})) as { error?: string; message?: string };
+        const body = await r.clone().json().catch(() => ({})) as { error?: string; message?: string; details?: string };
         if (body.error === "plan_limit") {
-          setError(body.message ?? "Limite de contratações atingido. Faça upgrade para contratar mais talentos.");
+          setError(resolveApiError(body, "Limite de contratações atingido. Faça upgrade para contratar mais talentos."));
           setSubmitting(false);
           return;
         }
@@ -373,11 +383,12 @@ function ContractModal({
 
     const failed = responses.filter((r) => !r.ok);
     if (failed.length > 0) {
-      const firstFailure = await failed[0].clone().json().catch(() => ({})) as { error?: string };
+      const firstFailure = await failed[0].clone().json().catch(() => ({})) as { error?: string; message?: string; details?: string };
+      const firstMessage = resolveApiError(firstFailure, "Não foi possível enviar o contrato.");
       setError(
         failed.length === 1
-          ? (firstFailure.error ?? "Não foi possível enviar o contrato.")
-          : `${failed.length} contrato(s) não puderam ser enviados. ${firstFailure.error ?? "Tente novamente."}`,
+          ? (firstFailure.details ? `${firstMessage}\n${firstFailure.details}` : firstMessage)
+          : `${failed.length} contrato(s) não puderam ser enviados. ${firstMessage}`,
       );
       setSubmitting(false);
       return;
