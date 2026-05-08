@@ -27,7 +27,7 @@ export default async function BookingsPage({
     .select(`
       id, talent_user_id, job_id, status, price, job_title, created_at,
       contracts!contracts_booking_id_fkey (
-        id, status, signed_at, job_date, paid_at
+        id, status, signed_at, job_date, paid_at, contract_file_url, signed_contract_url
       )
     `)
     .order("created_at", { ascending: false });
@@ -65,11 +65,13 @@ export default async function BookingsPage({
       contractStatus: contract?.status ?? null,
       derivedStatus:  getUnifiedBookingStatus(String(row.status ?? "pending"), contract?.status ?? null),
       totalValue:     Number(row.price ?? 0),
-      jobTitle:       String(row.job_title ?? ""),
-      createdAt:      String(row.created_at ?? ""),
-      contractSigned: contract?.signed_at ?? null,
-      jobDate:        contract?.job_date ?? null,
-      paidAt:         contract?.paid_at ?? null,
+      jobTitle:           String(row.job_title ?? ""),
+      createdAt:          String(row.created_at ?? ""),
+      contractSigned:     contract?.signed_at ?? null,
+      jobDate:            contract?.job_date ?? null,
+      paidAt:             contract?.paid_at ?? null,
+      hasContractFile:    !!(contract?.contract_file_url),
+      hasSignedContract:  !!(contract?.signed_contract_url),
     };
   });
 

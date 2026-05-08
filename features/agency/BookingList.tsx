@@ -20,9 +20,11 @@ export type Booking = {
   derivedStatus:   string;
   totalValue:      number;
   createdAt:       string;
-  contractSigned:  string | null;
-  jobDate:         string | null;
-  paidAt:          string | null;
+  contractSigned:    string | null;
+  jobDate:           string | null;
+  paidAt:            string | null;
+  hasContractFile:   boolean;
+  hasSignedContract: boolean;
 };
 
 function brl(n: number) {
@@ -229,8 +231,9 @@ function BookingRow({
             <>
               <button
                 onClick={handleConfirm}
-                disabled={acting !== null || !booking.contractId}
-                className="text-[12px] font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer disabled:opacity-50 bg-violet-600 hover:bg-violet-700 text-white"
+                disabled={acting !== null || !booking.contractId || (booking.hasContractFile && !booking.hasSignedContract)}
+                title={booking.hasContractFile && !booking.hasSignedContract ? "Aguarde o talento enviar o contrato assinado." : undefined}
+                className="text-[12px] font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-violet-600 hover:bg-violet-700 text-white"
               >
                 {acting === "confirm" ? "Confirmando..." : "Confirmar reserva"}
               </button>
@@ -328,9 +331,52 @@ function BookingRow({
 
       {/* Timeline expansion */}
       {expanded && (
-        <div className="border-t border-zinc-50 bg-zinc-50/60 px-5 py-3.5">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-3">{t("page_bookings")}</p>
+        <div className="border-t border-zinc-50 bg-zinc-50/60 px-5 py-3.5 space-y-3">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">{t("page_bookings")}</p>
           <Timeline steps={timelineSteps} />
+
+          {/* Contract file links */}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {booking.contractId && booking.hasSignedContract && (
+              <a
+                href={`/api/contracts/${booking.contractId}/file?type=signed`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Ver contrato assinado
+              </a>
+            )}
+            {booking.contractId && booking.hasContractFile && (
+              <a
+                href={`/api/contracts/${booking.contractId}/file?type=original`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[11px] font-medium text-zinc-600 bg-zinc-100 border border-zinc-200 px-3 py-1.5 rounded-lg hover:bg-zinc-200 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Ver contrato original
+              </a>
+            )}
+          </div>
+
+          {/* Block confirm warning */}
+          {unified === "aguardando_deposito" && booking.hasContractFile && !booking.hasSignedContract && (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+              <svg className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+              <p className="text-[11px] text-amber-800 font-medium">
+                Você precisa aguardar o talento enviar o contrato assinado antes de confirmar a reserva.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
