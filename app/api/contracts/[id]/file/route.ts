@@ -47,7 +47,7 @@ export async function GET(
     return NextResponse.json({ error: "Contract file not found" }, { status: 404 });
   }
 
-  const fileUrl = await resolveContractFileUrl(supabase, fileRef);
+  const fileUrl = await resolveContractFileUrl(supabase, fileType, fileRef);
   if (!fileUrl) {
     return NextResponse.json({ error: "Unable to access contract file" }, { status: 404 });
   }

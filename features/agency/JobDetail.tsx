@@ -317,9 +317,9 @@ function ContractModal({
     if (contractFile) {
       const fd = new FormData();
       fd.append("file", contractFile);
-      fd.append("path", `contracts/${Date.now()}_${contractFile.name}`);
+      fd.append("job_id", job.id);
 
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+      const uploadRes = await fetch("/api/contracts/upload", { method: "POST", body: fd });
       if (!uploadRes.ok) {
         const body = await uploadRes.json().catch(() => ({})) as { error?: string };
         setError(body.error ?? "Não foi possível enviar o PDF do contrato.");
@@ -373,7 +373,12 @@ function ContractModal({
 
     const failed = responses.filter((r) => !r.ok);
     if (failed.length > 0) {
-      setError(`${failed.length} contrato(s) não puderam ser enviados. Tente novamente.`);
+      const firstFailure = await failed[0].clone().json().catch(() => ({})) as { error?: string };
+      setError(
+        failed.length === 1
+          ? (firstFailure.error ?? "Não foi possível enviar o contrato.")
+          : `${failed.length} contrato(s) não puderam ser enviados. ${firstFailure.error ?? "Tente novamente."}`,
+      );
       setSubmitting(false);
       return;
     }
@@ -579,9 +584,28 @@ function ContractModal({
                     )}
                     <input
                       type="file"
-                      accept=".pdf,.doc,.docx"
+                      accept=".pdf,application/pdf"
                       className="sr-only"
-                      onChange={(e) => setContractFile(e.target.files?.[0] ?? null)}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        if (!file) {
+                          setContractFile(null);
+                          return;
+                        }
+                        const validPdf = file.type === "application/pdf" && /\.pdf$/i.test(file.name);
+                        if (!validPdf) {
+                          setContractFile(null);
+                          setError("Envie um arquivo PDF válido.");
+                          return;
+                        }
+                        if (file.size > 10 * 1024 * 1024) {
+                          setContractFile(null);
+                          setError("O PDF deve ter no máximo 10 MB.");
+                          return;
+                        }
+                        setError("");
+                        setContractFile(file);
+                      }}
                     />
                   </label>
                   <p className="text-[11px] text-zinc-400 mt-1.5">
