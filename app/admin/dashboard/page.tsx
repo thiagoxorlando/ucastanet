@@ -4,8 +4,9 @@ import { createServerClient } from "@/lib/supabase";
 
 export const metadata: Metadata = { title: "Painel administrativo — BrisaHub" };
 
-const COMMISSION_RATE = 0.1;
-const REFERRAL_RATE   = 0.02;
+// Only used as a last-resort fallback for very old bookings with no contract record.
+const FALLBACK_COMMISSION_RATE = 0.1;
+const REFERRAL_RATE            = 0.02;
 
 export default async function AdminDashboardPage() {
   const supabase = createServerClient({ useServiceRole: true });
@@ -19,7 +20,12 @@ export default async function AdminDashboardPage() {
   ] = await Promise.all([
     supabase
       .from("bookings")
-      .select("id, talent_user_id, job_id, job_title, price, status, created_at")
+      .select(`
+        id, talent_user_id, job_id, job_title, price, status, created_at,
+        contracts!contracts_booking_id_fkey (
+          payment_amount, commission_amount, net_amount
+        )
+      `)
       .order("created_at", { ascending: false }),
     supabase
       .from("jobs")
@@ -70,9 +76,22 @@ export default async function AdminDashboardPage() {
   }
 
   const bookings = (bookingsData ?? []).map((b) => {
-    const profile = b.talent_user_id ? profileMap.get(b.talent_user_id) : null;
+    const profile     = b.talent_user_id ? profileMap.get(b.talent_user_id) : null;
     const total       = Number(b.price ?? 0);
     const hasReferrer = referrerJobSet.has(`${b.job_id}::${b.talent_user_id}`);
+
+    // Prefer stored commission_amount from the contract record; fall back for legacy rows.
+    const contractArr = Array.isArray((b as Record<string, unknown>).contracts)
+      ? (b as Record<string, unknown>).contracts as { commission_amount?: number | null }[]
+      : [];
+    const contract         = contractArr[0] ?? null;
+    const storedCommission = typeof contract?.commission_amount === "number"
+      ? contract.commission_amount
+      : null;
+    const platformCommission = storedCommission !== null
+      ? storedCommission
+      : Math.round(total * FALLBACK_COMMISSION_RATE * 100) / 100;
+
     return {
       id:                 String(b.id),
       talentId:           b.talent_user_id ?? null,
@@ -80,7 +99,7 @@ export default async function AdminDashboardPage() {
       talentHandle:       profile?.instagram ?? null,
       jobTitle:           b.job_title    ?? "—",
       totalValue:         total,
-      platformCommission: Math.round(total * COMMISSION_RATE * 100) / 100,
+      platformCommission,
       referralPayout:     hasReferrer ? Math.round(total * REFERRAL_RATE * 100) / 100 : 0,
       hasReferrer,
       status:             b.status ?? "pending",

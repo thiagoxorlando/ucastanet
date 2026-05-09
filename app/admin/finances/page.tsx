@@ -102,7 +102,12 @@ export default async function AdminFinancesPage() {
   ] = await Promise.all([
     supabase
       .from("bookings")
-      .select("id, job_id, job_title, talent_user_id, price, status, created_at")
+      .select(`
+        id, job_id, job_title, talent_user_id, price, status, created_at,
+        contracts!contracts_booking_id_fkey (
+          commission_amount
+        )
+      `)
       .order("created_at", { ascending: false }),
     supabase
       .from("submissions")
@@ -323,7 +328,19 @@ export default async function AdminFinancesPage() {
     const price = booking.price ?? 0;
     const isConfirmed = booking.status === "confirmed" || booking.status === "paid";
     const isReferred = referralKeys.has(`${booking.job_id}::${booking.talent_user_id}`);
-    const commissionAmount = isConfirmed ? calculateCommission(price, agencyPlan) : 0;
+
+    // Use stored commission_amount from the contract when available.
+    // Fall back to calculateCommission for pending bookings or legacy rows without a contract.
+    const contractArr = Array.isArray((booking as Record<string, unknown>).contracts)
+      ? (booking as Record<string, unknown>).contracts as { commission_amount?: number | null }[]
+      : [];
+    const storedCommission = typeof contractArr[0]?.commission_amount === "number"
+      ? contractArr[0].commission_amount
+      : null;
+    const commissionAmount = storedCommission !== null
+      ? storedCommission
+      : (isConfirmed ? calculateCommission(price, agencyPlan) : 0);
+
     const referralAmount = isConfirmed && isReferred ? Math.round(price * REFERRAL_RATE * 100) / 100 : 0;
 
     return {
