@@ -45,9 +45,9 @@ next-env.d.ts
 
 supabase-backups/
 supabase-backups-*.zip
-*.sql
+supabase-backups/*.sql
 
 supabase/.temp/
 supabase-backups/
 supabase-backups-*.zip
-*.sql
+supabase-backups/*.sql
