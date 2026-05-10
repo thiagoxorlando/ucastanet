@@ -20,24 +20,29 @@ export async function GET(
 
   if (!conv) return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 });
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, email, role")
-    .eq("id", conv.user_id)
-    .single();
+  const [{ data: profile }, { data: talentProfile }, { data: agency }, { data: messages }] = await Promise.all([
+    supabase.from("profiles").select("email, role").eq("id", conv.user_id).single(),
+    supabase.from("talent_profiles").select("full_name").eq("id", conv.user_id).single(),
+    supabase.from("agencies").select("company_name").eq("id", conv.user_id).single(),
+    supabase
+      .from("support_messages")
+      .select("id, sender_id, sender_role, message, created_at")
+      .eq("conversation_id", id)
+      .order("created_at", { ascending: true }),
+  ]);
 
-  const { data: messages } = await supabase
-    .from("support_messages")
-    .select("id, sender_id, sender_role, message, created_at")
-    .eq("conversation_id", id)
-    .order("created_at", { ascending: true });
+  const role = profile?.role ?? "user";
+  const userName =
+    role === "talent" ? (talentProfile?.full_name ?? "—") :
+    role === "agency" ? (agency?.company_name     ?? "—") :
+    "—";
 
   return NextResponse.json({
     conversation: {
       ...conv,
-      userName:  profile?.full_name ?? "—",
-      userEmail: profile?.email     ?? "—",
-      userRole:  profile?.role      ?? "user",
+      userName,
+      userEmail: profile?.email ?? "—",
+      userRole:  role,
     },
     messages: messages ?? [],
   });

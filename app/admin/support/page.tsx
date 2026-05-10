@@ -21,16 +21,22 @@ export default async function AdminSupportPage() {
   const profileMap = new Map<string, { name: string; email: string; role: string }>();
 
   if (userIds.length) {
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, full_name, email, role")
-      .in("id", userIds);
+    const [{ data: profiles }, { data: talentProfiles }, { data: agencies }] = await Promise.all([
+      supabase.from("profiles").select("id, email, role").in("id", userIds),
+      supabase.from("talent_profiles").select("id, full_name").in("id", userIds),
+      supabase.from("agencies").select("id, company_name").in("id", userIds),
+    ]);
+
+    const talentNameMap = new Map((talentProfiles ?? []).map((t) => [t.id, t.full_name ?? ""]));
+    const agencyNameMap = new Map((agencies ?? []).map((a) => [a.id, a.company_name ?? ""]));
+
     for (const p of profiles ?? []) {
-      profileMap.set(p.id, {
-        name:  p.full_name ?? "—",
-        email: p.email    ?? "—",
-        role:  p.role     ?? "user",
-      });
+      const role = p.role ?? "user";
+      const name =
+        role === "talent" ? (talentNameMap.get(p.id) || "—") :
+        role === "agency" ? (agencyNameMap.get(p.id) || "—") :
+        "—";
+      profileMap.set(p.id, { name, email: p.email ?? "—", role });
     }
   }
 
