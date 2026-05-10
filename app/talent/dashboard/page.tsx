@@ -37,7 +37,7 @@ export default async function TalentDashboardPage() {
     // Upcoming jobs — confirmed contracts with a future job date
     supabase
       .from("contracts")
-      .select("id, job_description, job_date, job_time, location, payment_amount, status, agency_id")
+      .select("id, job_description, job_date, job_time, location, payment_amount, net_amount, status, agency_id")
       .eq("talent_id", talentId)
       .in("status", ["signed", "confirmed"])
       .is("deleted_at", null)
@@ -48,7 +48,7 @@ export default async function TalentDashboardPage() {
     // Awaiting payment — agency confirmed but hasn't paid yet
     supabase
       .from("contracts")
-      .select("id, job_description, payment_amount, payment_status, status")
+      .select("id, job_description, payment_amount, net_amount, payment_status, status")
       .eq("talent_id", talentId)
       .eq("status", "confirmed")
       .eq("payment_status", "pending")
@@ -57,7 +57,7 @@ export default async function TalentDashboardPage() {
     // Paid contracts — to compute earnings and withdrawable balance
     supabase
       .from("contracts")
-      .select("id, payment_amount, paid_at, withdrawn_at")
+      .select("id, payment_amount, net_amount, paid_at, withdrawn_at")
       .eq("talent_id", talentId)
       .eq("payment_status", "paid")
       .is("deleted_at", null),
@@ -86,8 +86,6 @@ export default async function TalentDashboardPage() {
     for (const a of agencies ?? []) agencyMap.set(a.id, a.company_name ?? "Agency");
   }
 
-  const TALENT_RATE = 0.85;
-
   const upcomingBookings = (upcomingData ?? []).map((c) => ({
     id:         c.id,
     title:      c.job_description?.slice(0, 60) ?? "Upcoming Job",
@@ -95,18 +93,18 @@ export default async function TalentDashboardPage() {
     jobDate:    c.job_date   as string | null,
     jobTime:    c.job_time   as string | null,
     location:   c.location   as string | null,
-    amount:     Math.round(Number(c.payment_amount ?? 0) * TALENT_RATE * 100) / 100,
+    amount:     Number(c.net_amount ?? c.payment_amount ?? 0),
     status:     c.status     as string,
   }));
 
   const pendingPayments = (pendingContractsData ?? []).map((c) => ({
     id:     c.id,
     title:  c.job_description?.slice(0, 60) ?? "Contract",
-    amount: Math.round(Number(c.payment_amount ?? 0) * TALENT_RATE * 100) / 100,
+    amount: Number(c.net_amount ?? c.payment_amount ?? 0),
   }));
 
-  const totalEarned     = (paidContractsData ?? [])
-    .reduce((sum, c) => sum + Math.round(Number(c.payment_amount ?? 0) * TALENT_RATE * 100) / 100, 0);
+  const totalEarned = (paidContractsData ?? [])
+    .reduce((sum, c) => sum + Number(c.net_amount ?? c.payment_amount ?? 0), 0);
   const pendingWithdraw = Math.max(0, Number(profileData?.wallet_balance ?? 0));
 
   // Today's availability
