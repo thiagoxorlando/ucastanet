@@ -534,10 +534,10 @@ export default function TalentFinances() {
       })
     );
 
-    // Paid contracts — the source of truth for withdrawals
+    // Paid contracts — the source of truth for earnings
     const { data: contractsData } = await supabase
       .from("contracts")
-      .select("id, job_id, payment_amount, paid_at, withdrawn_at")
+      .select("id, job_id, payment_amount, net_amount, commission_amount, paid_at, withdrawn_at")
       .eq("talent_id", user.id)
       .eq("status", "paid")
       .order("paid_at", { ascending: false });
@@ -573,8 +573,11 @@ export default function TalentFinances() {
         id:           c.id,
         jobTitle:     c.job_id ? (contractJobMap.get(c.job_id) ?? "Untitled Job") : "Untitled Job",
         amount:       c.payment_amount ?? 0,
-        // Use actual credited amount (falls back to estimate for pre-fix contracts)
-        earnings:     payoutTxMap.get(c.id) ?? Math.round((c.payment_amount ?? 0) * TALENT_RATE * 100) / 100,
+        // Priority: actual payout tx → stored net_amount → derived net → TALENT_RATE last resort
+        earnings:     payoutTxMap.get(c.id)
+          ?? (c.net_amount != null ? Number(c.net_amount) : null)
+          ?? (c.commission_amount != null ? Math.max(0, (c.payment_amount ?? 0) - Number(c.commission_amount)) : null)
+          ?? Math.round((c.payment_amount ?? 0) * TALENT_RATE * 100) / 100,
         paid_at:      c.paid_at      ?? null,
         withdrawn_at: c.withdrawn_at ?? null,
       }))

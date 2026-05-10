@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { REFERRAL_RATE } from "@/lib/plans";
+import { getContractPaymentStatus, contractStatusLabel, contractStatusTone } from "@/lib/contractStatus";
 
 // -- Types -------------------------------------------------------------------
 
@@ -585,11 +586,10 @@ function ContractsSection({
       title="Contratos confirmados e pagos"
       subtitle={`${contracts.length} contratos · ${brl(summary.contractsCommission)} retido pela plataforma`}
     >
-      <div className="grid gap-4 md:grid-cols-4">
-        <StatCard label="Em escrow" value={brl(summary.contractsEscrowValue)} sub="Bruto retido em confirmados" />
-        <StatCard label="Aguardando saque" value={brl(summary.contractsAwaitingValue)} sub="Líquido a sacar por talentos" />
-        <StatCard label="Já sacado" value={brl(summary.contractsWithdrawnValue)} sub="Líquido enviado aos talentos" />
-        <StatCard label="Comissão da plataforma" value={brl(summary.contractsCommission)} sub="Retenção por plano" />
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard label="Em custódia" value={brl(summary.contractsEscrowValue)} sub="Bruto retido em contratos confirmados" />
+        <StatCard label="Pago aos talentos" value={brl(summary.contractsPaidValue)} sub="Líquido creditado nas carteiras dos talentos" />
+        <StatCard label="Comissão da plataforma" value={brl(summary.contractsCommission)} sub="Retenção por plano aplicada nos contratos" />
       </div>
       <TableCard>
         <thead className="border-b border-[#DDE6E6] bg-[#F0F9F8]">
@@ -607,8 +607,9 @@ function ContractsSection({
         </thead>
         <tbody className="divide-y divide-[#EFF5F5] [&>tr:hover]:bg-[#F8FAFC]">
           {visible.map((c) => {
-            const statusLabel = c.withdrawn_at ? "sacado" : c.status === "paid" ? "aguard. saque" : "escrow";
-            const statusTone  = c.withdrawn_at ? STATUS_BADGES.cancelled : c.status === "paid" ? STATUS_BADGES.pending : STATUS_BADGES.confirmed;
+            const ps          = getContractPaymentStatus(c);
+            const statusLabel = contractStatusLabel(ps);
+            const statusTone  = contractStatusTone(ps);
             return (
               <tr key={c.id}>
                 <Td>
@@ -1675,8 +1676,6 @@ export default function AdminFinances({
         {/* Contratos */}
         <div className={activeTab === "contratos" ? "" : "hidden"}>
           <ContractsSection contracts={contracts} summary={summary} />
-          <Divider />
-          <WithdrawalHistory contracts={contracts} />
         </div>
 
         {/* Reservas */}
