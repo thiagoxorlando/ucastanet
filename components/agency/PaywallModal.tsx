@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { buildPlanSettingsFallback, formatPlanCommission, formatPlanPrice } from "@/lib/planSettings.shared";
+import { buildPlanSettingsFallback, formatPlanCommission, formatPlanMonthlyPrice } from "@/lib/planSettings.shared";
 
 const FALLBACKS = buildPlanSettingsFallback();
 const FREE_FALLBACK = FALLBACKS.free;
@@ -17,7 +17,8 @@ export default function PaywallModal({ onClose, variant = "hiring" }: Props) {
   const router = useRouter();
   const [freeLimit, setFreeLimit] = useState(FREE_FALLBACK.job_limit);
   const [freeHireLimit, setFreeHireLimit] = useState(FREE_FALLBACK.max_hires_per_job);
-  const [proPrice, setProPrice] = useState(formatPlanPrice(PRO_FALLBACK.price));
+  const [proAvailable, setProAvailable] = useState(PRO_FALLBACK.is_available);
+  const [proPrice, setProPrice] = useState(formatPlanMonthlyPrice(PRO_FALLBACK.price));
   const [proCommission, setProCommission] = useState(formatPlanCommission(PRO_FALLBACK.commission_percent));
 
   useEffect(() => {
@@ -29,7 +30,8 @@ export default function PaywallModal({ onClose, variant = "hiring" }: Props) {
         setFreeHireLimit(data.free.max_hires_per_job);
       }
       if (data.pro) {
-        setProPrice(formatPlanPrice(data.pro.price));
+        setProAvailable(data.pro.is_available);
+        setProPrice(formatPlanMonthlyPrice(data.pro.price));
         setProCommission(formatPlanCommission(data.pro.commission_percent));
       }
     }).catch(() => undefined);
@@ -46,14 +48,19 @@ export default function PaywallModal({ onClose, variant = "hiring" }: Props) {
   const title = variant === "hiring" ? "Limite do plano atual" : "Limite do plano gratuito";
   const freeJobsCopy = freeLimit === null ? "vagas ativas ilimitadas" : `${freeLimit} vaga${freeLimit === 1 ? " ativa" : "s ativas"}`;
   const freeHiresCopy = freeHireLimit === null ? "contratacoes ilimitadas por vaga" : `${freeHireLimit} contratacao${freeHireLimit === 1 ? "" : "es"} por vaga`;
-  const message = variant === "hiring"
-    ? `O plano gratuito permite ate ${freeJobsCopy} e ${freeHiresCopy}. Faca upgrade para o plano Pro e remova os limites.`
-    : `Gerencie vagas e contratacoes sem limites com o plano Pro por ${proPrice}/mes.`;
-  const features = variant === "hiring"
-    ? ["Vagas ilimitadas", "Contratacoes ilimitadas por vaga", `Comissao da plataforma de ${proCommission}`]
-    : ["Vagas ilimitadas", "Contratacoes ilimitadas por vaga", "Historico completo de pagamentos e contratos"];
+  const message = !proAvailable
+    ? "O plano Pro estará disponível em breve."
+    : variant === "hiring"
+      ? `O plano gratuito permite ate ${freeJobsCopy} e ${freeHiresCopy}. Faca upgrade para o plano Pro e remova os limites.`
+      : `Gerencie vagas e contratacoes sem limites com o plano Pro por ${proPrice}.`;
+  const features = !proAvailable
+    ? ["Em breve"]
+    : variant === "hiring"
+      ? ["Vagas ilimitadas", "Contratacoes ilimitadas por vaga", `Comissao da plataforma de ${proCommission}`]
+      : ["Vagas ilimitadas", "Contratacoes ilimitadas por vaga", "Historico completo de pagamentos e contratos"];
 
   function handleUpgrade() {
+    if (!proAvailable) return;
     onClose();
     router.push("/agency/billing");
   }
@@ -98,7 +105,8 @@ export default function PaywallModal({ onClose, variant = "hiring" }: Props) {
         <div className="flex flex-col gap-2.5 pt-1">
           <button
             onClick={handleUpgrade}
-            className="w-full inline-flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white text-[15px] font-semibold py-3 rounded-xl transition-all"
+            disabled={!proAvailable}
+            className="w-full inline-flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 active:scale-[0.98] text-white text-[15px] font-semibold py-3 rounded-xl transition-all disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-400 disabled:active:scale-100"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -108,7 +116,7 @@ export default function PaywallModal({ onClose, variant = "hiring" }: Props) {
                 d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
               />
             </svg>
-            Ativar Plano Pro
+            {proAvailable ? "Ativar Plano Pro" : "Em breve"}
           </button>
           <button
             onClick={onClose}

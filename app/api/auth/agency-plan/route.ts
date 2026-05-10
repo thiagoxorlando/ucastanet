@@ -25,6 +25,24 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServerClient({ useServiceRole: true });
 
+  const { data: planSetting, error: planError } = await supabase
+    .from("plan_settings")
+    .select("plan_key, price, is_available")
+    .eq("plan_key", "free")
+    .maybeSingle();
+
+  if (planError || !planSetting) {
+    return NextResponse.json({ error: "Plano inválido." }, { status: 400 });
+  }
+
+  if (!planSetting.is_available) {
+    return NextResponse.json({ error: "Este plano ainda não está disponível." }, { status: 422 });
+  }
+
+  if (Number(planSetting.price) > 0) {
+    return NextResponse.json({ error: "Este plano não pode ser aplicado diretamente." }, { status: 400 });
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("role, plan")

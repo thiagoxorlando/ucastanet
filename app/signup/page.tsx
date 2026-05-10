@@ -9,7 +9,7 @@ import PhoneInput from "@/components/ui/PhoneInput";
 import { supabase } from "@/lib/supabase";
 import { TALENT_CATEGORY_LABELS } from "@/lib/talentCategories";
 import { formatCpf, formatCpfCnpj, isValidCpf, isValidCpfCnpj, normalizeCpfCnpj, digitsOnly } from "@/lib/cpf";
-import { buildPlanSettingsFallback, formatPlanPrice, type PublicPlanSetting } from "@/lib/planSettings.shared";
+import { buildPlanSettingsFallback, formatPlanMonthlyPrice, planLimitHighlights, type PublicPlanSetting } from "@/lib/planSettings.shared";
 
 type LivePlans = Record<Plan, PublicPlanSetting>;
 
@@ -158,6 +158,10 @@ function inputClass(hasError = false) {
   return `w-full rounded-2xl border px-4 py-3 text-[14px] outline-none transition-colors ${hasError ? "border-rose-300 focus:border-rose-400" : "border-[#DDE6E6] focus:border-[#0E7C86]"}`;
 }
 
+function formatPlanLine(plan: PublicPlanSetting) {
+  return plan.is_available ? formatPlanMonthlyPrice(plan.price) : "Em breve";
+}
+
 function LabeledInput({
   label,
   error,
@@ -256,7 +260,7 @@ function SignupPageContent() {
   const refToken = searchParams.get("ref") ?? null;
   const jobId = searchParams.get("job") ?? null;
   const nextPath = safeNextPath(searchParams.get("next")) ?? (jobId ? `/talent/jobs/${jobId}` : null);
-  const initialPlan = (["free", "pro"].includes(searchParams.get("plan") ?? "") ? searchParams.get("plan") : "free") as Plan;
+  const initialPlan = (["free", "pro", "premium"].includes(searchParams.get("plan") ?? "") ? searchParams.get("plan") : "free") as Plan;
 
   const [account, setAccount] = useState<AccountForm>({
     role: initialRole === "talent" ? "talent" : "agency",
@@ -349,7 +353,7 @@ function SignupPageContent() {
     if (!agency.city.trim()) nextErrors.city = "Informe a cidade.";
     if (!agency.state.trim()) nextErrors.state = "Selecione o estado.";
     if (agency.description.length > 500) nextErrors.description = "A descrição deve ter no máximo 500 caracteres.";
-    if (!livePlans[agency.plan]?.is_available) nextErrors.plan = `O plano ${selectedPlan.name} não está disponível no momento.`;
+    if (!livePlans[agency.plan]?.is_available) nextErrors.plan = "Este plano ainda não está disponível.";
     if (!account.termsAccepted) nextErrors.termsAccepted = "Você precisa aceitar os Termos de Uso para continuar.";
     return nextErrors;
   }
@@ -389,7 +393,7 @@ function SignupPageContent() {
         if (pollRef.current) clearInterval(pollRef.current);
         const params = new URLSearchParams();
         if (nextPath) params.set("next", nextPath);
-        if (account.role === "agency" && agency.plan === "pro") params.set("plan", "pro");
+        if (account.role === "agency" && livePlans[agency.plan]?.price > 0) params.set("plan", agency.plan);
         const qs = params.toString();
         router.push(qs ? `/onboarding?${qs}` : "/onboarding");
       } else {
@@ -413,7 +417,7 @@ function SignupPageContent() {
     setLoading(true);
 
     let paymentWindow: Window | null = null;
-    if (account.role === "agency" && agency.plan === "pro") {
+    if (account.role === "agency" && selectedPlan.price > 0) {
       paymentWindow = window.open("", "_blank", "noopener,noreferrer");
     }
 
@@ -498,7 +502,7 @@ function SignupPageContent() {
         return;
       }
 
-      if (account.role === "agency") {
+      if (account.role === "agency" && agency.plan === "free") {
         await fetch("/api/auth/agency-plan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -508,7 +512,7 @@ function SignupPageContent() {
 
       await linkReferral(data.user.id);
 
-      if (account.role === "agency" && agency.plan === "pro") {
+      if (account.role === "agency" && selectedPlan.price > 0) {
         const checkoutRes = await fetch("/api/asaas/plan/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -537,7 +541,7 @@ function SignupPageContent() {
                 if (pollRef.current) clearInterval(pollRef.current);
                 const params = new URLSearchParams();
                 if (nextPath) params.set("next", nextPath);
-                params.set("plan", "pro");
+                params.set("plan", agency.plan);
                 const qs = params.toString();
                 router.push(qs ? `/onboarding?${qs}` : "/onboarding");
               }
@@ -571,7 +575,7 @@ function SignupPageContent() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight">Aguardando confirmação do plano Pro</h1>
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight">Aguardando confirmação do plano {selectedPlan.name}</h1>
           <p className="mx-auto mt-2 max-w-md text-[14px] leading-6 text-white/70">
             Finalize o pagamento na aba do Asaas. Assim que a assinatura for confirmada, você seguirá automaticamente para a página de onboarding.
           </p>
@@ -877,12 +881,14 @@ function SignupPageContent() {
                         {/* ── Free ── */}
                         {(() => {
                           const active = agency.plan === "free";
+                          const available = livePlans.free.is_available;
                           return (
                             <button
                               type="button"
-                              onClick={() => setAgencyField("plan", "free")}
+                              onClick={() => { if (available) setAgencyField("plan", "free"); }}
+                              disabled={!available}
                               className={[
-                                "w-full flex items-center gap-4 rounded-2xl border-2 px-5 py-4 text-left transition-all duration-200",
+                                "w-full flex items-center gap-4 rounded-2xl border-2 px-5 py-4 text-left transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60",
                                 active
                                   ? "border-[#1ABC9C] bg-[#F0FDF9] shadow-[0_0_0_3px_rgba(26,188,156,0.1)]"
                                   : "border-[#E2ECED] bg-white hover:border-[#A8D8D8] hover:bg-[#FAFEFE]",
@@ -896,9 +902,9 @@ function SignupPageContent() {
                               {/* Price block */}
                               <div className="flex-shrink-0 w-24 text-left">
                                 <p className="text-[18px] font-black tracking-tight text-zinc-900 leading-none">
-                                  {formatPlanPrice(livePlans.free.price)}
+                                  {formatPlanLine(livePlans.free)}
                                 </p>
-                                <p className="text-[11px] text-zinc-400 mt-0.5">por mês</p>
+                                {available ? <p className="text-[11px] text-zinc-400 mt-0.5">por mês</p> : null}
                               </div>
 
                               {/* Divider */}
@@ -908,12 +914,14 @@ function SignupPageContent() {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                   <p className="text-[14px] font-bold text-zinc-800">{livePlans.free.name}</p>
-                                  <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">{livePlans.free.commission_percent}% comissão</span>
+                                  {available ? (
+                                    <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">{livePlans.free.commission_percent}% comissão</span>
+                                  ) : (
+                                    <span className="text-[10px] font-semibold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full">Em breve</span>
+                                  )}
                                 </div>
                                 <p className="text-[12px] text-zinc-500 leading-relaxed">
-                                  {livePlans.free.job_limit === null ? "Vagas ativas ilimitadas" : `${livePlans.free.job_limit} vaga${livePlans.free.job_limit === 1 ? " ativa" : "s ativas"}`}
-                                  {" · "}
-                                  {livePlans.free.max_hires_per_job === null ? "contratações ilimitadas por vaga" : `até ${livePlans.free.max_hires_per_job} contratações por vaga`}
+                                  {available ? planLimitHighlights(livePlans.free).slice(0, 2).join(" · ") : "Em breve"}
                                 </p>
                               </div>
                             </button>
@@ -941,8 +949,8 @@ function SignupPageContent() {
 
                                 {/* Price block */}
                                 <div className="flex-shrink-0 w-24 text-left">
-                                  <p className="text-[18px] font-black tracking-tight text-white leading-none">{formatPlanPrice(livePlans.pro.price)}</p>
-                                  <p className="text-[11px] text-white/60 mt-0.5">por mês</p>
+                                  <p className="text-[18px] font-black tracking-tight text-white leading-none">{formatPlanLine(livePlans.pro)}</p>
+                                  {proAvailable ? <p className="text-[11px] text-white/60 mt-0.5">por mês</p> : null}
                                 </div>
 
                                 {/* Divider */}
@@ -952,10 +960,10 @@ function SignupPageContent() {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
                                     <p className="text-[14px] font-bold text-white">{livePlans.pro.name}</p>
-                                    <span className="text-[10px] font-black text-[#0C9E87] bg-white px-2 py-0.5 rounded-full tracking-wide">{livePlans.pro.is_available ? "POPULAR" : "INDISPONÍVEL"}</span>
-                                    <span className="text-[10px] font-semibold text-white/70 bg-white/15 px-2 py-0.5 rounded-full">{livePlans.pro.commission_percent}% comissão</span>
+                                    <span className="text-[10px] font-black text-[#0C9E87] bg-white px-2 py-0.5 rounded-full tracking-wide">{proAvailable ? "POPULAR" : "Em breve"}</span>
+                                    {proAvailable ? <span className="text-[10px] font-semibold text-white/70 bg-white/15 px-2 py-0.5 rounded-full">{livePlans.pro.commission_percent}% comissão</span> : null}
                                   </div>
-                                  <p className="text-[12px] text-white/80 leading-relaxed">Vagas e contratações ilimitadas · marketplace completo</p>
+                                  <p className="text-[12px] text-white/80 leading-relaxed">{proAvailable ? planLimitHighlights(livePlans.pro).slice(0, 2).join(" · ") : "Em breve"}</p>
                                 </div>
                               </div>
                             </button>
@@ -963,14 +971,30 @@ function SignupPageContent() {
                         })()}
 
                         {/* ── Premium (coming soon) ── */}
-                        <div className="w-full flex items-center gap-4 rounded-2xl border-2 border-zinc-200 bg-zinc-50 px-5 py-4 text-left opacity-60 select-none cursor-not-allowed">
+                        {(() => {
+                          const active = agency.plan === "premium";
+                          const available = livePlans.premium.is_available;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => { if (available) setAgencyField("plan", "premium"); }}
+                              disabled={!available}
+                              className={[
+                                "w-full flex items-center gap-4 rounded-2xl border-2 px-5 py-4 text-left transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60",
+                                active && available
+                                  ? "border-[#1ABC9C] bg-[#F0FDF9] shadow-[0_0_0_3px_rgba(26,188,156,0.1)]"
+                                  : "border-zinc-200 bg-white hover:border-[#A8D8D8] hover:bg-[#FAFEFE]",
+                              ].join(" ")}
+                            >
                           {/* Radio (disabled) */}
-                          <span className="flex-shrink-0 w-5 h-5 rounded-full border-2 border-zinc-300 bg-white" />
+                          <span className={["flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors", active && available ? "border-[#1ABC9C] bg-[#1ABC9C]" : "border-zinc-300 bg-white"].join(" ")}>
+                            {active && available ? <span className="w-2 h-2 rounded-full bg-white" /> : null}
+                          </span>
 
                           {/* Price block */}
                           <div className="flex-shrink-0 w-24 text-left">
-                            <p className="text-[18px] font-black tracking-tight text-zinc-400 leading-none">—</p>
-                            <p className="text-[11px] text-zinc-400 mt-0.5">em breve</p>
+                            <p className={["text-[18px] font-black tracking-tight leading-none", available ? "text-zinc-900" : "text-zinc-500"].join(" ")}>{formatPlanLine(livePlans.premium)}</p>
+                            {available ? <p className="text-[11px] text-zinc-400 mt-0.5">por mês</p> : null}
                           </div>
 
                           {/* Divider */}
@@ -979,22 +1003,28 @@ function SignupPageContent() {
                           {/* Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <p className="text-[14px] font-bold text-zinc-500">{livePlans.premium.name}</p>
-                              <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-200 px-2 py-0.5 rounded-full">Em breve</span>
-                              <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-200 px-2 py-0.5 rounded-full">{livePlans.premium.commission_percent}% comissão</span>
+                              <p className={["text-[14px] font-bold", available ? "text-zinc-800" : "text-zinc-500"].join(" ")}>{livePlans.premium.name}</p>
+                              {!available ? <span className="text-[10px] font-semibold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full">Em breve</span> : null}
+                              {available ? <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">{livePlans.premium.commission_percent}% comissão</span> : null}
                             </div>
-                            <p className="text-[12px] text-zinc-400 leading-relaxed">Ambiente privado · vagas fechadas · equipe interna</p>
+                            <p className={["text-[12px] leading-relaxed", available ? "text-zinc-500" : "text-zinc-400"].join(" ")}>
+                              {available ? planLimitHighlights(livePlans.premium).slice(0, 2).join(" · ") : "Em breve"}
+                            </p>
                           </div>
-                        </div>
+                            </button>
+                          );
+                        })()}
 
                       </div>
                       {errors.plan ? <FieldError error={errors.plan} /> : null}
                       <div className="mt-4 rounded-2xl border border-[#DDE6E6] bg-[#F7FBFB] px-4 py-3">
                         <p className="text-[12px] font-semibold text-[#1F2D2E]">Plano escolhido: {selectedPlan.name}</p>
                         <p className="mt-1 text-[12px] leading-5 text-[#647B7B]">
-                          {agency.plan === "pro"
-                            ? "Ao concluir o cadastro, o pagamento do Pro abre em nova aba e a BrisaHub aguarda a confirmação antes do onboarding."
-                            : "Você segue com o plano Free e entra no onboarding explicativo logo após criar a conta."}
+                          {selectedPlan.is_available && selectedPlan.price > 0
+                            ? `Ao concluir o cadastro, o pagamento do ${selectedPlan.name} abre em nova aba e a BrisaHub aguarda a confirmação antes do onboarding.`
+                            : selectedPlan.is_available
+                              ? `Você segue com o plano ${selectedPlan.name} e entra no onboarding explicativo logo após criar a conta.`
+                              : "Este plano ainda não está disponível."}
                         </p>
                       </div>
                     </SectionCard>

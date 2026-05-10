@@ -110,20 +110,21 @@ export default function AdminPlanSelector({ userId, currentPlan, currentRole }: 
               {PLANS.map((p) => {
                 const isActive = activePlan === p.key;
                 const setting = planSettings[p.key] ?? buildPlanSettingsFallback()[p.key];
+                const available = setting.is_available;
                 return (
                   <button
                     key={p.key}
-                    onClick={() => !isActive && patch({ plan: p.key })}
-                    disabled={loading || isActive}
+                    onClick={() => !isActive && available && patch({ plan: p.key })}
+                    disabled={loading || isActive || !available}
                     className={[
-                      "flex-1 py-2 rounded-xl border text-[12px] font-semibold transition-all cursor-pointer disabled:cursor-default",
+                      "flex-1 py-2 rounded-xl border text-[12px] font-semibold transition-all cursor-pointer disabled:cursor-default disabled:opacity-60",
                       isActive
                         ? p.color
                         : "bg-zinc-50 text-zinc-400 border-zinc-100 hover:border-zinc-200 hover:text-zinc-600",
                     ].join(" ")}
                   >
                     <span className="block">{setting.name}</span>
-                    <span className={`block text-[10px] font-normal mt-0.5 ${isActive ? "opacity-60" : "opacity-40"}`}>{formatPlanPrice(setting.price)}</span>
+                    <span className={`block text-[10px] font-normal mt-0.5 ${isActive ? "opacity-60" : "opacity-40"}`}>{available ? formatPlanPrice(setting.price) : "Em breve"}</span>
                   </button>
                 );
               })}

@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { getUserRole } from "@/lib/getUserRole";
 import { getAgencyLanding } from "@/lib/getAgencyLanding";
 import { PLAN_DEFINITIONS } from "@/lib/plans";
-import { buildPlanSettingsFallback, formatPlanCommission, formatPlanPrice, type PublicPlanSetting } from "@/lib/planSettings.shared";
+import { buildPlanSettingsFallback, formatPlanCommission, formatPlanMonthlyPrice, planLimitHighlights, type PublicPlanSetting } from "@/lib/planSettings.shared";
 import heroBrandImage from "@/public/landing/brisahub-hero-brand.png";
 import dashboardScreenshot from "@/public/landing/dashboard.png";
 import financesScreenshot from "@/public/landing/finances.png";
@@ -274,17 +274,8 @@ function GridTexture() {
 type LivePlanMap = Record<string, PublicPlanSetting>;
 
 function planHighlights(setting: PublicPlanSetting, fallback: readonly string[]) {
-  if (setting.plan_key === "free") {
-    const jobCopy = setting.job_limit === null ? "Vagas ativas ilimitadas" : `${setting.job_limit} vaga${setting.job_limit === 1 ? " ativa" : "s ativas"}`;
-    const hiresCopy = setting.max_hires_per_job === null ? "Contratacoes ilimitadas por vaga" : `Ate ${setting.max_hires_per_job} contratacoes por vaga`;
-    return [jobCopy, hiresCopy, `Comissao de ${formatPlanCommission(setting.commission_percent)}`];
-  }
-
-  if (setting.plan_key === "pro") {
-    return ["Vagas publicas ilimitadas", "Contratacoes ilimitadas", `Comissao de ${formatPlanCommission(setting.commission_percent)}`];
-  }
-
-  return [...fallback];
+  const liveHighlights = planLimitHighlights(setting);
+  return setting.plan_key === "premium" ? ["Tudo do Pro", ...liveHighlights] : liveHighlights.length ? liveHighlights : [...fallback];
 }
 
 export default function Home() {
@@ -651,7 +642,7 @@ export default function Home() {
           <div className="mt-14 grid items-stretch gap-6 lg:grid-cols-3">
             {PLANS.map((plan) => {
               const livePlan = livePlans[plan.key] ?? buildPlanSettingsFallback()[plan.key];
-              const isDisabled = plan.key !== "free" && !livePlan.is_available;
+              const isDisabled = !livePlan.is_available;
               const highlights = planHighlights(livePlan, plan.highlights);
 
               return <div
@@ -660,7 +651,7 @@ export default function Home() {
                   "relative flex h-full flex-col rounded-[1.5rem] border p-8 transition-all",
                   plan.featured
                     ? "border-[#1ABC9C]/40 bg-[radial-gradient(circle_at_50%_0%,rgba(26,188,156,0.15),transparent_50%)] shadow-[0_24px_70px_rgba(26,188,156,0.18)]"
-                    : plan.premium
+                    : plan.key === "premium"
                     ? "border-white/8 bg-white/[0.03]"
                     : "border-white/8 bg-white/5",
                 ].join(" ")}
@@ -670,22 +661,23 @@ export default function Home() {
                     Mais popular
                   </span>
                 )}
-                {(plan.premium || isDisabled) && (
+                {isDisabled && (
                   <span className="absolute right-5 top-5 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-white/50">
-                    {isDisabled ? "Indisponivel" : "Em breve"}
+                    Em breve
                   </span>
                 )}
-                <div className={plan.featured || plan.premium ? "flex h-full flex-col pt-8" : "flex h-full flex-col"}>
+                <div className={plan.featured || plan.key === "premium" ? "flex h-full flex-col pt-8" : "flex h-full flex-col"}>
                   <p className="text-sm font-bold text-white/40">{plan.audience}</p>
                   <h3 className="mt-4 text-2xl font-black text-white">{livePlan.name}</h3>
                   <p className="mt-3 text-sm leading-6 text-white/50">{plan.summary}</p>
-                  {!plan.premium && (
+                  {livePlan.is_available ? (
                     <div className="mt-4 flex items-end gap-1">
-                      <span className="text-4xl font-black tracking-[-0.04em] text-white">{formatPlanPrice(livePlan.price)}</span>
-                      {plan.period && <span className="pb-1 text-sm font-semibold text-white/40">{plan.period}</span>}
+                      <span className="text-4xl font-black tracking-[-0.04em] text-white">{formatPlanMonthlyPrice(livePlan.price)}</span>
                     </div>
+                  ) : (
+                    <p className="mt-4 text-4xl font-black tracking-[-0.04em] text-white/45">Em breve</p>
                   )}
-                  {!plan.premium && (
+                  {livePlan.is_available && (
                     <div className="mt-5 rounded-2xl border border-[#1ABC9C]/20 bg-[#1ABC9C]/8 px-4 py-3 flex items-center justify-between gap-3">
                       <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#1ABC9C]/80">Comissão da plataforma</p>
                       <p className="text-xl font-black text-white flex-shrink-0">{formatPlanCommission(livePlan.commission_percent)}</p>
@@ -699,9 +691,9 @@ export default function Home() {
                       </li>
                     ))}
                   </ul>
-                  {plan.premium || isDisabled ? (
+                  {isDisabled ? (
                     <span className="mt-auto inline-flex w-full items-center justify-center rounded-2xl px-5 py-3.5 text-sm font-black border border-white/10 bg-white/5 text-white/30 cursor-not-allowed">
-                      {isDisabled ? "Indisponivel no momento" : "Em breve"}
+                      Em breve
                     </span>
                   ) : (
                     <Link

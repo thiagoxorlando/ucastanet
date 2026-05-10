@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PLAN_DEFINITIONS, type Plan } from "@/lib/plans";
-import { buildPlanSettingsFallback, formatPlanCommission, formatPlanPrice, type PublicPlanSetting } from "@/lib/planSettings.shared";
+import { buildPlanSettingsFallback, formatPlanCommission, formatPlanMonthlyPrice, formatPlanPrice, planLimitHighlights, type PublicPlanSetting } from "@/lib/planSettings.shared";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -364,7 +364,8 @@ export default function BillingDashboard({
     return effectiveSetting(p).price;
   }
   function effectivePriceLabel(p: PlanDef) {
-    return formatPlanPrice(effectiveSetting(p).price);
+    const setting = effectiveSetting(p);
+    return setting.is_available ? formatPlanMonthlyPrice(setting.price) : "Em breve";
   }
   function effectiveCommission(p: PlanDef) {
     return `${formatPlanCommission(effectiveSetting(p).commission_percent)} de comissao`;
@@ -380,9 +381,14 @@ export default function BillingDashboard({
     setTimeout(() => setToast(null), 5000);
   }
 
-  async function handleAsaasCheckout(plan: "pro" | "premium") {
-    if (plan === "premium") {
-      showToast("Plano Premium em breve. Preço a definir.", false);
+  async function handleAsaasCheckout(plan: PlanKey) {
+    const setting = livePlans[plan] ?? buildPlanSettingsFallback()[plan];
+    if (!setting.is_available) {
+      showToast("Este plano ainda não está disponível.", false);
+      return;
+    }
+    if (setting.price <= 0) {
+      showToast("Este plano não requer checkout.", false);
       return;
     }
 
@@ -407,10 +413,14 @@ export default function BillingDashboard({
   }
 
   function handlePlanClick(p: PlanDef) {
-    if (p.key === "premium") return;
+    const setting = effectiveSetting(p);
+    if (!setting.is_available) {
+      showToast("Este plano ainda não está disponível.", false);
+      return;
+    }
     if (p.key === "free" && activePlan !== "free") { setChangingTo(p); return; }
     if (p.key === activePlan) return;
-    if (p.key === "pro") { void handleAsaasCheckout("pro"); return; }
+    if (setting.price > 0) { void handleAsaasCheckout(p.key); return; }
     setChangingTo(p);
   }
 
@@ -558,9 +568,13 @@ export default function BillingDashboard({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {PLANS.map((p) => {
+            const setting = effectiveSetting(p);
+            const available = setting.is_available;
+            const isLoading = (p.key === "pro" && proLoading) || (p.key === "premium" && premiumLoading);
             const isCurrent  = activePlan === p.key;
             const isDowngrade = effectivePrice(p) < effectivePrice(currentPlanDef);
             const isPending  = pendingChange?.plan === p.key;
+            const featureList = available ? planLimitHighlights(setting).slice(0, 2) : ["Em breve"];
             return (
               <div
                 key={p.key}
@@ -574,10 +588,15 @@ export default function BillingDashboard({
                 <div className={`h-[3px] bg-gradient-to-r ${p.gradient}`} />
                 <div className="p-5 flex flex-col flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[15px] font-semibold text-zinc-900">{effectiveSetting(p).name}</span>
-                    {p.badge && (
+                    <span className="text-[15px] font-semibold text-zinc-900">{setting.name}</span>
+                    {p.badge && available && (
                       <span className="text-[9px] font-bold px-2 py-0.5 rounded-full tracking-wider bg-indigo-600 text-white">
                         {p.badge}
+                      </span>
+                    )}
+                    {!available && (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-full tracking-wider bg-zinc-100 text-zinc-500">
+                        Em breve
                       </span>
                     )}
                     {isCurrent && (
@@ -592,18 +611,19 @@ export default function BillingDashboard({
                     )}
                   </div>
                   <p className="text-[11px] text-zinc-400 mb-3 leading-snug">{p.headline}</p>
-                  {p.key !== "premium" && (
-                    <div className="mb-1">
-                      <span className="text-[1.75rem] font-bold tracking-tighter text-zinc-900">{effectivePriceLabel(p)}</span>
-                      {"period" in p && p.period && <span className="text-[12px] text-zinc-400 ml-1">{p.period}</span>}
-                    </div>
+                  <div className="mb-1">
+                    <span className="text-[1.75rem] font-bold tracking-tighter text-zinc-900">{effectivePriceLabel(p)}</span>
+                  </div>
+                  {available ? (
+                    <p className={[
+                      "text-[11px] font-semibold mb-4",
+                      p.key === "free" ? "text-zinc-400" : "text-indigo-600",
+                    ].join(" ")}>{effectiveCommission(p)}</p>
+                  ) : (
+                    <p className="text-[11px] font-semibold mb-4 text-zinc-400">Em breve</p>
                   )}
-                  <p className={[
-                    "text-[11px] font-semibold mb-4",
-                    p.key === "free" ? "text-zinc-400" : "text-indigo-600",
-                  ].join(" ")}>{effectiveCommission(p)}</p>
                   <ul className="space-y-1.5 mb-5 flex-1">
-                    {p.features.map((feature) => (
+                    {featureList.map((feature) => (
                       <li key={feature} className="flex items-center gap-2 text-[12px] text-zinc-600">
                         <svg className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
@@ -615,27 +635,27 @@ export default function BillingDashboard({
                   {!isCurrent && !isPending && (
                     <button
                       onClick={() => handlePlanClick(p)}
-                      disabled={!effectiveSetting(p).is_available || (p.key === "pro" && proLoading)}
+                      disabled={!available || isLoading}
                       className={[
                         "w-full mt-auto text-white text-[13px] font-semibold py-2.5 rounded-xl transition-colors",
-                        !effectiveSetting(p).is_available
+                        !available
                           ? "bg-zinc-200 text-zinc-400 cursor-not-allowed"
-                          : (p.key === "pro" && proLoading)
+                          : isLoading
                           ? "bg-zinc-300 cursor-not-allowed"
                           : isDowngrade
                           ? "bg-zinc-500 hover:bg-zinc-600"
                           : "bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] cursor-pointer",
                       ].join(" ")}
                     >
-                      {!effectiveSetting(p).is_available
-                        ? "Indisponivel"
-                        : (p.key === "pro" && proLoading)
+                      {!available
+                        ? "Em breve"
+                        : isLoading
                         ? "Aguarde..."
                         : activePlan === "free"
-                          ? `Assinar ${effectiveSetting(p).name}`
+                          ? `Assinar ${setting.name}`
                           : isDowngrade
-                            ? `Mudar para ${effectiveSetting(p).name}`
-                            : `Fazer upgrade para ${effectiveSetting(p).name}`}
+                            ? `Mudar para ${setting.name}`
+                            : `Fazer upgrade para ${setting.name}`}
                     </button>
                   )}
                   {isPending && !isCurrent && (

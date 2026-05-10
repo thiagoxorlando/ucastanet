@@ -35,10 +35,32 @@ export function formatPlanPrice(price: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price);
 }
 
+export function formatPlanMonthlyPrice(price: number): string {
+  return price === 0 ? formatPlanPrice(price) : `${formatPlanPrice(price)}/mês`;
+}
+
 export function formatPlanCommission(commissionPercent: number): string {
   return `${commissionPercent.toFixed(0)}%`;
 }
 
 export function formatTalentShareLabel(commissionPercent: number): string {
   return `${Math.round(100 - commissionPercent)}%`;
+}
+
+export function planLimitHighlights(setting: PublicPlanSetting): string[] {
+  const jobs =
+    setting.job_limit === null
+      ? "Vagas ativas ilimitadas"
+      : `${setting.job_limit} vaga${setting.job_limit === 1 ? " ativa" : "s ativas"}`;
+
+  const hires =
+    setting.max_hires_per_job === null
+      ? "Contratações ilimitadas por vaga"
+      : `Até ${setting.max_hires_per_job} contratação${setting.max_hires_per_job === 1 ? "" : "es"} por vaga`;
+
+  return [
+    jobs,
+    hires,
+    `Comissão da plataforma de ${formatPlanCommission(setting.commission_percent)}`,
+  ];
 }

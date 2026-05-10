@@ -48,9 +48,23 @@ export async function PATCH(req: NextRequest) {
   }
 
   if (plan) {
+    const { data: planSetting, error: planSettingError } = await supabase
+      .from("plan_settings")
+      .select("name, is_available")
+      .eq("plan_key", plan)
+      .maybeSingle();
+
+    if (planSettingError || !planSetting) {
+      return NextResponse.json({ error: "Plano inválido." }, { status: 400 });
+    }
+
+    if (!planSetting.is_available) {
+      return NextResponse.json({ error: "Este plano ainda não está disponível." }, { status: 422 });
+    }
+
     const isFree = plan === "free";
     const planStatus = isFree ? "inactive" : "active";
-    const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1);
+    const planLabel = planSetting.name;
 
     const primaryUpdate = await supabase
       .from("profiles")
@@ -85,7 +99,7 @@ export async function PATCH(req: NextRequest) {
       user_id,
       type: "admin_grant",
       amount: 0,
-      description: `Plano ${planLabel} - ativado por admin (R$0)`,
+      description: `Plano ${planLabel} - ativado por admin`,
     });
 
     if (txError) {

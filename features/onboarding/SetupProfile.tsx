@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { TALENT_CATEGORY_LABELS, talentCategoryLabel } from "@/lib/talentCategories";
 import { formatCpf, isValidCpf, digitsOnly, formatCpfCnpj, isValidCpfCnpj, normalizeCpfCnpj } from "@/lib/cpf";
-import { buildPlanSettingsFallback, formatPlanPrice, type PublicPlanSetting } from "@/lib/planSettings.shared";
+import { buildPlanSettingsFallback, formatPlanMonthlyPrice, planLimitHighlights, type PublicPlanSetting } from "@/lib/planSettings.shared";
 
 type Role = "agency" | "talent" | null;
 type AgencyPlan = "free" | "pro" | "premium";
@@ -85,6 +85,10 @@ type TalentErrors = {
 };
 
 type AgencyErrors = Partial<Record<keyof AgencyForm, string>>;
+
+function planDisplayPrice(plan: PublicPlanSetting) {
+  return plan.is_available ? formatPlanMonthlyPrice(plan.price) : "Em breve";
+}
 
 const TALENT_DEFAULTS: TalentForm = {
   fullName: "",
@@ -723,11 +727,17 @@ function AgencySetup({
     setErrors(validation);
     if (Object.keys(validation).length > 0) return;
 
+    const selectedPlan = livePlans[form.plan];
+    if (!selectedPlan?.is_available) {
+      setErrors({ plan: "Este plano ainda não está disponível." });
+      return;
+    }
+
     setServerError("");
     setLoading(true);
 
     let paymentWindow: Window | null = null;
-    if (form.plan === "pro") {
+    if (selectedPlan.price > 0) {
       paymentWindow = window.open("", "_blank", "noopener,noreferrer");
     }
 
@@ -775,7 +785,7 @@ function AgencySetup({
         return;
       }
 
-      if (form.plan === "pro") {
+      if (selectedPlan.price > 0) {
         const cleanDoc = normalizeCpfCnpj(form.cpfCnpj);
         if (!isValidCpfCnpj(cleanDoc)) {
           paymentWindow?.close();
@@ -938,20 +948,21 @@ function AgencySetup({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <button
             type="button"
-            onClick={() => set("plan", "free")}
+            onClick={() => { if (livePlans.free.is_available) set("plan", "free"); }}
+            disabled={!livePlans.free.is_available}
             className={[
-              "rounded-2xl border p-4 text-left transition-all",
-              form.plan === "free" ? "border-zinc-900 bg-zinc-50 shadow-sm" : "border-zinc-200 hover:border-zinc-300",
+              "rounded-2xl border p-4 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60",
+              form.plan === "free" && livePlans.free.is_available ? "border-zinc-900 bg-zinc-50 shadow-sm" : "border-zinc-200 hover:border-zinc-300",
             ].join(" ")}
           >
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[14px] font-semibold text-zinc-900">{livePlans.free.name}</span>
-              <span className="text-[13px] font-bold text-zinc-900">{formatPlanPrice(livePlans.free.price)}</span>
+              <span className="text-[13px] font-bold text-zinc-900">{planDisplayPrice(livePlans.free)}</span>
             </div>
             <ul className="space-y-1">
-              <li className="text-[12px] text-zinc-500">· {livePlans.free.job_limit === null ? "Vagas ativas ilimitadas" : `${livePlans.free.job_limit} vaga${livePlans.free.job_limit === 1 ? " ativa" : "s ativas"}`}</li>
-              <li className="text-[12px] text-zinc-500">· {livePlans.free.max_hires_per_job === null ? "Contratações ilimitadas por vaga" : `Até ${livePlans.free.max_hires_per_job} contratações por vaga`}</li>
-              <li className="text-[12px] text-zinc-500">· Comissão da plataforma de {livePlans.free.commission_percent}%</li>
+              {livePlans.free.is_available
+                ? planLimitHighlights(livePlans.free).map((item) => <li key={item} className="text-[12px] text-zinc-500">· {item}</li>)
+                : <li className="text-[12px] text-zinc-500">· Em breve</li>}
             </ul>
           </button>
 
@@ -961,34 +972,43 @@ function AgencySetup({
             disabled={!livePlans.pro.is_available}
             className={[
               "rounded-2xl border p-4 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60",
-              form.plan === "pro" ? "border-indigo-600 bg-indigo-50 shadow-sm" : "border-zinc-200 hover:border-indigo-300",
+              form.plan === "pro" && livePlans.pro.is_available ? "border-indigo-600 bg-indigo-50 shadow-sm" : "border-zinc-200 hover:border-indigo-300",
             ].join(" ")}
           >
             <div className="mb-1 flex items-center gap-2">
               <span className="text-[14px] font-semibold text-zinc-900">{livePlans.pro.name}</span>
-              <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[9px] font-bold tracking-wider text-white">{livePlans.pro.is_available ? "POPULAR" : "INDISPONÍVEL"}</span>
+              <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[9px] font-bold tracking-wider text-white">{livePlans.pro.is_available ? "POPULAR" : "Em breve"}</span>
             </div>
-            <p className="mb-2 text-[13px] font-bold text-indigo-700">{formatPlanPrice(livePlans.pro.price)}/mês</p>
+            <p className="mb-2 text-[13px] font-bold text-indigo-700">{planDisplayPrice(livePlans.pro)}</p>
             <ul className="space-y-1">
-              <li className="text-[12px] text-zinc-500">· Vagas públicas ilimitadas</li>
-              <li className="text-[12px] text-zinc-500">· Contratações ilimitadas</li>
-              <li className="text-[12px] text-zinc-500">· Comissão da plataforma de {livePlans.pro.commission_percent}%</li>
+              {livePlans.pro.is_available
+                ? planLimitHighlights(livePlans.pro).map((item) => <li key={item} className="text-[12px] text-zinc-500">· {item}</li>)
+                : <li className="text-[12px] text-zinc-500">· Em breve</li>}
             </ul>
           </button>
 
-          <div className="cursor-not-allowed rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-left opacity-60">
+          <button
+            type="button"
+            onClick={() => { if (livePlans.premium.is_available) set("plan", "premium"); }}
+            disabled={!livePlans.premium.is_available}
+            className={[
+              "rounded-2xl border p-4 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60",
+              form.plan === "premium" && livePlans.premium.is_available ? "border-indigo-600 bg-indigo-50 shadow-sm" : "border-zinc-200 hover:border-indigo-300",
+            ].join(" ")}
+          >
             <div className="mb-1 flex items-center gap-2">
-              <span className="text-[14px] font-semibold text-zinc-500">{livePlans.premium.name}</span>
-              <span className="rounded-full bg-zinc-400 px-2 py-0.5 text-[9px] font-bold tracking-wider text-white">EM BREVE</span>
+              <span className="text-[14px] font-semibold text-zinc-900">{livePlans.premium.name}</span>
+              {!livePlans.premium.is_available ? <span className="rounded-full bg-zinc-400 px-2 py-0.5 text-[9px] font-bold tracking-wider text-white">Em breve</span> : null}
             </div>
-            <p className="mb-2 text-[13px] text-zinc-400">{formatPlanPrice(livePlans.premium.price)}</p>
+            <p className="mb-2 text-[13px] font-bold text-indigo-700">{planDisplayPrice(livePlans.premium)}</p>
             <ul className="space-y-1">
-              <li className="text-[12px] text-zinc-400">· Tudo do Pro</li>
-              <li className="text-[12px] text-zinc-400">· Vagas fechadas</li>
-              <li className="text-[12px] text-zinc-400">· Comissão da plataforma de {livePlans.premium.commission_percent}%</li>
+              {livePlans.premium.is_available
+                ? planLimitHighlights(livePlans.premium).map((item) => <li key={item} className="text-[12px] text-zinc-500">· {item}</li>)
+                : <li className="text-[12px] text-zinc-500">· Em breve</li>}
             </ul>
-          </div>
+          </button>
         </div>
+        {errors.plan ? <p className="mt-3 text-[12px] text-rose-600">{errors.plan}</p> : null}
       </SectionCard>
 
       {serverError ? (
