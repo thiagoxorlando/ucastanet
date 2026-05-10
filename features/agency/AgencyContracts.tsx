@@ -84,42 +84,39 @@ function openUrl(url: string) {
   a.click();
 }
 
-function downloadContract(c: AgencyContract) {
-  // Prefer signed version uploaded by talent; fall back to original
-  if (c.signedContractUrl) { openUrl(c.signedContractUrl); return; }
-  if (c.contractFileUrl)   { openUrl(c.contractFileUrl);   return; }
-  const lines = [
-    "DETALHES DO CONTRATO",
-    "====================",
-    `Talento:          ${c.talentName}`,
-    `Status:           ${c.status}`,
-    `Valor do Pagamento: ${brl(c.paymentAmount)}`,
-    `Forma de Pagamento: ${c.paymentMethod ?? "—"}`,
-    `Data do Trabalho: ${c.jobDate ? fmtJobDate(c.jobDate) : "A definir"}`,
-    `Horário:          ${c.jobTime ?? "—"}`,
-    `Local:            ${c.location ?? "—"}`,
-    `Enviado em:       ${fmtDate(c.createdAt)}`,
-    c.signedAt    ? `Assinado pelo Talento: ${fmtDate(c.signedAt)}`    : null,
-    c.agencySignedAt ? `Assinado pela Agência: ${fmtDate(c.agencySignedAt)}` : null,
-    c.depositPaidAt  ? `Depósito Pago:   ${fmtDate(c.depositPaidAt)}` : null,
-    c.paidAt         ? `Pago em:         ${fmtDate(c.paidAt)}`         : null,
-    "",
-    "DESCRIÇÃO DA VAGA",
-    "-----------------",
-    c.jobDescription ?? "Sem descrição fornecida.",
-    "",
-    "NOTAS ADICIONAIS",
-    "----------------",
-    c.additionalNotes ?? "Nenhuma.",
-  ].filter((l) => l !== null);
+function ContractFileButton({
+  label,
+  missingLabel,
+  url,
+  tone,
+}: {
+  label: string;
+  missingLabel: string;
+  url: string | null;
+  tone: "neutral" | "success";
+}) {
+  const isAvailable = Boolean(url);
+  const activeCls = tone === "success"
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+    : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50";
 
-  const blob = new Blob([lines.join("\n")], { type: "text/plain" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  a.href     = url;
-  a.download = `contract-${c.talentName.replace(/\s+/g, "-").toLowerCase()}-${c.id.slice(0, 8)}.txt`;
-  a.click();
-  URL.revokeObjectURL(url);
+  return (
+    <button
+      type="button"
+      onClick={() => { if (url) openUrl(url); }}
+      disabled={!isAvailable}
+      className={[
+        "flex-shrink-0 rounded-xl border px-3 py-1.5 text-[12px] font-semibold transition-colors",
+        isAvailable
+          ? `${activeCls} cursor-pointer`
+          : "border-zinc-200 bg-zinc-100 text-zinc-400 cursor-not-allowed",
+      ].join(" ")}
+      aria-label={isAvailable ? label : missingLabel}
+      title={isAvailable ? label : missingLabel}
+    >
+      {isAvailable ? label : missingLabel}
+    </button>
+  );
 }
 
 function Field({ label, value }: { label: string; value: string }) {
@@ -221,46 +218,26 @@ function ContractCard({
           </button>
         )}
 
-        {/* Download — prefers signed version uploaded by talent */}
-        <button
-          onClick={() => downloadContract(c)}
-          className={[
-            "flex-shrink-0 flex items-center gap-1.5 transition-colors cursor-pointer",
-            c.signedContractUrl
-              ? "text-emerald-600 hover:text-emerald-800"
-              : c.contractFileUrl
-              ? "text-zinc-500 hover:text-zinc-800"
-              : "text-zinc-400 hover:text-zinc-700",
-          ].join(" ")}
-          aria-label="Download contract"
-          title={
-            c.signedContractUrl
-              ? "Baixar contrato assinado pelo talento"
-              : c.contractFileUrl
-              ? "Baixar contrato original"
-              : "Baixar contrato"
-          }
-        >
-          {c.signedContractUrl ? (
-            <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-md whitespace-nowrap">
-              Assinado
-            </span>
-          ) : c.contractFileUrl ? (
-            <span className="text-[10px] font-semibold bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded-md whitespace-nowrap">
-              Original
-            </span>
-          ) : null}
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <ContractFileButton
+            label="Original"
+            missingLabel="Original indisponível"
+            url={c.contractFileUrl}
+            tone="neutral"
+          />
+          <ContractFileButton
+            label="Assinado"
+            missingLabel="Aguardando assinatura"
+            url={c.signedContractUrl}
+            tone="success"
+          />
+        </div>
 
         {/* Expand toggle */}
         <button
           onClick={() => setExpanded((v) => !v)}
           className="flex-shrink-0 text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer"
-          aria-label={expanded ? "Collapse" : "Expand"}
+          aria-label={expanded ? "Recolher" : "Expandir"}
         >
           <svg className={`w-4 h-4 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

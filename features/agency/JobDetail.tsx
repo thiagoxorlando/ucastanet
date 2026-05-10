@@ -1094,15 +1094,20 @@ export default function JobDetail({
 
   const safeSubmissions      = submissionList;
   const numberOfTalentsRequired = job.numberOfTalentsRequired ?? 1;
+  const activeBookingsCount = bookings.filter((booking) => booking.status !== "cancelled").length;
+  const isJobFull = activeBookingsCount >= numberOfTalentsRequired;
+  const canShareJob = currentStatus === "open" && !isJobFull;
   const days   = daysUntil(job.deadline);
-  const urgent = days <= 7 && days > 0 && job.status === "open";
+  const urgent = days <= 7 && days > 0 && currentStatus === "open";
 
   function openContractModal(s: Submission) {
+    if (!canShareJob) return;
     if (!s.talentId) return;
     setContractModal([{ submissionId: s.id, talentId: s.talentId, talentName: s.talentName }]);
   }
 
   function openBulkContractModal() {
+    if (!canShareJob) return;
     const targets = safeSubmissions
       .filter((s) => s.talentId && selected.has(s.id) && !sentContracts.has(s.id))
       .map((s) => ({ submissionId: s.id, talentId: s.talentId!, talentName: s.talentName }));
@@ -1126,16 +1131,6 @@ export default function JobDetail({
     });
     setSelected(new Set());
     setContractModal(null);
-
-    // Auto-close job if enough contracts were sent
-    const totalSent = sentContracts.size + submissionIds.length;
-    if (job && totalSent >= numberOfTalentsRequired && job.status === "open" && agencyId) {
-      await fetch(`/api/jobs/${job.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "closed" }),
-      });
-    }
     router.refresh();
   }
 
@@ -1229,8 +1224,8 @@ export default function JobDetail({
           <div className="space-y-2.5">
             <h1 className="text-[1.85rem] font-black tracking-[-0.04em] leading-tight text-white">{job.title}</h1>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`text-[12px] font-medium px-2.5 py-1 rounded-full ${STATUS_STYLES[job.status]}`}>
-                {{ open: "Aberta", closed: "Fechada", draft: "Rascunho", inactive: "Inativa" }[job.status] ?? job.status}
+              <span className={`text-[12px] font-medium px-2.5 py-1 rounded-full ${STATUS_STYLES[currentStatus]}`}>
+                {{ open: "Aberta", closed: "Fechada", draft: "Rascunho", inactive: "Inativa" }[currentStatus] ?? currentStatus}
               </span>
               {job.visibility === "private" && (
                 <span className="inline-flex items-center gap-1 text-[12px] font-medium bg-violet-50 text-violet-600 border border-violet-100 px-2.5 py-1 rounded-full">
@@ -1267,15 +1262,16 @@ export default function JobDetail({
                 <button
                   type="button"
                   onClick={handleCopyJobLink}
-                  className="inline-flex items-center gap-2 bg-white text-[#1F2D2E] text-[13px] font-bold px-5 py-2.5 rounded-xl transition-all duration-150 hover:bg-white/90 cursor-pointer"
+                  disabled={!canShareJob}
+                  className="inline-flex items-center gap-2 bg-white text-[#1F2D2E] text-[13px] font-bold px-5 py-2.5 rounded-xl transition-all duration-150 hover:bg-white/90 cursor-pointer disabled:cursor-not-allowed disabled:bg-white/50 disabled:text-[#6A8081]"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16h8M8 12h8m-8-4h5m-6 12h10a2 2 0 002-2V6a2 2 0 00-2-2h-3.172a2 2 0 01-1.414-.586l-.828-.828A2 2 0 0010.172 2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
-                  Compartilhar vaga
+                  Compartilhar Vaga
                 </button>
 
-                {job.status !== "closed" && (
+                {currentStatus !== "closed" && (
                   <Link
                     href={`/agency/jobs/${job.id}/edit`}
                     className="inline-flex items-center gap-2 bg-white/10 border border-white/10 hover:bg-white/15 text-white text-[13px] font-bold px-5 py-2.5 rounded-xl transition-all duration-150"
@@ -1291,6 +1287,12 @@ export default function JobDetail({
 
               {copyFeedback && (
                 <p className="text-[12px] font-medium text-white/80">{copyFeedback}</p>
+              )}
+
+              {!canShareJob && (
+                <p className="text-[12px] font-medium text-white/80">
+                  Esta vaga não está aberta para novas candidaturas.
+                </p>
               )}
 
               {manualCopyUrl && (
@@ -1374,6 +1376,11 @@ export default function JobDetail({
               {statusChanging ? "Salvando…" : "Salvar status"}
             </button>
           </div>
+          {isJobFull && (
+            <p className="text-[12px] font-medium mt-3 text-zinc-500">
+              Esta vaga já atingiu o número de talentos necessários.
+            </p>
+          )}
           {statusFeedback && (
             <p className={`text-[12px] font-medium mt-3 ${statusFeedback.ok ? "text-emerald-600" : "text-rose-600"}`}>
               {statusFeedback.msg}
@@ -1424,11 +1431,14 @@ export default function JobDetail({
             {role === "agency" && selected.size > 0 && (
               <button
                 onClick={() => openBulkContractModal()}
+                disabled={!canShareJob}
                 className={[
                   "inline-flex items-center gap-2 text-[13px] font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer",
-                  selected.size >= numberOfTalentsRequired
-                    ? "bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] text-white"
-                    : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700",
+                  !canShareJob
+                    ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
+                    : selected.size >= numberOfTalentsRequired
+                      ? "bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] text-white"
+                      : "bg-zinc-100 hover:bg-zinc-200 text-zinc-700",
                 ].join(" ")}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

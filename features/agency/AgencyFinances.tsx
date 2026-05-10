@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 import { formatCpfCnpj, isValidCpfCnpj } from "@/lib/cpf";
@@ -20,6 +20,17 @@ function fmtDate(value: string | null | undefined) {
     day: "numeric",
     month: "short",
     year: "numeric",
+  });
+}
+
+function fmtDateTime(value: string | null | undefined) {
+  if (!value) return "â€”";
+  return new Date(value).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -99,6 +110,31 @@ const WITHDRAWAL_STATUS_LABEL: Record<string, string> = {
   failed: "Falhou",
 };
 
+function downloadReceipt(transaction: AgencyTransaction) {
+  const lines = [
+    "COMPROVANTE DE TRANSAÇÃO",
+    "========================",
+    `ID da transação: ${transaction.id}`,
+    `Data e hora: ${fmtDateTime(transaction.processedAt ?? transaction.date)}`,
+    `Valor: ${brl(Math.abs(transaction.amount))}`,
+    `Status: ${transaction.withdrawalStatus ? (WITHDRAWAL_STATUS_LABEL[transaction.withdrawalStatus] ?? transaction.withdrawalStatus) : (STATUS_LABEL[transaction.status] ?? transaction.status)}`,
+    `Provedor: ${transaction.provider ?? "BrisaHub"}`,
+    transaction.providerStatus ? `Status do provedor: ${transaction.providerStatus}` : null,
+    transaction.job ? `Vaga relacionada: ${transaction.job}` : null,
+    transaction.bookingId ? `Reserva relacionada: ${transaction.bookingId}` : null,
+    transaction.description ? `Descrição: ${transaction.description}` : null,
+    transaction.href ? `Referência: ${transaction.href}` : null,
+  ].filter((line): line is string => Boolean(line));
+
+  const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `comprovante-${transaction.id}.txt`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function StatCard({ label, value, sub, stripe }: { label: string; value: string; sub?: string; stripe: string }) {
   return (
     <div className="bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_14px_34px_rgba(7,17,13,0.06)] overflow-hidden">
@@ -161,6 +197,7 @@ export default function AgencyFinances({
   const [pixSaving, setPixSaving] = useState(false);
   const [pixError, setPixError] = useState("");
   const [pixSaved, setPixSaved] = useState(false);
+  const [expandedTransactionId, setExpandedTransactionId] = useState<string | null>(null);
 
   const hasPix = Boolean(savedPix?.pix_key_type && savedPix?.pix_key_value?.trim());
   const withdrawAmountNum = Math.round(Number(withdrawAmount) * 100) / 100;
@@ -633,57 +670,121 @@ export default function AgencyFinances({
                     <th className="text-right px-6 py-3.5 text-[11px] font-semibold text-zinc-400 uppercase tracking-widest hidden sm:table-cell">Data</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-50">
+                <tbody>
                   {transactions.map((transaction) => {
                     const isWithdrawal = transaction.status === "withdrawal";
                     const label = transaction.kind === "wallet"
                       ? transaction.description ?? STATUS_LABEL[transaction.status] ?? transaction.status
                       : transaction.talent || transaction.description || "Reserva";
+                    const isExpanded = expandedTransactionId === transaction.id;
+                    const receiptAvailable = Boolean(transaction.id && transaction.date && transaction.amount !== undefined);
 
                     return (
-                      <tr
-                        key={transaction.id}
-                        role={transaction.href ? "link" : undefined}
-                        tabIndex={transaction.href ? 0 : undefined}
-                        onClick={() => { if (transaction.href) router.push(transaction.href); }}
-                        onKeyDown={(event) => {
-                          if (transaction.href && (event.key === "Enter" || event.key === " ")) {
-                            event.preventDefault();
-                            router.push(transaction.href);
-                          }
-                        }}
-                        className={[
-                          "hover:bg-zinc-50/60 transition-colors",
-                          transaction.href ? "cursor-pointer" : "",
-                        ].join(" ")}
-                      >
-                        <td className="px-6 py-4">
-                          <p className="text-[13px] font-bold text-zinc-950 truncate max-w-[260px]">{label}</p>
-                          {isWithdrawal && (
-                            <div className="mt-0.5 space-y-0.5">
-                              <p className="text-[11px] text-zinc-400">
-                                {transaction.withdrawalStatus ? WITHDRAWAL_STATUS_LABEL[transaction.withdrawalStatus] ?? transaction.withdrawalStatus : "Pendente"}
-                              </p>
-                              {transaction.adminNote && (
-                                <p className="text-[11px] text-rose-500">{transaction.adminNote}</p>
-                              )}
+                      <Fragment key={transaction.id}>
+                        <tr
+                          className={[
+                            "border-b border-zinc-50 transition-colors",
+                            isExpanded ? "bg-zinc-50/70" : "hover:bg-zinc-50/60",
+                          ].join(" ")}
+                        >
+                          <td className="px-6 py-4">
+                            <div className="flex items-start gap-3">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedTransactionId((current) => current === transaction.id ? null : transaction.id)}
+                                className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-500 transition-colors hover:border-zinc-300 hover:text-zinc-700 cursor-pointer"
+                                aria-label={isExpanded ? "Recolher transação" : "Expandir transação"}
+                              >
+                                <svg className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
+                              <div className="min-w-0">
+                                <p className="text-[13px] font-bold text-zinc-950 truncate max-w-[260px]">{label}</p>
+                                {isWithdrawal && (
+                                  <div className="mt-0.5 space-y-0.5">
+                                    <p className="text-[11px] text-zinc-400">
+                                      {transaction.withdrawalStatus ? WITHDRAWAL_STATUS_LABEL[transaction.withdrawalStatus] ?? transaction.withdrawalStatus : "Pendente"}
+                                    </p>
+                                    {transaction.adminNote && (
+                                      <p className="text-[11px] text-rose-500">{transaction.adminNote}</p>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-4 text-right">
-                          <p className="text-[14px] font-black tabular-nums text-zinc-950">{brl(Math.abs(transaction.amount))}</p>
-                        </td>
-                        <td className="px-4 py-4">
-                          <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_CLS[transaction.status] ?? "bg-zinc-100 text-zinc-500"}`}>
-                            {STATUS_LABEL[transaction.status] ?? transaction.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right hidden sm:table-cell">
-                          <p className="text-[12px] text-zinc-400">
-                            {new Date(transaction.date).toLocaleDateString("pt-BR", { month: "short", day: "numeric" })}
-                          </p>
-                        </td>
-                      </tr>
+                          </td>
+                          <td className="px-4 py-4 text-right">
+                            <p className="text-[14px] font-black tabular-nums text-zinc-950">{brl(Math.abs(transaction.amount))}</p>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_CLS[transaction.status] ?? "bg-zinc-100 text-zinc-500"}`}>
+                              {STATUS_LABEL[transaction.status] ?? transaction.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right hidden sm:table-cell">
+                            <p className="text-[12px] text-zinc-400">
+                              {new Date(transaction.date).toLocaleDateString("pt-BR", { month: "short", day: "numeric" })}
+                            </p>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="border-b border-zinc-50 bg-zinc-50/40">
+                            <td colSpan={4} className="px-6 py-4">
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3">
+                                  <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Detalhes</p>
+                                  <div className="mt-3 space-y-2 text-[13px] text-zinc-700">
+                                    <p><strong>ID:</strong> {transaction.id}</p>
+                                    <p><strong>Data e hora:</strong> {fmtDateTime(transaction.processedAt ?? transaction.date)}</p>
+                                    <p><strong>Valor:</strong> {brl(Math.abs(transaction.amount))}</p>
+                                    <p><strong>Status:</strong> {transaction.withdrawalStatus ? WITHDRAWAL_STATUS_LABEL[transaction.withdrawalStatus] ?? transaction.withdrawalStatus : STATUS_LABEL[transaction.status] ?? transaction.status}</p>
+                                    <p><strong>Provedor:</strong> {transaction.provider ?? "BrisaHub"}</p>
+                                    {transaction.providerStatus && <p><strong>Status do provedor:</strong> {transaction.providerStatus}</p>}
+                                  </div>
+                                </div>
+                                <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3">
+                                  <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Referências</p>
+                                  <div className="mt-3 space-y-2 text-[13px] text-zinc-700">
+                                    <p><strong>Descrição:</strong> {transaction.description ?? "—"}</p>
+                                    <p><strong>Vaga relacionada:</strong> {transaction.job || "—"}</p>
+                                    <p><strong>Reserva relacionada:</strong> {transaction.bookingId ?? "—"}</p>
+                                    <p><strong>Referência de pagamento:</strong> {transaction.href ?? "—"}</p>
+                                    {transaction.href && (
+                                      <button
+                                        type="button"
+                                        onClick={() => router.push(transaction.href!)}
+                                        className="inline-flex items-center rounded-xl border border-zinc-200 px-3 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 cursor-pointer"
+                                      >
+                                        Abrir referência
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="mt-4 flex flex-wrap gap-3">
+                                {receiptAvailable ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => downloadReceipt(transaction)}
+                                    className="inline-flex items-center rounded-xl bg-[#1F2D2E] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#2A3D3E] cursor-pointer"
+                                  >
+                                    Baixar comprovante
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled
+                                    className="inline-flex items-center rounded-xl bg-zinc-100 px-4 py-2.5 text-[13px] font-semibold text-zinc-400 cursor-not-allowed"
+                                  >
+                                    Comprovante indisponível
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     );
                   })}
                 </tbody>

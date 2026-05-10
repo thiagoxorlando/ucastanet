@@ -74,7 +74,7 @@ const PLANS = [
     period: "",
     badge: null,
     gradient: "from-violet-500 to-purple-700",
-    headline: "Operacao premium com cobranca recorrente",
+    headline: "",
     commission: "5% de comissao",
     features: [
       "Tudo do Pro",

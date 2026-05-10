@@ -3,8 +3,9 @@ import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { notify, notifyAdmins } from "@/lib/notify";
 import { requireHireLimit } from "@/lib/requireActiveSubscription";
-import { resolvePlanInfo } from "@/lib/plans";
+import { resolvePlanInfo, type Plan } from "@/lib/plans";
 import { getLivePlanSetting } from "@/lib/planSettings.server";
+import { isJobFull, JOB_FULL_MESSAGE, JOB_UNAVAILABLE_MESSAGE } from "@/lib/jobAvailability";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -49,10 +50,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Cannot create contracts for another agency" }, { status: 403 });
   }
 
+  let jobCapacityInfo: { status: string | null; talentsNeeded: number | null; maxHiresPerJob: number | null; activeHires: number } | null = null;
+
   if (job_id) {
     const { data: jobOwner, error: jobOwnerErr } = await supabase
       .from("jobs")
-      .select("agency_id")
+      .select("agency_id, status, deleted_at, number_of_talents_required")
       .eq("id", job_id)
       .single();
 
@@ -62,6 +65,39 @@ export async function POST(req: NextRequest) {
     if (jobOwner.agency_id !== agency_id) {
       return NextResponse.json({ error: "Job does not belong to this agency" }, { status: 403 });
     }
+
+    if (jobOwner.deleted_at || jobOwner.status !== "open") {
+      return NextResponse.json({ error: JOB_UNAVAILABLE_MESSAGE }, { status: 409 });
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan")
+      .eq("id", agency_id)
+      .single();
+    const liveSetting = await getLivePlanSetting((profile?.plan ?? "free") as Plan);
+    const { count: activeHires } = await supabase
+      .from("contracts")
+      .select("id", { count: "exact", head: true })
+      .eq("agency_id", agency_id)
+      .eq("job_id", job_id)
+      .not("status", "in", '("cancelled","rejected")')
+      .is("deleted_at", null);
+
+    if (isJobFull({
+      currentHires: activeHires ?? 0,
+      talentsNeeded: jobOwner.number_of_talents_required ?? 1,
+      maxHiresPerJob: liveSetting.max_hires_per_job,
+    })) {
+      return NextResponse.json({ error: JOB_FULL_MESSAGE }, { status: 409 });
+    }
+
+    jobCapacityInfo = {
+      status: jobOwner.status ?? null,
+      talentsNeeded: jobOwner.number_of_talents_required ?? 1,
+      maxHiresPerJob: liveSetting.max_hires_per_job,
+      activeHires: activeHires ?? 0,
+    };
   }
 
   const limited = await requireHireLimit(agency_id, job_id ?? null);
@@ -173,6 +209,22 @@ export async function POST(req: NextRequest) {
     "/admin/contracts",
     `admin-contract-created:${contract.id}`,
   );
+
+  if (
+    job_id &&
+    jobCapacityInfo &&
+    isJobFull({
+      currentHires: jobCapacityInfo.activeHires + 1,
+      talentsNeeded: jobCapacityInfo.talentsNeeded,
+      maxHiresPerJob: jobCapacityInfo.maxHiresPerJob,
+    })
+  ) {
+    await supabase
+      .from("jobs")
+      .update({ status: "closed" })
+      .eq("id", job_id)
+      .eq("status", "open");
+  }
 
   return NextResponse.json({ contract }, { status: 201 });
 }

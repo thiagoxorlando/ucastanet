@@ -20,6 +20,8 @@ export type TalentJobDetailProps = {
   ageMin: number | null;
   ageMax: number | null;
   applicationRequirements?: string[];
+  isAvailableForApplications?: boolean;
+  availabilityMessage?: string;
 };
 
 function brl(n: number) {
@@ -978,6 +980,13 @@ export default function TalentJobDetail({
                 </p>
               )
             )}
+            {job.isAvailableForApplications === false && (
+              <div className="bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3.5">
+                <p className="text-[13px] font-semibold text-zinc-800">
+                  {job.availabilityMessage ?? "Vaga não disponível para novas candidaturas."}
+                </p>
+              </div>
+            )}
             <div className="flex flex-col gap-3">
               <button
                 onClick={() => {
@@ -987,7 +996,7 @@ export default function TalentJobDetail({
                   }
                   setStep(orderedSteps[0] as StepId);
                 }}
-                disabled={blocked || submitting}
+                disabled={blocked || submitting || job.isAvailableForApplications === false}
                 className="w-full bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] disabled:bg-zinc-200 disabled:text-zinc-400 disabled:cursor-not-allowed text-white text-[14px] font-semibold py-3.5 rounded-xl transition-all duration-150 active:scale-[0.99] cursor-pointer"
               >
                 {submitting ? "Enviando…" : orderedSteps.length === 0 ? "Enviar Candidatura" : "Iniciar Candidatura"}
@@ -1058,6 +1067,5 @@ export default function TalentJobDetail({
     </div>
   );
 }
-
 
 

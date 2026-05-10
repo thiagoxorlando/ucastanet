@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { notify } from "@/lib/notify";
+import { getLivePlanSetting } from "@/lib/planSettings.server";
+import { isJobOpenForApplications, JOB_UNAVAILABLE_MESSAGE } from "@/lib/jobAvailability";
+import type { Plan } from "@/lib/plans";
 
 type LinkedReferral = {
   id: string;
@@ -56,20 +59,43 @@ export async function POST(req: NextRequest) {
 
   let { data: job, error: jobError } = await supabase
     .from("jobs")
-    .select("id, title, agency_id, visibility, application_requirements")
+    .select("id, title, agency_id, visibility, status, deleted_at, number_of_talents_required, application_requirements")
     .eq("id", job_id)
     .single();
 
   if (jobError?.message?.includes("application_requirements")) {
     ({ data: job, error: jobError } = await supabase
       .from("jobs")
-      .select("id, title, agency_id, visibility")
+      .select("id, title, agency_id, visibility, status, deleted_at, number_of_talents_required")
       .eq("id", job_id)
       .single());
   }
 
   if (jobError || !job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+
+  const [{ data: agencyProfile }, { count: activeHires }] = await Promise.all([
+    job.agency_id
+      ? supabase.from("profiles").select("plan").eq("id", job.agency_id).single()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("contracts")
+      .select("id", { count: "exact", head: true })
+      .eq("job_id", job_id)
+      .not("status", "in", '("cancelled","rejected")')
+      .is("deleted_at", null),
+  ]);
+
+  const liveSetting = await getLivePlanSetting((agencyProfile?.plan ?? "free") as Plan);
+  if (!isJobOpenForApplications({
+    status: job.status ?? null,
+    deletedAt: (job as { deleted_at?: string | null }).deleted_at ?? null,
+    currentHires: activeHires ?? 0,
+    talentsNeeded: (job as { number_of_talents_required?: number | null }).number_of_talents_required ?? 1,
+    maxHiresPerJob: liveSetting.max_hires_per_job,
+  })) {
+    return NextResponse.json({ error: JOB_UNAVAILABLE_MESSAGE }, { status: 409 });
   }
 
   let linkedReferral: LinkedReferral | null = null;

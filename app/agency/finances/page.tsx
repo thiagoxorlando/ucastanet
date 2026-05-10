@@ -135,6 +135,8 @@ export default async function AgencyFinancesPage() {
       withdrawalStatus: w.type === "withdrawal" ? (w.status ?? null) : undefined,
       adminNote:        w.type === "withdrawal" ? ((w as Record<string, unknown>).admin_note    as string | null ?? null) : undefined,
       processedAt:      w.type === "withdrawal" ? ((w as Record<string, unknown>).processed_at as string | null ?? null) : undefined,
+      provider:         w.provider ?? null,
+      providerStatus:   w.provider_status ?? null,
     };
   });
 

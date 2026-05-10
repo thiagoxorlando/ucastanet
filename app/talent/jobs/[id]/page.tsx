@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { redirect, notFound } from "next/navigation";
+import { getLivePlanSetting } from "@/lib/planSettings.server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { isJobOpenForApplications, JOB_UNAVAILABLE_MESSAGE } from "@/lib/jobAvailability";
+import type { Plan } from "@/lib/plans";
 import TalentJobDetail from "@/features/talent/TalentJobDetail";
 
 type Props = { params: Promise<{ id: string }> };
@@ -24,14 +27,14 @@ export default async function TalentJobDetailPage({ params }: Props) {
   const [jobRes, profileRes] = await Promise.all([
     supabase
       .from("jobs")
-      .select("id, title, description, category, budget, deadline, agency_id, location, gender, age_min, age_max, visibility, status, application_requirements")
+      .select("id, title, description, category, budget, deadline, agency_id, location, gender, age_min, age_max, visibility, status, deleted_at, number_of_talents_required, application_requirements")
       .eq("id", id)
       .single()
       .then(async (res) => {
         if (res.error?.message?.includes("application_requirements")) {
           return supabase
             .from("jobs")
-            .select("id, title, description, category, budget, deadline, agency_id, location, gender, age_min, age_max, visibility, status")
+            .select("id, title, description, category, budget, deadline, agency_id, location, gender, age_min, age_max, visibility, status, deleted_at, number_of_talents_required")
             .eq("id", id)
             .single();
         }
@@ -76,6 +79,7 @@ export default async function TalentJobDetailPage({ params }: Props) {
 
   let agencyName = "";
   let agencyPlan = "free";
+  let isAvailableForApplications = true;
   if (data.agency_id) {
     const [{ data: agency }, { data: agencyProfile }] = await Promise.all([
       supabase.from("agencies").select("company_name").eq("id", data.agency_id).single(),
@@ -83,6 +87,24 @@ export default async function TalentJobDetailPage({ params }: Props) {
     ]);
     agencyName = agency?.company_name ?? "";
     agencyPlan = agencyProfile?.plan ?? "free";
+
+    const [{ count: activeHires }, liveSetting] = await Promise.all([
+      supabase
+        .from("contracts")
+        .select("id", { count: "exact", head: true })
+        .eq("job_id", id)
+        .not("status", "in", '("cancelled","rejected")')
+        .is("deleted_at", null),
+      getLivePlanSetting((agencyProfile?.plan ?? "free") as Plan),
+    ]);
+
+    isAvailableForApplications = isJobOpenForApplications({
+      status: data.status ?? null,
+      deletedAt: (data as { deleted_at?: string | null }).deleted_at ?? null,
+      currentHires: activeHires ?? 0,
+      talentsNeeded: (data as { number_of_talents_required?: number | null }).number_of_talents_required ?? 1,
+      maxHiresPerJob: liveSetting.max_hires_per_job,
+    });
   }
 
   const job = {
@@ -99,6 +121,8 @@ export default async function TalentJobDetailPage({ params }: Props) {
     ageMin:      data.age_min     ?? null,
     ageMax:      data.age_max     ?? null,
     applicationRequirements: (data as { application_requirements?: string[] }).application_requirements ?? [],
+    isAvailableForApplications,
+    availabilityMessage: JOB_UNAVAILABLE_MESSAGE,
   };
 
   return (

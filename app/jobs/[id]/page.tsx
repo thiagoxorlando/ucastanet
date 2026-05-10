@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ReferralClaimOnView from "@/components/referrals/ReferralClaimOnView";
+import { getLivePlanSetting } from "@/lib/planSettings.server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { isJobOpenForApplications, JOB_UNAVAILABLE_MESSAGE } from "@/lib/jobAvailability";
+import type { Plan } from "@/lib/plans";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -40,7 +43,40 @@ function encodeNext(path: string) {
   return encodeURIComponent(path);
 }
 
-function UnavailableJobState() {
+async function getJobAvailability(
+  supabase: ReturnType<typeof createServerClient>,
+  job: { id: string; agency_id: string | null; status: string | null; deleted_at?: string | null; number_of_talents_required?: number | null },
+) {
+  const [{ data: agencyProfile }, { count: activeHires }] = await Promise.all([
+    job.agency_id
+      ? supabase.from("profiles").select("plan").eq("id", job.agency_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("contracts")
+      .select("id", { count: "exact", head: true })
+      .eq("job_id", job.id)
+      .not("status", "in", '("cancelled","rejected")')
+      .is("deleted_at", null),
+  ]);
+
+  const liveSetting = await getLivePlanSetting((agencyProfile?.plan ?? "free") as Plan);
+
+  return isJobOpenForApplications({
+    status: job.status ?? null,
+    deletedAt: job.deleted_at ?? null,
+    currentHires: activeHires ?? 0,
+    talentsNeeded: job.number_of_talents_required ?? 1,
+    maxHiresPerJob: liveSetting.max_hires_per_job,
+  });
+}
+
+function UnavailableJobState({
+  title = "Vaga nÃ£o disponÃ­vel.",
+  description = "Esta vaga pode ter sido encerrada, removida ou nÃ£o estÃ¡ disponÃ­vel para compartilhamento pÃºblico.",
+}: {
+  title?: string;
+  description?: string;
+}) {
   return (
     <main className="min-h-screen bg-[#F8FAFC] text-[#1F2D2E]">
       <div className="mx-auto flex min-h-screen w-full max-w-3xl flex-col px-5 py-8 sm:px-8">
@@ -76,6 +112,10 @@ function UnavailableJobState() {
   );
 }
 
+function ClosedForApplicationsState() {
+  return <UnavailableJobState title={JOB_UNAVAILABLE_MESSAGE} description={JOB_UNAVAILABLE_MESSAGE} />;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const supabase = createServerClient({ useServiceRole: true });
@@ -98,11 +138,22 @@ export default async function PublicJobPage({ params, searchParams }: Props) {
   if (referralToken) {
     const { data: job } = await supabase
       .from("jobs")
-      .select("id, title, description, category, budget, deadline, agency_id, location, visibility, status")
+      .select("id, title, description, category, budget, deadline, agency_id, location, visibility, status, deleted_at, number_of_talents_required")
       .eq("id", id)
       .maybeSingle();
 
     if (!job || job.status === "inactive") notFound();
+    const canApply = await getJobAvailability(supabase, {
+      id: job.id,
+      agency_id: job.agency_id ?? null,
+      status: job.status ?? null,
+      deleted_at: (job as { deleted_at?: string | null }).deleted_at ?? null,
+      number_of_talents_required: (job as { number_of_talents_required?: number | null }).number_of_talents_required ?? 1,
+    });
+
+    if (!canApply) {
+      return <ClosedForApplicationsState />;
+    }
 
     const { data: invite } = await supabase
       .from("referral_invites")
@@ -231,12 +282,24 @@ export default async function PublicJobPage({ params, searchParams }: Props) {
 
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, title, description, category, budget, job_date, job_time, agency_id, location, visibility, status, deleted_at")
+    .select("id, title, description, category, budget, job_date, job_time, agency_id, location, visibility, status, deleted_at, number_of_talents_required")
     .eq("id", id)
     .maybeSingle();
 
-  if (!job || job.visibility !== "public" || job.status !== "open" || job.deleted_at) {
+  if (!job || job.visibility !== "public") {
     return <UnavailableJobState />;
+  }
+
+  const canApply = await getJobAvailability(supabase, {
+    id: job.id,
+    agency_id: job.agency_id ?? null,
+    status: job.status ?? null,
+    deleted_at: job.deleted_at ?? null,
+    number_of_talents_required: (job as { number_of_talents_required?: number | null }).number_of_talents_required ?? 1,
+  });
+
+  if (!canApply) {
+    return <ClosedForApplicationsState />;
   }
 
   const [{ data: agency }, { data: profile }] = await Promise.all([

@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { requireTalentsNeededForJob } from "@/lib/requireActiveSubscription";
 import { getLivePlanSetting } from "@/lib/planSettings.server";
+import { isJobFull, JOB_FULL_MESSAGE } from "@/lib/jobAvailability";
 import type { Plan } from "@/lib/plans";
 
 const PATCH_ALLOWED = ["title", "description", "category", "budget", "deadline", "job_date", "status", "location", "gender", "age_min", "age_max", "number_of_talents_required", "visibility"];
@@ -40,7 +41,7 @@ export async function PATCH(
 
   const { data: existingJob } = await supabase
     .from("jobs")
-    .select("agency_id, deleted_at")
+    .select("agency_id, deleted_at, status, number_of_talents_required")
     .eq("id", id)
     .single();
 
@@ -52,6 +53,22 @@ export async function PATCH(
     return NextResponse.json({ error: "Premium plan required for private jobs" }, { status: 403 });
   }
 
+  const liveSetting = await getLivePlanSetting((caller.plan ?? "free") as Plan);
+  const nextTalentsNeeded = Number(update.number_of_talents_required ?? existingJob.number_of_talents_required ?? 1);
+  const { count: activeHireCount } = await supabase
+    .from("contracts")
+    .select("id", { count: "exact", head: true })
+    .eq("agency_id", user.id)
+    .eq("job_id", id)
+    .not("status", "in", '("cancelled","rejected")')
+    .is("deleted_at", null);
+
+  const hasReachedCapacity = isJobFull({
+    currentHires: activeHireCount ?? 0,
+    talentsNeeded: nextTalentsNeeded,
+    maxHiresPerJob: liveSetting.max_hires_per_job,
+  });
+
   // Agency may only set valid statuses
   if (update.status !== undefined) {
     const validStatuses = ["open", "closed", "draft", "inactive"];
@@ -59,9 +76,11 @@ export async function PATCH(
       return NextResponse.json({ error: "Status inválido." }, { status: 400 });
     }
 
-    // Block reopening if the agency has already reached the active-job limit
     if (update.status === "open") {
-      const liveSetting = await getLivePlanSetting((caller.plan ?? "free") as Plan);
+      if (hasReachedCapacity) {
+        return NextResponse.json({ error: JOB_FULL_MESSAGE }, { status: 409 });
+      }
+
       const jobLimit = liveSetting.job_limit;
       if (jobLimit !== null) {
         const { count } = await supabase
@@ -85,6 +104,10 @@ export async function PATCH(
   if (typeof update.number_of_talents_required === "number") {
     const hiresLimited = await requireTalentsNeededForJob(user.id, update.number_of_talents_required);
     if (hiresLimited) return hiresLimited;
+  }
+
+  if (hasReachedCapacity && update.status !== "inactive") {
+    update.status = "closed";
   }
 
   const { data, error } = await supabase
