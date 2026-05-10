@@ -23,6 +23,7 @@ const pageMeta: Record<string, { title: string; description: string }> = {
   "/agency/finances":       { title: "Financeiro",           description: "Receita, pagamentos e comissões da sua agência" },
   "/agency/billing":        { title: "Assinatura",           description: "Gerencie o plano e a cobrança da sua agência" },
   "/agency/referrals":      { title: "Indicações",           description: "Acompanhe convites, indicações e comissões" },
+  "/agency/support":        { title: "Suporte",              description: "Envie mensagens e acompanhe suas solicitações de suporte" },
   "/agency/profile":        { title: "Perfil",               description: "Gerencie o perfil da sua agência" },
   "/talent/dashboard":      { title: "Painel",               description: "Visão geral da sua atividade como talento" },
   "/talent/jobs":           { title: "Vagas",                description: "Explore oportunidades disponíveis" },
@@ -32,6 +33,7 @@ const pageMeta: Record<string, { title: string; description: string }> = {
   "/talent/finances":       { title: "Financeiro",           description: "Acompanhe seus ganhos e histórico de pagamentos" },
   "/talent/availability":   { title: "Disponibilidade",      description: "Defina quando você está disponível para novas contratações" },
   "/talent/referrals":      { title: "Indicações",           description: "Compartilhe seu link e acompanhe suas comissões" },
+  "/talent/support":        { title: "Suporte",              description: "Envie mensagens e acompanhe suas solicitações de suporte" },
   "/admin/dashboard":       { title: "Painel",               description: "Visão geral da plataforma" },
   "/admin/jobs":            { title: "Vagas",                description: "Visualize todas as vagas da plataforma" },
   "/admin/users":           { title: "Usuários",             description: "Gerencie agências e talentos" },
@@ -41,6 +43,7 @@ const pageMeta: Record<string, { title: string; description: string }> = {
   "/admin/contracts":       { title: "Contratos",            description: "Visualize todos os contratos da plataforma" },
   "/admin/referrals":       { title: "Indicações",           description: "Acompanhe indicações e comissões da plataforma" },
   "/admin/trash":           { title: "Lixeira",              description: "Restaure ou exclua itens removidos da plataforma" },
+  "/admin/support":         { title: "Suporte",              description: "Gerencie e responda solicitações de suporte dos usuários" },
   "/admin/profile":         { title: "Perfil",               description: "Gerencie as informações da conta administrativa" },
 };
 

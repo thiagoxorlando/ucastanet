@@ -1,0 +1,84 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@/lib/supabase";
+import { requireAdmin } from "@/lib/requireAdmin";
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const auth = await requireAdmin();
+  if (auth instanceof NextResponse) return auth;
+
+  const { id } = await params;
+  const supabase = createServerClient({ useServiceRole: true });
+
+  const { data: conv } = await supabase
+    .from("support_conversations")
+    .select("id, user_id, subject, status, priority, last_message_at, created_at, closed_at")
+    .eq("id", id)
+    .single();
+
+  if (!conv) return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 });
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, email, role")
+    .eq("id", conv.user_id)
+    .single();
+
+  const { data: messages } = await supabase
+    .from("support_messages")
+    .select("id, sender_id, sender_role, message, created_at")
+    .eq("conversation_id", id)
+    .order("created_at", { ascending: true });
+
+  return NextResponse.json({
+    conversation: {
+      ...conv,
+      userName:  profile?.full_name ?? "—",
+      userEmail: profile?.email     ?? "—",
+      userRole:  profile?.role      ?? "user",
+    },
+    messages: messages ?? [],
+  });
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const auth = await requireAdmin();
+  if (auth instanceof NextResponse) return auth;
+
+  const { id } = await params;
+  const body = await req.json() as { status?: string; priority?: string };
+
+  const validStatuses   = ["open", "waiting_admin", "waiting_user", "closed"];
+  const validPriorities = ["low", "normal", "high", "urgent"];
+
+  const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+  if (body.status !== undefined) {
+    if (!validStatuses.includes(body.status)) {
+      return NextResponse.json({ error: "Status inválido." }, { status: 400 });
+    }
+    update.status = body.status;
+    if (body.status === "closed") update.closed_at = new Date().toISOString();
+  }
+
+  if (body.priority !== undefined) {
+    if (!validPriorities.includes(body.priority)) {
+      return NextResponse.json({ error: "Prioridade inválida." }, { status: 400 });
+    }
+    update.priority = body.priority;
+  }
+
+  const supabase = createServerClient({ useServiceRole: true });
+  const { error } = await supabase
+    .from("support_conversations")
+    .update(update)
+    .eq("id", id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  return NextResponse.json({ ok: true });
+}
