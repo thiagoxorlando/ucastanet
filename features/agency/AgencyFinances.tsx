@@ -4,6 +4,7 @@ import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 import { formatCpfCnpj, isValidCpfCnpj } from "@/lib/cpf";
+import { generateReceiptPdf } from "@/lib/generateReceiptPdf";
 
 function brl(n: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -110,29 +111,23 @@ const WITHDRAWAL_STATUS_LABEL: Record<string, string> = {
   failed: "Falhou",
 };
 
-function downloadReceipt(transaction: AgencyTransaction) {
-  const lines = [
-    "COMPROVANTE DE TRANSAÇÃO",
-    "========================",
-    `ID da transação: ${transaction.id}`,
-    `Data e hora: ${fmtDateTime(transaction.processedAt ?? transaction.date)}`,
-    `Valor: ${brl(Math.abs(transaction.amount))}`,
-    `Status: ${transaction.withdrawalStatus ? (WITHDRAWAL_STATUS_LABEL[transaction.withdrawalStatus] ?? transaction.withdrawalStatus) : (STATUS_LABEL[transaction.status] ?? transaction.status)}`,
-    `Provedor: ${transaction.provider ?? "BrisaHub"}`,
-    transaction.providerStatus ? `Status do provedor: ${transaction.providerStatus}` : null,
-    transaction.job ? `Vaga relacionada: ${transaction.job}` : null,
-    transaction.bookingId ? `Reserva relacionada: ${transaction.bookingId}` : null,
-    transaction.description ? `Descrição: ${transaction.description}` : null,
-    transaction.href ? `Referência: ${transaction.href}` : null,
-  ].filter((line): line is string => Boolean(line));
-
-  const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `comprovante-${transaction.id}.txt`;
-  link.click();
-  URL.revokeObjectURL(url);
+async function downloadReceipt(transaction: AgencyTransaction) {
+  const effectiveStatus = transaction.withdrawalStatus ?? transaction.status;
+  await generateReceiptPdf({
+    receiptType: transaction.kind === "wallet" ? "saque" : "pagamento",
+    id: transaction.id,
+    amount: Math.abs(transaction.amount),
+    status: effectiveStatus,
+    createdAt: transaction.date,
+    processedAt: transaction.processedAt ?? null,
+    provider: transaction.provider ?? null,
+    providerStatus: transaction.providerStatus ?? null,
+    talentName: transaction.talent || null,
+    jobTitle: transaction.job || null,
+    bookingId: transaction.bookingId ?? null,
+    description: transaction.description ?? null,
+    adminNote: transaction.adminNote ?? null,
+  });
 }
 
 function StatCard({ label, value, sub, stripe }: { label: string; value: string; sub?: string; stripe: string }) {
@@ -766,7 +761,7 @@ export default function AgencyFinances({
                                 {receiptAvailable ? (
                                   <button
                                     type="button"
-                                    onClick={() => downloadReceipt(transaction)}
+                                    onClick={() => { void downloadReceipt(transaction); }}
                                     className="inline-flex items-center rounded-xl bg-[#1F2D2E] px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#2A3D3E] cursor-pointer"
                                   >
                                     Baixar comprovante

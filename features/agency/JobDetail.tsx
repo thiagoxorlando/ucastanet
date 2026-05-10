@@ -1096,6 +1096,10 @@ export default function JobDetail({
   const numberOfTalentsRequired = job.numberOfTalentsRequired ?? 1;
   const activeBookingsCount = bookings.filter((booking) => booking.status !== "cancelled").length;
   const isJobFull = activeBookingsCount >= numberOfTalentsRequired;
+  const hasPaidBookings = bookings.some((b) => b.status === "paid");
+  // canReopenJob is false when the job has paid contracts or is already full.
+  // Plan-limit checks (Free: 1 active job) are enforced only server-side.
+  const canReopenJob = !hasPaidBookings && !isJobFull;
   const canShareJob = currentStatus === "open" && !isJobFull;
   const days   = daysUntil(job.deadline);
   const urgent = days <= 7 && days > 0 && currentStatus === "open";
@@ -1361,22 +1365,29 @@ export default function JobDetail({
             <select
               value={pendingStatus}
               onChange={(e) => { setPendingStatus(e.target.value as Job["status"]); setStatusFeedback(null); }}
-              disabled={statusChanging}
-              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] font-medium text-zinc-800 hover:border-zinc-300 focus:outline-none focus:border-[#1F2D2E] transition-colors cursor-pointer disabled:opacity-50"
+              disabled={statusChanging || (currentStatus !== "open" && !canReopenJob)}
+              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] font-medium text-zinc-800 hover:border-zinc-300 focus:outline-none focus:border-[#1F2D2E] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {currentStatus === "draft" && <option value="draft">Rascunho</option>}
-              <option value="open">Aberta</option>
+              {(currentStatus === "open" || canReopenJob) && <option value="open">Aberta</option>}
               <option value="closed">Fechada</option>
             </select>
             <button
               onClick={() => handleChangeStatus(pendingStatus)}
-              disabled={pendingStatus === currentStatus || statusChanging}
+              disabled={pendingStatus === currentStatus || statusChanging || (currentStatus !== "open" && !canReopenJob)}
               className="px-5 py-2.5 rounded-xl bg-[#1F2D2E] text-white text-[13px] font-semibold hover:bg-[#2a3d3e] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               {statusChanging ? "Salvando…" : "Salvar status"}
             </button>
           </div>
-          {isJobFull && (
+          {currentStatus !== "open" && !canReopenJob && (
+            <p className="text-[12px] font-medium mt-3 text-rose-500">
+              {hasPaidBookings
+                ? "Esta vaga já possui reserva paga e não pode ser reaberta."
+                : "Esta vaga já atingiu o número de talentos necessários."}
+            </p>
+          )}
+          {currentStatus === "open" && isJobFull && (
             <p className="text-[12px] font-medium mt-3 text-zinc-500">
               Esta vaga já atingiu o número de talentos necessários.
             </p>

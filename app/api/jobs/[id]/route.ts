@@ -77,6 +77,21 @@ export async function PATCH(
     }
 
     if (update.status === "open") {
+      // Block reopen when a paid contract exists for this job
+      const { count: paidContractCount } = await supabase
+        .from("contracts")
+        .select("id", { count: "exact", head: true })
+        .eq("job_id", id)
+        .eq("status", "paid")
+        .is("deleted_at", null);
+
+      if ((paidContractCount ?? 0) > 0) {
+        return NextResponse.json(
+          { error: "Esta vaga já possui reserva paga e não pode ser reaberta." },
+          { status: 409 },
+        );
+      }
+
       if (hasReachedCapacity) {
         return NextResponse.json({ error: JOB_FULL_MESSAGE }, { status: 409 });
       }

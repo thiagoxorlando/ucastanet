@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
+import { generateReceiptPdf } from "@/lib/generateReceiptPdf";
 
 const TALENT_RATE = 0.85; // 85% of deal value
 
@@ -388,93 +389,24 @@ function maskPixKey(type: string | null, value: string | null): string {
   return value;
 }
 
-function generateReceiptHtml(w: TalentWithdrawal, pix: PixProfileRow | null, talentName: string): string {
-  const dateStr = new Date(w.processed_at ?? w.created_at).toLocaleString("pt-BR", {
-    day: "2-digit", month: "long", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
+async function downloadReceipt(w: TalentWithdrawal, pix: PixProfileRow | null, talentName: string) {
+  await generateReceiptPdf({
+    receiptType: "saque",
+    id: w.id,
+    amount: w.amount,
+    netAmount: w.net_amount,
+    feeAmount: w.fee_amount,
+    status: w.status,
+    createdAt: w.created_at,
+    processedAt: w.processed_at,
+    provider: w.provider,
+    providerStatus: w.provider_status,
+    transferId: w.asaas_transfer_id ?? w.provider_transfer_id ?? null,
+    holderName: pix?.pix_holder_name ?? talentName,
+    pixKeyType: pix?.pix_key_type ?? null,
+    pixKeyValue: pix?.pix_key_value ?? null,
+    adminNote: w.admin_note,
   });
-
-  const pixTypeLabel = pix?.pix_key_type ? (
-    { cpf: "CPF", cnpj: "CNPJ", email: "E-mail", phone: "Telefone", random: "Chave Aleatória" }[pix.pix_key_type] ?? pix.pix_key_type
-  ) : null;
-
-  const transferRef = w.asaas_transfer_id ?? w.provider_transfer_id ?? null;
-  const netDisplay = w.net_amount !== null ? brl(w.net_amount) : brl(w.amount);
-  const feeDisplay = w.fee_amount !== null && w.fee_amount > 0 ? brl(w.fee_amount) : null;
-
-  const statusLabel: Record<string, string> = {
-    paid: "Concluído", cancelled: "Cancelado", rejected: "Cancelado",
-    failed: "Falhou", processing: "Em processamento",
-  };
-
-  const row = (label: string, value: string) =>
-    `<tr><td style="padding:10px 0;color:#6b7280;font-size:13px;border-bottom:1px solid #f3f4f6;width:45%">${label}</td><td style="padding:10px 0;font-size:13px;font-weight:600;color:#111827;border-bottom:1px solid #f3f4f6;text-align:right">${value}</td></tr>`;
-
-  return `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<title>Comprovante de Saque — BrisaHub</title>
-<style>
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:24px;background:#fff;color:#111827}
-  @media print{body{padding:0}.no-print{display:none!important}}
-</style>
-</head>
-<body>
-<div style="max-width:480px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">
-
-  <div style="background:linear-gradient(135deg,#0f766e,#0e7c86);padding:28px 28px 20px;color:#fff">
-    <p style="margin:0 0 4px;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.75">BrisaHub</p>
-    <p style="margin:0;font-size:22px;font-weight:800;letter-spacing:-.3px">Comprovante de Saque</p>
-    <p style="margin:6px 0 0;font-size:13px;opacity:.8">${dateStr}</p>
-  </div>
-
-  <div style="padding:24px 28px">
-    <div style="text-align:center;margin-bottom:20px">
-      <p style="margin:0;font-size:36px;font-weight:800;color:#065f46;letter-spacing:-.5px">${netDisplay}</p>
-      ${feeDisplay ? `<p style="margin:4px 0 0;font-size:12px;color:#6b7280">Taxa: ${feeDisplay} · Bruto: ${brl(w.amount)}</p>` : ""}
-      <span style="display:inline-block;margin-top:8px;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:700;background:${w.status === "paid" ? "#d1fae5" : "#fee2e2"};color:${w.status === "paid" ? "#065f46" : "#991b1b"}">${statusLabel[w.status ?? ""] ?? w.status ?? ""}</span>
-    </div>
-
-    <table style="width:100%;border-collapse:collapse">
-      ${row("Favorecido", pix?.pix_holder_name ?? talentName)}
-      ${pixTypeLabel ? row("Tipo de chave PIX", pixTypeLabel) : ""}
-      ${pix?.pix_key_value ? row("Chave PIX", maskPixKey(pix.pix_key_type, pix.pix_key_value)) : ""}
-      ${row("Provedor", w.provider === "asaas" ? "Asaas PIX" : w.provider ?? "PIX")}
-      ${row("Origem", "BrisaHub")}
-      ${transferRef ? row("ID da transferência", transferRef) : ""}
-      ${row("ID interno", w.id)}
-      ${w.admin_note ? row("Observação", w.admin_note) : ""}
-    </table>
-
-    <div style="margin-top:20px;padding:12px 14px;background:#f9fafb;border-radius:8px;font-size:11px;color:#6b7280;line-height:1.5">
-      Este comprovante é gerado automaticamente pela plataforma BrisaHub. Guarde-o para seus registros.
-    </div>
-
-    <div class="no-print" style="margin-top:20px;text-align:center">
-      <button onclick="window.print()" style="background:#0e7c86;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:13px;font-weight:600;cursor:pointer">
-        Imprimir / Salvar PDF
-      </button>
-    </div>
-  </div>
-</div>
-</body>
-</html>`;
-}
-
-function downloadReceipt(w: TalentWithdrawal, pix: PixProfileRow | null, talentName: string) {
-  const html = generateReceiptHtml(w, pix, talentName);
-  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const win = window.open(url, "_blank");
-  if (win) {
-    win.addEventListener("load", () => {
-      setTimeout(() => {
-        win.print();
-        URL.revokeObjectURL(url);
-      }, 300);
-    });
-  }
 }
 
 export default function TalentFinances() {
@@ -1115,7 +1047,7 @@ export default function TalentFinances() {
 
                           <button
                             type="button"
-                            onClick={() => downloadReceipt(withdrawal, pixProfile, talentName)}
+                            onClick={() => { void downloadReceipt(withdrawal, pixProfile, talentName); }}
                             className="flex items-center gap-2 rounded-xl border border-[#DDE6E6] bg-white px-4 py-2 text-[12px] font-semibold text-[#0E7C86] transition-colors hover:bg-[#F0F9F8] hover:border-[#0E7C86]"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
