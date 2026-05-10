@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { resolveSupportUsers } from "@/lib/resolveSupportUsers";
 
 export async function GET(
   _req: NextRequest,
@@ -20,10 +21,8 @@ export async function GET(
 
   if (!conv) return NextResponse.json({ error: "Conversa não encontrada." }, { status: 404 });
 
-  const [{ data: profile }, { data: talentProfile }, { data: agency }, { data: messages }] = await Promise.all([
-    supabase.from("profiles").select("email, role").eq("id", conv.user_id).single(),
-    supabase.from("talent_profiles").select("full_name").eq("id", conv.user_id).single(),
-    supabase.from("agencies").select("company_name").eq("id", conv.user_id).single(),
+  const [userMap, { data: messages }] = await Promise.all([
+    resolveSupportUsers([conv.user_id]),
     supabase
       .from("support_messages")
       .select("id, sender_id, sender_role, message, created_at")
@@ -31,18 +30,15 @@ export async function GET(
       .order("created_at", { ascending: true }),
   ]);
 
-  const role = profile?.role ?? "user";
-  const userName =
-    role === "talent" ? (talentProfile?.full_name ?? "—") :
-    role === "agency" ? (agency?.company_name     ?? "—") :
-    "—";
+  const u = userMap.get(conv.user_id);
 
   return NextResponse.json({
     conversation: {
       ...conv,
-      userName,
-      userEmail: profile?.email ?? "—",
-      userRole:  role,
+      userName:      u?.name      ?? "Usuário removido",
+      userEmail:     u?.email     ?? "",
+      userRole:      u?.role      ?? "unknown",
+      userRoleLabel: u?.roleLabel ?? "Usuário",
     },
     messages: messages ?? [],
   });

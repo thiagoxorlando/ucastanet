@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { resolveSupportUsers } from "@/lib/resolveSupportUsers";
 
 export async function GET(req: NextRequest) {
   const auth = await requireAdmin();
@@ -23,34 +24,18 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
   const userIds = [...new Set((convs ?? []).map((c) => c.user_id))];
-  const profileMap = new Map<string, { name: string; email: string; role: string }>();
+  const userMap = await resolveSupportUsers(userIds);
 
-  if (userIds.length) {
-    const [{ data: profiles }, { data: talentProfiles }, { data: agencies }] = await Promise.all([
-      supabase.from("profiles").select("id, email, role").in("id", userIds),
-      supabase.from("talent_profiles").select("id, full_name").in("id", userIds),
-      supabase.from("agencies").select("id, company_name").in("id", userIds),
-    ]);
-
-    const talentNameMap = new Map((talentProfiles ?? []).map((t) => [t.id, t.full_name ?? ""]));
-    const agencyNameMap = new Map((agencies ?? []).map((a) => [a.id, a.company_name ?? ""]));
-
-    for (const p of profiles ?? []) {
-      const role = p.role ?? "user";
-      const name =
-        role === "talent" ? (talentNameMap.get(p.id) || "—") :
-        role === "agency" ? (agencyNameMap.get(p.id) || "—") :
-        "—";
-      profileMap.set(p.id, { name, email: p.email ?? "—", role });
-    }
-  }
-
-  let conversations = (convs ?? []).map((c) => ({
-    ...c,
-    userName:  profileMap.get(c.user_id)?.name  ?? "—",
-    userEmail: profileMap.get(c.user_id)?.email ?? "—",
-    userRole:  profileMap.get(c.user_id)?.role  ?? "user",
-  }));
+  let conversations = (convs ?? []).map((c) => {
+    const u = userMap.get(c.user_id);
+    return {
+      ...c,
+      userName:      u?.name      ?? "Usuário removido",
+      userEmail:     u?.email     ?? "",
+      userRole:      u?.role      ?? "unknown",
+      userRoleLabel: u?.roleLabel ?? "Usuário",
+    };
+  });
 
   if (search) {
     conversations = conversations.filter(

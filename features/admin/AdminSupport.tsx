@@ -16,6 +16,7 @@ export type AdminConversation = {
   userName: string;
   userEmail: string;
   userRole: string;
+  userRoleLabel: string;
 };
 
 type Message = {
@@ -240,8 +241,8 @@ export default function AdminSupport({
                 <p className="text-[13px] font-semibold text-zinc-900 truncate">{selectedConv.userName}</p>
                 <p className="text-[11px] text-zinc-400 truncate">{selectedConv.userEmail}</p>
               </div>
-              <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${selectedConv.userRole === "talent" ? "bg-violet-50 text-violet-600" : "bg-teal-50 text-teal-600"}`}>
-                {ROLE_LABEL[selectedConv.userRole] ?? selectedConv.userRole}
+              <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${selectedConv.userRole === "talent" ? "bg-violet-50 text-violet-600" : selectedConv.userRole === "agency" ? "bg-teal-50 text-teal-600" : "bg-zinc-100 text-zinc-500"}`}>
+                {selectedConv.userRoleLabel}
               </span>
             </div>
 
@@ -454,9 +455,12 @@ export default function AdminSupport({
                     </td>
                     <td className="px-4 py-4">
                       <p className="text-[13px] font-medium text-zinc-800 truncate max-w-[160px]">{conv.userName}</p>
+                      {conv.userEmail && (
+                        <p className="text-[11px] text-zinc-400 truncate max-w-[160px] mt-0.5">{conv.userEmail}</p>
+                      )}
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${conv.userRole === "talent" ? "bg-violet-50 text-violet-600" : "bg-teal-50 text-teal-600"}`}>
-                          {ROLE_LABEL[conv.userRole] ?? conv.userRole}
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${conv.userRole === "talent" ? "bg-violet-50 text-violet-600" : conv.userRole === "agency" ? "bg-teal-50 text-teal-600" : "bg-zinc-100 text-zinc-500"}`}>
+                          {conv.userRoleLabel}
                         </span>
                       </div>
                     </td>
