@@ -2,9 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { PLAN_DEFINITIONS } from "@/lib/plans";
+import { buildPlanSettingsFallback, formatPlanCommission, formatPlanPrice } from "@/lib/planSettings.shared";
 
-const PRO_FALLBACK = PLAN_DEFINITIONS.pro;
+const FALLBACKS = buildPlanSettingsFallback();
+const FREE_FALLBACK = FALLBACKS.free;
+const PRO_FALLBACK = FALLBACKS.pro;
 
 type Props = {
   onClose: () => void;
@@ -13,17 +15,22 @@ type Props = {
 
 export default function PaywallModal({ onClose, variant = "hiring" }: Props) {
   const router = useRouter();
-  const [proPrice, setProPrice]           = useState(PRO_FALLBACK.priceLabel);
-  const [proCommission, setProCommission] = useState(PRO_FALLBACK.commissionLabel);
+  const [freeLimit, setFreeLimit] = useState(FREE_FALLBACK.job_limit);
+  const [freeHireLimit, setFreeHireLimit] = useState(FREE_FALLBACK.max_hires_per_job);
+  const [proPrice, setProPrice] = useState(formatPlanPrice(PRO_FALLBACK.price));
+  const [proCommission, setProCommission] = useState(formatPlanCommission(PRO_FALLBACK.commission_percent));
 
   useEffect(() => {
     void fetch("/api/plan-settings").then(async (res) => {
       if (!res.ok) return;
-      const data = await res.json() as Record<string, { price: number; commission_percent: number }>;
+      const data = await res.json() as typeof FALLBACKS;
+      if (data.free) {
+        setFreeLimit(data.free.job_limit);
+        setFreeHireLimit(data.free.max_hires_per_job);
+      }
       if (data.pro) {
-        const { price, commission_percent } = data.pro;
-        setProPrice(price === 0 ? "Gratuito" : `R$ ${price.toLocaleString("pt-BR")}`);
-        setProCommission(`${commission_percent}%`);
+        setProPrice(formatPlanPrice(data.pro.price));
+        setProCommission(formatPlanCommission(data.pro.commission_percent));
       }
     }).catch(() => undefined);
   }, []);
@@ -37,8 +44,10 @@ export default function PaywallModal({ onClose, variant = "hiring" }: Props) {
   }, [onClose]);
 
   const title = variant === "hiring" ? "Limite do plano atual" : "Limite do plano gratuito";
+  const freeJobsCopy = freeLimit === null ? "vagas ativas ilimitadas" : `${freeLimit} vaga${freeLimit === 1 ? " ativa" : "s ativas"}`;
+  const freeHiresCopy = freeHireLimit === null ? "contratacoes ilimitadas por vaga" : `${freeHireLimit} contratacao${freeHireLimit === 1 ? "" : "es"} por vaga`;
   const message = variant === "hiring"
-    ? `O plano gratuito permite ate 1 vaga ativa e 3 contratacoes por vaga. Faca upgrade para o plano Pro e remova os limites.`
+    ? `O plano gratuito permite ate ${freeJobsCopy} e ${freeHiresCopy}. Faca upgrade para o plano Pro e remova os limites.`
     : `Gerencie vagas e contratacoes sem limites com o plano Pro por ${proPrice}/mes.`;
   const features = variant === "hiring"
     ? ["Vagas ilimitadas", "Contratacoes ilimitadas por vaga", `Comissao da plataforma de ${proCommission}`]

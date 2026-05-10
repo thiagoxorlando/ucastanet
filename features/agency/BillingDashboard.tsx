@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PLAN_DEFINITIONS, type Plan } from "@/lib/plans";
+import { buildPlanSettingsFallback, formatPlanCommission, formatPlanPrice, type PublicPlanSetting } from "@/lib/planSettings.shared";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ const PLANS = [
 type PlanKey = Plan;
 type PlanDef = typeof PLANS[number];
 
-type LivePriceMap = Record<string, { price: number; commission_percent: number }>;
+type LivePlanMap = Record<string, PublicPlanSetting>;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -253,9 +254,11 @@ interface ModalProps {
 
 function PlanChangeModal({
   plan,
+  displayName,
+  displayPriceLabel,
   onUnavailable,
   onClose,
-}: Pick<ModalProps, "plan" | "onUnavailable" | "onClose">) {
+}: Pick<ModalProps, "plan" | "onUnavailable" | "onClose"> & { displayName: string; displayPriceLabel: string }) {
   const isToFree = plan.key === "free";
   const [submitting, setSubmitting] = useState(false);
 
@@ -276,10 +279,10 @@ function PlanChangeModal({
           <div>
             <div className={`h-[3px] w-12 rounded-full bg-gradient-to-r ${plan.gradient} mb-3`} />
             <h2 className="text-[17px] font-semibold text-zinc-900">
-              {isToFree ? "Cancelar assinatura" : `Mudar para o plano ${plan.name}`}
+              {isToFree ? "Cancelar assinatura" : `Mudar para o plano ${displayName}`}
             </h2>
             <p className="text-[13px] text-zinc-400 mt-0.5">
-              {"period" in plan && plan.period ? `${plan.priceLabel}${plan.period}` : plan.priceLabel}
+              {"period" in plan && plan.period ? `${displayPriceLabel}${plan.period}` : displayPriceLabel}
             </p>
           </div>
           <button onClick={onClose} className="text-zinc-400 hover:text-zinc-700 transition-colors mt-0.5 cursor-pointer">
@@ -345,28 +348,26 @@ export default function BillingDashboard({
   const [premiumLoading, setPremiumLoading] = useState(false);
   const [receiptCharge, setReceiptCharge] = useState<PlanCharge | null>(null);
 
-  const [livePrices, setLivePrices] = useState<LivePriceMap>({});
+  const [livePlans, setLivePlans] = useState<LivePlanMap>(buildPlanSettingsFallback);
   useEffect(() => {
     void fetch("/api/plan-settings").then(async (res) => {
       if (!res.ok) return;
-      const data = await res.json() as LivePriceMap;
-      setLivePrices(data);
+      const data = await res.json() as LivePlanMap;
+      setLivePlans((prev) => ({ ...prev, ...data }));
     }).catch(() => undefined);
   }, []);
 
+  function effectiveSetting(p: PlanDef) {
+    return livePlans[p.key] ?? buildPlanSettingsFallback()[p.key];
+  }
   function effectivePrice(p: PlanDef) {
-    return livePrices[p.key]?.price ?? p.price;
+    return effectiveSetting(p).price;
   }
   function effectivePriceLabel(p: PlanDef) {
-    const price = livePrices[p.key]?.price;
-    if (price === undefined) return p.priceLabel;
-    if (price === 0) return "R$ 0";
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price);
+    return formatPlanPrice(effectiveSetting(p).price);
   }
   function effectiveCommission(p: PlanDef) {
-    const pct = livePrices[p.key]?.commission_percent;
-    if (pct === undefined) return p.commission;
-    return `${pct}% de comissao`;
+    return `${formatPlanCommission(effectiveSetting(p).commission_percent)} de comissao`;
   }
 
   const currentPlanDef = getPlanDef(activePlan);
@@ -490,6 +491,8 @@ export default function BillingDashboard({
       {changingTo && (
         <PlanChangeModal
           plan={changingTo}
+          displayName={effectiveSetting(changingTo).name}
+          displayPriceLabel={effectivePriceLabel(changingTo)}
           onUnavailable={(message) => showToast(message, false)}
           onClose={() => setChangingTo(null)}
         />
@@ -509,7 +512,7 @@ export default function BillingDashboard({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1.5">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Plano atual</p>
-            <p className="text-[1.5rem] font-bold tracking-tight text-zinc-900">{currentPlanDef.name}</p>
+            <p className="text-[1.5rem] font-bold tracking-tight text-zinc-900">{effectiveSetting(currentPlanDef).name}</p>
             <p className="text-[13px] text-zinc-500">
               Status: <strong className="text-zinc-800">{planStatusLabel(activePlanStatus ?? "inactive")}</strong>
               {expiresAt && activePlan !== "free" ? ` · renova em ${fmtDate(expiresAt)}` : ""}
@@ -571,7 +574,7 @@ export default function BillingDashboard({
                 <div className={`h-[3px] bg-gradient-to-r ${p.gradient}`} />
                 <div className="p-5 flex flex-col flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[15px] font-semibold text-zinc-900">{p.name}</span>
+                    <span className="text-[15px] font-semibold text-zinc-900">{effectiveSetting(p).name}</span>
                     {p.badge && (
                       <span className="text-[9px] font-bold px-2 py-0.5 rounded-full tracking-wider bg-indigo-600 text-white">
                         {p.badge}
@@ -612,10 +615,10 @@ export default function BillingDashboard({
                   {!isCurrent && !isPending && (
                     <button
                       onClick={() => handlePlanClick(p)}
-                      disabled={p.key === "premium" || (p.key === "pro" && proLoading)}
+                      disabled={!effectiveSetting(p).is_available || (p.key === "pro" && proLoading)}
                       className={[
                         "w-full mt-auto text-white text-[13px] font-semibold py-2.5 rounded-xl transition-colors",
-                        p.key === "premium"
+                        !effectiveSetting(p).is_available
                           ? "bg-zinc-200 text-zinc-400 cursor-not-allowed"
                           : (p.key === "pro" && proLoading)
                           ? "bg-zinc-300 cursor-not-allowed"
@@ -624,15 +627,15 @@ export default function BillingDashboard({
                           : "bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] cursor-pointer",
                       ].join(" ")}
                     >
-                      {p.key === "premium"
-                        ? "Em breve"
+                      {!effectiveSetting(p).is_available
+                        ? "Indisponivel"
                         : (p.key === "pro" && proLoading)
                         ? "Aguarde..."
                         : activePlan === "free"
-                          ? `Assinar ${p.name}`
+                          ? `Assinar ${effectiveSetting(p).name}`
                           : isDowngrade
-                            ? `Mudar para ${p.name}`
-                            : `Fazer upgrade para ${p.name}`}
+                            ? `Mudar para ${effectiveSetting(p).name}`
+                            : `Fazer upgrade para ${effectiveSetting(p).name}`}
                     </button>
                   )}
                   {isPending && !isCurrent && (
@@ -684,9 +687,9 @@ export default function BillingDashboard({
           {(expiresAt || nextChargeDate) && activePlan !== "free" ? (
             <div className="space-y-1.5">
               <p className="text-[1.5rem] font-bold tracking-tight text-zinc-900">
-                {activePlan === "premium" ? currentPlanDef.priceLabel : brl(currentPlanDef.price)}
+                {effectivePriceLabel(currentPlanDef)}
               </p>
-              <p className="text-[13px] text-zinc-600">Renovacao do plano {currentPlanDef.name}</p>
+              <p className="text-[13px] text-zinc-600">Renovacao do plano {effectiveSetting(currentPlanDef).name}</p>
               <p className="text-[12px] text-zinc-400">{fmtDate((expiresAt ?? nextChargeDate)!)}</p>
               <span className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
                 {expiresAt ? "Agendada" : "Prevista"}

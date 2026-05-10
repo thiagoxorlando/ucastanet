@@ -4,38 +4,10 @@
  * Import only in server components and route handlers.
  */
 import { createServerClient } from "@/lib/supabase";
-import { PLAN_DEFINITIONS, type Plan } from "@/lib/plans";
+import { PLAN_KEYS, type Plan } from "@/lib/plans";
+import { buildPlanSettingsFallback, type PublicPlanSetting } from "@/lib/planSettings.shared";
 
-export type LivePlanSetting = {
-  plan_key: Plan;
-  name: string;
-  price: number;
-  commission_percent: number;
-  commission_rate: number;
-  is_available: boolean;
-  job_limit: number | null;
-  max_hires_per_job: number | null;
-};
-
-const PLAN_KEYS: Plan[] = ["free", "pro", "premium"];
-
-function buildFallback(): Record<Plan, LivePlanSetting> {
-  const result = {} as Record<Plan, LivePlanSetting>;
-  for (const plan of PLAN_KEYS) {
-    const def = PLAN_DEFINITIONS[plan];
-    result[plan] = {
-      plan_key: plan,
-      name: def.label,
-      price: def.price,
-      commission_percent: def.commissionRate * 100,
-      commission_rate: def.commissionRate,
-      is_available: def.available,
-      job_limit: def.maxActiveJobs,
-      max_hires_per_job: def.maxHiresPerJob,
-    };
-  }
-  return result;
-}
+export type LivePlanSetting = PublicPlanSetting;
 
 export async function getLivePlanSettings(): Promise<Record<Plan, LivePlanSetting>> {
   const supabase = createServerClient({ useServiceRole: true });
@@ -47,10 +19,10 @@ export async function getLivePlanSettings(): Promise<Record<Plan, LivePlanSettin
 
   if (error) {
     console.error("[planSettings.server] Failed to load plan_settings, using hardcoded fallback:", error);
-    return buildFallback();
+    return buildPlanSettingsFallback();
   }
 
-  const result = buildFallback();
+  const result = buildPlanSettingsFallback();
 
   for (const row of data ?? []) {
     const key = row.plan_key as Plan;

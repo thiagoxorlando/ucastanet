@@ -2,6 +2,7 @@ import { createServerClient } from "@/lib/supabase";
 import { NextResponse } from "next/server";
 import { resolvePlanInfo, type Plan } from "@/lib/plans";
 import { getLivePlanSetting } from "@/lib/planSettings.server";
+import { formatPlanCommission, formatTalentShareLabel } from "@/lib/planSettings.shared";
 
 /**
  * Returns null if the agency has an active paid plan (pro or premium).
@@ -193,17 +194,17 @@ export async function getPlanInfo(userId: string) {
 
   return {
     plan:               planInfo.plan,
-    planLabel:          planInfo.planLabel,
+    planLabel:          liveSetting.name,
     planStatus:         plan === "free" ? "inactive" : "active",
     planExpiresAt:      null,
     walletBalance:      Number(profile?.wallet_balance ?? 0),
     isActive:           planInfo.isPaid,
     isUnlimited:        liveSetting.job_limit === null,
     maxActiveJobs:      liveSetting.job_limit,
-    maxHiresPerJob:     planInfo.maxHiresPerJob,
+    maxHiresPerJob:     liveSetting.max_hires_per_job,
     commissionRate:     liveSetting.commission_rate,
-    commissionLabel:    `${liveSetting.commission_percent.toFixed(0)}%`,
-    talentShareLabel:   planInfo.talentShareLabel,
+    commissionLabel:    formatPlanCommission(liveSetting.commission_percent),
+    talentShareLabel:   formatTalentShareLabel(liveSetting.commission_percent),
     privateEnvironment: planInfo.privateEnvironment,
   };
 }

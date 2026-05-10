@@ -6,10 +6,11 @@ import { supabase } from "@/lib/supabase";
 import PhoneInput from "@/components/ui/PhoneInput";
 import { TALENT_CATEGORY_LABELS, talentCategoryLabel } from "@/lib/talentCategories";
 import { formatCpf, isValidCpf, digitsOnly, formatCpfCnpj, isValidCpfCnpj, normalizeCpfCnpj } from "@/lib/cpf";
-import { PLAN_DEFINITIONS } from "@/lib/plans";
+import { buildPlanSettingsFallback, formatPlanPrice, type PublicPlanSetting } from "@/lib/planSettings.shared";
 
 type Role = "agency" | "talent" | null;
 type AgencyPlan = "free" | "pro" | "premium";
+type LivePlans = Record<AgencyPlan, PublicPlanSetting>;
 
 type TalentForm = {
   fullName: string;
@@ -618,7 +619,16 @@ function AgencySetup({
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [manualCheckMsg, setManualCheckMsg] = useState<string | null>(null);
+  const [livePlans, setLivePlans] = useState<LivePlans>(buildPlanSettingsFallback);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    void fetch("/api/plan-settings").then(async (res) => {
+      if (!res.ok) return;
+      const data = await res.json() as LivePlans;
+      setLivePlans((prev) => ({ ...prev, ...data }));
+    }).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (!waitingForPayment) return;
@@ -935,46 +945,47 @@ function AgencySetup({
             ].join(" ")}
           >
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-[14px] font-semibold text-zinc-900">{PLAN_DEFINITIONS.free.label}</span>
-              <span className="text-[13px] font-bold text-zinc-900">R$ 0</span>
+              <span className="text-[14px] font-semibold text-zinc-900">{livePlans.free.name}</span>
+              <span className="text-[13px] font-bold text-zinc-900">{formatPlanPrice(livePlans.free.price)}</span>
             </div>
             <ul className="space-y-1">
-              {PLAN_DEFINITIONS.free.features.map((feature) => (
-                <li key={feature} className="text-[12px] text-zinc-500">· {feature}</li>
-              ))}
+              <li className="text-[12px] text-zinc-500">· {livePlans.free.job_limit === null ? "Vagas ativas ilimitadas" : `${livePlans.free.job_limit} vaga${livePlans.free.job_limit === 1 ? " ativa" : "s ativas"}`}</li>
+              <li className="text-[12px] text-zinc-500">· {livePlans.free.max_hires_per_job === null ? "Contratações ilimitadas por vaga" : `Até ${livePlans.free.max_hires_per_job} contratações por vaga`}</li>
+              <li className="text-[12px] text-zinc-500">· Comissão da plataforma de {livePlans.free.commission_percent}%</li>
             </ul>
           </button>
 
           <button
             type="button"
-            onClick={() => set("plan", "pro")}
+            onClick={() => { if (livePlans.pro.is_available) set("plan", "pro"); }}
+            disabled={!livePlans.pro.is_available}
             className={[
-              "rounded-2xl border p-4 text-left transition-all",
+              "rounded-2xl border p-4 text-left transition-all disabled:cursor-not-allowed disabled:opacity-60",
               form.plan === "pro" ? "border-indigo-600 bg-indigo-50 shadow-sm" : "border-zinc-200 hover:border-indigo-300",
             ].join(" ")}
           >
             <div className="mb-1 flex items-center gap-2">
-              <span className="text-[14px] font-semibold text-zinc-900">{PLAN_DEFINITIONS.pro.label}</span>
-              <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[9px] font-bold tracking-wider text-white">POPULAR</span>
+              <span className="text-[14px] font-semibold text-zinc-900">{livePlans.pro.name}</span>
+              <span className="rounded-full bg-indigo-600 px-2 py-0.5 text-[9px] font-bold tracking-wider text-white">{livePlans.pro.is_available ? "POPULAR" : "INDISPONÍVEL"}</span>
             </div>
-            <p className="mb-2 text-[13px] font-bold text-indigo-700">R$ {PLAN_DEFINITIONS.pro.price}/mês</p>
+            <p className="mb-2 text-[13px] font-bold text-indigo-700">{formatPlanPrice(livePlans.pro.price)}/mês</p>
             <ul className="space-y-1">
-              {PLAN_DEFINITIONS.pro.features.map((feature) => (
-                <li key={feature} className="text-[12px] text-zinc-500">· {feature}</li>
-              ))}
+              <li className="text-[12px] text-zinc-500">· Vagas públicas ilimitadas</li>
+              <li className="text-[12px] text-zinc-500">· Contratações ilimitadas</li>
+              <li className="text-[12px] text-zinc-500">· Comissão da plataforma de {livePlans.pro.commission_percent}%</li>
             </ul>
           </button>
 
           <div className="cursor-not-allowed rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-left opacity-60">
             <div className="mb-1 flex items-center gap-2">
-              <span className="text-[14px] font-semibold text-zinc-500">{PLAN_DEFINITIONS.premium.label}</span>
+              <span className="text-[14px] font-semibold text-zinc-500">{livePlans.premium.name}</span>
               <span className="rounded-full bg-zinc-400 px-2 py-0.5 text-[9px] font-bold tracking-wider text-white">EM BREVE</span>
             </div>
-            <p className="mb-2 text-[13px] text-zinc-400">{PLAN_DEFINITIONS.premium.priceLabel}</p>
+            <p className="mb-2 text-[13px] text-zinc-400">{formatPlanPrice(livePlans.premium.price)}</p>
             <ul className="space-y-1">
-              {PLAN_DEFINITIONS.premium.features.map((feature) => (
-                <li key={feature} className="text-[12px] text-zinc-400">· {feature}</li>
-              ))}
+              <li className="text-[12px] text-zinc-400">· Tudo do Pro</li>
+              <li className="text-[12px] text-zinc-400">· Vagas fechadas</li>
+              <li className="text-[12px] text-zinc-400">· Comissão da plataforma de {livePlans.premium.commission_percent}%</li>
             </ul>
           </div>
         </div>

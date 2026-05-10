@@ -43,6 +43,7 @@ export type PlanSetting = {
   commission_percent: number;
   is_available: boolean;
   job_limit: number | null;
+  max_hires_per_job: number | null;
 };
 
 export type PlanSettingHistoryEntry = {
@@ -236,7 +237,15 @@ function PlanSettingsSection({
   const [settings, setSettings] = useState<PlanSetting[]>(
     PLAN_KEY_ORDER.map((key) => {
       const found = initialSettings.find((s) => s.plan_key === key);
-      return found ?? { plan_key: key, name: key, price: 0, commission_percent: 0, is_available: true, job_limit: null };
+      return found ?? {
+        plan_key: key,
+        name: key,
+        price: 0,
+        commission_percent: 0,
+        is_available: true,
+        job_limit: null,
+        max_hires_per_job: null,
+      };
     }),
   );
   const [saving, setSaving] = useState(false);
@@ -327,7 +336,7 @@ function PlanSettingsSection({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
                 {/* Price — fixed R$ prefix with flex, no absolute overlap */}
                 <div>
                   <label className="block text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1.5">
@@ -381,6 +390,21 @@ function PlanSettingsSection({
                     placeholder="Ilimitado"
                     value={setting.job_limit === null ? "" : setting.job_limit}
                     onChange={(e) => updateSetting(index, "job_limit", e.target.value === "" ? null : Number(e.target.value))}
+                    className="w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-[13px] text-[#1F2D2E] focus:outline-none focus:border-[#0E7C86] transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1.5">
+                    Max. contratacoes
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="Ilimitado"
+                    value={setting.max_hires_per_job === null ? "" : setting.max_hires_per_job}
+                    onChange={(e) => updateSetting(index, "max_hires_per_job", e.target.value === "" ? null : Number(e.target.value))}
                     className="w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-[13px] text-[#1F2D2E] focus:outline-none focus:border-[#0E7C86] transition-colors"
                   />
                 </div>

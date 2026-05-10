@@ -9,9 +9,9 @@ import PhoneInput from "@/components/ui/PhoneInput";
 import { supabase } from "@/lib/supabase";
 import { TALENT_CATEGORY_LABELS } from "@/lib/talentCategories";
 import { formatCpf, formatCpfCnpj, isValidCpf, isValidCpfCnpj, normalizeCpfCnpj, digitsOnly } from "@/lib/cpf";
-import { PLAN_DEFINITIONS } from "@/lib/plans";
+import { buildPlanSettingsFallback, formatPlanPrice, type PublicPlanSetting } from "@/lib/planSettings.shared";
 
-type LivePrices = { free: { price: number; commission_percent: number }; pro: { price: number; commission_percent: number }; premium: { price: number; commission_percent: number } };
+type LivePlans = Record<Plan, PublicPlanSetting>;
 
 type Role = "agency" | "talent";
 type Plan = "free" | "pro" | "premium";
@@ -280,25 +280,17 @@ function SignupPageContent() {
   const [manualCheckMsg, setManualCheckMsg] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const [livePrices, setLivePrices] = useState<LivePrices>({
-    free:    { price: PLAN_DEFINITIONS.free.price,    commission_percent: PLAN_DEFINITIONS.free.commissionRate * 100 },
-    pro:     { price: PLAN_DEFINITIONS.pro.price,     commission_percent: PLAN_DEFINITIONS.pro.commissionRate * 100 },
-    premium: { price: PLAN_DEFINITIONS.premium.price, commission_percent: PLAN_DEFINITIONS.premium.commissionRate * 100 },
-  });
+  const [livePlans, setLivePlans] = useState<LivePlans>(buildPlanSettingsFallback);
   useEffect(() => {
     void fetch("/api/plan-settings").then(async (res) => {
       if (!res.ok) return;
-      const data = await res.json() as Record<string, { price: number; commission_percent: number }>;
-      setLivePrices((prev) => ({
-        free:    data.free    ? { price: data.free.price,    commission_percent: data.free.commission_percent }    : prev.free,
-        pro:     data.pro     ? { price: data.pro.price,     commission_percent: data.pro.commission_percent }     : prev.pro,
-        premium: data.premium ? { price: data.premium.price, commission_percent: data.premium.commission_percent } : prev.premium,
-      }));
+      const data = await res.json() as LivePlans;
+      setLivePlans((prev) => ({ ...prev, ...data }));
     }).catch(() => undefined);
   }, []);
 
   const roleCopy = ROLE_COPY[account.role];
-  const selectedPlan = useMemo(() => PLAN_DEFINITIONS[agency.plan], [agency.plan]);
+  const selectedPlan = useMemo(() => livePlans[agency.plan] ?? buildPlanSettingsFallback()[agency.plan], [agency.plan, livePlans]);
 
   function setAccountField<K extends keyof AccountForm>(key: K, value: AccountForm[K]) {
     setAccount((current) => ({ ...current, [key]: value }));
@@ -357,7 +349,7 @@ function SignupPageContent() {
     if (!agency.city.trim()) nextErrors.city = "Informe a cidade.";
     if (!agency.state.trim()) nextErrors.state = "Selecione o estado.";
     if (agency.description.length > 500) nextErrors.description = "A descrição deve ter no máximo 500 caracteres.";
-    if (agency.plan === "premium") nextErrors.plan = "O plano Premium ainda não está disponível.";
+    if (!livePlans[agency.plan]?.is_available) nextErrors.plan = `O plano ${selectedPlan.name} não está disponível no momento.`;
     if (!account.termsAccepted) nextErrors.termsAccepted = "Você precisa aceitar os Termos de Uso para continuar.";
     return nextErrors;
   }
@@ -904,7 +896,7 @@ function SignupPageContent() {
                               {/* Price block */}
                               <div className="flex-shrink-0 w-24 text-left">
                                 <p className="text-[18px] font-black tracking-tight text-zinc-900 leading-none">
-                                  {livePrices.free.price === 0 ? "R$0" : `R$${livePrices.free.price}`}
+                                  {formatPlanPrice(livePlans.free.price)}
                                 </p>
                                 <p className="text-[11px] text-zinc-400 mt-0.5">por mês</p>
                               </div>
@@ -915,10 +907,14 @@ function SignupPageContent() {
                               {/* Info */}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <p className="text-[14px] font-bold text-zinc-800">Free</p>
-                                  <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">{livePrices.free.commission_percent}% comissão</span>
+                                  <p className="text-[14px] font-bold text-zinc-800">{livePlans.free.name}</p>
+                                  <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">{livePlans.free.commission_percent}% comissão</span>
                                 </div>
-                                <p className="text-[12px] text-zinc-500 leading-relaxed">1 vaga ativa · até 3 contratações por vaga</p>
+                                <p className="text-[12px] text-zinc-500 leading-relaxed">
+                                  {livePlans.free.job_limit === null ? "Vagas ativas ilimitadas" : `${livePlans.free.job_limit} vaga${livePlans.free.job_limit === 1 ? " ativa" : "s ativas"}`}
+                                  {" · "}
+                                  {livePlans.free.max_hires_per_job === null ? "contratações ilimitadas por vaga" : `até ${livePlans.free.max_hires_per_job} contratações por vaga`}
+                                </p>
                               </div>
                             </button>
                           );
@@ -927,11 +923,13 @@ function SignupPageContent() {
                         {/* ── Pro (featured) ── */}
                         {(() => {
                           const active = agency.plan === "pro";
+                          const proAvailable = livePlans.pro.is_available;
                           return (
                             <button
                               type="button"
-                              onClick={() => setAgencyField("plan", "pro")}
-                              className="w-full flex items-center gap-4 rounded-2xl px-5 py-4 text-left transition-all duration-200 relative overflow-hidden shadow-[0_4px_20px_rgba(26,188,156,0.2)] hover:shadow-[0_8px_28px_rgba(26,188,156,0.3)]"
+                              onClick={() => { if (proAvailable) setAgencyField("plan", "pro"); }}
+                              disabled={!proAvailable}
+                              className="w-full flex items-center gap-4 rounded-2xl px-5 py-4 text-left transition-all duration-200 relative overflow-hidden shadow-[0_4px_20px_rgba(26,188,156,0.2)] hover:shadow-[0_8px_28px_rgba(26,188,156,0.3)] disabled:cursor-not-allowed disabled:opacity-60"
                               style={{ background: "linear-gradient(135deg, #0C9E87 0%, #1ABC9C 50%, #22BDD0 100%)" }}
                             >
                               <div className="absolute inset-0 opacity-[0.05]" style={{backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)", backgroundSize: "18px 18px"}} />
@@ -943,7 +941,7 @@ function SignupPageContent() {
 
                                 {/* Price block */}
                                 <div className="flex-shrink-0 w-24 text-left">
-                                  <p className="text-[18px] font-black tracking-tight text-white leading-none">R${livePrices.pro.price}</p>
+                                  <p className="text-[18px] font-black tracking-tight text-white leading-none">{formatPlanPrice(livePlans.pro.price)}</p>
                                   <p className="text-[11px] text-white/60 mt-0.5">por mês</p>
                                 </div>
 
@@ -953,9 +951,9 @@ function SignupPageContent() {
                                 {/* Info */}
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1">
-                                    <p className="text-[14px] font-bold text-white">Pro</p>
-                                    <span className="text-[10px] font-black text-[#0C9E87] bg-white px-2 py-0.5 rounded-full tracking-wide">POPULAR</span>
-                                    <span className="text-[10px] font-semibold text-white/70 bg-white/15 px-2 py-0.5 rounded-full">{livePrices.pro.commission_percent}% comissão</span>
+                                    <p className="text-[14px] font-bold text-white">{livePlans.pro.name}</p>
+                                    <span className="text-[10px] font-black text-[#0C9E87] bg-white px-2 py-0.5 rounded-full tracking-wide">{livePlans.pro.is_available ? "POPULAR" : "INDISPONÍVEL"}</span>
+                                    <span className="text-[10px] font-semibold text-white/70 bg-white/15 px-2 py-0.5 rounded-full">{livePlans.pro.commission_percent}% comissão</span>
                                   </div>
                                   <p className="text-[12px] text-white/80 leading-relaxed">Vagas e contratações ilimitadas · marketplace completo</p>
                                 </div>
@@ -981,9 +979,9 @@ function SignupPageContent() {
                           {/* Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <p className="text-[14px] font-bold text-zinc-500">Premium</p>
+                              <p className="text-[14px] font-bold text-zinc-500">{livePlans.premium.name}</p>
                               <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-200 px-2 py-0.5 rounded-full">Em breve</span>
-                              <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-200 px-2 py-0.5 rounded-full">5% comissão</span>
+                              <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-200 px-2 py-0.5 rounded-full">{livePlans.premium.commission_percent}% comissão</span>
                             </div>
                             <p className="text-[12px] text-zinc-400 leading-relaxed">Ambiente privado · vagas fechadas · equipe interna</p>
                           </div>
@@ -992,7 +990,7 @@ function SignupPageContent() {
                       </div>
                       {errors.plan ? <FieldError error={errors.plan} /> : null}
                       <div className="mt-4 rounded-2xl border border-[#DDE6E6] bg-[#F7FBFB] px-4 py-3">
-                        <p className="text-[12px] font-semibold text-[#1F2D2E]">Plano escolhido: {selectedPlan.label}</p>
+                        <p className="text-[12px] font-semibold text-[#1F2D2E]">Plano escolhido: {selectedPlan.name}</p>
                         <p className="mt-1 text-[12px] leading-5 text-[#647B7B]">
                           {agency.plan === "pro"
                             ? "Ao concluir o cadastro, o pagamento do Pro abre em nova aba e a BrisaHub aguarda a confirmação antes do onboarding."

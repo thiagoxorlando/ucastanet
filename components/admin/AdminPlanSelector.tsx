@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { PLAN_DEFINITIONS } from "@/lib/plans";
+import { useEffect, useState } from "react";
+import { buildPlanSettingsFallback, formatPlanPrice, type PublicPlanSetting } from "@/lib/planSettings.shared";
 
 const PLANS = [
-  { key: "free",    label: PLAN_DEFINITIONS.free.label,    price: PLAN_DEFINITIONS.free.priceLabel,    color: "bg-zinc-100 text-zinc-700 border-zinc-200" },
-  { key: "pro",     label: PLAN_DEFINITIONS.pro.label,     price: PLAN_DEFINITIONS.pro.priceLabel,     color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-  { key: "premium", label: PLAN_DEFINITIONS.premium.label, price: PLAN_DEFINITIONS.premium.priceLabel, color: "bg-amber-50 text-amber-700 border-amber-200" },
+  { key: "free", color: "bg-zinc-100 text-zinc-700 border-zinc-200" },
+  { key: "pro", color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+  { key: "premium", color: "bg-amber-50 text-amber-700 border-amber-200" },
 ] as const;
 
 const ROLES = [
@@ -29,6 +29,15 @@ export default function AdminPlanSelector({ userId, currentPlan, currentRole }: 
   const [activeRole, setActiveRole] = useState<Role>((currentRole ?? "talent") as Role);
   const [loading, setLoading]       = useState(false);
   const [toast, setToast]           = useState<{ msg: string; ok: boolean } | null>(null);
+  const [planSettings, setPlanSettings] = useState<Record<Plan, PublicPlanSetting>>(buildPlanSettingsFallback);
+
+  useEffect(() => {
+    void fetch("/api/plan-settings").then(async (res) => {
+      if (!res.ok) return;
+      const data = await res.json() as Record<Plan, PublicPlanSetting>;
+      setPlanSettings((prev) => ({ ...prev, ...data }));
+    }).catch(() => undefined);
+  }, []);
 
   async function patch(body: { plan?: Plan; role?: Role }) {
     if (loading) return;
@@ -100,6 +109,7 @@ export default function AdminPlanSelector({ userId, currentPlan, currentRole }: 
             <div className="flex gap-1.5">
               {PLANS.map((p) => {
                 const isActive = activePlan === p.key;
+                const setting = planSettings[p.key] ?? buildPlanSettingsFallback()[p.key];
                 return (
                   <button
                     key={p.key}
@@ -112,8 +122,8 @@ export default function AdminPlanSelector({ userId, currentPlan, currentRole }: 
                         : "bg-zinc-50 text-zinc-400 border-zinc-100 hover:border-zinc-200 hover:text-zinc-600",
                     ].join(" ")}
                   >
-                    <span className="block">{p.label}</span>
-                    <span className={`block text-[10px] font-normal mt-0.5 ${isActive ? "opacity-60" : "opacity-40"}`}>{p.price}</span>
+                    <span className="block">{setting.name}</span>
+                    <span className={`block text-[10px] font-normal mt-0.5 ${isActive ? "opacity-60" : "opacity-40"}`}>{formatPlanPrice(setting.price)}</span>
                   </button>
                 );
               })}

@@ -3,6 +3,7 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import { resolvePlanInfo, type Plan } from "@/lib/plans";
 import { getLivePlanSetting } from "@/lib/planSettings.server";
+import { formatPlanCommission, formatTalentShareLabel } from "@/lib/planSettings.shared";
 
 export async function GET() {
   const session = await createSessionClient();
@@ -34,7 +35,7 @@ export async function GET() {
 
   return NextResponse.json({
     plan,
-    plan_label:          planInfo.planLabel,
+    plan_label:          liveSetting.name,
     plan_status:         planStatus,
     plan_expires_at:     null,
     is_pro:              planInfo.isPaid,
@@ -42,10 +43,10 @@ export async function GET() {
     is_active:           true,
     is_unlimited:        liveSetting.job_limit === null,
     max_active_jobs:     liveSetting.job_limit,
-    max_hires_per_job:   liveSetting.max_hires_per_job ?? planInfo.maxHiresPerJob,
+    max_hires_per_job:   liveSetting.max_hires_per_job,
     commission_rate:     liveSetting.commission_rate,
-    commission_label:    `${liveSetting.commission_percent.toFixed(0)}%`,
-    talent_share_label:  planInfo.talentShareLabel,
+    commission_label:    formatPlanCommission(liveSetting.commission_percent),
+    talent_share_label:  formatTalentShareLabel(liveSetting.commission_percent),
     private_environment: planInfo.privateEnvironment,
   });
 }

@@ -46,6 +46,7 @@ type PlanSettingRow = {
   commission_percent: number;
   is_available: boolean;
   job_limit: number | null;
+  max_hires_per_job: number | null;
 };
 
 type PlanHistoryRow = {
@@ -118,7 +119,7 @@ export default async function AdminPlansPage() {
     Promise.resolve(
       supabase
         .from("plan_settings")
-        .select("plan_key, name, price, commission_percent, is_available, job_limit")
+        .select("plan_key, name, price, commission_percent, is_available, job_limit, max_hires_per_job")
         .order("plan_key"),
     )
       .then((r) => ({ data: (r.data ?? []) as PlanSettingRow[] }))
@@ -227,6 +228,7 @@ export default async function AdminPlansPage() {
     commission_percent: Number(row.commission_percent),
     is_available: row.is_available,
     job_limit: row.job_limit ?? null,
+    max_hires_per_job: row.max_hires_per_job ?? null,
   }));
 
   const planHistory: PlanSettingHistoryEntry[] = planHistoryResult.data.map((row) => ({

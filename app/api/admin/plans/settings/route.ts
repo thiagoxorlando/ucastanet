@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { createServerClient } from "@/lib/supabase";
 import { updateSubscription } from "@/lib/asaas";
 import { notify } from "@/lib/notify";
+import { logAdminAction } from "@/lib/auditLog";
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -11,7 +12,7 @@ export async function GET() {
   const supabase = createServerClient({ useServiceRole: true });
   const { data, error } = await supabase
     .from("plan_settings")
-    .select("plan_key, name, price, commission_percent, is_available, job_limit")
+    .select("plan_key, name, price, commission_percent, is_available, job_limit, max_hires_per_job")
     .order("plan_key");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -42,7 +43,7 @@ export async function PATCH(req: NextRequest) {
   // Fetch all current settings before making any changes
   const { data: currentRows } = await supabase
     .from("plan_settings")
-    .select("plan_key, name, price, commission_percent, is_available, job_limit");
+    .select("plan_key, name, price, commission_percent, is_available, job_limit, max_hires_per_job");
 
   const currentMap = new Map(
     (currentRows ?? []).map((row) => [
@@ -52,6 +53,7 @@ export async function PATCH(req: NextRequest) {
         commission_percent: Number(row.commission_percent),
         is_available: Boolean(row.is_available),
         job_limit: (row.job_limit as number | null) ?? null,
+        max_hires_per_job: (row.max_hires_per_job as number | null) ?? null,
         name: String(row.name ?? row.plan_key),
       },
     ]),
@@ -77,6 +79,17 @@ export async function PATCH(req: NextRequest) {
       jobLimitRaw === null || jobLimitRaw === undefined || jobLimitRaw === ""
         ? null
         : Number(jobLimitRaw);
+    const maxHiresRaw = setting.max_hires_per_job;
+    const maxHiresPerJob =
+      maxHiresRaw === null || maxHiresRaw === undefined || maxHiresRaw === ""
+        ? null
+        : Number(maxHiresRaw);
+    if (jobLimit !== null && (!Number.isFinite(jobLimit) || jobLimit < 1)) {
+      return NextResponse.json({ error: "job_limit must be null or at least 1." }, { status: 400 });
+    }
+    if (maxHiresPerJob !== null && (!Number.isFinite(maxHiresPerJob) || maxHiresPerJob < 1)) {
+      return NextResponse.json({ error: "max_hires_per_job must be null or at least 1." }, { status: 400 });
+    }
 
     const current = currentMap.get(planKey);
     if (!current) {
@@ -86,11 +99,13 @@ export async function PATCH(req: NextRequest) {
     const newIsAvailable = Boolean(setting.is_available);
     const newName = String(setting.name ?? planKey);
 
+    const nameChanged = newName !== current.name;
     const priceChanged = price !== current.price;
     const commissionChanged = commission !== current.commission_percent;
     const availabilityChanged = newIsAvailable !== current.is_available;
     const jobLimitChanged = jobLimit !== current.job_limit;
-    const anythingChanged = priceChanged || commissionChanged || availabilityChanged || jobLimitChanged;
+    const maxHiresChanged = maxHiresPerJob !== current.max_hires_per_job;
+    const anythingChanged = nameChanged || priceChanged || commissionChanged || availabilityChanged || jobLimitChanged || maxHiresChanged;
 
     // 1. Update the plan_settings row
     const { error: updateError } = await supabase
@@ -101,11 +116,29 @@ export async function PATCH(req: NextRequest) {
         commission_percent: commission,
         is_available: newIsAvailable,
         job_limit: jobLimit,
+        max_hires_per_job: maxHiresPerJob,
         updated_at: new Date().toISOString(),
       } as Record<string, unknown>)
       .eq("plan_key", planKey);
 
     if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
+
+    await logAdminAction({
+      adminId: auth.userId,
+      action: "plan_settings_changed",
+      entityType: "plan_settings",
+      entityId: planKey,
+      before: current,
+      after: {
+        ...current,
+        name: newName,
+        price,
+        commission_percent: commission,
+        is_available: newIsAvailable,
+        job_limit: jobLimit,
+        max_hires_per_job: maxHiresPerJob,
+      },
+    });
 
     // 2. Insert audit record
     if (anythingChanged) {
