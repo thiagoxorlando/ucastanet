@@ -42,7 +42,7 @@ const PLANS = [
     badge: null,
     gradient: "from-zinc-300 to-zinc-400",
     headline: "Versao de teste",
-    commission: "20% de comissao",
+    commission: `${PLAN_DEFINITIONS.free.commissionLabel} de comissao`,
     features: [
       "1 vaga ativa",
       "Ate 3 contratacoes por vaga",
@@ -58,7 +58,7 @@ const PLANS = [
     badge: "POPULAR" as const,
     gradient: "from-indigo-500 to-violet-600",
     headline: "Sistema completo de contratacao",
-    commission: "10% de comissao",
+    commission: `${PLAN_DEFINITIONS.pro.commissionLabel} de comissao`,
     features: [
       "Vagas publicas ilimitadas",
       "Contratacoes ilimitadas",
@@ -75,7 +75,7 @@ const PLANS = [
     badge: null,
     gradient: "from-violet-500 to-purple-700",
     headline: "",
-    commission: "5% de comissao",
+    commission: `${PLAN_DEFINITIONS.premium.commissionLabel} de comissao`,
     features: [
       "Tudo do Pro",
       "Vagas fechadas",

@@ -72,9 +72,9 @@ export const pt: Record<string, string> = {
 
   // ── Contract status labels ───────────────────────────────────────────────────
   contract_status_sent:      "Aguardando Talento",
-  contract_status_signed:    "Depósito Pendente",
-  contract_status_confirmed: "Vaga Confirmada",
-  contract_status_paid:      "Pago",
+  contract_status_signed:    "Aguardando Depósito",
+  contract_status_confirmed: "Em Custódia",
+  contract_status_paid:      "Pago ao Talento",
   contract_status_rejected:  "Rejeitado",
   contract_status_cancelled: "Cancelado",
 

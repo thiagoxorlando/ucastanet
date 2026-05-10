@@ -2,6 +2,14 @@
 
 import { useState } from "react";
 import type { MouseEvent } from "react";
+import { brl } from "@/lib/brl";
+import { jobStatusTone } from "@/lib/jobStatus";
+import {
+  getContractPaymentStatus,
+  contractStatusLabel,
+  contractStatusTone,
+} from "@/lib/contractStatus";
+import { submissionStatusLabel, submissionStatusTone } from "@/lib/submissionStatus";
 
 export type AdminJob = {
   id: string;
@@ -25,23 +33,7 @@ export type AdminJob = {
 
 type DateField = "jobDate" | "deadline" | "created_at";
 
-const STATUS_STYLES: Record<string, string> = {
-  open: "bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100",
-  closed: "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200",
-  draft: "bg-amber-50 text-amber-600 ring-1 ring-amber-100",
-  inactive: "bg-zinc-100 text-zinc-400 ring-1 ring-zinc-200",
-};
-
 const JOB_STATUSES = ["open", "draft", "closed", "inactive"] as const;
-
-function brl(value: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
 
 function formatDate(value: string | null) {
   if (!value) return "-";
@@ -129,46 +121,19 @@ function ConfirmDialog({
   );
 }
 
-const CONTRACT_STATUS_LABEL: Record<string, string> = {
-  sent: "Contrato enviado",
-  signed: "Contrato assinado",
-  confirmed: "Confirmado",
-  paid: "Pago",
-};
-
-const CONTRACT_STATUS_TONE: Record<string, string> = {
-  sent: "bg-violet-50 text-violet-700 ring-1 ring-violet-100",
-  signed: "bg-sky-50 text-sky-700 ring-1 ring-sky-100",
-  confirmed: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-  paid: "bg-teal-50 text-teal-700 ring-1 ring-teal-100",
-};
-
 function ContractStatusBadge({ status }: { status: string }) {
+  const ps = getContractPaymentStatus({ status });
   return (
-    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${CONTRACT_STATUS_TONE[status] ?? "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200"}`}>
-      {CONTRACT_STATUS_LABEL[status] ?? status}
+    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${contractStatusTone(ps)}`}>
+      {contractStatusLabel(ps)}
     </span>
   );
 }
 
-const SUBMISSION_STATUS_LABEL: Record<string, string> = {
-  pending: "Pendente",
-  selected: "Selecionado",
-  approved: "Aprovado",
-  rejected: "Recusado",
-};
-
-const SUBMISSION_STATUS_TONE: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700 ring-1 ring-amber-100",
-  selected: "bg-sky-50 text-sky-700 ring-1 ring-sky-100",
-  approved: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-  rejected: "bg-zinc-100 text-zinc-400 ring-1 ring-zinc-200",
-};
-
 function SubmissionStatusBadge({ status }: { status: string }) {
   return (
-    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${SUBMISSION_STATUS_TONE[status] ?? "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200"}`}>
-      {SUBMISSION_STATUS_LABEL[status] ?? status}
+    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${submissionStatusTone(status)}`}>
+      {submissionStatusLabel(status)}
     </span>
   );
 }
@@ -194,7 +159,7 @@ function JobRow({
   const [editStatus, setEditStatus] = useState(job.status);
   const [editBudget, setEditBudget] = useState(String(job.budget ?? ""));
   const [editDeadline, setEditDeadline] = useState(job.deadline ?? "");
-  const statusTone = STATUS_STYLES[job.status] ?? STATUS_STYLES.closed;
+  const statusTone = jobStatusTone(job.status);
 
   async function handleSave() {
     setSaving(true);

@@ -140,6 +140,76 @@ Tables: `support_conversations`, `support_messages`
 
 ---
 
+## Shared Status Helpers — Single Source of Truth
+
+Every domain has exactly one file that owns its status labels and badge colors. Never define a local STATUS_LABEL or STATUS_CLS map in a feature file.
+
+| Domain | Helper | Functions |
+|---|---|---|
+| Contract payment lifecycle | `lib/contractStatus.ts` | `getContractPaymentStatus()`, `contractStatusLabel()`, `contractStatusTone()`, `resolveContractAmounts()` |
+| Booking/unified status | `lib/bookingStatus.ts` | `getUnifiedBookingStatus()`, `unifiedStatusInfo()`, `statusInfo()`, `normaliseStatus()` |
+| Job status | `lib/jobStatus.ts` | `jobStatusLabel()`, `jobStatusTone()` |
+| Submission status | `lib/submissionStatus.ts` | `submissionStatusLabel()`, `submissionStatusTone()` |
+| Withdrawal status | `lib/withdrawalStatus.ts` | `withdrawalStatusLabel()`, `withdrawalStatusTone()` |
+
+**Contract status canonical labels (Portuguese)**
+
+| Status key | Label |
+|---|---|
+| `paid_to_wallet` | Pago ao talento |
+| `escrow` | Em custódia |
+| `signed` | Aguardando depósito |
+| `pending` | Aguardando talento |
+| `cancelled` | Cancelado |
+| `rejected` | Rejeitado |
+
+**Translation keys** in `lib/translations/pt.ts` must match these canonical labels (used by AgencyContracts via i18n).
+
+---
+
+## Currency Formatting — Single Source of Truth
+
+Always import `brl()` from `lib/brl.ts`. Never define a local `brl()` function in feature or page files.
+
+```typescript
+import { brl } from "@/lib/brl";
+```
+
+---
+
+## Admin Audit Logging
+
+Any admin API route that mutates important state (plan changes, user deletion, contract deletion, broadcast notifications, withdrawal cancellation) must call `logAdminAction()` from `lib/auditLog.ts`.
+
+```typescript
+import { logAdminAction } from "@/lib/auditLog";
+
+await logAdminAction({
+  adminId: auth.userId,
+  action: "plan_settings_changed",
+  entityType: "plan_settings",
+  entityId: planKey,
+  before: previousRow,
+  after: updatedRow,
+});
+```
+
+Failures are swallowed internally — never block the main action on audit log writes. Table: `admin_audit_logs`.
+
+---
+
+## Plan Rates in UI — Always from PLAN_DEFINITIONS
+
+Never hardcode commission percentages or plan prices as strings in UI components. Always derive from `PLAN_DEFINITIONS` in `lib/plans.ts`:
+
+```typescript
+import { PLAN_DEFINITIONS } from "@/lib/plans";
+
+commission: `${PLAN_DEFINITIONS.pro.commissionLabel} de comissao`  // "10% de comissao"
+```
+
+---
+
 ## Navigation — Sidebar and Topbar
 
 - All sidebar nav keys must have a matching entry in `lib/translations/pt.ts`.

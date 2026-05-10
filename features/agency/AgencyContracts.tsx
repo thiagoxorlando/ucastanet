@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useT } from "@/lib/LanguageContext";
 import { useSubscription } from "@/lib/SubscriptionContext";
+import { brl as fmtBrl } from "@/lib/brl";
+import {
+  getContractPaymentStatus,
+  contractStatusTone,
+} from "@/lib/contractStatus";
 
 export type AgencyContract = {
   id: string;
@@ -29,14 +34,6 @@ export type AgencyContract = {
   signedContractUrl: string | null;
 };
 
-const STATUS_CLS: Record<string, string> = {
-  sent:      "bg-amber-50 text-amber-700 ring-1 ring-amber-100",
-  signed:    "bg-violet-50 text-violet-700 ring-1 ring-violet-100",
-  confirmed: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-  paid:      "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-  rejected:  "bg-rose-50 text-rose-600 ring-1 ring-rose-100",
-  cancelled: "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200",
-};
 const STATUS_LABEL_KEY: Record<string, string> = {
   sent:      "contract_status_sent",
   signed:    "contract_status_signed",
@@ -49,9 +46,7 @@ const STATUS_LABEL_KEY: Record<string, string> = {
 const ALL_STATUSES = ["all", "sent", "signed", "confirmed", "paid", "rejected", "cancelled"] as const;
 type FilterStatus = typeof ALL_STATUSES[number];
 
-function brl(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-}
+function brl(n: number) { return fmtBrl(n); }
 
 function fmtDate(s: string | null, lang = "pt") {
   if (!s) return "—";
@@ -139,7 +134,7 @@ function ContractCard({
   const [acting,           setActing]           = useState<string | null>(null);
   const [balanceError,     setBalanceError]     = useState<string | null>(null);
   const { t, lang } = useT();
-  const stCls   = STATUS_CLS[c.status] ?? "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200";
+  const stCls   = contractStatusTone(getContractPaymentStatus({ status: c.status, paid_at: c.paidAt }));
   const stLabel = t((STATUS_LABEL_KEY[c.status] ?? "general_unknown") as Parameters<typeof t>[0]);
   const isPaid  = c.status === "paid";
 

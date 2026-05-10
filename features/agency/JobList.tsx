@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useT } from "@/lib/LanguageContext";
+import { jobStatusLabel, jobStatusTone } from "@/lib/jobStatus";
+import { brl as fmtBrl } from "@/lib/brl";
 
 export type Job = {
   id: string;
@@ -24,14 +26,7 @@ export type Job = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatBudget(n: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
+function formatBudget(n: number) { return fmtBrl(n); }
 
 function formatDeadline(raw: string) {
   return new Date(raw + "T00:00:00").toLocaleDateString("pt-BR", {
@@ -46,21 +41,7 @@ function daysUntil(raw: string) {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-const STATUS_STYLES: Record<Job["status"], string> = {
-  open:     "bg-[#D1F4EB] text-[#0A7A5A] ring-1 ring-[#A7E8D6]/60",
-  closed:   "bg-[#E6F0F0] text-[#647B7B] ring-1 ring-[#DDE6E6]",
-  draft:    "bg-[#F8FAFC] text-[#647B7B] ring-1 ring-[#DDE6E6]",
-  inactive: "bg-[#E6F0F0] text-[#B8D4D4] ring-1 ring-[#DDE6E6]",
-};
-
 // ─── Job Card ─────────────────────────────────────────────────────────────────
-
-const JOB_STATUS_LABEL: Record<Job["status"], string> = {
-  open:     "Aberta",
-  closed:   "Fechada",
-  draft:    "Rascunho",
-  inactive: "Inativa",
-};
 
 function JobCard({ job, onUpdate, onRemove }: {
   job: Job;
@@ -121,8 +102,8 @@ function JobCard({ job, onUpdate, onRemove }: {
               {job.title}
             </h3>
           </div>
-          <span className={`flex-shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${STATUS_STYLES[job.status]}`}>
-            {lang === "en" ? job.status : (JOB_STATUS_LABEL[job.status] ?? job.status)}
+          <span className={`flex-shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${jobStatusTone(job.status)}`}>
+            {lang === "en" ? job.status : jobStatusLabel(job.status)}
           </span>
         </div>
 
@@ -227,7 +208,7 @@ function JobCard({ job, onUpdate, onRemove }: {
             {menuOpen && (
               <div className="absolute bottom-full right-0 mb-1.5 w-36 bg-white rounded-xl border border-zinc-100 shadow-[0_4px_16px_rgba(0,0,0,0.1)] z-10 overflow-hidden">
                 {(["open", "inactive", "closed", "draft"] as Job["status"][]).map((s) => {
-                  const label = lang === "en" ? s : (JOB_STATUS_LABEL[s] ?? s);
+                  const label = lang === "en" ? s : jobStatusLabel(s);
                   return (
                     <button
                       key={s}

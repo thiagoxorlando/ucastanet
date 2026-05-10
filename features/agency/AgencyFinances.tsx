@@ -5,15 +5,8 @@ import { useRouter } from "next/navigation";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 import { formatCpfCnpj, isValidCpfCnpj } from "@/lib/cpf";
 import { generateReceiptPdf } from "@/lib/generateReceiptPdf";
-
-function brl(n: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
+import { brl } from "@/lib/brl";
+import { withdrawalStatusLabel } from "@/lib/withdrawalStatus";
 
 function fmtDate(value: string | null | undefined) {
   if (!value) return "—";
@@ -101,15 +94,6 @@ const STATUS_LABEL: Record<string, string> = {
   refund: "Reembolso",
 };
 
-const WITHDRAWAL_STATUS_LABEL: Record<string, string> = {
-  pending: "Pendente",
-  paid: "Pago",
-  processing: "Processando",
-  blocked: "Bloqueado",
-  cancelled: "Cancelado",
-  rejected: "Cancelado",
-  failed: "Falhou",
-};
 
 async function downloadReceipt(transaction: AgencyTransaction) {
   const effectiveStatus = transaction.withdrawalStatus ?? transaction.status;
@@ -591,7 +575,7 @@ export default function AgencyFinances({
                   <div className="min-w-0">
                     <p className="text-[13px] font-semibold text-zinc-900">{transaction.description ?? "Saque solicitado"}</p>
                     <p className="text-[11px] text-zinc-400 mt-0.5">
-                      {transaction.withdrawalStatus ? WITHDRAWAL_STATUS_LABEL[transaction.withdrawalStatus] ?? transaction.withdrawalStatus : "Pendente"} · {fmtDate(transaction.date)}
+                      {withdrawalStatusLabel(transaction.withdrawalStatus ?? "pending")} · {fmtDate(transaction.date)}
                     </p>
                     {transaction.adminNote && (
                       <p className="text-[11px] text-zinc-500 mt-1">{transaction.adminNote}</p>
@@ -618,7 +602,7 @@ export default function AgencyFinances({
                   <div className="min-w-0">
                     <p className="text-[13px] font-semibold text-zinc-900">{transaction.description ?? "Saque"}</p>
                     <p className="text-[11px] text-zinc-400 mt-0.5">
-                      {transaction.withdrawalStatus ? WITHDRAWAL_STATUS_LABEL[transaction.withdrawalStatus] ?? transaction.withdrawalStatus : "Pago"} · {fmtDate(transaction.processedAt ?? transaction.date)}
+                      {withdrawalStatusLabel(transaction.withdrawalStatus ?? "paid")} · {fmtDate(transaction.processedAt ?? transaction.date)}
                     </p>
                     {transaction.adminNote && (
                       <p className="text-[11px] text-zinc-500 mt-1">{transaction.adminNote}</p>
@@ -699,7 +683,7 @@ export default function AgencyFinances({
                                 {isWithdrawal && (
                                   <div className="mt-0.5 space-y-0.5">
                                     <p className="text-[11px] text-zinc-400">
-                                      {transaction.withdrawalStatus ? WITHDRAWAL_STATUS_LABEL[transaction.withdrawalStatus] ?? transaction.withdrawalStatus : "Pendente"}
+                                      {withdrawalStatusLabel(transaction.withdrawalStatus ?? "pending")}
                                     </p>
                                     {transaction.adminNote && (
                                       <p className="text-[11px] text-rose-500">{transaction.adminNote}</p>
@@ -733,7 +717,7 @@ export default function AgencyFinances({
                                     <p><strong>ID:</strong> {transaction.id}</p>
                                     <p><strong>Data e hora:</strong> {fmtDateTime(transaction.processedAt ?? transaction.date)}</p>
                                     <p><strong>Valor:</strong> {brl(Math.abs(transaction.amount))}</p>
-                                    <p><strong>Status:</strong> {transaction.withdrawalStatus ? WITHDRAWAL_STATUS_LABEL[transaction.withdrawalStatus] ?? transaction.withdrawalStatus : STATUS_LABEL[transaction.status] ?? transaction.status}</p>
+                                    <p><strong>Status:</strong> {transaction.withdrawalStatus ? withdrawalStatusLabel(transaction.withdrawalStatus) : (STATUS_LABEL[transaction.status] ?? transaction.status)}</p>
                                     <p><strong>Provedor:</strong> {transaction.provider ?? "BrisaHub"}</p>
                                     {transaction.providerStatus && <p><strong>Status do provedor:</strong> {transaction.providerStatus}</p>}
                                   </div>

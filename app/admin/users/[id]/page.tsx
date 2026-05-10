@@ -7,8 +7,6 @@ type Props = { params: Promise<{ id: string }> };
 
 export const metadata: Metadata = { title: "Perfil do usuário — Admin — BrisaHub" };
 
-const COMMISSION_RATE = 0.1;
-
 function usd(n: number) {
   if (n === 0) return "—";
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
@@ -57,8 +55,8 @@ export default async function AdminUserProfilePage({ params }: Props) {
     supabase.from("agencies").select("company_name, contact_name, phone, country, city, description, website").eq("id", id).single(),
     supabase.from("bookings").select("id, job_title, price, status, created_at").or(`talent_user_id.eq.${id},agency_id.eq.${id}`).order("created_at", { ascending: false }),
     supabase.from("submissions").select("id, job_id, created_at").eq("talent_user_id", id),
-    supabase.from("contracts").select("payment_amount, status").eq("talent_id", id).in("status", ["signed", "confirmed", "paid"]),
-    supabase.from("contracts").select("payment_amount, status").eq("agency_id", id).in("status", ["signed", "confirmed", "paid"]),
+    supabase.from("contracts").select("payment_amount, commission_amount, net_amount, status").eq("talent_id", id).in("status", ["signed", "confirmed", "paid"]),
+    supabase.from("contracts").select("payment_amount, commission_amount, net_amount, status").eq("agency_id", id).in("status", ["signed", "confirmed", "paid"]),
     supabase.from("terms_acceptances").select("accepted_at").eq("user_id", id).order("accepted_at", { ascending: false }).limit(1).maybeSingle(),
   ]);
 
@@ -82,12 +80,17 @@ export default async function AdminUserProfilePage({ params }: Props) {
 
   const relevantContracts = isTalent ? (talentContracts ?? []) : (agencyContracts ?? []);
   const totalEarned = isTalent
-    ? relevantContracts.reduce((s, c) => s + Math.round((c.payment_amount ?? 0) * (1 - COMMISSION_RATE) * 100) / 100, 0)
+    ? relevantContracts.reduce((s, c) => {
+        const net = c.net_amount != null ? Number(c.net_amount)
+          : c.commission_amount != null ? Math.max(0, Number(c.payment_amount ?? 0) - Number(c.commission_amount))
+          : 0;
+        return s + net;
+      }, 0)
     : 0;
   const totalSpent = isAgency
-    ? relevantContracts.reduce((s, c) => s + (c.payment_amount ?? 0), 0)
+    ? relevantContracts.reduce((s, c) => s + Number(c.payment_amount ?? 0), 0)
     : 0;
-  const commission = relevantContracts.reduce((s, c) => s + Math.round((c.payment_amount ?? 0) * COMMISSION_RATE * 100) / 100, 0);
+  const commission = relevantContracts.reduce((s, c) => s + Number(c.commission_amount ?? 0), 0);
 
   const walletBalance = isAgency ? (profile?.wallet_balance ?? 0) : 0;
   const roleCls = ROLE_STYLES[role] ?? "bg-zinc-100 text-zinc-500";

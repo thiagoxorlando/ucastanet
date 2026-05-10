@@ -4,14 +4,10 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 import { generateReceiptPdf } from "@/lib/generateReceiptPdf";
+import { brl } from "@/lib/brl";
+import { withdrawalStatusLabel, withdrawalStatusTone } from "@/lib/withdrawalStatus";
 
-const TALENT_RATE = 0.85; // 85% of deal value
-
-function brl(n: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2,
-  }).format(n);
-}
+const TALENT_RATE = 0.85; // last-resort fallback for legacy rows with no stored net_amount
 
 type PeriodFilter = "today" | "month" | "all";
 
@@ -128,15 +124,6 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled:       "Cancelado",
 };
 
-const WITHDRAWAL_STATUS_LABEL: Record<string, string> = {
-  pending: "Pendente",
-  processing: "Processando",
-  blocked: "Bloqueado",
-  paid: "Pago",
-  cancelled: "Cancelado",
-  rejected: "Cancelado",
-  failed: "Falhou",
-};
 
 function StatCard({ label, value, sub, stripe }: { label: string; value: string; sub?: string; stripe: string }) {
   return (
@@ -877,7 +864,7 @@ export default function TalentFinances() {
                       <div className="min-w-0">
                         <p className="text-[13px] font-semibold text-zinc-900">{brl(withdrawal.amount)}</p>
                         <p className="text-[11px] text-zinc-400">
-                          {WITHDRAWAL_STATUS_LABEL[withdrawal.status ?? "pending"] ?? withdrawal.status ?? "Pendente"} · {new Date(withdrawal.created_at).toLocaleDateString("pt-BR", { month: "short", day: "numeric", year: "numeric" })}
+                          {withdrawalStatusLabel(withdrawal.status ?? "pending")} · {new Date(withdrawal.created_at).toLocaleDateString("pt-BR", { month: "short", day: "numeric", year: "numeric" })}
                         </p>
                         <p className="text-[11px] text-zinc-500 mt-0.5">
                           Saque via PIX
@@ -952,7 +939,7 @@ export default function TalentFinances() {
                           </svg>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-semibold text-zinc-900">{WITHDRAWAL_STATUS_LABEL[withdrawal.status ?? "paid"] ?? withdrawal.status ?? "Saque"}</p>
+                          <p className="text-[13px] font-semibold text-zinc-900">{withdrawalStatusLabel(withdrawal.status ?? "paid")}</p>
                           <p className="text-[11px] text-zinc-400 mt-0.5">
                             {refDate.toLocaleDateString("pt-BR", { weekday: "short", month: "long", day: "numeric", year: "numeric" })}
                             {" · "}
@@ -978,7 +965,7 @@ export default function TalentFinances() {
                           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[12px]">
                             <div>
                               <p className="text-zinc-400 mb-0.5">Status</p>
-                              <p className="font-semibold text-zinc-800">{WITHDRAWAL_STATUS_LABEL[withdrawal.status ?? ""] ?? withdrawal.status ?? "—"}</p>
+                              <p className="font-semibold text-zinc-800">{withdrawalStatusLabel(withdrawal.status)}</p>
                             </div>
                             <div>
                               <p className="text-zinc-400 mb-0.5">Valor líquido</p>

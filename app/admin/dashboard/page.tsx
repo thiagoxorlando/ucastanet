@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import AdminDashboard from "@/features/admin/AdminDashboard";
 import { createServerClient } from "@/lib/supabase";
+import { REFERRAL_RATE } from "@/lib/plans";
 
 export const metadata: Metadata = { title: "Painel administrativo — BrisaHub" };
 
-// Only used as a last-resort fallback for very old bookings with no contract record.
+// Last-resort fallback for very old bookings with no contract record (Pro plan rate).
 const FALLBACK_COMMISSION_RATE = 0.1;
-const REFERRAL_RATE            = 0.02;
 
 export default async function AdminDashboardPage() {
   const supabase = createServerClient({ useServiceRole: true });

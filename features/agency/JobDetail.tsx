@@ -8,6 +8,10 @@ import { useRole } from "@/lib/RoleProvider";
 import { useSubscription } from "@/lib/SubscriptionContext";
 import { supabase } from "@/lib/supabase";
 import { CONTRACTS_BUCKET } from "@/lib/contractFiles";
+import { brl } from "@/lib/brl";
+import { jobStatusTone } from "@/lib/jobStatus";
+import { statusInfo, normaliseStatus } from "@/lib/bookingStatus";
+import { submissionStatusTone } from "@/lib/submissionStatus";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -72,12 +76,6 @@ type ContractForm = {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function brl(n: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2,
-  }).format(n);
-}
-
 function formatBudget(n: number) { return brl(n); }
 
 function formatDate(raw: string) {
@@ -119,26 +117,6 @@ function buildPublicJobUrl(jobId: string) {
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
-const STATUS_STYLES: Record<Job["status"], string> = {
-  open:     "bg-emerald-50 text-emerald-600 border border-emerald-100",
-  closed:   "bg-zinc-100  text-zinc-500   border border-zinc-200",
-  draft:    "bg-amber-50  text-amber-600  border border-amber-100",
-  inactive: "bg-zinc-100  text-zinc-400   border border-zinc-200",
-};
-
-const BOOKING_STATUS: Record<string, string> = {
-  pending:         "bg-violet-50  text-violet-700  ring-1 ring-violet-100",
-  pending_payment: "bg-amber-50   text-amber-700   ring-1 ring-amber-100",
-  confirmed:       "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-  paid:            "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-  cancelled:       "bg-zinc-100   text-zinc-500    ring-1 ring-zinc-200",
-};
-
-const SUBMISSION_STATUS: Record<string, string> = {
-  pending:  "bg-amber-50  text-amber-700  ring-1 ring-amber-100",
-  approved: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-  rejected: "bg-rose-50   text-rose-600   ring-1 ring-rose-100",
-};
 
 const CATEGORY_STRIPES: Record<string, string> = {
   "Lifestyle & Fashion": "from-rose-400 via-pink-400 to-fuchsia-400",
@@ -710,7 +688,7 @@ function SubmissionCard({
       }
       return { statusLabel: "Contratado", statusCls: "bg-teal-50 text-teal-700 ring-1 ring-teal-100" };
     }
-    const cls = SUBMISSION_STATUS[submission.status] ?? SUBMISSION_STATUS["pending"];
+    const cls = submissionStatusTone(submission.status);
     const label =
       submission.isReferral && !submission.talentId && submission.status === "pending"
         ? t("submission_status_signup_pending")
@@ -884,18 +862,12 @@ function BookingRow({ booking, onCancel, onConfirm, onMarkPaid }: {
 }) {
   const [busy, setBusy] = useState<"cancel" | "confirm" | "paid" | null>(null);
   const [balanceError, setBalanceError] = useState<{ required: number; available: number } | null>(null);
-  const stCls = BOOKING_STATUS[booking.status] ?? "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200";
+  const stInfo = statusInfo(normaliseStatus(booking.status));
+  const stCls = stInfo.badge;
   const canCancel   = booking.status !== "cancelled" && booking.status !== "paid" && booking.status !== "confirmed";
   const canConfirm  = booking.status === "pending_payment";
   const canMarkPaid = booking.status === "confirmed";
 
-  const STATUS_LABELS: Record<string, string> = {
-    pending:         "Pendente",
-    pending_payment: "Pendente Depósito",
-    confirmed:       "Confirmado",
-    paid:            "Pago",
-    cancelled:       "Cancelado",
-  };
 
   function contractFetch(action: string) {
     if (!booking.contractId) return Promise.resolve(null);
@@ -957,7 +929,7 @@ function BookingRow({ booking, onCancel, onConfirm, onMarkPaid }: {
           {booking.price > 0 ? brl(booking.price) : "—"}
         </p>
         <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${stCls}`}>
-          {STATUS_LABELS[booking.status] ?? booking.status}
+          {stInfo.label}
         </span>
         <div className="flex items-center gap-2 flex-shrink-0">
           {canConfirm && (
@@ -1228,7 +1200,7 @@ export default function JobDetail({
           <div className="space-y-2.5">
             <h1 className="text-[1.85rem] font-black tracking-[-0.04em] leading-tight text-white">{job.title}</h1>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`text-[12px] font-medium px-2.5 py-1 rounded-full ${STATUS_STYLES[currentStatus]}`}>
+              <span className={`text-[12px] font-medium px-2.5 py-1 rounded-full ${jobStatusTone(currentStatus)}`}>
                 {{ open: "Aberta", closed: "Fechada", draft: "Rascunho", inactive: "Inativa" }[currentStatus] ?? currentStatus}
               </span>
               {job.visibility === "private" && (
