@@ -2,6 +2,11 @@
 
 import { Fragment, useState } from "react";
 import type { MouseEvent } from "react";
+import {
+  getContractPaymentStatus,
+  contractStatusLabel,
+  contractStatusTone,
+} from "@/lib/contractStatus";
 
 export type AdminContractRow = {
   id: string;
@@ -30,23 +35,6 @@ export type AdminContractRow = {
 
 type DateField = "jobDate" | "createdAt" | "paidAt";
 
-const STATUS_TONE: Record<string, string> = {
-  sent: "bg-amber-50 text-amber-700 ring-1 ring-amber-100",
-  signed: "bg-violet-50 text-violet-700 ring-1 ring-violet-100",
-  confirmed: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-  paid: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-  rejected: "bg-rose-50 text-rose-600 ring-1 ring-rose-100",
-  cancelled: "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200",
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  sent: "Aguardando talento",
-  signed: "Deposito pendente",
-  confirmed: "Vaga confirmada",
-  paid: "Pago",
-  rejected: "Rejeitado",
-  cancelled: "Cancelado",
-};
 
 function brl(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -236,8 +224,9 @@ function ContractRow({
 
   const isPaid = local.paymentStatus === "paid";
   const amountLocked = local.status === "confirmed";
-  const statusTone = STATUS_TONE[local.status] ?? "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200";
-  const statusLabel = STATUS_LABEL[local.status] ?? local.status;
+  const _ps = getContractPaymentStatus({ status: local.status, paid_at: local.paidAt });
+  const statusTone = contractStatusTone(_ps);
+  const statusLabel = contractStatusLabel(_ps);
 
   async function handleSave() {
     setSaving(true);
@@ -712,7 +701,7 @@ export default function AdminContracts({ contracts: initialContracts }: { contra
                 statusFilter === status ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-700",
               ].join(" ")}
             >
-              {status === "all" ? "Todos" : STATUS_LABEL[status] ?? status}
+              {status === "all" ? "Todos" : contractStatusLabel(getContractPaymentStatus({ status }))}
             </button>
           ))}
         </div>

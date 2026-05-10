@@ -16,6 +16,7 @@ type Booking = {
   contract_status: string | null;
   derived_status: string;
   price: number;
+  net_amount: number | null;
   created_at: string;
   location: string | null;
   job_date: string | null;
@@ -82,7 +83,7 @@ function BookingCard({ booking: b, onCancel, cancelling }: {
             <div>
               <p className="text-zinc-400 font-semibold uppercase tracking-widest text-[10px] mb-0.5">Valor do Acordo</p>
               <p className="text-zinc-700 font-semibold">{b.price > 0 ? brl(b.price) : "—"}</p>
-              <p className="text-zinc-400 mt-0.5">Você recebe {b.price > 0 ? brl(Math.round(b.price * 0.85 * 100) / 100) : "—"}</p>
+              {b.net_amount != null && <p className="text-zinc-400 mt-0.5">Você recebe {brl(b.net_amount)}</p>}
             </div>
             <div>
               <p className="text-zinc-400 font-semibold uppercase tracking-widest text-[10px] mb-0.5">Data da Vaga</p>
@@ -169,7 +170,7 @@ export default function TalentBookings() {
       .select(`
         id, job_title, job_id, agency_id, status, price, created_at,
         contracts!contracts_booking_id_fkey (
-          id, status, location, job_date, job_time
+          id, status, location, job_date, job_time, net_amount, commission_amount
         )
       `)
       .eq("talent_user_id", user.id)
@@ -197,6 +198,7 @@ export default function TalentBookings() {
           contract_status: contract?.status ?? null,
           derived_status:  getUnifiedBookingStatus(b.status ?? "pending", contract?.status ?? null),
           price:           b.price      ?? 0,
+          net_amount:      contract?.net_amount != null ? Number(contract.net_amount) : null,
           created_at:      b.created_at ?? "",
           location:        contract?.location ?? null,
           job_date:        contract?.job_date ?? null,

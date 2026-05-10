@@ -4,6 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { CONTRACTS_BUCKET } from "@/lib/contractFiles";
+import {
+  getContractPaymentStatus,
+  contractStatusLabel,
+  contractStatusTone,
+} from "@/lib/contractStatus";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -32,18 +37,6 @@ export type ApprovedSubmission = {
   agencyName:   string;
 };
 
-// ── Status map ────────────────────────────────────────────────────────────────
-
-const STATUS: Record<string, { label: string; cls: string }> = {
-  sent:      { label: "Aguardando Assinatura", cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-100" },
-  signed:    { label: "Assinado",              cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" },
-  accepted:  { label: "Assinado",              cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" },
-  confirmed: { label: "Confirmado",            cls: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100" },
-  paid:      { label: "Pago",                  cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" },
-  rejected:  { label: "Rejeitado",             cls: "bg-rose-50 text-rose-600 ring-1 ring-rose-100" },
-  cancelled: { label: "Cancelado",             cls: "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200" },
-};
-const STATUS_FALLBACK = { label: "Em andamento", cls: "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200" };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -193,7 +186,8 @@ function ContractRow({
   const [uploading, setUploading]   = useState(false);
   const [uploadError, setUploadError] = useState("");
 
-  const st          = STATUS[c.status] ?? STATUS_FALLBACK;
+  const ps          = getContractPaymentStatus({ status: c.status });
+  const st          = { label: contractStatusLabel(ps), cls: contractStatusTone(ps) };
   const isPending   = c.status === "sent";
   const isCompleted = ["signed", "confirmed", "paid"].includes(c.status);
   const fileUrl     = latestFileUrl(c);
