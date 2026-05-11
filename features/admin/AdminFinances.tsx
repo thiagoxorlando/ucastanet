@@ -315,9 +315,8 @@ function ProfitSection({
   const fc = contracts.filter((c) => c.status === "paid" && isInRange(c.paid_at ?? c.created_at, range));
   const fp = planPayments.filter((p) => isInRange(p.createdAt, range));
 
-  const bookingCommission = fb.reduce((s, b) => s + b.commissionAmount, 0);
   const contractCommission = fc.reduce((s, c) => s + c.commissionAmount, 0);
-  const totalCommission = bookingCommission + contractCommission;
+  const totalCommission = contractCommission;
   const planRevenue = fp.reduce((s, p) => s + p.amount, 0);
   const totalProfit = totalCommission + planRevenue;
 
@@ -366,34 +365,25 @@ function ProfitSection({
           >
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
             <div className="flex items-start justify-between gap-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Comissão de reservas/contratos</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">Comissão de contratos pagos</p>
               {chevron(showCommDetail)}
             </div>
             <p className="mt-2 text-2xl font-bold tracking-tight text-[#1F2D2E]">{brl(totalCommission)}</p>
-            <p className="mt-1.5 text-xs text-zinc-500">Reservas: {brl(bookingCommission)} · Contratos: {brl(contractCommission)}</p>
+            <p className="mt-1.5 text-xs text-zinc-500">{fc.length} contrato{fc.length !== 1 ? "s" : ""} pago{fc.length !== 1 ? "s" : ""} no período</p>
           </button>
           {showCommDetail && (
             <div className="rounded-2xl border border-[#DDE6E6] bg-white divide-y divide-[#EFF5F5] max-h-64 overflow-y-auto">
-              {fb.filter((b) => b.commissionAmount > 0).slice(0, 20).map((b) => (
-                <div key={`booking-${b.id}`} className="flex items-center justify-between px-4 py-2.5 text-[12px]">
-                  <div>
-                    <p className="font-medium text-[#1F2D2E]">{b.jobTitle}</p>
-                    <p className="text-zinc-500">{b.talentName} · {fmt(b.created_at)}</p>
-                  </div>
-                  <span className="font-semibold text-emerald-600 shrink-0 ml-2">{brl(b.commissionAmount)}</span>
-                </div>
-              ))}
               {fc.slice(0, 20).map((c) => (
-                <div key={`contract-${c.id}`} className="flex items-center justify-between px-4 py-2.5 text-[12px]">
+                <div key={c.id} className="flex items-center justify-between px-4 py-2.5 text-[12px]">
                   <div>
-                    <p className="font-medium text-[#1F2D2E]">{c.jobTitle} <span className="text-zinc-400 text-[11px]">(contrato)</span></p>
+                    <p className="font-medium text-[#1F2D2E]">{c.jobTitle}</p>
                     <p className="text-zinc-500">{c.talentName} · {fmt(c.paid_at)}</p>
                   </div>
                   <span className="font-semibold text-emerald-600 shrink-0 ml-2">{brl(c.commissionAmount)}</span>
                 </div>
               ))}
-              {(fb.filter((b) => b.commissionAmount > 0).length + fc.length) === 0 && (
-                <p className="px-4 py-3 text-[12px] text-zinc-400">Nenhum item no período.</p>
+              {fc.length === 0 && (
+                <p className="px-4 py-3 text-[12px] text-zinc-400">Nenhum contrato pago no período.</p>
               )}
             </div>
           )}
