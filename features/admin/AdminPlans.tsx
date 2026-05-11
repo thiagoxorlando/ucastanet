@@ -25,6 +25,7 @@ export type AdminPlansAgency = {
   currentPlan: Plan;
   currentPlanLabel: string;
   planStatus: string;
+  accountActive: boolean;
   nextChargeDate: string | null;
   lastPaidAt: string | null;
   asaasCustomerId: string | null;
@@ -697,7 +698,7 @@ export default function AdminPlans({ agencies, summary, planSettings, planHistor
                   <div className="space-y-1.5 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h2 className="text-[16px] font-semibold text-[#1F2D2E]">{agency.agencyName}</h2>
-                      <span className={statusBadgeClass(agency.planStatus)}>{planStatusLabel(agency.planStatus)}</span>
+                      <span className={agency.accountActive ? "badge-success" : "badge-error"}>{agency.accountActive ? "Ativo" : "Inativo"}</span>
                       <span className="badge-info">{agency.currentPlanLabel}</span>
                       {agency.currentPlan === "free" && freeJobLimit !== null && agency.activeJobCount >= freeJobLimit && (
                         <span className="inline-flex items-center rounded-full bg-orange-50 border border-orange-200 px-2.5 py-0.5 text-[11px] font-semibold text-orange-700">

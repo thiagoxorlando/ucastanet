@@ -16,6 +16,8 @@ type AgencyProfileRow = {
   plan_expires_at: string | null;
   asaas_customer_id: string | null;
   asaas_subscription_id: string | null;
+  deleted_at: string | null;
+  is_frozen: boolean | null;
 };
 
 type AgencyRow = {
@@ -109,7 +111,7 @@ export default async function AdminPlansPage() {
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, plan, plan_status, plan_expires_at, asaas_customer_id, asaas_subscription_id")
+      .select("id, plan, plan_status, plan_expires_at, asaas_customer_id, asaas_subscription_id, deleted_at, is_frozen")
       .eq("role", "agency"),
     supabase
       .from("agencies")
@@ -198,6 +200,11 @@ export default async function AdminPlansPage() {
         description: charge.description ?? null,
       });
 
+      const accountActive =
+        !profile.deleted_at &&
+        !profile.is_frozen &&
+        !!agency;
+
       return {
         id: profile.id,
         email: emailMap.get(profile.id) ?? null,
@@ -206,6 +213,7 @@ export default async function AdminPlansPage() {
         currentPlan,
         currentPlanLabel: getPlanLabel(currentPlan),
         planStatus: normalizeStatus(profile.plan_status) || "active",
+        accountActive,
         nextChargeDate: profile.plan_expires_at ?? null,
         lastPaidAt: paidCharges[0]?.created_at ?? null,
         asaasCustomerId: profile.asaas_customer_id ?? null,
@@ -221,9 +229,9 @@ export default async function AdminPlansPage() {
     .sort((a, b) => a.agencyName.localeCompare(b.agencyName, "pt-BR"));
 
   const activeByPlan = {
-    free: agenciesData.filter((a) => a.currentPlan === "free" && a.planStatus === "active").length,
-    pro: agenciesData.filter((a) => a.currentPlan === "pro" && a.planStatus === "active").length,
-    premium: agenciesData.filter((a) => a.currentPlan === "premium" && a.planStatus === "active").length,
+    free: agenciesData.filter((a) => a.currentPlan === "free" && a.accountActive).length,
+    pro: agenciesData.filter((a) => a.currentPlan === "pro" && a.accountActive).length,
+    premium: agenciesData.filter((a) => a.currentPlan === "premium" && a.accountActive).length,
   };
 
   const summary = {
