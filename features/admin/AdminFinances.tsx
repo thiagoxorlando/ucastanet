@@ -34,7 +34,6 @@ export type FinancesContract = {
   status: string;
   created_at: string;
   paid_at: string | null;
-  withdrawn_at: string | null;
   fileUrl?: string | null;
   signedFileUrl?: string | null;
 };
@@ -107,8 +106,6 @@ export type FinancesSummary = {
   contractsGross: number;
   contractsCommission: number;
   contractsEscrowValue: number;
-  contractsAwaitingValue: number;
-  contractsWithdrawnValue: number;
   contractsPaidValue: number;
   pendingValue: number;
   totalBookings: number;
@@ -641,55 +638,6 @@ function ContractsSection({
         </tbody>
       </TableCard>
       <ShowMoreButton total={contracts.length} expanded={expanded} onToggle={() => setExpanded((c) => !c)} />
-    </Section>
-  );
-}
-
-function WithdrawalHistory({ contracts }: { contracts: FinancesContract[] }) {
-  const [expanded, setExpanded] = useState(false);
-  const withdrawn = contracts
-    .filter((c) => !!c.withdrawn_at)
-    .sort((a, b) => new Date(b.withdrawn_at ?? "").getTime() - new Date(a.withdrawn_at ?? "").getTime());
-
-  if (withdrawn.length === 0) return null;
-
-  const groups = new Map<string, FinancesContract[]>();
-  for (const c of withdrawn) {
-    const day = (c.withdrawn_at ?? "").slice(0, 10);
-    const key = `${c.talentName}::${day}`;
-    const cur = groups.get(key) ?? [];
-    cur.push(c);
-    groups.set(key, cur);
-  }
-
-  const receipts = [...groups.values()];
-  const visible  = expanded ? receipts : receipts.slice(0, 5);
-  const grand    = withdrawn.reduce((s, c) => s + c.netAmount, 0);
-
-  return (
-    <Section title="Histórico de saques para talentos" subtitle={`${receipts.length} saques concluídos`}>
-      <div className="grid gap-3 md:grid-cols-3">
-        <StatCard label="Total pago a talentos" value={brl(grand)} sub={`${receipts.length} transações`} />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {visible.map((items) => {
-          const total = items.reduce((s, c) => s + c.netAmount, 0);
-          const ref   = items[0];
-          return (
-            <div key={`${ref.talentName}-${ref.withdrawn_at}`} className="rounded-2xl border border-[#DDE6E6] bg-white p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-semibold text-[#1F2D2E] text-sm">{ref.talentName}</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">{fmt(ref.withdrawn_at)}</p>
-                  <p className="text-xs text-zinc-500">{items.length} contrato(s)</p>
-                </div>
-                <p className="text-lg font-bold text-emerald-600 shrink-0">{brl(total)}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <ShowMoreButton total={receipts.length} expanded={expanded} onToggle={() => setExpanded((c) => !c)} />
     </Section>
   );
 }

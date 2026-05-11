@@ -7,7 +7,6 @@ import { generateReceiptPdf } from "@/lib/generateReceiptPdf";
 import { brl } from "@/lib/brl";
 import { withdrawalStatusLabel, withdrawalStatusTone } from "@/lib/withdrawalStatus";
 
-const TALENT_RATE = 0.85; // last-resort fallback for legacy rows with no stored net_amount
 
 type PeriodFilter = "today" | "month" | "all";
 
@@ -84,7 +83,6 @@ type PaidContract = {
   amount: number;
   earnings: number;
   paid_at: string | null;
-  withdrawn_at: string | null;
 };
 
 type Payment = {
@@ -506,7 +504,7 @@ export default function TalentFinances() {
         const price = b.price ?? 0;
         const earnings = netAmountMap.has(b.id)
           ? netAmountMap.get(b.id)!
-          : Math.round(price * TALENT_RATE * 100) / 100;
+          : 0;
         return {
           id:       b.id,
           job:      b.job_title ?? "Untitled job",
@@ -524,7 +522,7 @@ export default function TalentFinances() {
     // Paid contracts — the source of truth for earnings
     const { data: contractsData } = await supabase
       .from("contracts")
-      .select("id, job_id, payment_amount, net_amount, commission_amount, paid_at, withdrawn_at")
+      .select("id, job_id, payment_amount, net_amount, commission_amount, paid_at")
       .eq("talent_id", user.id)
       .eq("status", "paid")
       .order("paid_at", { ascending: false });
@@ -560,13 +558,12 @@ export default function TalentFinances() {
         id:           c.id,
         jobTitle:     c.job_id ? (contractJobMap.get(c.job_id) ?? "Untitled Job") : "Untitled Job",
         amount:       c.payment_amount ?? 0,
-        // Priority: actual payout tx → stored net_amount → derived net → TALENT_RATE last resort
+        // Priority: actual payout tx → stored net_amount → derived net → 0
         earnings:     payoutTxMap.get(c.id)
           ?? (c.net_amount != null ? Number(c.net_amount) : null)
           ?? (c.commission_amount != null ? Math.max(0, (c.payment_amount ?? 0) - Number(c.commission_amount)) : null)
-          ?? Math.round((c.payment_amount ?? 0) * TALENT_RATE * 100) / 100,
-        paid_at:      c.paid_at      ?? null,
-        withdrawn_at: c.withdrawn_at ?? null,
+          ?? 0,
+        paid_at:      c.paid_at ?? null,
       }))
     );
 

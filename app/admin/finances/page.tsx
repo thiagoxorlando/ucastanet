@@ -31,7 +31,6 @@ type ContractRow = {
   status: string | null;
   created_at: string | null;
   paid_at: string | null;
-  withdrawn_at?: string | null;
 };
 
 type AgencyPlanProfileRow = {
@@ -49,25 +48,12 @@ type WithdrawalProfileRow = {
 async function fetchContracts(supabase: ReturnType<typeof createServerClient>) {
   const withAllColumns = await supabase
     .from("contracts")
-    .select("id, job_id, talent_id, agency_id, payment_amount, commission_amount, net_amount, status, created_at, paid_at, withdrawn_at")
+    .select("id, job_id, talent_id, agency_id, payment_amount, commission_amount, net_amount, status, created_at, paid_at")
     .in("status", ["confirmed", "paid"])
     .order("created_at", { ascending: false });
 
   if (!withAllColumns.error) {
     return (withAllColumns.data ?? []) as ContractRow[];
-  }
-
-  const withoutWithdrawnAt = await supabase
-    .from("contracts")
-    .select("id, job_id, talent_id, agency_id, payment_amount, commission_amount, net_amount, status, created_at, paid_at")
-    .in("status", ["confirmed", "paid"])
-    .order("created_at", { ascending: false });
-
-  if (!withoutWithdrawnAt.error) {
-    return (withoutWithdrawnAt.data ?? []).map((contract) => ({
-      ...contract,
-      withdrawn_at: null,
-    })) as ContractRow[];
   }
 
   const legacyColumns = await supabase
@@ -80,7 +66,6 @@ async function fetchContracts(supabase: ReturnType<typeof createServerClient>) {
     ...contract,
     commission_amount: null,
     net_amount: null,
-    withdrawn_at: null,
   })) as ContractRow[]);
 }
 
@@ -382,7 +367,6 @@ export default async function AdminFinancesPage() {
       status: contract.status ?? "confirmed",
       created_at: contract.created_at ?? "",
       paid_at: contract.paid_at ?? null,
-      withdrawn_at: contract.withdrawn_at ?? null,
     };
   });
 
@@ -396,14 +380,8 @@ export default async function AdminFinancesPage() {
 
   const escrowContracts = contracts.filter((contract) => contract.status === "confirmed");
   const paidContracts = contracts.filter((contract) => contract.status === "paid");
-  const awaitingWithdrawal = paidContracts.filter((contract) => !contract.withdrawn_at);
-  const withdrawnContracts = paidContracts.filter((contract) => !!contract.withdrawn_at);
 
-  // Escrow holds the FULL payment_amount — commission hasn't been split yet.
-  // Only after the agency pays does the net_amount (talent's share) matter.
   const contractsEscrowValue = escrowContracts.reduce((sum, contract) => sum + contract.amount, 0);
-  const contractsAwaitingValue = awaitingWithdrawal.reduce((sum, contract) => sum + contract.netAmount, 0);
-  const contractsWithdrawnValue = withdrawnContracts.reduce((sum, contract) => sum + contract.netAmount, 0);
   const contractsGross = contracts.reduce((sum, contract) => sum + contract.amount, 0);
   const contractsCommission = contracts.reduce((sum, contract) => sum + contract.commissionAmount, 0);
   const contractsPaidValue = paidContracts.reduce((sum, contract) => sum + contract.netAmount, 0);
@@ -516,8 +494,6 @@ export default async function AdminFinancesPage() {
     contractsGross,
     contractsCommission,
     contractsEscrowValue,
-    contractsAwaitingValue,
-    contractsWithdrawnValue,
     contractsPaidValue,
     pendingValue: pendingVal,
     totalBookings: bookings.length,
