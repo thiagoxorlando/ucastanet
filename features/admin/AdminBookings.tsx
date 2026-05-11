@@ -295,7 +295,7 @@ function BookingRow({
                         done: ["aguardando_pagamento", "pago"].includes(derivedStatus),
                         date: local.contractConfirmedAt,
                       },
-                      { label: derivedStatus === "pago" && local.paidAt ? `Pago em ${formatPaidAt(local.paidAt)}` : "Pago", done: derivedStatus === "pago", date: null },
+                      { label: "Pago", done: derivedStatus === "pago", date: local.paidAt },
                     ].map((step, index, steps) => (
                       <div key={step.label} className="flex flex-shrink-0 items-center">
                         <div className="flex flex-col items-center gap-1.5">
@@ -315,7 +315,9 @@ function BookingRow({
                             {step.label}
                           </p>
                           {step.date && step.done ? (
-                            <p className="whitespace-nowrap text-[9px] text-zinc-400">{formatDate(step.date)}</p>
+                            <p className="whitespace-nowrap text-[9px] text-zinc-400">
+                              {index === steps.length - 1 ? formatPaidAt(step.date) : formatDate(step.date)}
+                            </p>
                           ) : null}
                         </div>
                         {index < steps.length - 1 ? (
