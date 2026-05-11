@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { createServerClient } from "@/lib/supabase";
 import { notify } from "@/lib/notify";
+import { logAdminAction } from "@/lib/auditLog";
 
 export async function POST(
   req: NextRequest,
@@ -77,6 +78,14 @@ export async function POST(
       `wallet-withdrawal-cancelled:${id}`,
     ).catch((e) => console.error("[withdrawal] cancelled notify failed:", e));
   }
+
+  await logAdminAction({
+    adminId: auth.userId,
+    action: "withdrawal_cancelled",
+    entityType: "withdrawal",
+    entityId: id,
+    metadata: { reason, amountRestored: result.amount_restored ?? null, userId: tx?.user_id ?? null },
+  });
 
   return NextResponse.json({ ok: true, id, status: "cancelled", amount_restored: result.amount_restored ?? null });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { logAdminAction } from "@/lib/auditLog";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -68,6 +69,16 @@ export async function POST(req: NextRequest, { params }: Params) {
     provider:    "admin",
     status:      "completed",
   } as Record<string, unknown>);
+
+  await logAdminAction({
+    adminId: auth.userId,
+    action: "balance_adjusted",
+    entityType: "user",
+    entityId: id,
+    before: { wallet_balance: current },
+    after: { wallet_balance: newBalance },
+    metadata: { type: "debit", amount: rounded, reason },
+  });
 
   return NextResponse.json({ ok: true, newBalance });
 }

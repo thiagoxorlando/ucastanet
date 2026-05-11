@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { deleteUserDeep } from "@/lib/admin/deleteUserDeep";
+import { logAdminAction } from "@/lib/auditLog";
 
 const TABLES = ["jobs", "bookings", "contracts", "talent_profiles", "agencies"] as const;
 type TrashTable = (typeof TABLES)[number];
@@ -118,6 +119,7 @@ export async function DELETE(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin();
   if (auth instanceof NextResponse) return auth;
+  const { userId: adminId } = auth;
 
   const { table, id } = await req.json();
 
@@ -151,6 +153,13 @@ export async function POST(req: NextRequest) {
   } else if (table === "talent_profiles") {
     await supabase.from("profiles").update({ is_frozen: false }).eq("id", id);
   }
+
+  await logAdminAction({
+    adminId,
+    action: "user_restored",
+    entityType: table,
+    entityId: id,
+  });
 
   return NextResponse.json({ ok: true });
 }

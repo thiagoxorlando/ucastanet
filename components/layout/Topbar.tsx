@@ -44,6 +44,9 @@ const pageMeta: Record<string, { title: string; description: string }> = {
   "/admin/referrals":       { title: "Indicações",           description: "Acompanhe indicações e comissões da plataforma" },
   "/admin/trash":           { title: "Lixeira",              description: "Restaure ou exclua itens removidos da plataforma" },
   "/admin/support":         { title: "Suporte",              description: "Gerencie e responda solicitações de suporte dos usuários" },
+  "/admin/audit":           { title: "Auditoria",            description: "Histórico de ações administrativas importantes" },
+  "/admin/system":          { title: "Sistema",              description: "Saúde da infraestrutura da plataforma" },
+  "/admin/settings":        { title: "Configurações",        description: "Controles globais da plataforma" },
   "/admin/profile":         { title: "Perfil",               description: "Gerencie as informações da conta administrativa" },
 };
 

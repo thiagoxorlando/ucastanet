@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { ensureUserDeletionFinancialSafety } from "@/lib/admin/deleteUserDeep";
+import { logAdminAction } from "@/lib/auditLog";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -41,6 +42,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       type:        "admin_credit",
       amount,
       description: body.description?.trim() || "Crédito manual — administrador",
+    });
+
+    await logAdminAction({
+      adminId: auth.userId,
+      action: "balance_adjusted",
+      entityType: "user",
+      entityId: id,
+      before: { wallet_balance: current },
+      after: { wallet_balance: current + amount },
+      metadata: { type: "credit", amount, description: body.description?.trim() || null },
     });
 
     return NextResponse.json({ ok: true, newBalance: current + amount });
@@ -130,6 +141,14 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     .update({ deleted_at: now })
     .eq("id", id)
     .is("deleted_at", null);
+
+  await logAdminAction({
+    adminId,
+    action: "user_deleted",
+    entityType: "user",
+    entityId: id,
+    metadata: { closedJobs: openJobIds.length },
+  });
 
   return NextResponse.json({ ok: true, deletedIds: [id], count: 1, closedJobs: openJobIds.length });
 }

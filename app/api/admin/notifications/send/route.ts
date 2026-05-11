@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { createServerClient } from "@/lib/supabase";
 import { notify } from "@/lib/notify";
+import { logAdminAction } from "@/lib/auditLog";
 
 type Audience = "all" | "agencies" | "talents" | "specific";
 
@@ -87,6 +88,13 @@ export async function POST(req: NextRequest) {
   if (historyError) {
     console.error("[admin/notifications/send] history insert failed (non-fatal):", historyError.message);
   }
+
+  await logAdminAction({
+    adminId: auth.userId,
+    action: "notification_broadcast_sent",
+    entityType: "notification",
+    metadata: { audience, title: title.trim(), sentCount: userIds.length, targetUserId: audience === "specific" ? userId ?? null : null },
+  });
 
   return NextResponse.json({ success: true, sent: userIds.length });
 }

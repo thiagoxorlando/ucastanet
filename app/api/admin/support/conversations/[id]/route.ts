@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { resolveSupportUsers } from "@/lib/resolveSupportUsers";
+import { logAdminAction } from "@/lib/auditLog";
 
 export async function GET(
   _req: NextRequest,
@@ -92,5 +93,19 @@ export async function PATCH(
     .eq("id", id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  const action =
+    body.archived === true  ? "support_archived" :
+    body.archived === false ? "support_restored" :
+    "support_status_changed";
+
+  await logAdminAction({
+    adminId: auth.userId,
+    action,
+    entityType: "support",
+    entityId: id,
+    after: { status: body.status ?? null, priority: body.priority ?? null, archived: body.archived ?? null },
+  });
+
   return NextResponse.json({ ok: true });
 }
