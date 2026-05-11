@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import AdminUsers from "@/features/admin/AdminUsers";
-import { calculateCommission, calculateNetAmount, parsePlan } from "@/lib/plans";
 import { createServerClient } from "@/lib/supabase";
 
 export const metadata: Metadata = { title: "Administração — Usuários — BrisaHub" };
@@ -13,7 +12,7 @@ export default async function AdminUsersPage() {
     { data: profiles },
     { data: talentProfiles },
     { data: agencies },
-    { data: bookingsData },
+    { data: paidContracts },
     { data: frozenProfiles },
     { data: openJobsData },
   ] = await Promise.all([
@@ -25,7 +24,7 @@ export default async function AdminUsersPage() {
       .or("is_frozen.is.null,is_frozen.eq.false"),
     supabase.from("talent_profiles").select("id, user_id, full_name, avatar_url, deleted_at").is("deleted_at", null),
     supabase.from("agencies").select("id, user_id, company_name, avatar_url, deleted_at").is("deleted_at", null),
-    supabase.from("bookings").select("talent_user_id, agency_id, price, status"),
+    supabase.from("contracts").select("talent_user_id, commission_amount").eq("status", "paid"),
     supabase.from("profiles").select("id, is_frozen"),
     supabase.from("jobs").select("agency_id").eq("status", "open").is("deleted_at", null),
   ]);
@@ -83,29 +82,12 @@ export default async function AdminUsersPage() {
     if (agency.avatar_url) avatarMap.set(ownerId, agency.avatar_url);
   }
 
-  const earnedMap = new Map<string, number>();
-  const spentMap = new Map<string, number>();
   const commissionMap = new Map<string, number>();
 
-  for (const booking of bookingsData ?? []) {
-    const price = booking.price ?? 0;
-    const isConfirmed = booking.status === "confirmed" || booking.status === "paid";
-
-    if (!isConfirmed || price <= 0) continue;
-
-    const agencyPlan = parsePlan(booking.agency_id ? planMap.get(booking.agency_id) : "free");
-    const commission = calculateCommission(price, agencyPlan);
-    const netAmount = calculateNetAmount(price, agencyPlan);
-
-    if (booking.talent_user_id) {
-      earnedMap.set(booking.talent_user_id, (earnedMap.get(booking.talent_user_id) ?? 0) + netAmount);
-      commissionMap.set(booking.talent_user_id, (commissionMap.get(booking.talent_user_id) ?? 0) + commission);
-    }
-
-    if (booking.agency_id) {
-      spentMap.set(booking.agency_id, (spentMap.get(booking.agency_id) ?? 0) + price);
-      commissionMap.set(booking.agency_id, (commissionMap.get(booking.agency_id) ?? 0) + commission);
-    }
+  for (const contract of (paidContracts ?? []) as Array<{ talent_user_id?: string | null; commission_amount?: number | null }>) {
+    if (!contract.talent_user_id) continue;
+    const commission = Number(contract.commission_amount ?? 0);
+    commissionMap.set(contract.talent_user_id, (commissionMap.get(contract.talent_user_id) ?? 0) + commission);
   }
 
   const users = (authUsers ?? [])
@@ -126,8 +108,6 @@ export default async function AdminUsersPage() {
       role,
       isFrozen: frozenMap.get(user.id) ?? false,
       created_at: user.created_at ?? "",
-      totalEarned: earnedMap.get(user.id) ?? 0,
-      totalSpent: spentMap.get(user.id) ?? 0,
       commissionGenerated: commissionMap.get(user.id) ?? 0,
       walletBalance: walletMap.get(user.id) ?? 0,
       openJobCount: openJobCountMap.get(user.id) ?? 0,

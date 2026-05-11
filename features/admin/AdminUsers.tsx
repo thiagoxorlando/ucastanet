@@ -13,8 +13,6 @@ export type AdminUser = {
   plan: string | null;
   isFrozen: boolean;
   created_at: string;
-  totalEarned: number;
-  totalSpent: number;
   commissionGenerated: number;
   walletBalance: number;
   openJobCount: number;
@@ -58,7 +56,7 @@ function initials(name: string) {
 }
 
 function primaryFinancialValue(user: AdminUser) {
-  return user.role === "agency" ? user.walletBalance : user.totalEarned;
+  return user.walletBalance;
 }
 
 function FinancialCell({
@@ -116,7 +114,7 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
     })
     .sort((left, right) => {
       if (sortKey === "earned") return primaryFinancialValue(right) - primaryFinancialValue(left);
-      if (sortKey === "spent") return right.totalSpent - left.totalSpent;
+      if (sortKey === "spent") return 0;
       if (sortKey === "commission") return right.commissionGenerated - left.commissionGenerated;
       return 0;
     });
@@ -756,9 +754,10 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                         />
                       ) : user.role === "talent" ? (
                         <FinancialCell
-                          value={user.totalEarned}
-                          tone={user.totalEarned > 0 ? "text-emerald-700" : "text-[#647B7B]"}
-                          note="ganhos confirmados"
+                          value={user.walletBalance}
+                          tone={user.walletBalance > 0 ? "text-emerald-700" : "text-zinc-500"}
+                          note="saldo atual"
+                          zeroLabel="R$ 0"
                         />
                       ) : (
                         <span className="text-[13px] text-[#647B7B]">—</span>
@@ -766,26 +765,18 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                     </td>
 
                     <td className="hidden px-4 py-4 text-right lg:table-cell">
-                      {user.role === "agency" ? (
-                        <FinancialCell
-                          value={user.totalSpent}
-                          tone={user.totalSpent > 0 ? "text-zinc-900" : "text-[#647B7B]"}
-                          note="gastos confirmados"
-                        />
-                      ) : (
-                        <span className="text-[13px] text-[#647B7B]">—</span>
-                      )}
+                      <span className="text-[13px] text-[#647B7B]">—</span>
                     </td>
 
                     <td className="hidden px-4 py-4 text-right xl:table-cell">
-                      {user.role === "admin" ? (
-                        <span className="text-[13px] text-[#647B7B]">—</span>
-                      ) : (
+                      {user.role === "talent" ? (
                         <FinancialCell
                           value={user.commissionGenerated}
                           tone={user.commissionGenerated > 0 ? "text-violet-700" : "text-[#647B7B]"}
                           note="comissao da plataforma"
                         />
+                      ) : (
+                        <span className="text-[13px] text-[#647B7B]">—</span>
                       )}
                     </td>
 
