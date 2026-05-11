@@ -25,6 +25,9 @@ type AdminStats = {
   totalRevenue: number;
   monthlySubscriptionTotal?: number;
   pendingWithdrawals?: number;
+  failedWithdrawals?: number;
+  pendingSupportCount?: number;
+  pendingPlanCharges?: number;
 };
 
 function brl(n: number) {
@@ -217,37 +220,90 @@ export default function AdminDashboard({ bookings, stats }: { bookings: Booking[
         />
       </div>
 
-      {/* ── Urgent actions ── */}
+      {/* ── Ações pendentes ── */}
       {(() => {
-        const pendingBookings = bookings.filter((b) => b.status === "pending");
-        const pendingW = stats.pendingWithdrawals ?? 0;
-        const items: { label: string; count: number; href: string; color: string }[] = [];
-        if (pendingBookings.length > 0) items.push({
-          label: "reserva" + (pendingBookings.length !== 1 ? "s pendentes" : " pendente"),
-          count: pendingBookings.length,
-          href: "#bookings-table",
-          color: "text-amber-700 bg-amber-50 border-amber-200",
+        const pendingBookings   = bookings.filter((b) => b.status === "pending");
+        const pendingW          = stats.pendingWithdrawals   ?? 0;
+        const failedW           = stats.failedWithdrawals    ?? 0;
+        const pendingSupport    = stats.pendingSupportCount  ?? 0;
+        const pendingCharges    = stats.pendingPlanCharges   ?? 0;
+
+        type PendingItem = {
+          type: string;
+          description: string;
+          count: number;
+          href: string;
+          color: string;
+        };
+
+        const items: PendingItem[] = [];
+
+        if (pendingSupport > 0) items.push({
+          type: "Suporte",
+          description: pendingSupport === 1 ? "1 conversa aguardando resposta" : `${pendingSupport} conversas aguardando resposta`,
+          count: pendingSupport,
+          href: "/admin/support",
+          color: "border-amber-200 bg-amber-50 text-amber-800",
         });
         if (pendingW > 0) items.push({
-          label: "saque" + (pendingW !== 1 ? "s aguardando" : " aguardando"),
+          type: "Saques",
+          description: pendingW === 1 ? "1 saque em processamento" : `${pendingW} saques em processamento`,
           count: pendingW,
-          href: "/admin/finances",
-          color: "text-red-700 bg-red-50 border-red-200",
+          href: "/admin/finances?tab=saques",
+          color: "border-sky-200 bg-sky-50 text-sky-800",
         });
-        if (items.length === 0) return null;
+        if (failedW > 0) items.push({
+          type: "Saques",
+          description: failedW === 1 ? "1 saque com falha" : `${failedW} saques com falha`,
+          count: failedW,
+          href: "/admin/finances?tab=saques",
+          color: "border-rose-200 bg-rose-50 text-rose-800",
+        });
+        if (pendingCharges > 0) items.push({
+          type: "Planos",
+          description: pendingCharges === 1 ? "1 cobrança pendente" : `${pendingCharges} cobranças pendentes`,
+          count: pendingCharges,
+          href: "/admin/plans",
+          color: "border-violet-200 bg-violet-50 text-violet-800",
+        });
+        if (pendingBookings.length > 0) items.push({
+          type: "Reservas",
+          description: pendingBookings.length === 1 ? "1 reserva pendente de confirmação" : `${pendingBookings.length} reservas pendentes de confirmação`,
+          count: pendingBookings.length,
+          href: "#bookings-table",
+          color: "border-orange-200 bg-orange-50 text-orange-800",
+        });
+
         return (
-          <div className="card p-5 flex flex-wrap items-center gap-3">
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">Requer atenção</span>
-            {items.map((item) => (
-              <a key={item.href} href={item.href}
-                className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-[13px] font-semibold transition-colors hover:opacity-80 ${item.color}`}>
-                <span className="text-[1.1em] font-bold tabular-nums">{item.count}</span>
-                {item.label}
-                <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          <div className="card overflow-hidden">
+            <div className="px-6 py-4 border-b border-[#DDE6E6]">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">Ações pendentes</p>
+            </div>
+            {items.length === 0 ? (
+              <div className="px-6 py-5 flex items-center gap-2.5 text-emerald-600">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-              </a>
-            ))}
+                <p className="text-[13px] font-semibold">Nenhuma ação pendente.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-[#DDE6E6]">
+                {items.map((item, i) => (
+                  <Link key={i} href={item.href}
+                    className={`flex items-center justify-between gap-4 px-6 py-4 hover:bg-[#F8FAFC] transition-colors group`}>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`flex-shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full border ${item.color}`}>
+                        {item.type}
+                      </span>
+                      <p className="text-[13px] font-medium text-[#1F2D2E] truncate">{item.description}</p>
+                    </div>
+                    <svg className="w-4 h-4 text-[#7FA9A8] flex-shrink-0 group-hover:text-[#0E7C86] transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         );
       })()}

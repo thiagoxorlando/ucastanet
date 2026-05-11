@@ -34,6 +34,7 @@ export type AdminPlansAgency = {
   paidCharges: AdminPlansCharge[];
   pendingCharges: AdminPlansCharge[];
   failedCharges: AdminPlansCharge[];
+  activeJobCount: number;
 };
 
 export type PlanSetting = {
@@ -514,11 +515,84 @@ function PlanSettingsSection({
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
+// ── All-agencies pending charges list ────────────────────────────────────────
+
+function AllPendingCharges({ agencies }: { agencies: AdminPlansAgency[] }) {
+  const [open, setOpen] = useState(false);
+  const allPending = agencies.flatMap((a) =>
+    a.pendingCharges.map((c) => ({ ...c, agencyName: a.agencyName, agencyEmail: a.email }))
+  );
+  if (allPending.length === 0) return null;
+
+  return (
+    <div className="card overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-6 py-4 hover:bg-[#F8FAFC] transition-colors text-left"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-[14px] font-semibold text-[#1F2D2E]">Cobranças pendentes</span>
+          <span className="badge-pending">{allPending.length}</span>
+        </div>
+        <svg className={`w-4 h-4 text-[#7FA9A8] transition-transform ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <div className="border-t border-[#DDE6E6]">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#DDE6E6] bg-[#F8FAFC]">
+                  <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">Agência</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">Plano</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] hidden sm:table-cell">Referência</th>
+                  <th className="text-right px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">Valor</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">Status</th>
+                  <th className="text-left px-6 py-3 text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] hidden md:table-cell">Data</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#DDE6E6]">
+                {allPending.map((c) => (
+                  <tr key={c.id} className="hover:bg-[#F8FAFC] transition-colors">
+                    <td className="px-6 py-3">
+                      <p className="text-[13px] font-semibold text-[#1F2D2E] truncate max-w-[160px]">{c.agencyName}</p>
+                      {c.agencyEmail && <p className="text-[11px] text-[#647B7B] font-mono truncate max-w-[160px]">{c.agencyEmail}</p>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-[13px] text-[#1F2D2E]">{c.planName}</span>
+                    </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <span className="font-mono text-[11px] text-[#647B7B]">{c.paymentId ?? c.id.slice(0, 12) + "…"}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-[13px] font-semibold text-[#0E7C86] tabular-nums">{brl(c.amount)}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={statusBadgeClass(c.status)}>{chargeStatusLabel(c.status)}</span>
+                    </td>
+                    <td className="px-6 py-3 hidden md:table-cell">
+                      <span className="text-[12px] text-[#647B7B]">{formatDate(c.createdAt)}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPlans({ agencies, summary, planSettings, planHistory, activeByPlan }: AdminPlansProps) {
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState<"all" | Plan>("all");
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_OPTIONS)[number]>("all");
   const [expandedAgencyId, setExpandedAgencyId] = useState<string | null>(agencies[0]?.id ?? null);
+
+  const freeJobLimit = planSettings.find((s) => s.plan_key === "free")?.job_limit ?? 1;
 
   const filteredAgencies = agencies.filter((agency) => {
     const query = search.trim().toLowerCase();
@@ -570,6 +644,9 @@ export default function AdminPlans({ agencies, summary, planSettings, planHistor
         />
       </div>
 
+      {/* Pending charges list */}
+      {summary.pendingChargeCount > 0 && <AllPendingCharges agencies={agencies} />}
+
       {/* Plan settings editor */}
       <PlanSettingsSection
         initialSettings={planSettings}
@@ -580,16 +657,16 @@ export default function AdminPlans({ agencies, summary, planSettings, planHistor
       {/* Filter bar */}
       <div className="card p-5">
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.5fr)_220px_220px]">
-          <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#7FA9A8] pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center gap-2 rounded-xl border border-[#DDE6E6] bg-white px-3 py-2.5 focus-within:border-[#1ABC9C] focus-within:ring-2 focus-within:ring-[#1ABC9C]/20 transition-colors">
+            <svg className="h-4 w-4 text-[#7FA9A8] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por agencia, contato ou email"
-              className="input-base pl-10"
+              placeholder="Buscar por agência, contato ou email"
+              className="flex-1 min-w-0 bg-transparent text-[13px] text-[#1F2D2E] placeholder-[#7FA9A8] outline-none"
             />
           </div>
           <select value={planFilter} onChange={(e) => setPlanFilter(e.target.value as "all" | Plan)} className="input-base">
@@ -622,6 +699,11 @@ export default function AdminPlans({ agencies, summary, planSettings, planHistor
                       <h2 className="text-[16px] font-semibold text-[#1F2D2E]">{agency.agencyName}</h2>
                       <span className={statusBadgeClass(agency.planStatus)}>{planStatusLabel(agency.planStatus)}</span>
                       <span className="badge-info">{agency.currentPlanLabel}</span>
+                      {agency.currentPlan === "free" && freeJobLimit !== null && agency.activeJobCount >= freeJobLimit && (
+                        <span className="inline-flex items-center rounded-full bg-orange-50 border border-orange-200 px-2.5 py-0.5 text-[11px] font-semibold text-orange-700">
+                          {agency.activeJobCount}/{freeJobLimit} vaga usada
+                        </span>
+                      )}
                     </div>
                     {agency.contactName ? <p className="text-[12px] text-[#647B7B]">Responsavel: {agency.contactName}</p> : null}
                     {agency.email ? <p className="text-[12px] text-[#647B7B] font-mono">{agency.email}</p> : null}

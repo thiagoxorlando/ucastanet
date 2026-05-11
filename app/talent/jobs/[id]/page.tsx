@@ -4,7 +4,7 @@ import { getLivePlanSetting } from "@/lib/planSettings.server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { isJobOpenForApplications, JOB_UNAVAILABLE_MESSAGE } from "@/lib/jobAvailability";
-import type { Plan } from "@/lib/plans";
+import { PLAN_DEFINITIONS, type Plan } from "@/lib/plans";
 import TalentJobDetail from "@/features/talent/TalentJobDetail";
 
 type Props = { params: Promise<{ id: string }> };
@@ -80,6 +80,7 @@ export default async function TalentJobDetailPage({ params }: Props) {
   let agencyName = "";
   let agencyPlan = "free";
   let isAvailableForApplications = true;
+  let liveCommissionRate = PLAN_DEFINITIONS.free.commissionRate;
   if (data.agency_id) {
     const [{ data: agency }, { data: agencyProfile }] = await Promise.all([
       supabase.from("agencies").select("company_name").eq("id", data.agency_id).single(),
@@ -98,6 +99,7 @@ export default async function TalentJobDetailPage({ params }: Props) {
       getLivePlanSetting((agencyProfile?.plan ?? "free") as Plan),
     ]);
 
+    liveCommissionRate = liveSetting.commission_rate;
     isAvailableForApplications = isJobOpenForApplications({
       status: data.status ?? null,
       deletedAt: (data as { deleted_at?: string | null }).deleted_at ?? null,
@@ -130,6 +132,7 @@ export default async function TalentJobDetailPage({ params }: Props) {
       job={job}
       talentGender={talentProfile?.gender ?? null}
       talentAge={talentProfile?.age ?? null}
+      liveCommissionRate={liveCommissionRate}
     />
   );
 }

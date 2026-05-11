@@ -15,7 +15,8 @@ export default async function AdminSupportPage() {
 
   const { data: convs } = await supabase
     .from("support_conversations")
-    .select("id, user_id, subject, status, priority, last_message_at, created_at, closed_at")
+    .select("id, user_id, subject, status, priority, last_message_at, created_at, closed_at, archived_at")
+    .is("archived_at", null)
     .order("last_message_at", { ascending: false });
 
   const userIds = [...new Set((convs ?? []).map((c) => c.user_id))];
@@ -32,6 +33,7 @@ export default async function AdminSupportPage() {
       last_message_at: c.last_message_at,
       created_at:      c.created_at,
       closed_at:       c.closed_at,
+      archived_at:     (c as Record<string, unknown>).archived_at as string | null ?? null,
       userName:      u?.name      ?? "Usuário removido",
       userEmail:     u?.email     ?? "",
       userRole:      u?.role      ?? "unknown",

@@ -13,6 +13,7 @@ export type AdminConversation = {
   last_message_at: string;
   created_at: string;
   closed_at: string | null;
+  archived_at: string | null;
   userName: string;
   userEmail: string;
   userRole: string;
@@ -96,6 +97,7 @@ export default function AdminSupport({
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch]             = useState("");
   const [loading, setLoading]           = useState(false);
+  const [activeTab, setActiveTab]       = useState<"active" | "archived">("active");
 
   const [selectedConv, setSelectedConv] = useState<AdminConversation | null>(null);
   const [messages, setMessages]         = useState<Message[]>([]);
@@ -117,12 +119,13 @@ export default function AdminSupport({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function loadList(status = statusFilter, q = search) {
+  async function loadList(status = statusFilter, q = search, tab = activeTab) {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (status) params.set("status", status);
       if (q)      params.set("search", q);
+      params.set("tab", tab);
       const res = await fetch(`/api/admin/support/conversations?${params}`);
       if (res.ok) {
         const data = await res.json() as { conversations: AdminConversation[] };
@@ -130,6 +133,28 @@ export default function AdminSupport({
       }
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleArchive(conv: AdminConversation) {
+    const res = await fetch(`/api/admin/support/conversations/${conv.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived: true }),
+    });
+    if (res.ok) {
+      setConvs((prev) => prev.filter((c) => c.id !== conv.id));
+    }
+  }
+
+  async function handleRestore(conv: AdminConversation) {
+    const res = await fetch(`/api/admin/support/conversations/${conv.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived: false }),
+    });
+    if (res.ok) {
+      setConvs((prev) => prev.filter((c) => c.id !== conv.id));
     }
   }
 
@@ -342,6 +367,31 @@ export default function AdminSupport({
                 {updating ? "Salvando…" : "Salvar alterações"}
               </button>
               {updateMsg && <p className="text-[12px] font-medium text-emerald-600">{updateMsg}</p>}
+
+              {selectedConv.status === "closed" && !selectedConv.archived_at && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleArchive(selectedConv);
+                    setSelectedConv(null);
+                  }}
+                  className="w-full border border-zinc-200 hover:border-zinc-300 text-zinc-600 hover:text-zinc-800 text-[13px] font-semibold py-2.5 rounded-xl transition-colors cursor-pointer"
+                >
+                  Arquivar conversa
+                </button>
+              )}
+              {selectedConv.archived_at && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleRestore(selectedConv);
+                    setSelectedConv(null);
+                  }}
+                  className="w-full border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700 text-[13px] font-semibold py-2.5 rounded-xl transition-colors cursor-pointer"
+                >
+                  Restaurar conversa
+                </button>
+              )}
             </div>
 
             <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04)] p-5 space-y-2.5">
@@ -373,6 +423,13 @@ export default function AdminSupport({
 
   // ── List view ──────────────────────────────────────────────────────────────
 
+  function switchTab(tab: "active" | "archived") {
+    setActiveTab(tab);
+    setStatusFilter("");
+    setSearch("");
+    loadList("", "", tab);
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -380,46 +437,67 @@ export default function AdminSupport({
         <p className="text-[13px] text-zinc-500 mt-0.5">Gerencie solicitações de suporte dos usuários.</p>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Abertas"             value={stats.open}          stripe="from-emerald-400 to-teal-500" />
-        <StatCard label="Aguardando suporte"  value={stats.waiting_admin} stripe="from-amber-400 to-orange-500" />
-        <StatCard label="Aguardando usuário"  value={stats.waiting_user}  stripe="from-teal-400 to-cyan-500" />
-        <StatCard label="Encerradas"          value={stats.closed}        stripe="from-zinc-300 to-zinc-400" />
+      {/* Summary cards — only for active tab */}
+      {activeTab === "active" && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label="Abertas"             value={stats.open}          stripe="from-emerald-400 to-teal-500" />
+          <StatCard label="Aguardando suporte"  value={stats.waiting_admin} stripe="from-amber-400 to-orange-500" />
+          <StatCard label="Aguardando usuário"  value={stats.waiting_user}  stripe="from-teal-400 to-cyan-500" />
+          <StatCard label="Encerradas"          value={stats.closed}        stripe="from-zinc-300 to-zinc-400" />
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1 bg-zinc-100 rounded-xl p-1 self-start w-fit">
+        {(["active", "archived"] as const).map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => switchTab(tab)}
+            className={[
+              "px-4 py-1.5 text-[13px] font-semibold rounded-lg transition-all cursor-pointer whitespace-nowrap",
+              activeTab === tab ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-800",
+            ].join(" ")}
+          >
+            {tab === "active" ? "Atendimentos ativos" : "Arquivados"}
+          </button>
+        ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") loadList(statusFilter, search); }}
-          placeholder="Buscar por assunto, nome ou e-mail…"
-          className="flex-1 min-w-[200px] rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[13px] text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition-colors shadow-sm"
-        />
-        <select
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); loadList(e.target.value, search); }}
-          className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[13px] text-zinc-700 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition-colors shadow-sm cursor-pointer"
-        >
-          <option value="">Todos os status</option>
-          <option value="open">Aberta</option>
-          <option value="waiting_admin">Aguardando suporte</option>
-          <option value="waiting_user">Aguardando usuário</option>
-          <option value="closed">Encerrada</option>
-        </select>
-        <button
-          type="button"
-          onClick={() => loadList(statusFilter, search)}
-          className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors shadow-sm cursor-pointer"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          Buscar
-        </button>
-      </div>
+      {/* Filters — only for active tab */}
+      {activeTab === "active" && (
+        <div className="flex flex-wrap gap-3">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") loadList(statusFilter, search); }}
+            placeholder="Buscar por assunto, nome ou e-mail…"
+            className="flex-1 min-w-[200px] rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[13px] text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition-colors shadow-sm"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); loadList(e.target.value, search); }}
+            className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[13px] text-zinc-700 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500 transition-colors shadow-sm cursor-pointer"
+          >
+            <option value="">Todos os status</option>
+            <option value="open">Aberta</option>
+            <option value="waiting_admin">Aguardando suporte</option>
+            <option value="waiting_user">Aguardando usuário</option>
+            <option value="closed">Encerrada</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => loadList(statusFilter, search)}
+            className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[13px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors shadow-sm cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            Buscar
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       {loading ? (
@@ -428,7 +506,9 @@ export default function AdminSupport({
         </div>
       ) : conversations.length === 0 ? (
         <div className="bg-white rounded-2xl border border-zinc-100 py-12 text-center">
-          <p className="text-[14px] font-medium text-zinc-500">Nenhuma conversa encontrada.</p>
+          <p className="text-[14px] font-medium text-zinc-500">
+            {activeTab === "archived" ? "Nenhuma conversa arquivada." : "Nenhuma conversa encontrada."}
+          </p>
         </div>
       ) : (
         <div className="bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_14px_34px_rgba(7,17,13,0.06)] overflow-hidden">
@@ -440,20 +520,20 @@ export default function AdminSupport({
                   <th className="text-left px-4 py-3.5 text-[11px] font-semibold text-zinc-400 uppercase tracking-widest">Usuário</th>
                   <th className="text-left px-4 py-3.5 text-[11px] font-semibold text-zinc-400 uppercase tracking-widest hidden lg:table-cell">Status</th>
                   <th className="text-left px-4 py-3.5 text-[11px] font-semibold text-zinc-400 uppercase tracking-widest hidden lg:table-cell">Prioridade</th>
-                  <th className="text-right px-6 py-3.5 text-[11px] font-semibold text-zinc-400 uppercase tracking-widest hidden sm:table-cell">Última msg</th>
+                  <th className="text-right px-4 py-3.5 text-[11px] font-semibold text-zinc-400 uppercase tracking-widest hidden sm:table-cell">Última msg</th>
+                  <th className="px-6 py-3.5" />
                 </tr>
               </thead>
               <tbody>
                 {conversations.map((conv) => (
                   <tr
                     key={conv.id}
-                    onClick={() => openConversation(conv)}
-                    className="border-b border-zinc-50 hover:bg-zinc-50/60 transition-colors cursor-pointer"
+                    className="border-b border-zinc-50 hover:bg-zinc-50/60 transition-colors"
                   >
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 cursor-pointer" onClick={() => openConversation(conv)}>
                       <p className="text-[13px] font-semibold text-zinc-900 truncate max-w-[200px]">{conv.subject}</p>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4 cursor-pointer" onClick={() => openConversation(conv)}>
                       <p className="text-[13px] font-medium text-zinc-800 truncate max-w-[160px]">{conv.userName}</p>
                       {conv.userEmail && (
                         <p className="text-[11px] text-zinc-400 truncate max-w-[160px] mt-0.5">{conv.userEmail}</p>
@@ -464,18 +544,38 @@ export default function AdminSupport({
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-4 hidden lg:table-cell">
+                    <td className="px-4 py-4 hidden lg:table-cell cursor-pointer" onClick={() => openConversation(conv)}>
                       <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_CLS[conv.status] ?? STATUS_CLS.open}`}>
                         {STATUS_LABEL[conv.status] ?? conv.status}
                       </span>
                     </td>
-                    <td className="px-4 py-4 hidden lg:table-cell">
+                    <td className="px-4 py-4 hidden lg:table-cell cursor-pointer" onClick={() => openConversation(conv)}>
                       <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${PRIORITY_CLS[conv.priority] ?? PRIORITY_CLS.normal}`}>
                         {PRIORITY_LABEL[conv.priority] ?? conv.priority}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-right hidden sm:table-cell">
+                    <td className="px-4 py-4 text-right hidden sm:table-cell cursor-pointer" onClick={() => openConversation(conv)}>
                       <p className="text-[12px] text-zinc-400 tabular-nums">{fmtDate(conv.last_message_at)}</p>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {activeTab === "active" && conv.status === "closed" && (
+                        <button
+                          type="button"
+                          onClick={() => handleArchive(conv)}
+                          className="text-[11px] font-semibold text-zinc-400 hover:text-zinc-700 px-2 py-1 rounded-lg hover:bg-zinc-100 transition-colors whitespace-nowrap cursor-pointer"
+                        >
+                          Arquivar
+                        </button>
+                      )}
+                      {activeTab === "archived" && (
+                        <button
+                          type="button"
+                          onClick={() => handleRestore(conv)}
+                          className="text-[11px] font-semibold text-teal-600 hover:text-teal-800 px-2 py-1 rounded-lg hover:bg-teal-50 transition-colors whitespace-nowrap cursor-pointer"
+                        >
+                          Restaurar
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

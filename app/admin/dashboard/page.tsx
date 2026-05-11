@@ -17,6 +17,9 @@ export default async function AdminDashboardPage() {
     { count: talentCount },
     { count: agencyCount },
     { count: pendingWithdrawalsCount },
+    { count: failedWithdrawalsCount },
+    { count: pendingSupportCount },
+    { count: pendingPlanChargesCount },
   ] = await Promise.all([
     supabase
       .from("bookings")
@@ -39,6 +42,21 @@ export default async function AdminDashboardPage() {
       .select("id", { count: "exact", head: true })
       .in("status", ["pending", "processing"])
       .eq("type", "withdrawal"),
+    supabase
+      .from("wallet_transactions")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["failed", "cancelled", "canceled", "past_due", "overdue"])
+      .eq("type", "withdrawal"),
+    supabase
+      .from("support_conversations")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "waiting_admin")
+      .is("archived_at", null),
+    supabase
+      .from("wallet_transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("type", "plan_charge")
+      .in("status", ["pending", "processing", "awaiting_payment", "pending_payment"]),
   ]);
 
   // Find which job+talent pairs have a referrer
@@ -110,11 +128,14 @@ export default async function AdminDashboardPage() {
   const totalRevenue = bookings.reduce((s, b) => s + b.platformCommission, 0);
 
   const stats = {
-    totalJobs:          jobsCount     ?? 0,
-    totalUsers:         (talentCount ?? 0) + (agencyCount ?? 0),
-    totalBookings:      bookings.length,
+    totalJobs:              jobsCount     ?? 0,
+    totalUsers:             (talentCount ?? 0) + (agencyCount ?? 0),
+    totalBookings:          bookings.length,
     totalRevenue,
-    pendingWithdrawals: pendingWithdrawalsCount ?? 0,
+    pendingWithdrawals:     pendingWithdrawalsCount  ?? 0,
+    failedWithdrawals:      failedWithdrawalsCount   ?? 0,
+    pendingSupportCount:    pendingSupportCount       ?? 0,
+    pendingPlanCharges:     pendingPlanChargesCount   ?? 0,
   };
 
   return <AdminDashboard bookings={bookings} stats={stats} />;

@@ -92,7 +92,7 @@ export default async function AdminUserProfilePage({ params }: Props) {
     : 0;
   const commission = relevantContracts.reduce((s, c) => s + Number(c.commission_amount ?? 0), 0);
 
-  const walletBalance = isAgency ? (profile?.wallet_balance ?? 0) : 0;
+  const walletBalance = profile?.wallet_balance ?? 0;
   const roleCls = ROLE_STYLES[role] ?? "bg-zinc-100 text-zinc-500";
 
   return (
@@ -237,10 +237,11 @@ export default async function AdminUserProfilePage({ params }: Props) {
         <div className="space-y-4">
           <AdminPlanSelector userId={id} currentPlan={planData?.plan ?? "free"} currentRole={profile?.role ?? "talent"} />
           {[
-            isTalent && { label: "Total Recebido", value: usd(totalEarned), stripe: "from-emerald-400 to-teal-500" },
+            isTalent && { label: "Total Ganho", value: usd(totalEarned), stripe: "from-emerald-400 to-teal-500" },
+            isTalent && { label: "Saldo Atual", value: usd(walletBalance), stripe: "from-teal-400 to-cyan-500" },
             isAgency && { label: "Total Gasto", value: usd(totalSpent), stripe: "from-blue-400 to-indigo-500" },
             isAgency && { label: "Saldo na Carteira", value: usd(walletBalance), stripe: "from-sky-400 to-blue-500" },
-            { label: "Comissão", value: usd(commission), stripe: "from-violet-400 to-purple-500" },
+            isAgency && { label: "Comissão Paga", value: usd(commission), stripe: "from-violet-400 to-purple-500" },
             { label: "Reservas", value: String((bookings ?? []).length), stripe: "from-zinc-400 to-zinc-600" },
             isTalent && { label: "Candidaturas", value: String((submissions ?? []).length), stripe: "from-sky-400 to-blue-500" },
           ].filter(Boolean).map((s) => {

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { PLAN_DEFINITIONS, REFERRAL_RATE, parsePlan } from "@/lib/plans";
+import { REFERRAL_RATE } from "@/lib/plans";
 
 export type TalentJobDetailProps = {
   id: string;
@@ -577,10 +577,12 @@ export default function TalentJobDetail({
   job,
   talentGender = null,
   talentAge = null,
+  liveCommissionRate = 0.2,
 }: {
   job: TalentJobDetailProps | null;
   talentGender?: string | null;
   talentAge?: number | null;
+  liveCommissionRate?: number;
 }) {
   const router = useRouter();
   const [step, setStep]             = useState<StepId>("info");
@@ -890,10 +892,10 @@ export default function TalentJobDetail({
 
           {/* Financial breakdown */}
           {(() => {
-            const planDef = PLAN_DEFINITIONS[parsePlan(job.agencyPlan)];
-            const platformFee = Math.round(job.budget * planDef.commissionRate * 100) / 100;
+            const platformFee = Math.round(job.budget * liveCommissionRate * 100) / 100;
             const talentGets  = job.budget - platformFee;
             const referralFee = Math.round(job.budget * REFERRAL_RATE * 100) / 100;
+            const commissionLabel = Math.round(liveCommissionRate * 100) + "%";
             return (
               <div className="rounded-xl bg-zinc-50 border border-zinc-100 p-4 space-y-2">
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Seus ganhos</p>
@@ -903,7 +905,7 @@ export default function TalentJobDetail({
                     <span className="font-semibold text-zinc-900">{brl(job.budget)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[13px]">
-                    <span className="text-zinc-500">Taxa da plataforma ({planDef.commissionLabel})</span>
+                    <span className="text-zinc-500">Taxa da plataforma ({commissionLabel})</span>
                     <span className="font-medium text-rose-500">− {brl(platformFee)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[13px] pt-1.5 border-t border-zinc-200">

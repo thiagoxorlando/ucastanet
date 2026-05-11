@@ -146,6 +146,23 @@ export default async function AdminPlansPage() {
     if (ownerId) agencyMap.set(ownerId, agency);
   }
 
+  // Count active jobs per agency (for Free plan limit display)
+  const activeJobCountMap = new Map<string, number>();
+  const allAgencyIds = ((profiles ?? []) as AgencyProfileRow[]).map((p) => p.id).filter(Boolean);
+  if (allAgencyIds.length > 0) {
+    const { data: activeJobRows } = await supabase
+      .from("jobs")
+      .select("agency_id")
+      .in("agency_id", allAgencyIds)
+      .in("status", ["open", "closed"])
+      .is("deleted_at", null);
+    for (const row of activeJobRows ?? []) {
+      if (row.agency_id) {
+        activeJobCountMap.set(row.agency_id, (activeJobCountMap.get(row.agency_id) ?? 0) + 1);
+      }
+    }
+  }
+
   const chargesByUser = new Map<string, PlanChargeRow[]>();
   for (const charge of chargeRows) {
     const list = chargesByUser.get(charge.user_id) ?? [];
@@ -188,7 +205,7 @@ export default async function AdminPlansPage() {
         contactName: agency?.contact_name?.trim() || null,
         currentPlan,
         currentPlanLabel: getPlanLabel(currentPlan),
-        planStatus: normalizeStatus(profile.plan_status) || (currentPlan === "free" ? "inactive" : "active"),
+        planStatus: normalizeStatus(profile.plan_status) || "active",
         nextChargeDate: profile.plan_expires_at ?? null,
         lastPaidAt: paidCharges[0]?.created_at ?? null,
         asaasCustomerId: profile.asaas_customer_id ?? null,
@@ -198,6 +215,7 @@ export default async function AdminPlansPage() {
         paidCharges: paidCharges.map(serializeCharge),
         pendingCharges: pendingCharges.map(serializeCharge),
         failedCharges: failedCharges.map(serializeCharge),
+        activeJobCount: activeJobCountMap.get(profile.id) ?? 0,
       };
     })
     .sort((a, b) => a.agencyName.localeCompare(b.agencyName, "pt-BR"));

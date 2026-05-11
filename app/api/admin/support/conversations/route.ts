@@ -9,14 +9,21 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const statusFilter = searchParams.get("status") ?? "";
-  const search = (searchParams.get("search") ?? "").toLowerCase();
+  const search       = (searchParams.get("search") ?? "").toLowerCase();
+  const tab          = searchParams.get("tab") ?? "active"; // "active" | "archived"
 
   const supabase = createServerClient({ useServiceRole: true });
 
   let query = supabase
     .from("support_conversations")
-    .select("id, user_id, subject, status, priority, last_message_at, created_at, closed_at")
+    .select("id, user_id, subject, status, priority, last_message_at, created_at, closed_at, archived_at")
     .order("last_message_at", { ascending: false });
+
+  if (tab === "archived") {
+    query = query.not("archived_at", "is", null);
+  } else {
+    query = query.is("archived_at", null);
+  }
 
   if (statusFilter) query = query.eq("status", statusFilter);
 
@@ -30,6 +37,7 @@ export async function GET(req: NextRequest) {
     const u = userMap.get(c.user_id);
     return {
       ...c,
+      archived_at:   (c as Record<string, unknown>).archived_at as string | null ?? null,
       userName:      u?.name      ?? "Usuário removido",
       userEmail:     u?.email     ?? "",
       userRole:      u?.role      ?? "unknown",

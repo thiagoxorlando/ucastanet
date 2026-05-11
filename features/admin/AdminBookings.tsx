@@ -25,6 +25,7 @@ export type AdminBooking = {
   contractSentAt: string | null;
   contractSignedAt: string | null;
   contractConfirmedAt: string | null;
+  paidAt: string | null;
 };
 
 function brl(value: number) {
@@ -52,6 +53,14 @@ function formatJobDate(value: string | null) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function formatPaidAt(value: string | null) {
+  if (!value) return null;
+  const d = new Date(value);
+  const date = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const time = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return `${date} às ${time}`;
 }
 
 function ConfirmDialog({
@@ -286,7 +295,7 @@ function BookingRow({
                         done: ["aguardando_pagamento", "pago"].includes(derivedStatus),
                         date: local.contractConfirmedAt,
                       },
-                      { label: "Pago", done: derivedStatus === "pago", date: null },
+                      { label: derivedStatus === "pago" && local.paidAt ? `Pago em ${formatPaidAt(local.paidAt)}` : "Pago", done: derivedStatus === "pago", date: null },
                     ].map((step, index, steps) => (
                       <div key={step.label} className="flex flex-shrink-0 items-center">
                         <div className="flex flex-col items-center gap-1.5">

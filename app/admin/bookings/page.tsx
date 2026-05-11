@@ -14,7 +14,7 @@ export default async function AdminBookingsPage() {
     .select(`
       id, job_id, job_title, talent_user_id, agency_id, price, status, created_at,
       contracts!contracts_booking_id_fkey (
-        id, status, payment_amount, created_at, signed_at, confirmed_at, agency_signed_at
+        id, status, payment_amount, created_at, signed_at, confirmed_at, agency_signed_at, paid_at
       )
     `)
     .is("deleted_at", null)
@@ -64,6 +64,7 @@ export default async function AdminBookingsPage() {
       contractSentAt:      contract?.created_at     ?? null,
       contractSignedAt:    contract?.signed_at      ?? null,
       contractConfirmedAt: contract?.confirmed_at ?? contract?.agency_signed_at ?? null,
+      paidAt:              contract?.paid_at        ?? null,
     };
   });
 

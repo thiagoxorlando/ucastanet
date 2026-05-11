@@ -1,4 +1,5 @@
 import { PLAN_DEFINITIONS, PLAN_KEYS, type Plan } from "@/lib/plans";
+import { brlPlan } from "@/lib/brl";
 
 export type PublicPlanSetting = {
   plan_key: Plan;
@@ -32,7 +33,7 @@ export function buildPlanSettingsFallback(): Record<Plan, PublicPlanSetting> {
 }
 
 export function formatPlanPrice(price: number): string {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(price);
+  return brlPlan(price);
 }
 
 export function formatPlanMonthlyPrice(price: number): string {

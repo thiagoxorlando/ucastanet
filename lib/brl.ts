@@ -18,6 +18,26 @@ export function brl(value: number | string | null | undefined): string {
 }
 
 /**
+ * Plan price formatter — omits cents when the value is a whole number.
+ * Use only for plan card / pricing display areas.
+ * Financial transactions should still use brl().
+ *
+ * Examples:
+ *   287   → "R$ 287"
+ *   287.5 → "R$ 287,50"
+ *   0     → "R$ 0"
+ */
+export function brlPlan(value: number | string | null | undefined): string {
+  const n = Number(value ?? 0) || 0;
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(n);
+}
+
+/**
  * Parse a BRL input string (accepts both "9,59" and "9.59") and return
  * a number rounded to 2 decimal places.
  */
