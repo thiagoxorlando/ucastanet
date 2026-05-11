@@ -24,7 +24,7 @@ export default async function AdminUsersPage() {
       .or("is_frozen.is.null,is_frozen.eq.false"),
     supabase.from("talent_profiles").select("id, user_id, full_name, avatar_url, deleted_at").is("deleted_at", null),
     supabase.from("agencies").select("id, user_id, company_name, avatar_url, deleted_at").is("deleted_at", null),
-    supabase.from("contracts").select("talent_user_id, commission_amount").eq("status", "paid"),
+    supabase.from("contracts").select("talent_id, agency_id, commission_amount, payment_amount").eq("status", "paid"),
     supabase.from("profiles").select("id, is_frozen"),
     supabase.from("jobs").select("agency_id").eq("status", "open").is("deleted_at", null),
   ]);
@@ -83,11 +83,17 @@ export default async function AdminUsersPage() {
   }
 
   const commissionMap = new Map<string, number>();
+  const spentMap = new Map<string, number>();
 
-  for (const contract of (paidContracts ?? []) as Array<{ talent_user_id?: string | null; commission_amount?: number | null }>) {
-    if (!contract.talent_user_id) continue;
-    const commission = Number(contract.commission_amount ?? 0);
-    commissionMap.set(contract.talent_user_id, (commissionMap.get(contract.talent_user_id) ?? 0) + commission);
+  for (const contract of (paidContracts ?? []) as Array<{ talent_id?: string | null; agency_id?: string | null; commission_amount?: number | null; payment_amount?: number | null }>) {
+    if (contract.talent_id) {
+      const commission = Number(contract.commission_amount ?? 0);
+      commissionMap.set(contract.talent_id, (commissionMap.get(contract.talent_id) ?? 0) + commission);
+    }
+    if (contract.agency_id) {
+      const amount = Number(contract.payment_amount ?? 0);
+      spentMap.set(contract.agency_id, (spentMap.get(contract.agency_id) ?? 0) + amount);
+    }
   }
 
   const users = (authUsers ?? [])
@@ -109,6 +115,7 @@ export default async function AdminUsersPage() {
       isFrozen: frozenMap.get(user.id) ?? false,
       created_at: user.created_at ?? "",
       commissionGenerated: commissionMap.get(user.id) ?? 0,
+      totalSpent: spentMap.get(user.id) ?? 0,
       walletBalance: walletMap.get(user.id) ?? 0,
       openJobCount: openJobCountMap.get(user.id) ?? 0,
       plan:      planMap.get(user.id) ?? null,

@@ -13,6 +13,7 @@ export type AdminUser = {
   plan: string | null;
   isFrozen: boolean;
   created_at: string;
+  totalSpent: number;
   commissionGenerated: number;
   walletBalance: number;
   openJobCount: number;
@@ -114,7 +115,7 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
     })
     .sort((left, right) => {
       if (sortKey === "earned") return primaryFinancialValue(right) - primaryFinancialValue(left);
-      if (sortKey === "spent") return 0;
+      if (sortKey === "spent") return right.totalSpent - left.totalSpent;
       if (sortKey === "commission") return right.commissionGenerated - left.commissionGenerated;
       return 0;
     });
@@ -765,7 +766,15 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                     </td>
 
                     <td className="hidden px-4 py-4 text-right lg:table-cell">
-                      <span className="text-[13px] text-[#647B7B]">—</span>
+                      {user.role === "agency" ? (
+                        <FinancialCell
+                          value={user.totalSpent}
+                          tone={user.totalSpent > 0 ? "text-zinc-900" : "text-[#647B7B]"}
+                          note="gastos confirmados"
+                        />
+                      ) : (
+                        <span className="text-[13px] text-[#647B7B]">—</span>
+                      )}
                     </td>
 
                     <td className="hidden px-4 py-4 text-right xl:table-cell">
