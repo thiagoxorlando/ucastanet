@@ -17,6 +17,7 @@ export const pt: Record<string, string> = {
   nav_team:        "Minha Equipe",
   nav_availability: "Disponibilidade",
   nav_support:     "Suporte",
+  nav_reconciliation: "Reconciliação",
   nav_audit:       "Auditoria",
   nav_system:      "Sistema",
   nav_settings:    "Configurações",
