@@ -9,8 +9,10 @@ import {
   getWorkspaceSeatUsage,
   getWorkspaceMembers,
   getWorkspacePendingInvites,
+  getWorkspaceAgentBudgets,
   type PremiumWorkspace,
   type PremiumMembership,
+  type AgentBudgetUsage,
 } from "@/lib/premiumWorkspace.server";
 import WorkspaceAgentManager from "@/features/agency/WorkspaceAgentManager";
 import { jobStatusLabel, jobStatusTone } from "@/lib/jobStatus";
@@ -227,7 +229,7 @@ export default async function WorkspacePage() {
   const { workspace, membership } = ws;
 
   // Fetch full data in parallel
-  const [seatUsage, members, invites, jobsResult] = await Promise.all([
+  const [seatUsage, members, invites, jobsResult, budgetMap] = await Promise.all([
     getWorkspaceSeatUsage(workspace.id),
     getWorkspaceMembers(workspace.id),
     membership.role === "owner" ? getWorkspacePendingInvites(workspace.id) : Promise.resolve([]),
@@ -236,7 +238,10 @@ export default async function WorkspacePage() {
       .select("id, title, status, visibility, budget, created_at, created_by_user_id")
       .eq("workspace_id", workspace.id)
       .order("created_at", { ascending: false }),
+    getWorkspaceAgentBudgets(workspace.id),
   ]);
+
+  const budgetUsages: AgentBudgetUsage[] = Array.from(budgetMap.values());
 
   // Enrich jobs with submission counts and creator names
   const jobRows = jobsResult.data ?? [];
@@ -293,6 +298,7 @@ export default async function WorkspacePage() {
             initialSeatUsage={seatUsage}
             initialMembers={members}
             initialInvites={invites}
+            initialBudgetUsages={budgetUsages}
           />
         </div>
       </div>

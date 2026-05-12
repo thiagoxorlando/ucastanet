@@ -77,6 +77,14 @@ export type WorkspaceBranding = {
   welcomeMessage: string | null;
 };
 
+export type AgentBudgetUsage = {
+  memberId: string;
+  userId: string;
+  spendingLimit: number | null;
+  usedAmount: number;
+  availableAmount: number | null; // null = unlimited
+};
+
 // -- Public API --------------------------------------------------------------
 
 /**
@@ -399,6 +407,101 @@ export async function getWorkspaceBranding(workspaceId: string): Promise<Workspa
     brandAccentColor: (data.brand_accent_color as string | null) ?? null,
     welcomeMessage: (data.welcome_message as string | null) ?? null,
   };
+}
+
+/**
+ * Returns the budget usage for a single agent within a workspace.
+ * usedAmount = sum of (budget * number_of_talents_required) for all active workspace jobs created by the agent.
+ */
+export async function getAgentBudgetUsage(
+  workspaceId: string,
+  agentUserId: string
+): Promise<AgentBudgetUsage | null> {
+  const supabase = createServerClient({ useServiceRole: true });
+
+  const { data: member } = await supabase
+    .from("premium_workspace_members")
+    .select("id, spending_limit")
+    .eq("workspace_id", workspaceId)
+    .eq("user_id", agentUserId)
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (!member) return null;
+
+  const { data: jobs } = await supabase
+    .from("jobs")
+    .select("budget, number_of_talents_required")
+    .eq("workspace_id", workspaceId)
+    .eq("created_by_user_id", agentUserId)
+    .neq("status", "inactive")
+    .is("deleted_at", null);
+
+  const usedAmount = (jobs ?? []).reduce((sum, job) => {
+    return sum + Number(job.budget ?? 0) * Number(job.number_of_talents_required ?? 1);
+  }, 0);
+
+  const spendingLimit = member.spending_limit != null ? Number(member.spending_limit) : null;
+
+  return {
+    memberId: String(member.id),
+    userId: agentUserId,
+    spendingLimit,
+    usedAmount,
+    availableAmount: spendingLimit != null ? Math.max(0, spendingLimit - usedAmount) : null,
+  };
+}
+
+/**
+ * Returns budget usage for all active agents in a workspace (owner excluded).
+ * Returns a map of userId → AgentBudgetUsage.
+ */
+export async function getWorkspaceAgentBudgets(
+  workspaceId: string
+): Promise<Map<string, AgentBudgetUsage>> {
+  const supabase = createServerClient({ useServiceRole: true });
+
+  const { data: agents } = await supabase
+    .from("premium_workspace_members")
+    .select("id, user_id, spending_limit")
+    .eq("workspace_id", workspaceId)
+    .eq("role", "agent")
+    .eq("status", "active");
+
+  if (!agents || agents.length === 0) return new Map();
+
+  const agentIds = agents.map((a) => String(a.user_id));
+
+  const { data: jobs } = await supabase
+    .from("jobs")
+    .select("created_by_user_id, budget, number_of_talents_required")
+    .eq("workspace_id", workspaceId)
+    .in("created_by_user_id", agentIds)
+    .neq("status", "inactive")
+    .is("deleted_at", null);
+
+  const usedByAgent = new Map<string, number>();
+  for (const job of jobs ?? []) {
+    const uid = String(job.created_by_user_id);
+    const est = Number(job.budget ?? 0) * Number(job.number_of_talents_required ?? 1);
+    usedByAgent.set(uid, (usedByAgent.get(uid) ?? 0) + est);
+  }
+
+  const result = new Map<string, AgentBudgetUsage>();
+  for (const agent of agents) {
+    const uid = String(agent.user_id);
+    const spendingLimit = agent.spending_limit != null ? Number(agent.spending_limit) : null;
+    const usedAmount = usedByAgent.get(uid) ?? 0;
+    result.set(uid, {
+      memberId: String(agent.id),
+      userId: uid,
+      spendingLimit,
+      usedAmount,
+      availableAmount: spendingLimit != null ? Math.max(0, spendingLimit - usedAmount) : null,
+    });
+  }
+
+  return result;
 }
 
 // -- Internal mappers --------------------------------------------------------

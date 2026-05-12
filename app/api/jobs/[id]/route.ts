@@ -5,6 +5,7 @@ import { requireTalentsNeededForJob } from "@/lib/requireActiveSubscription";
 import { getLivePlanSetting } from "@/lib/planSettings.server";
 import { isJobFull, JOB_FULL_MESSAGE } from "@/lib/jobAvailability";
 import type { Plan } from "@/lib/plans";
+import { getUserPremiumWorkspace, getAgentBudgetUsage } from "@/lib/premiumWorkspace.server";
 
 const PATCH_ALLOWED = ["title", "description", "category", "budget", "deadline", "job_date", "status", "location", "gender", "age_min", "age_max", "number_of_talents_required", "visibility"];
 
@@ -41,13 +42,52 @@ export async function PATCH(
 
   const { data: existingJob } = await supabase
     .from("jobs")
-    .select("agency_id, deleted_at, status, number_of_talents_required")
+    .select("agency_id, deleted_at, status, number_of_talents_required, budget, created_by_user_id, workspace_id")
     .eq("id", id)
     .single();
 
   if (!existingJob) return NextResponse.json({ error: "Vaga não encontrada." }, { status: 404 });
   if (existingJob.deleted_at) return NextResponse.json({ error: "Vaga não encontrada ou foi removida." }, { status: 404 });
-  if (existingJob.agency_id !== user.id) return NextResponse.json({ error: "Você não tem permissão para alterar esta vaga." }, { status: 403 });
+
+  const isOwnerAgency = existingJob.agency_id === user.id;
+  const isWorkspaceCreator =
+    (existingJob as { created_by_user_id?: string | null }).created_by_user_id === user.id &&
+    !!(existingJob as { workspace_id?: string | null }).workspace_id;
+
+  if (!isOwnerAgency && !isWorkspaceCreator) {
+    return NextResponse.json({ error: "Você não tem permissão para alterar esta vaga." }, { status: 403 });
+  }
+
+  // Spending limit check for workspace agents editing budget or talents count
+  if (isWorkspaceCreator && !isOwnerAgency) {
+    const hasFinancialChange =
+      "budget" in update || "number_of_talents_required" in update;
+    if (hasFinancialChange) {
+      const wsId = String((existingJob as { workspace_id?: string | null }).workspace_id);
+      const wsResult = await getUserPremiumWorkspace(user.id);
+      const spendingLimit = wsResult?.membership.spendingLimit ?? null;
+      if (spendingLimit != null) {
+        const budgetUsage = await getAgentBudgetUsage(wsId, user.id);
+        if (budgetUsage) {
+          const oldEstimate =
+            Number((existingJob as { budget?: number | null }).budget ?? 0) *
+            Number(existingJob.number_of_talents_required ?? 1);
+          const newBudget = "budget" in update ? Number(update.budget ?? 0) : Number((existingJob as { budget?: number | null }).budget ?? 0);
+          const newTalents = "number_of_talents_required" in update
+            ? Number(update.number_of_talents_required ?? 1)
+            : Number(existingJob.number_of_talents_required ?? 1);
+          const newEstimate = newBudget * newTalents;
+          const newTotal = budgetUsage.usedAmount - oldEstimate + newEstimate;
+          if (newTotal > spendingLimit) {
+            return NextResponse.json(
+              { error: "Seu limite disponível para criar vagas é insuficiente. Solicite ajuste ao responsável da conta Premium." },
+              { status: 403 }
+            );
+          }
+        }
+      }
+    }
+  }
 
   if (update.visibility === "private" && caller.plan !== "premium") {
     return NextResponse.json({ error: "Premium plan required for private jobs" }, { status: 403 });
@@ -117,7 +157,8 @@ export async function PATCH(
 
   // Enforce per-job hire limit when updating number_of_talents_required
   if (typeof update.number_of_talents_required === "number") {
-    const hiresLimited = await requireTalentsNeededForJob(user.id, update.number_of_talents_required);
+    const ownerForLimit = existingJob.agency_id ?? user.id;
+    const hiresLimited = await requireTalentsNeededForJob(ownerForLimit, update.number_of_talents_required);
     if (hiresLimited) return hiresLimited;
   }
 

@@ -1,9 +1,15 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSubscription } from "@/lib/SubscriptionContext";
+
+type AgentBudgetInfo = {
+  spendingLimit: number | null;
+  usedAmount: number;
+  availableAmount: number | null;
+} | null;
 
 // ─── Types & constants ────────────────────────────────────────────────────────
 
@@ -358,6 +364,17 @@ export default function PostJobForm() {
   const [savingDraft, setSavingDraft] = useState(false);
   const [postedTitle, setPostedTitle] = useState("");
   const [planLimitError, setPlanLimitError] = useState("");
+  const [agentBudget, setAgentBudget] = useState<AgentBudgetInfo>(null);
+
+  useEffect(() => {
+    if (!isWorkspaceAgent) return;
+    fetch("/api/agency/workspace/budget")
+      .then((r) => r.json())
+      .then((d: { budget?: AgentBudgetInfo }) => {
+        if (d.budget !== undefined) setAgentBudget(d.budget);
+      })
+      .catch(() => null);
+  }, [isWorkspaceAgent]);
 
   const errors    = validate(form, maxHiresPerJob);
   const hasErrors = Object.keys(errors).length > 0;
@@ -619,6 +636,25 @@ export default function PostJobForm() {
                     className={`${base} ${ring(!!err("budget"))} pl-10 pr-4 py-3`}
                   />
                 </div>
+                {isWorkspaceAgent && agentBudget && agentBudget.spendingLimit != null && (() => {
+                  const estimate = (Number(form.budget) || 0) * (Number(form.number_of_talents_required) || 1);
+                  const available = agentBudget.availableAmount ?? 0;
+                  const overBudget = estimate > available;
+                  const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+                  return (
+                    <div className={`mt-1.5 rounded-xl px-3 py-2 text-[12px] space-y-0.5 ${overBudget ? "bg-rose-50 border border-rose-100" : "bg-indigo-50 border border-indigo-100"}`}>
+                      <p className={overBudget ? "text-rose-700 font-medium" : "text-indigo-700"}>
+                        Limite disponível: <strong>{fmt(available)}</strong>
+                      </p>
+                      {estimate > 0 && (
+                        <p className={overBudget ? "text-rose-600" : "text-indigo-500"}>
+                          Valor estimado desta vaga: {fmt(estimate)}
+                          {overBudget && " — excede seu limite"}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
               </Field>
 
               {/* Deadline */}

@@ -7,6 +7,7 @@ import type {
   WorkspaceSeatUsage,
   PremiumAgentInvite,
   WorkspaceMemberDetail,
+  AgentBudgetUsage,
 } from "@/lib/premiumWorkspace.server";
 
 interface Props {
@@ -15,6 +16,7 @@ interface Props {
   initialSeatUsage: WorkspaceSeatUsage;
   initialMembers: WorkspaceMemberDetail[];
   initialInvites: PremiumAgentInvite[];
+  initialBudgetUsages?: AgentBudgetUsage[];
 }
 
 function brl(n: number) {
@@ -278,10 +280,12 @@ function PendingInviteRow({
 
 function AgentRow({
   member,
+  budgetUsage,
   onRemove,
   onUpdateLimit,
 }: {
   member: WorkspaceMemberDetail;
+  budgetUsage?: AgentBudgetUsage | null;
   onRemove: (id: string) => Promise<void>;
   onUpdateLimit: (id: string, limit: number | null) => Promise<void>;
 }) {
@@ -379,6 +383,23 @@ function AgentRow({
             </button>
           )}
         </p>
+        {budgetUsage && budgetUsage.spendingLimit != null && (() => {
+          const pct = Math.min(100, (budgetUsage.usedAmount / budgetUsage.spendingLimit) * 100);
+          const over = budgetUsage.usedAmount > budgetUsage.spendingLimit;
+          return (
+            <div className="mt-1.5 space-y-0.5">
+              <div className="h-1 rounded-full bg-zinc-100 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${over ? "bg-rose-400" : "bg-indigo-400"}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <p className="text-[10px] text-zinc-400">
+                Usado: {brl(budgetUsage.usedAmount)} · Disponível: {brl(Math.max(0, budgetUsage.availableAmount ?? 0))}
+              </p>
+            </div>
+          );
+        })()}
       </div>
       <button
         type="button"
@@ -432,10 +453,14 @@ export default function WorkspaceAgentManager({
   initialSeatUsage,
   initialMembers,
   initialInvites,
+  initialBudgetUsages,
 }: Props) {
   const [members, setMembers] = useState<WorkspaceMemberDetail[]>(initialMembers);
   const [invites, setInvites] = useState<PremiumAgentInvite[]>(initialInvites);
   const [seatUsage, setSeatUsage] = useState<WorkspaceSeatUsage>(initialSeatUsage);
+  const budgetMap = new Map<string, AgentBudgetUsage>(
+    (initialBudgetUsages ?? []).map((b) => [b.userId, b])
+  );
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [newLink, setNewLink] = useState<{ email: string; url: string } | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -525,26 +550,42 @@ export default function WorkspaceAgentManager({
   // ── Agent view ──────────────────────────────────────────────────────────────
   if (!isOwner) {
     const selfMember = members.find((m) => m.userId === membership.userId) ?? null;
+    const selfBudget = budgetMap.get(membership.userId) ?? null;
+    const hasLimit = (selfMember?.spendingLimit ?? null) != null;
     return (
       <div className="space-y-3 py-2">
-        <div className="rounded-xl bg-zinc-50 border border-zinc-100 px-4 py-3 space-y-1">
-          <p className="text-[12px] font-semibold text-zinc-500 uppercase tracking-wide">
-            Sua participação
-          </p>
-          <p className="text-[13px] text-zinc-700">
-            Função: <strong>Agente</strong>
-          </p>
-          {selfMember && (
-            <p className="text-[13px] text-zinc-700">
-              Limite de gastos:{" "}
-              <strong>
-                {selfMember.spendingLimit != null
-                  ? brl(selfMember.spendingLimit)
-                  : "Ilimitado"}
-              </strong>
+        {hasLimit && selfBudget ? (
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Meu limite", value: brl(selfBudget.spendingLimit!), color: "text-zinc-700" },
+              { label: "Usado", value: brl(selfBudget.usedAmount), color: "text-amber-600" },
+              {
+                label: "Disponível",
+                value: brl(Math.max(0, selfBudget.availableAmount ?? 0)),
+                color: (selfBudget.availableAmount ?? 0) > 0 ? "text-emerald-600" : "text-rose-500",
+              },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="rounded-xl bg-zinc-50 border border-zinc-100 px-3 py-2.5 text-center">
+                <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mb-1">{label}</p>
+                <p className={`text-[13px] font-bold ${color}`}>{value}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-xl bg-zinc-50 border border-zinc-100 px-4 py-3 space-y-1">
+            <p className="text-[12px] font-semibold text-zinc-500 uppercase tracking-wide">
+              Sua participação
             </p>
-          )}
-        </div>
+            <p className="text-[13px] text-zinc-700">
+              Função: <strong>Agente</strong>
+            </p>
+            {selfMember && (
+              <p className="text-[13px] text-zinc-700">
+                Limite de gastos: <strong>Ilimitado</strong>
+              </p>
+            )}
+          </div>
+        )}
         <p className="text-[12px] text-zinc-400">
           Somente o proprietário pode gerenciar agentes.
         </p>
@@ -617,6 +658,7 @@ export default function WorkspaceAgentManager({
           <AgentRow
             key={m.id}
             member={m}
+            budgetUsage={budgetMap.get(m.userId) ?? null}
             onRemove={removeMember}
             onUpdateLimit={updateLimit}
           />

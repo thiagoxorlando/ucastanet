@@ -5,7 +5,7 @@ import { notify } from "@/lib/notify";
 import { requireJobLimit, requireTalentsNeededForJob } from "@/lib/requireActiveSubscription";
 import { getJobSuggestions } from "@/lib/getJobSuggestions";
 import { resolvePlanInfo } from "@/lib/plans";
-import { getUserPremiumWorkspace, ensurePremiumWorkspaceForAgency } from "@/lib/premiumWorkspace.server";
+import { getUserPremiumWorkspace, ensurePremiumWorkspaceForAgency, getAgentBudgetUsage } from "@/lib/premiumWorkspace.server";
 
 function mapJobCreationError(message: string) {
   const normalized = message.toLowerCase();
@@ -103,6 +103,21 @@ export async function POST(req: NextRequest) {
       { error: "Vagas privadas estão disponíveis apenas no Premium." },
       { status: 403 }
     );
+  }
+
+  // Spending limit check: agents with a set limit cannot exceed it
+  if (isWorkspaceMember && wsResult?.membership.role === "agent" && workspaceId) {
+    const spendingLimit = wsResult.membership.spendingLimit;
+    if (spendingLimit != null) {
+      const budgetUsage = await getAgentBudgetUsage(workspaceId, agencyId);
+      const jobEstimate = Number(budget ?? 0) * (Number(number_of_talents_required) || 1);
+      if (budgetUsage && budgetUsage.availableAmount !== null && jobEstimate > budgetUsage.availableAmount) {
+        return NextResponse.json(
+          { error: "Seu limite disponível para criar vagas é insuficiente. Solicite ajuste ao responsável da conta Premium." },
+          { status: 403 }
+        );
+      }
+    }
   }
 
   let visibility: string;
