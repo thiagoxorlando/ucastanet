@@ -18,6 +18,7 @@ export const pt: Record<string, string> = {
   nav_availability: "Disponibilidade",
   nav_support:     "Suporte",
   nav_reconciliation: "Reconciliação",
+  nav_workspace:   "Espaço Premium",
   nav_audit:       "Auditoria",
   nav_system:      "Sistema",
   nav_settings:    "Configurações",

@@ -22,6 +22,7 @@ const pageMeta: Record<string, { title: string; description: string }> = {
   "/agency/contracts":      { title: "Contratos",            description: "Gerencie os contratos dos seus talentos" },
   "/agency/finances":       { title: "Financeiro",           description: "Receita, pagamentos e comissões da sua agência" },
   "/agency/billing":        { title: "Assinatura",           description: "Gerencie o plano e a cobrança da sua agência" },
+  "/agency/workspace":      { title: "Espaço Premium",       description: "Gerencie sua operação privada de talentos." },
   "/agency/referrals":      { title: "Indicações",           description: "Acompanhe convites, indicações e comissões" },
   "/agency/support":        { title: "Suporte",              description: "Envie mensagens e acompanhe suas solicitações de suporte" },
   "/agency/profile":        { title: "Perfil",               description: "Gerencie o perfil da sua agência" },
