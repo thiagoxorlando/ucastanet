@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { REFERRAL_RATE } from "@/lib/plans";
 import { getContractPaymentStatus, contractStatusLabel, contractStatusTone } from "@/lib/contractStatus";
 import { useT } from "@/lib/LanguageContext";
+import { brl } from "@/lib/brl";
 
 // -- Types -------------------------------------------------------------------
 
@@ -151,13 +152,6 @@ const PIX_TYPE_LABELS_ADMIN: Record<string, string> = {
 };
 
 // -- Utilities ---------------------------------------------------------------
-
-function brl(value: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency", currency: "BRL",
-    minimumFractionDigits: 2, maximumFractionDigits: 2,
-  }).format(value);
-}
 
 function fmt(value: string | null) {
   if (!value) return "—";

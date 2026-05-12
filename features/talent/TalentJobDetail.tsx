@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { REFERRAL_RATE } from "@/lib/plans";
+import { brl } from "@/lib/brl";
 
 export type TalentJobDetailProps = {
   id: string;
@@ -23,12 +24,6 @@ export type TalentJobDetailProps = {
   isAvailableForApplications?: boolean;
   availabilityMessage?: string;
 };
-
-function brl(n: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2,
-  }).format(n);
-}
 
 function formatDate(s: string) {
   if (!s) return "—";

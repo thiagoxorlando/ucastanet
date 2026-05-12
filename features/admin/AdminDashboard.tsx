@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { statusInfo } from "@/lib/bookingStatus";
 import { useT } from "@/lib/LanguageContext";
+import { brl } from "@/lib/brl";
 
 type Booking = {
   id: string;
@@ -30,10 +31,6 @@ type AdminStats = {
   pendingSupportCount?: number;
   pendingPlanCharges?: number;
 };
-
-function brl(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-}
 
 function formatDate(s: string) {
   return new Date(s).toLocaleDateString("pt-BR", { month: "short", day: "numeric", year: "numeric" });

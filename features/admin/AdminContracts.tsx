@@ -8,6 +8,7 @@ import {
   contractStatusTone,
 } from "@/lib/contractStatus";
 import { useT } from "@/lib/LanguageContext";
+import { brl } from "@/lib/brl";
 
 export type AdminContractRow = {
   id: string;
@@ -36,15 +37,6 @@ export type AdminContractRow = {
 
 type DateField = "jobDate" | "createdAt" | "paidAt";
 
-
-function brl(value: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
 
 function formatDate(value: string | null) {
   if (!value) return "-";

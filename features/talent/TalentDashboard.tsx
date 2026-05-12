@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useT } from "@/lib/LanguageContext";
+import { brl } from "@/lib/brl";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,12 +32,6 @@ type PendingPayment = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-function brl(n: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2,
-  }).format(n);
-}
 
 function fmtJobDate(s: string | null, lang: "pt-BR" | "en") {
   if (!s) return "—";

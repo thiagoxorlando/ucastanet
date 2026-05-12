@@ -14,12 +14,13 @@ import type {
   AlertType,
 } from "@/lib/readModels/reconciliation";
 import { useT } from "@/lib/LanguageContext";
+import { brl as brlFmt } from "@/lib/brl";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function brl(value: number | null | undefined) {
   if (value == null) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+  return brlFmt(value);
 }
 
 function formatDT(value: string | null) {

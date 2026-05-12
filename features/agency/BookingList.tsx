@@ -7,6 +7,7 @@ import { useT } from "@/lib/LanguageContext";
 import { unifiedStatusInfo, type UnifiedBookingStatus } from "@/lib/bookingStatus";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 import Avatar from "@/components/ui/Avatar";
+import { brl } from "@/lib/brl";
 
 export type Booking = {
   id:              string;
@@ -27,9 +28,6 @@ export type Booking = {
   hasSignedContract: boolean;
 };
 
-function brl(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-}
 function formatDate(s: string | null) {
   if (!s) return "—";
   return new Date(s).toLocaleDateString("pt-BR", { month: "short", day: "numeric", year: "numeric" });

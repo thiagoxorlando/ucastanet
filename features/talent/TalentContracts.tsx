@@ -9,6 +9,7 @@ import {
   contractStatusLabel,
   contractStatusTone,
 } from "@/lib/contractStatus";
+import { brl } from "@/lib/brl";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -40,9 +41,6 @@ export type ApprovedSubmission = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function brl(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-}
 function fmtDate(s: string | null) {
   if (!s) return "—";
   return new Date(s).toLocaleDateString("pt-BR", { month: "short", day: "numeric", year: "numeric" });

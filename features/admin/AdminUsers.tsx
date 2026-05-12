@@ -5,6 +5,7 @@ import type { MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/ui/Avatar";
 import { useT } from "@/lib/LanguageContext";
+import { brl as brlFmt } from "@/lib/brl";
 
 export type AdminUser = {
   id: string;
@@ -31,12 +32,7 @@ type SortKey = "none" | "earned" | "spent" | "commission";
 
 function brl(value: number, options?: { zeroLabel?: string }) {
   if (value === 0) return options?.zeroLabel ?? "—";
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+  return brlFmt(value);
 }
 
 function formatDate(value: string) {

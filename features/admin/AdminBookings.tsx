@@ -10,6 +10,7 @@ import {
 } from "@/lib/bookingStatus";
 import { useT } from "@/lib/LanguageContext";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
+import { brl } from "@/lib/brl";
 
 export type AdminBooking = {
   id: string;
@@ -28,15 +29,6 @@ export type AdminBooking = {
   contractConfirmedAt: string | null;
   paidAt: string | null;
 };
-
-function brl(value: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
 
 function formatDate(value: string | null) {
   if (!value) return "-";

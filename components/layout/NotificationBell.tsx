@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { useT } from "@/lib/LanguageContext";
 
 type NotifType =
   | "contract"
@@ -22,8 +23,14 @@ type Notification = {
   link: string | null;
 };
 
-function formatTime(s: string) {
+function formatTime(s: string, lang: "pt-BR" | "en") {
   const diff = Math.floor((Date.now() - new Date(s).getTime()) / 1000);
+  if (lang === "en") {
+    if (diff < 60)    return "just now";
+    if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return new Date(s).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
   if (diff < 60)    return "agora mesmo";
   if (diff < 3600)  return `${Math.floor(diff / 60)}m atrás`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h atrás`;
@@ -105,6 +112,7 @@ async function fetchNotifications(userId: string): Promise<Notification[]> {
 
 export default function NotificationBell() {
   const router  = useRouter();
+  const { lang } = useT();
   const [open, setOpen]     = useState(false);
   const [items, setItems]   = useState<Notification[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
@@ -258,7 +266,7 @@ export default function NotificationBell() {
           {/* Header */}
           <div className="px-4 py-3 border-b border-zinc-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <p className="text-[13px] font-semibold text-zinc-900">Notificações</p>
+              <p className="text-[13px] font-semibold text-zinc-900">{lang === "en" ? "Notifications" : "Notificações"}</p>
               {unread > 0 && (
                 <span className="bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none">
                   {unread}
@@ -270,7 +278,7 @@ export default function NotificationBell() {
                 onClick={markAllRead}
                 className="text-[11px] font-medium text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer"
               >
-                Marcar tudo como lido
+                {lang === "en" ? "Mark all read" : "Marcar tudo como lido"}
               </button>
             )}
           </div>
@@ -284,8 +292,8 @@ export default function NotificationBell() {
                     d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
               </div>
-              <p className="text-[13px] font-medium text-zinc-500">Nenhuma notificação</p>
-              <p className="text-[12px] text-zinc-400 mt-0.5">Você está em dia.</p>
+              <p className="text-[13px] font-medium text-zinc-500">{lang === "en" ? "No notifications" : "Nenhuma notificação"}</p>
+              <p className="text-[12px] text-zinc-400 mt-0.5">{lang === "en" ? "You're all caught up." : "Você está em dia."}</p>
             </div>
           ) : (
             <ul className="max-h-80 overflow-y-auto divide-y divide-zinc-50">
@@ -305,13 +313,13 @@ export default function NotificationBell() {
                       {n.message}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <p className="text-[11px] text-zinc-400">{formatTime(n.created_at)}</p>
+                      <p className="text-[11px] text-zinc-400">{formatTime(n.created_at, lang)}</p>
                       {n.link && (
                         <span className="text-[10px] font-medium text-zinc-400 flex items-center gap-0.5">
                           <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
-                          ver
+                          {lang === "en" ? "view" : "ver"}
                         </span>
                       )}
                     </div>

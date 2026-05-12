@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { getUnifiedBookingStatus, unifiedStatusInfo, type UnifiedBookingStatus } from "@/lib/bookingStatus";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
+import { brl } from "@/lib/brl";
 
 type Booking = {
   id: string;
@@ -24,9 +25,6 @@ type Booking = {
   contract_id: string | null;
 };
 
-function brl(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-}
 function formatDate(s: string | null) {
   if (!s) return "—";
   return new Date(s).toLocaleDateString("pt-BR", { month: "short", day: "numeric", year: "numeric" });

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { brl } from "@/lib/brl";
 
 export type TalentJob = {
   id: string;
@@ -14,12 +15,6 @@ export type TalentJob = {
   location: string | null;
   applied?: boolean;
 };
-
-function brl(n: number) {
-  return new Intl.NumberFormat("pt-BR", {
-    style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2,
-  }).format(n);
-}
 
 function formatDate(s: string | null) {
   if (!s) return null;

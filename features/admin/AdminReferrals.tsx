@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useT } from "@/lib/LanguageContext";
+import { brl } from "@/lib/brl";
 
 export type AdminReferral = {
   id: string;
@@ -19,10 +20,6 @@ export type AdminReferral = {
   inviteId: string | null;
   inviteEmail: string | null;
 };
-
-function brl(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-}
 
 function formatDate(s: string) {
   return new Date(s).toLocaleDateString("pt-BR", { month: "short", day: "numeric", year: "numeric" });

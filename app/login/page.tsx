@@ -66,7 +66,7 @@ function LoginPageContent() {
     const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
     if (authError || !data.user) {
-      setError(authError?.message ?? "Falha ao entrar.");
+      setError(authError?.message ?? t("login_failed"));
       setLoading(false);
       return;
     }

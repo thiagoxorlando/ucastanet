@@ -5,6 +5,7 @@ import { useState } from "react";
 import Badge from "@/components/ui/Badge";
 import { useT } from "@/lib/LanguageContext";
 import { talentCategoryLabel } from "@/lib/talentCategories";
+import { brl } from "@/lib/brl";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,10 +66,6 @@ type ConfirmedContract = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function brl(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
-}
 
 function timeAgo(iso: string, lang: string) {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
