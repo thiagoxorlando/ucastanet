@@ -2,13 +2,47 @@ import type { Metadata } from "next";
 import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import BillingDashboard from "@/features/agency/BillingDashboard";
+import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
 
 export const metadata: Metadata = { title: "Assinatura — BrisaHub" };
+
+function AgentBillingScreen({ workspaceName }: { workspaceName: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[50vh] px-4 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center mb-5">
+        <svg className="w-7 h-7 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
+            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+        </svg>
+      </div>
+      <h1 className="text-[18px] font-bold text-zinc-900 mb-2">Plano gerenciado pelo proprietário</h1>
+      <p className="text-[14px] text-zinc-500 max-w-sm mb-2">
+        Seu acesso faz parte do Espaço Premium da agência{" "}
+        <strong className="text-zinc-700">{workspaceName}</strong>.
+      </p>
+      <p className="text-[13px] text-zinc-400 max-w-sm">
+        O plano é gerenciado pelo proprietário do workspace. Não é necessário adquirir um plano separado.
+      </p>
+      <a
+        href="/agency/workspace"
+        className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-[13px] font-semibold transition-colors"
+      >
+        Ir para o Espaço Premium
+      </a>
+    </div>
+  );
+}
 
 export default async function BillingPage() {
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
   const userId = user?.id ?? "";
+
+  // Invited workspace agents should not see the owner billing dashboard
+  const ws = await getUserPremiumWorkspace(userId);
+  if (ws?.membership.role === "agent" && ws.membership.status === "active") {
+    return <AgentBillingScreen workspaceName={ws.workspace.name} />;
+  }
 
   const supabase = createServerClient({ useServiceRole: true });
 

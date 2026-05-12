@@ -79,9 +79,9 @@ function LoginPageContent() {
 
     if (profile?.role === "agency") {
       if (profile.onboarding_completed === false) {
-        destination = onboardingHref(null);
+        destination = onboardingHref(nextPath);
       } else {
-        destination = await getAgencyLanding(data.user.id);
+        destination = nextPath ?? await getAgencyLanding(data.user.id);
       }
     } else if (profile?.role === "talent") {
       await linkReferral(data.user.id);

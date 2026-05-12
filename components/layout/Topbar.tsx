@@ -72,7 +72,7 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
   const pathname = usePathname();
   const { displayName, email, initials, avatarUrl, loading } = useUserProfile();
   const { role } = useRole();
-  const { plan } = useSubscription();
+  const { plan, isWorkspaceAgent } = useSubscription();
   const [imgError, setImgError] = useState(false);
 
   const meta = getPageMeta(pathname);
@@ -144,9 +144,13 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
               {role === "agency" && !loading && (
                 <span className={[
                   "text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wide leading-none",
-                  plan === "premium" ? "badge-premium" : plan === "pro" ? "badge-pro" : "bg-[#E6F0F0] text-[#647B7B]",
+                  isWorkspaceAgent
+                    ? "badge-premium"
+                    : plan === "premium" ? "badge-premium"
+                    : plan === "pro"     ? "badge-pro"
+                    :                      "bg-[#E6F0F0] text-[#647B7B]",
                 ].join(" ")}>
-                  {plan.toUpperCase()}
+                  {isWorkspaceAgent ? "Agente" : plan.toUpperCase()}
                 </span>
               )}
             </div>

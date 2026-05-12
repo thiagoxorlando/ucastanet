@@ -28,20 +28,20 @@ export default function InviteAccept({ token, isLoggedIn, userRole }: Props) {
   }
 
   if (!isLoggedIn) {
-    const redirect = encodeURIComponent(`/premium/invite/${token}`);
+    const next = encodeURIComponent(`/premium/invite/${token}`);
     return (
       <div className="space-y-3">
         <p className="text-[13px] text-zinc-500 text-center">
           Faça login ou crie uma conta de agência para aceitar este convite.
         </p>
         <a
-          href={`/login?redirect=${redirect}`}
+          href={`/login?next=${next}`}
           className="block w-full text-center py-2.5 rounded-xl bg-zinc-900 text-white text-[13px] font-semibold hover:bg-zinc-800 transition-colors"
         >
           Entrar
         </a>
         <a
-          href={`/signup?redirect=${redirect}`}
+          href={`/signup?role=agency&next=${next}`}
           className="block w-full text-center py-2.5 rounded-xl border border-zinc-200 text-zinc-700 text-[13px] font-semibold hover:bg-zinc-50 transition-colors"
         >
           Criar conta

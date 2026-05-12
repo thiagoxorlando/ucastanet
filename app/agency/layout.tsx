@@ -5,6 +5,7 @@ import DashboardShell from "@/components/layout/DashboardShell";
 import { SubscriptionProvider } from "@/lib/SubscriptionContext";
 import SubscriptionBanner from "@/components/agency/SubscriptionBanner";
 import { resolvePlanInfo } from "@/lib/plans";
+import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
 
 export default async function AgencyLayout({
   children,
@@ -18,27 +19,44 @@ export default async function AgencyLayout({
 
   const supabase = createServerClient({ useServiceRole: true });
 
-  const [{ data: agency }, { data: profile }] = await Promise.all([
-    supabase
-      .from("agencies")
-      .select("subscription_status")
-      .eq("id", user?.id ?? "")
-      .single(),
-    supabase
-      .from("profiles")
-      .select("plan")
-      .eq("id", user?.id ?? "")
-      .single(),
+  const [[{ data: agency }, { data: profile }], ws] = await Promise.all([
+    Promise.all([
+      supabase
+        .from("agencies")
+        .select("subscription_status")
+        .eq("id", user?.id ?? "")
+        .single(),
+      supabase
+        .from("profiles")
+        .select("plan")
+        .eq("id", user?.id ?? "")
+        .single(),
+    ]),
+    getUserPremiumWorkspace(user.id),
   ]);
+
+  // Invited workspace agents (role="agent") are NOT the plan payer —
+  // their access derives from membership, not their own profiles.plan.
+  const isWorkspaceAgent = ws?.membership.role === "agent" && ws.membership.status === "active";
+  const isWorkspaceMember = !!ws;
 
   const planInfo = resolvePlanInfo(profile);
   const agencyStatus = agency?.subscription_status ?? "active";
-  const isActive = planInfo.plan === "free"
-    ? agencyStatus !== "cancelling" && agencyStatus !== "suspended"
-    : planInfo.isPaid;
+
+  // Workspace members (owner or agent) are always considered active in the layout.
+  const isActive = isWorkspaceMember
+    ? true
+    : (planInfo.plan === "free"
+        ? agencyStatus !== "cancelling" && agencyStatus !== "suspended"
+        : planInfo.isPaid);
 
   return (
-    <SubscriptionProvider initialPlan={planInfo.plan} initialIsActive={isActive} initialIsPro={planInfo.isPaid}>
+    <SubscriptionProvider
+      initialPlan={planInfo.plan}
+      initialIsActive={isActive}
+      initialIsPro={planInfo.isPaid}
+      initialIsWorkspaceAgent={isWorkspaceAgent}
+    >
       <DashboardShell>
         {!isActive && <SubscriptionBanner />}
         {children}

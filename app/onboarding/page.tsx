@@ -36,6 +36,9 @@ export default async function OnboardingPage({ searchParams }: Props) {
     if (profile.role === "talent") redirect(nextPath ?? "/talent/dashboard");
     if (profile.role !== "agency") redirect(`/${profile.role}/dashboard`);
 
+    // Agency with completed onboarding — honour ?next= so invite links survive
+    if (nextPath) redirect(nextPath);
+
     const { count: jobCount } = await supabase
       .from("jobs")
       .select("id", { count: "exact", head: true })
