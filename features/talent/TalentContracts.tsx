@@ -10,6 +10,7 @@ import {
   contractStatusTone,
 } from "@/lib/contractStatus";
 import { brl } from "@/lib/brl";
+import { useT } from "@/lib/LanguageContext";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -67,10 +68,11 @@ function periodMatches(date: string | null | undefined, period: PeriodFilter) {
 }
 
 function FilterTabs({ value, onChange }: { value: PeriodFilter; onChange: (value: PeriodFilter) => void }) {
+  const { t } = useT();
   const options: Array<{ value: PeriodFilter; label: string }> = [
-    { value: "today", label: "Hoje" },
-    { value: "month", label: "Este mês" },
-    { value: "all", label: "Total" },
+    { value: "today", label: t("filter_today") },
+    { value: "month", label: t("filter_this_month") },
+    { value: "all",   label: t("status_all") },
   ];
 
   return (
@@ -107,6 +109,7 @@ function ShowMoreButton({
   expanded: boolean;
   onClick: () => void;
 }) {
+  const { t } = useT();
   if (total <= LIST_PREVIEW_LIMIT) return null;
   return (
     <button
@@ -114,7 +117,7 @@ function ShowMoreButton({
       onClick={onClick}
       className="w-full rounded-xl border border-zinc-100 bg-white px-5 py-3 text-[12px] font-semibold text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 cursor-pointer"
     >
-      {expanded ? "Ver menos" : `Ver mais ${total - LIST_PREVIEW_LIMIT}`}
+      {expanded ? t("contracts_show_less") : `${t("contracts_show_more")} ${total - LIST_PREVIEW_LIMIT}`}
     </button>
   );
 }
@@ -178,6 +181,7 @@ function ContractRow({
   onAction: (id: string, action: "sign" | "reject", extra?: string) => void;
   acting: string | null;
 }) {
+  const { t } = useT();
   const [open, setOpen]           = useState(c.status === "sent");
   const [showReject, setShowReject] = useState(false);
   const [signedFile, setSignedFile] = useState<File | null>(null);
@@ -214,7 +218,7 @@ function ContractRow({
       });
       if (!signRes.ok) {
         const j = await signRes.json().catch(() => ({})) as { error?: string };
-        setUploadError(j.error ?? "Falha ao iniciar upload do contrato assinado.");
+        setUploadError(j.error ?? t("contracts_upload_init_failed"));
         return;
       }
       const { signedUrl, token, path } = await signRes.json() as { signedUrl: string; token: string; path: string };
@@ -226,7 +230,7 @@ function ContractRow({
 
       if (storageError) {
         console.error("[sign upload] storage", storageError);
-        setUploadError("Falha ao enviar arquivo para o Storage. Tente novamente.");
+        setUploadError(t("contracts_upload_storage_failed"));
         return;
       }
 
@@ -258,7 +262,7 @@ function ContractRow({
 
         <div className="flex-1 min-w-0">
           <p className="text-[14px] font-semibold text-zinc-900 truncate">{c.agencyName}</p>
-          <p className="text-[12px] text-zinc-400 mt-0.5">Recebido em {fmtDate(c.createdAt)}</p>
+          <p className="text-[12px] text-zinc-400 mt-0.5">{t("contracts_received_at")} {fmtDate(c.createdAt)}</p>
         </div>
 
         <p className="text-[14px] font-semibold text-zinc-900 tabular-nums flex-shrink-0 hidden sm:block">
@@ -271,7 +275,7 @@ function ContractRow({
             ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
             : st.cls
         }`}>
-          {hasSigned && isPending ? "Assinado" : st.label}
+          {hasSigned && isPending ? t("contracts_talent_signed") : st.label}
         </span>
 
         {/* Download latest file */}
@@ -281,7 +285,7 @@ function ContractRow({
             onClick={(e) => { e.stopPropagation(); openOrDownload(c); }}
             className="flex-shrink-0 text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer"
             aria-label="Download"
-            title={hasSigned ? "Baixar versão assinada" : "Baixar contrato"}
+            title={hasSigned ? t("contracts_signed_version") : t("contracts_download_contract")}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -298,19 +302,19 @@ function ContractRow({
           {/* Details grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-0.5">Data da Vaga</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-0.5">{t("contracts_job_date")}</p>
               <p className="text-[13px] font-medium text-zinc-800">{fmtJobDate(c.jobDate)}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-0.5">Horário</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-0.5">{t("contracts_time")}</p>
               <p className="text-[13px] font-medium text-zinc-800">{c.jobTime ?? "—"}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-0.5">Localização</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-0.5">{t("contracts_location")}</p>
               <p className="text-[13px] font-medium text-zinc-800">{c.location ?? "—"}</p>
             </div>
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-0.5">Pagamento</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-0.5">{t("contracts_payment")}</p>
               <p className="text-[13px] font-medium text-zinc-800">
                 {brl(c.paymentAmount)}{c.paymentMethod ? ` · ${c.paymentMethod}` : ""}
               </p>
@@ -319,14 +323,14 @@ function ContractRow({
 
           {c.jobDescription && (
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Descrição da Vaga</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">{t("contracts_job_description")}</p>
               <p className="text-[13px] text-zinc-600 leading-relaxed whitespace-pre-line">{c.jobDescription}</p>
             </div>
           )}
 
           {c.additionalNotes && (
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Observações Adicionais</p>
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">{t("contracts_additional_notes")}</p>
               <p className="text-[13px] text-zinc-500 leading-relaxed whitespace-pre-line">{c.additionalNotes}</p>
             </div>
           )}
@@ -335,7 +339,7 @@ function ContractRow({
           {(hasOriginal || hasSigned) && (
             <div className="space-y-2">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
-                Contrato enviado pela agência
+                {t("contracts_sent_by_agency")}
               </p>
               <div className="flex items-center gap-3 flex-wrap">
               {hasOriginal && (
@@ -349,7 +353,7 @@ function ContractRow({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                       d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  Ver contrato
+                  {t("contracts_view_contract")}
                 </a>
               )}
               {hasSigned && (
@@ -362,7 +366,7 @@ function ContractRow({
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
-                  Versão assinada
+                  {t("contracts_signed_version")}
                 </a>
               )}
             </div>
@@ -383,9 +387,9 @@ function ContractRow({
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <p className="text-[13px] font-semibold text-indigo-900">Aguardando Assinatura</p>
+                    <p className="text-[13px] font-semibold text-indigo-900">{t("booking_status_awaiting_signature")}</p>
                     <p className="text-[12px] text-indigo-600 leading-relaxed mt-0.5">
-                      Contrato enviado pela agência. Baixe o PDF, assine via DocuSign ou outra ferramenta, e envie a versão assinada abaixo.
+                      {t("contracts_docusign_instructions")}
                     </p>
                   </div>
                   <a
@@ -398,7 +402,7 @@ function ContractRow({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    Baixar contrato
+                    {t("contracts_download_contract")}
                   </a>
                 </div>
 
@@ -409,7 +413,7 @@ function ContractRow({
                       d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                   </svg>
                   <span className={signedFile ? "text-zinc-800 truncate flex-1" : "text-zinc-400 flex-1"}>
-                    {signedFile ? signedFile.name : "Selecionar contrato assinado…"}
+                    {signedFile ? signedFile.name : t("contracts_select_signed")}
                   </span>
                   {signedFile && (
                     <button
@@ -430,12 +434,12 @@ function ContractRow({
                       if (!file) { setSignedFile(null); return; }
                       if (!/\.pdf$/i.test(file.name)) {
                         setSignedFile(null);
-                        setUploadError("Envie um arquivo PDF válido de até 20MB.");
+                        setUploadError(t("contracts_invalid_pdf"));
                         return;
                       }
                       if (file.size > 20 * 1024 * 1024) {
                         setSignedFile(null);
-                        setUploadError("Arquivo muito grande. Envie um PDF de até 20MB.");
+                        setUploadError(t("contracts_file_too_large"));
                         return;
                       }
                       setSignedFile(file);
@@ -448,14 +452,14 @@ function ContractRow({
                     onClick={() => setShowReject(true)}
                     className="px-4 py-2 text-[13px] font-medium border border-zinc-200 bg-white rounded-xl hover:bg-zinc-50 transition-colors cursor-pointer flex-1"
                   >
-                    Rejeitar
+                    {t("contracts_reject")}
                   </button>
                   <button
                     onClick={handleSignAndUpload}
                     disabled={!signedFile || uploading || acting === c.id}
                     className="flex-1 px-5 py-2 text-[13px] font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {uploading || acting === c.id ? "Enviando…" : "Enviar Contrato Assinado"}
+                    {uploading || acting === c.id ? t("common_sending") : t("contracts_submit_signed")}
                   </button>
                 </div>
                 {uploadError && (
@@ -471,8 +475,8 @@ function ContractRow({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
                 <div className="flex-1">
-                  <p className="text-[13px] font-semibold text-emerald-800">Contrato assinado enviado</p>
-                  <p className="text-[12px] text-emerald-600 mt-0.5">Aguardando a agência confirmar o recebimento.</p>
+                  <p className="text-[13px] font-semibold text-emerald-800">{t("contracts_signed_uploaded_title")}</p>
+                  <p className="text-[12px] text-emerald-600 mt-0.5">{t("contracts_awaiting_agency_confirm")}</p>
                 </div>
               </div>
             )}
@@ -486,7 +490,7 @@ function ContractRow({
                       d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <p className="text-[13px] text-violet-800">
-                    Este trabalho não possui contrato. Você pode aceitar a vaga sem assinatura.
+                    {t("contracts_no_contract_info")}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -494,14 +498,14 @@ function ContractRow({
                     onClick={() => setShowReject(true)}
                     className="px-4 py-2 text-[13px] font-medium border border-zinc-200 rounded-xl hover:bg-zinc-50 hover:border-zinc-300 transition-colors cursor-pointer"
                   >
-                    Rejeitar
+                    {t("contracts_reject")}
                   </button>
                   <button
                     onClick={() => onAction(c.id, "sign")}
                     disabled={acting === c.id}
                     className="flex-1 px-5 py-2 text-[13px] font-semibold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-colors cursor-pointer disabled:opacity-50"
                   >
-                    {acting === c.id ? "Aceitando…" : "Aceitar Vaga"}
+                    {acting === c.id ? t("contracts_accepting") : t("contracts_accept_job")}
                   </button>
                 </div>
               </div>
@@ -515,7 +519,7 @@ function ContractRow({
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <p className="text-[13px] text-zinc-500">
-                  Este trabalho foi concluído sem contrato anexado.
+                  {t("contracts_completed_no_file")}
                 </p>
               </div>
             )}
@@ -523,19 +527,19 @@ function ContractRow({
             {/* Reject confirmation */}
             {isPending && showReject && (
               <div className="flex items-center gap-3 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3 w-full">
-                <p className="text-[13px] font-medium text-rose-800 flex-1">Confirmar rejeição?</p>
+                <p className="text-[13px] font-medium text-rose-800 flex-1">{t("contracts_confirm_reject")}</p>
                 <button
                   onClick={() => setShowReject(false)}
                   className="px-3 py-1.5 text-[12px] font-medium border border-zinc-200 rounded-lg bg-white hover:bg-zinc-50 transition-colors cursor-pointer"
                 >
-                  Cancelar
+                  {t("common_cancel")}
                 </button>
                 <button
                   onClick={() => onAction(c.id, "reject")}
                   disabled={acting === c.id}
                   className="px-3 py-1.5 text-[12px] font-semibold bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                 >
-                  {acting === c.id ? "Rejeitando…" : "Confirmar"}
+                  {acting === c.id ? t("contracts_rejecting") : t("common_confirm")}
                 </button>
               </div>
             )}
@@ -555,6 +559,7 @@ export default function TalentContracts({
   contracts:            TalentContract[];
   approvedSubmissions?: ApprovedSubmission[];
 }) {
+  const { t } = useT();
   const router = useRouter();
   const [contracts, setContracts]     = useState<TalentContract[]>(initial);
   const [pendingSubs, setPendingSubs] = useState<ApprovedSubmission[]>(initialSubs);
@@ -597,12 +602,12 @@ export default function TalentContracts({
         );
         showToast(
           extra
-            ? "Contrato assinado enviado com sucesso."
-            : "Contrato assinado — reserva aguardando confirmação da agência."
+            ? t("contracts_signed_toast")
+            : t("contracts_signed_toast_pending")
         );
       } else {
         const d = await res.json().catch(() => ({}));
-        showToast(d.error ?? "Erro ao assinar contrato.", "error");
+        showToast(d.error ?? t("contracts_sign_error"), "error");
       }
       setActing(null);
       return;
@@ -617,10 +622,10 @@ export default function TalentContracts({
 
     if (res.ok) {
       setContracts((prev) => prev.map((c) => c.id === id ? { ...c, status: "rejected" } : c));
-      showToast("Contrato rejeitado.", "error");
+      showToast(t("contracts_rejected_toast"), "error");
     } else {
       const d = await res.json().catch(() => ({}));
-      showToast(d.error ?? "Algo deu errado.", "error");
+      showToast(d.error ?? t("common_unexpected_error"), "error");
     }
     setActing(null);
   }
@@ -642,11 +647,11 @@ export default function TalentContracts({
     });
     if (res.ok) {
       setPendingSubs((prev) => prev.filter((s) => s.jobId !== sub.jobId));
-      showToast("Aceito! Reserva criada com sucesso.");
+      showToast(t("contracts_booking_created_toast"));
       router.refresh();
     } else {
       const d = await res.json().catch(() => ({}));
-      showToast(d.error ?? "Algo deu errado.", "error");
+      showToast(d.error ?? t("common_unexpected_error"), "error");
     }
     setAcceptingJob(null);
   }
@@ -685,14 +690,14 @@ export default function TalentContracts({
 
       {/* Header */}
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Talento</p>
-        <h1 className="text-[1.75rem] font-semibold tracking-tight text-zinc-900 leading-tight">Contratos</h1>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">{t("portal_talent")}</p>
+        <h1 className="text-[1.75rem] font-semibold tracking-tight text-zinc-900 leading-tight">{t("nav_contracts")}</h1>
         <p className="text-[13px] text-zinc-400 mt-1">
-          {contracts.length} contrato{contracts.length !== 1 ? "s" : ""}
+          {contracts.length} {t("general_contracts")}{contracts.length !== 1 ? "" : ""}
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[12px] text-zinc-400">Filtrar contratos por período</p>
+        <p className="text-[12px] text-zinc-400">{t("contracts_filter_by_period")}</p>
         <FilterTabs value={period} onChange={setPeriod} />
       </div>
 
@@ -700,7 +705,7 @@ export default function TalentContracts({
       {pendingSubs.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-[13px] font-semibold text-zinc-700">Vagas para Aceitar</h2>
+            <h2 className="text-[13px] font-semibold text-zinc-700">{t("contracts_jobs_to_accept")}</h2>
             <span className="text-[10px] font-semibold bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">
               {pendingSubs.length}
             </span>
@@ -714,21 +719,21 @@ export default function TalentContracts({
                 <div className="px-5 py-4 flex items-start gap-4">
                   <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-semibold text-zinc-900 truncate">{sub.jobTitle}</p>
-                    <p className="text-[12px] text-zinc-400 mt-0.5">{sub.agencyName} · Candidatura aprovada</p>
+                    <p className="text-[12px] text-zinc-400 mt-0.5">{sub.agencyName} · {t("contracts_application_approved")}</p>
                     <p className="text-[12px] text-zinc-500 mt-2 leading-relaxed">
-                      Este trabalho não possui contrato. Você pode aceitar a vaga sem assinatura.
+                      {t("contracts_no_contract_info")}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
                     <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-violet-50 text-violet-700 ring-1 ring-violet-100">
-                      Aprovado
+                      {t("contracts_approved_badge")}
                     </span>
                     <button
                       onClick={() => handleAcceptWithoutContract(sub)}
                       disabled={acceptingJob === sub.jobId}
                       className="px-4 py-2 text-[13px] font-semibold bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] disabled:bg-zinc-300 text-white rounded-xl transition-colors cursor-pointer disabled:cursor-not-allowed"
                     >
-                      {acceptingJob === sub.jobId ? "Aceitando…" : "Aceitar Vaga"}
+                      {acceptingJob === sub.jobId ? t("contracts_accepting") : t("contracts_accept_job")}
                     </button>
                   </div>
                 </div>
@@ -746,7 +751,7 @@ export default function TalentContracts({
       {/* Pending signature */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
-          <h2 className="text-[13px] font-semibold text-zinc-700">Aguardando Sua Ação</h2>
+          <h2 className="text-[13px] font-semibold text-zinc-700">{t("contracts_awaiting_action")}</h2>
           <span className="text-[10px] font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
             {pending.length}
           </span>
@@ -764,7 +769,7 @@ export default function TalentContracts({
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-zinc-100 py-8 text-center">
-            <p className="text-[13px] text-zinc-400">Nenhum contrato pendente de revisão</p>
+            <p className="text-[13px] text-zinc-400">{t("contracts_no_pending")}</p>
           </div>
         )}
       </section>
@@ -773,7 +778,7 @@ export default function TalentContracts({
       {active.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-[13px] font-semibold text-zinc-700">Contratos Ativos</h2>
+            <h2 className="text-[13px] font-semibold text-zinc-700">{t("contracts_section_active")}</h2>
             <span className="text-[10px] font-semibold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
               {active.length}
             </span>
@@ -795,7 +800,7 @@ export default function TalentContracts({
       {done.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-[13px] font-semibold text-zinc-700">Vagas Realizadas</h2>
+            <h2 className="text-[13px] font-semibold text-zinc-700">{t("contracts_section_completed")}</h2>
             <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">
               {done.length}
             </span>
@@ -816,7 +821,7 @@ export default function TalentContracts({
       {/* Rejected / cancelled */}
       {history.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-[13px] font-semibold text-zinc-500">Cancelados / Rejeitados</h2>
+          <h2 className="text-[13px] font-semibold text-zinc-500">{t("contracts_section_history")}</h2>
           <div className="space-y-2">
             {visibleItems(history, showAllHistory).map((c) => (
               <ContractRow key={c.id} contract={c} onAction={handleAction} acting={acting} />
@@ -832,15 +837,15 @@ export default function TalentContracts({
 
       {contracts.length > 0 && filteredContracts.length === 0 && pendingSubs.length === 0 && (
         <div className="bg-white rounded-2xl border border-zinc-100 py-12 text-center">
-          <p className="text-[14px] font-medium text-zinc-500">Nenhum contrato neste período</p>
-          <p className="text-[13px] text-zinc-400 mt-1">Ajuste o filtro para ver outros registros.</p>
+          <p className="text-[14px] font-medium text-zinc-500">{t("contracts_none_in_period")}</p>
+          <p className="text-[13px] text-zinc-400 mt-1">{t("contracts_adjust_filter")}</p>
         </div>
       )}
 
       {contracts.length === 0 && pendingSubs.length === 0 && (
         <div className="bg-white rounded-2xl border border-zinc-100 py-16 text-center">
-          <p className="text-[14px] font-medium text-zinc-500">Nenhum contrato ainda</p>
-          <p className="text-[13px] text-zinc-400 mt-1">Contratos enviados por agências aparecerão aqui.</p>
+          <p className="text-[14px] font-medium text-zinc-500">{t("contracts_no_contracts")}</p>
+          <p className="text-[13px] text-zinc-400 mt-1">{t("contracts_empty_hint")}</p>
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { getUnifiedBookingStatus, unifiedStatusInfo, type UnifiedBookingStatus } from "@/lib/bookingStatus";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 import { brl } from "@/lib/brl";
+import { useT } from "@/lib/LanguageContext";
 
 type Booking = {
   id: string;
@@ -39,9 +40,10 @@ function BookingCard({ booking: b, onCancel, cancelling }: {
   onCancel: (id: string, contractId: string | null) => void;
   cancelling: string | null;
 }) {
+  const { t, lang } = useT();
   const [open, setOpen] = useState(false);
   const unified   = b.derived_status as UnifiedBookingStatus;
-  const st        = unifiedStatusInfo(unified);
+  const st        = unifiedStatusInfo(unified, lang === "en" ? "en" : "pt-BR");
   const canCancel = ["aguardando_assinatura", "aguardando_deposito"].includes(unified);
   const jobDate   = formatJobDate(b.job_date);
 
@@ -74,26 +76,26 @@ function BookingCard({ booking: b, onCancel, cancelling }: {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-[12px]">
             {b.agency_name && (
               <div className="col-span-2 sm:col-span-4">
-                <p className="text-zinc-400 font-semibold uppercase tracking-widest text-[10px] mb-0.5">Agência</p>
+                <p className="text-zinc-400 font-semibold uppercase tracking-widest text-[10px] mb-0.5">{t("contracts_agency")}</p>
                 <p className="text-zinc-700 font-semibold">{b.agency_name}</p>
               </div>
             )}
             <div>
-              <p className="text-zinc-400 font-semibold uppercase tracking-widest text-[10px] mb-0.5">Valor do Acordo</p>
+              <p className="text-zinc-400 font-semibold uppercase tracking-widest text-[10px] mb-0.5">{t("bookings_agreed_value")}</p>
               <p className="text-zinc-700 font-semibold">{b.price > 0 ? brl(b.price) : "—"}</p>
-              {b.net_amount != null && <p className="text-zinc-400 mt-0.5">Você recebe {brl(b.net_amount)}</p>}
+              {b.net_amount != null && <p className="text-zinc-400 mt-0.5">{t("bookings_you_receive")} {brl(b.net_amount)}</p>}
             </div>
             <div>
-              <p className="text-zinc-400 font-semibold uppercase tracking-widest text-[10px] mb-0.5">Data da Vaga</p>
+              <p className="text-zinc-400 font-semibold uppercase tracking-widest text-[10px] mb-0.5">{t("contracts_job_date")}</p>
               <p className="text-zinc-700">{jobDate ?? "—"}</p>
               {b.job_time && <p className="text-zinc-400 mt-0.5">{b.job_time}</p>}
             </div>
             <div>
-              <p className="text-zinc-400 font-semibold uppercase tracking-widest text-[10px] mb-0.5">Localização</p>
+              <p className="text-zinc-400 font-semibold uppercase tracking-widest text-[10px] mb-0.5">{t("contracts_location")}</p>
               <p className="text-zinc-700">{b.location ?? "—"}</p>
             </div>
             <div>
-              <p className="text-zinc-400 font-semibold uppercase tracking-widest text-[10px] mb-0.5">Reservado em</p>
+              <p className="text-zinc-400 font-semibold uppercase tracking-widest text-[10px] mb-0.5">{t("bookings_booked_at")}</p>
               <p className="text-zinc-700">{formatDate(b.created_at)}</p>
             </div>
           </div>
@@ -108,7 +110,7 @@ function BookingCard({ booking: b, onCancel, cancelling }: {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                Assinar Contrato
+                {t("bookings_sign_contract")}
               </Link>
             )}
             {canCancel && (
@@ -117,7 +119,7 @@ function BookingCard({ booking: b, onCancel, cancelling }: {
                 disabled={cancelling === b.id}
                 className="inline-flex items-center gap-2 text-[12px] font-semibold px-3.5 py-2 rounded-lg bg-white border border-zinc-200 hover:border-rose-200 hover:bg-rose-50 text-zinc-600 hover:text-rose-600 transition-colors cursor-pointer disabled:opacity-50"
               >
-                {cancelling === b.id ? "Cancelando…" : "Cancelar Reserva"}
+                {cancelling === b.id ? t("bookings_cancelling") : t("bookings_cancel_booking")}
               </button>
             )}
           </div>
@@ -152,6 +154,7 @@ function SectionBlock({ title, bookings, badge, onCancel, cancelling }: {
 }
 
 export default function TalentBookings() {
+  const { t, lang } = useT();
   const [bookings, setBookings]     = useState<Booking[]>([]);
   const [loading, setLoading]       = useState(true);
   const [cancelling, setCancelling] = useState<string | null>(null);
@@ -216,7 +219,7 @@ export default function TalentBookings() {
   );
 
   async function handleCancel(bookingId: string, contractId: string | null) {
-    if (!confirm("Cancelar esta reserva?")) return;
+    if (!confirm(t("bookings_cancel_confirm"))) return;
     setCancelling(bookingId);
     let ok = false;
 
@@ -232,9 +235,9 @@ export default function TalentBookings() {
 
     if (ok) {
       setBookings((prev) => prev.map((b) => b.id === bookingId ? { ...b, status: "cancelled", contract_status: "cancelled", derived_status: "cancelado" } : b));
-      setToast({ msg: "Reserva cancelada.", ok: false });
+      setToast({ msg: t("bookings_cancelled_toast"), ok: false });
     } else {
-      setToast({ msg: "Falha ao cancelar.", ok: false });
+      setToast({ msg: t("bookings_cancel_failed"), ok: false });
     }
     setCancelling(null);
     setTimeout(() => setToast(null), 3500);
@@ -254,14 +257,14 @@ export default function TalentBookings() {
       )}
 
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Atividade</p>
-        <h1 className="text-[1.75rem] font-semibold tracking-tight text-zinc-900 leading-tight">Minhas Reservas</h1>
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">{t("bookings_activity")}</p>
+        <h1 className="text-[1.75rem] font-semibold tracking-tight text-zinc-900 leading-tight">{t("bookings_my_bookings")}</h1>
         <div className="flex items-center gap-3 mt-1">
           {!loading && <p className="text-[13px] text-zinc-400">{bookings.length} total</p>}
           {refreshing && (
             <span className="flex items-center gap-1.5 text-[11px] text-zinc-400">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Atualizando…
+              {t("common_updating")}
             </span>
           )}
         </div>
@@ -273,16 +276,16 @@ export default function TalentBookings() {
         </div>
       ) : bookings.length === 0 ? (
         <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04)] py-16 text-center">
-          <p className="text-[14px] font-medium text-zinc-500">Nenhuma reserva ainda</p>
-          <p className="text-[13px] text-zinc-400 mt-1">Candidate-se a vagas para ser reservado.</p>
+          <p className="text-[14px] font-medium text-zinc-500">{t("bookings_no_bookings")}</p>
+          <p className="text-[13px] text-zinc-400 mt-1">{t("bookings_empty_hint")}</p>
         </div>
       ) : (
         <>
-          <SectionBlock title="Aguardando Assinatura"  bookings={by("aguardando_assinatura")} badge="bg-violet-100 text-violet-700"   onCancel={handleCancel} cancelling={cancelling} />
-          <SectionBlock title="Aguardando Depósito"    bookings={by("aguardando_deposito")}   badge="bg-sky-100 text-sky-700"         onCancel={handleCancel} cancelling={cancelling} />
-          <SectionBlock title="Aguardando Pagamento"   bookings={by("aguardando_pagamento")}  badge="bg-amber-100 text-amber-700"     onCancel={handleCancel} cancelling={cancelling} />
-          <SectionBlock title="Pago"                   bookings={by("pago")}                  badge="bg-emerald-100 text-emerald-700" onCancel={handleCancel} cancelling={cancelling} />
-          <SectionBlock title="Cancelado / Recusado"   bookings={by("cancelado")}             onCancel={handleCancel} cancelling={cancelling} />
+          <SectionBlock title={t("booking_status_awaiting_signature")} bookings={by("aguardando_assinatura")} badge="bg-violet-100 text-violet-700"   onCancel={handleCancel} cancelling={cancelling} />
+          <SectionBlock title={t("booking_status_awaiting_deposit")}   bookings={by("aguardando_deposito")}   badge="bg-sky-100 text-sky-700"         onCancel={handleCancel} cancelling={cancelling} />
+          <SectionBlock title={t("booking_status_awaiting_payment")}   bookings={by("aguardando_pagamento")}  badge="bg-amber-100 text-amber-700"     onCancel={handleCancel} cancelling={cancelling} />
+          <SectionBlock title={t("booking_status_paid")}               bookings={by("pago")}                  badge="bg-emerald-100 text-emerald-700" onCancel={handleCancel} cancelling={cancelling} />
+          <SectionBlock title={t("booking_status_cancelled")}          bookings={by("cancelado")}             onCancel={handleCancel} cancelling={cancelling} />
         </>
       )}
     </div>

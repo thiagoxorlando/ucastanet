@@ -514,7 +514,7 @@ export default function AgencyContracts({ contracts: initialContracts }: { contr
           {t("nav_talent")}: <strong className="text-zinc-600 ml-1">{talentShareLabel}</strong>
           <span className="mx-1">·</span>
           <strong className="text-violet-600">+2% {t("finances_referral_payouts")}</strong>
-          <span className="text-[#647B7B] ml-1">(se aplicável)</span>
+          <span className="text-[#647B7B] ml-1">{t("agency_contracts_if_applicable")}</span>
         </div>
       )}
 

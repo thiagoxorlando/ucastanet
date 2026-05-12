@@ -196,33 +196,54 @@ export async function ensurePremiumWorkspaceForAgency(userId: string): Promise<P
     )
     .single();
 
+  // Workspace insert failed — another concurrent request likely beat us.
+  // Re-fetch the existing workspace; then fall through to ensure owner membership.
+  let resolvedWorkspace = newWorkspace;
   if (wsError || !newWorkspace) {
-    console.error("[premiumWorkspace] Failed to create workspace:", wsError);
-    // Another request may have beaten us — try to return the existing one.
-    return getUserPremiumWorkspace(userId);
+    if (wsError) console.error("[premiumWorkspace] Workspace insert error (likely race):", wsError.message);
+    const { data: existingWorkspace } = await supabase
+      .from("premium_workspaces")
+      .select(
+        "id, owner_user_id, agency_id, name, slug, logo_url, brand_primary_color, brand_accent_color, welcome_message, status, included_agent_seats, extra_agent_seats, created_at, updated_at, deleted_at"
+      )
+      .eq("owner_user_id", userId)
+      .eq("status", "active")
+      .is("deleted_at", null)
+      .maybeSingle();
+
+    if (!existingWorkspace) {
+      console.error("[premiumWorkspace] Could not resolve workspace after race for user:", userId);
+      return null;
+    }
+    resolvedWorkspace = existingWorkspace;
   }
 
-  // Create the owner membership.
-  const { data: newMember, error: memberError } = await supabase
+  // Upsert owner membership — idempotent on (workspace_id, user_id).
+  // ON CONFLICT reactivates an existing deactivated owner row instead of failing.
+  const { data: upsertedMember, error: memberError } = await supabase
     .from("premium_workspace_members")
-    .insert({
-      workspace_id: newWorkspace.id,
-      user_id: userId,
-      role: "owner",
-      status: "active",
-      created_by: userId,
-    })
+    .upsert(
+      {
+        workspace_id: resolvedWorkspace!.id,
+        user_id: userId,
+        role: "owner",
+        status: "active",
+        removed_at: null,
+        created_by: userId,
+      },
+      { onConflict: "workspace_id,user_id", ignoreDuplicates: false }
+    )
     .select("id, workspace_id, user_id, role, status, spending_limit, created_at")
-    .single();
+    .maybeSingle();
 
-  if (memberError || !newMember) {
-    console.error("[premiumWorkspace] Failed to create owner membership:", memberError);
+  if (memberError || !upsertedMember) {
+    console.error("[premiumWorkspace] Failed to upsert owner membership:", memberError);
     return null;
   }
 
   return {
-    workspace: mapWorkspace(newWorkspace),
-    membership: mapMembership(newMember),
+    workspace: mapWorkspace(resolvedWorkspace!),
+    membership: mapMembership(upsertedMember),
   };
 }
 
