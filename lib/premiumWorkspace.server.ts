@@ -36,11 +36,37 @@ export type PremiumMembership = {
 };
 
 export type WorkspaceSeatUsage = {
-  activeAgentCount: number;
+  activeAgentCount: number;   // agents with role='agent' and status='active' (owner excluded)
+  pendingInviteCount: number; // pending non-expired invites
+  usedSeats: number;          // activeAgentCount + pendingInviteCount
   includedSeats: number;
   extraSeats: number;
   totalAllowed: number;
   remaining: number;
+};
+
+export type PremiumAgentInvite = {
+  id: string;
+  workspaceId: string;
+  invitedEmail: string;
+  role: "owner" | "agent";
+  token: string;
+  status: "pending" | "accepted" | "expired" | "cancelled";
+  expiresAt: string;
+  createdAt: string;
+  spendingLimit: number | null;
+};
+
+export type WorkspaceMemberDetail = {
+  id: string;
+  workspaceId: string;
+  userId: string;
+  role: "owner" | "agent";
+  status: string;
+  spendingLimit: number | null;
+  createdAt: string;
+  displayName: string;
+  email: string;
 };
 
 export type WorkspaceBranding = {
@@ -219,13 +245,23 @@ export async function isPremiumAgent(userId: string, workspaceId: string): Promi
  */
 export async function getWorkspaceSeatUsage(workspaceId: string): Promise<WorkspaceSeatUsage> {
   const supabase = createServerClient({ useServiceRole: true });
+  const now = new Date().toISOString();
 
-  const [{ count }, { data: workspace }] = await Promise.all([
+  const [{ count: agentCount }, { count: pendingCount }, { data: workspace }] = await Promise.all([
+    // Active agents only — owner does NOT count against seat limit
     supabase
       .from("premium_workspace_members")
       .select("id", { count: "exact", head: true })
       .eq("workspace_id", workspaceId)
+      .eq("role", "agent")
       .eq("status", "active"),
+    // Pending non-expired invites count against seats to prevent over-inviting
+    supabase
+      .from("premium_agent_invites")
+      .select("id", { count: "exact", head: true })
+      .eq("workspace_id", workspaceId)
+      .eq("status", "pending")
+      .gt("expires_at", now),
     supabase
       .from("premium_workspaces")
       .select("included_agent_seats, extra_agent_seats")
@@ -236,14 +272,18 @@ export async function getWorkspaceSeatUsage(workspaceId: string): Promise<Worksp
   const includedSeats = workspace?.included_agent_seats ?? 2;
   const extraSeats = workspace?.extra_agent_seats ?? 0;
   const totalAllowed = includedSeats + extraSeats;
-  const activeAgentCount = count ?? 0;
+  const activeAgentCount = agentCount ?? 0;
+  const pendingInviteCount = pendingCount ?? 0;
+  const usedSeats = activeAgentCount + pendingInviteCount;
 
   return {
     activeAgentCount,
+    pendingInviteCount,
+    usedSeats,
     includedSeats,
     extraSeats,
     totalAllowed,
-    remaining: Math.max(0, totalAllowed - activeAgentCount),
+    remaining: Math.max(0, totalAllowed - usedSeats),
   };
 }
 
@@ -253,7 +293,87 @@ export async function getWorkspaceSeatUsage(workspaceId: string): Promise<Worksp
  */
 export async function canInviteAgent(workspaceId: string): Promise<boolean> {
   const usage = await getWorkspaceSeatUsage(workspaceId);
-  return usage.activeAgentCount < usage.totalAllowed;
+  return usage.remaining > 0;
+}
+
+/**
+ * Returns all non-removed members of a workspace, enriched with display name and email.
+ */
+export async function getWorkspaceMembers(workspaceId: string): Promise<WorkspaceMemberDetail[]> {
+  const supabase = createServerClient({ useServiceRole: true });
+
+  const { data: members } = await supabase
+    .from("premium_workspace_members")
+    .select("id, workspace_id, user_id, role, status, spending_limit, created_at")
+    .eq("workspace_id", workspaceId)
+    .neq("status", "removed")
+    .order("created_at", { ascending: true });
+
+  if (!members || members.length === 0) return [];
+
+  const userIds = members.map((m) => String(m.user_id));
+
+  // Batch-fetch agency names (company_name) for display
+  const { data: agencies } = await supabase
+    .from("agencies")
+    .select("user_id, company_name")
+    .in("user_id", userIds);
+
+  const nameMap = new Map<string, string>(
+    (agencies ?? []).map((a) => [String(a.user_id), String(a.company_name ?? "—")])
+  );
+
+  // Fetch emails via auth admin (parallel; workspace sizes are small)
+  const emailResults = await Promise.all(
+    userIds.map((uid) =>
+      supabase.auth.admin
+        .getUserById(uid)
+        .then(({ data }) => ({ uid, email: data?.user?.email ?? "" }))
+        .catch(() => ({ uid, email: "" }))
+    )
+  );
+  const emailMap = new Map<string, string>(emailResults.map((r) => [r.uid, r.email]));
+
+  return members.map((m) => {
+    const uid = String(m.user_id);
+    return {
+      id: String(m.id),
+      workspaceId: String(m.workspace_id),
+      userId: uid,
+      role: m.role === "owner" ? "owner" : "agent",
+      status: String(m.status),
+      spendingLimit: m.spending_limit != null ? Number(m.spending_limit) : null,
+      createdAt: String(m.created_at),
+      displayName: nameMap.get(uid) ?? emailMap.get(uid) ?? "—",
+      email: emailMap.get(uid) ?? "",
+    };
+  });
+}
+
+/**
+ * Returns all pending (non-expired) invites for a workspace.
+ */
+export async function getWorkspacePendingInvites(workspaceId: string): Promise<PremiumAgentInvite[]> {
+  const supabase = createServerClient({ useServiceRole: true });
+
+  const { data } = await supabase
+    .from("premium_agent_invites")
+    .select("id, workspace_id, invited_email, role, token, status, expires_at, created_at, spending_limit")
+    .eq("workspace_id", workspaceId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+
+  return (data ?? []).map((row) => ({
+    id: String(row.id),
+    workspaceId: String(row.workspace_id),
+    invitedEmail: String(row.invited_email),
+    role: row.role === "owner" ? "owner" : "agent",
+    token: String(row.token),
+    status: row.status as PremiumAgentInvite["status"],
+    expiresAt: String(row.expires_at),
+    createdAt: String(row.created_at),
+    spendingLimit: row.spending_limit != null ? Number(row.spending_limit) : null,
+  }));
 }
 
 /**
