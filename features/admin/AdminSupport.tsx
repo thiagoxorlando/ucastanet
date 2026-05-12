@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useT } from "@/lib/LanguageContext";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -93,6 +94,7 @@ export default function AdminSupport({
 }: {
   initialConversations: AdminConversation[];
 }) {
+  const { t } = useT();
   const [conversations, setConvs] = useState<AdminConversation[]>(initialConversations);
   const [statusFilter, setStatusFilter] = useState("");
   const [search, setSearch]             = useState("");

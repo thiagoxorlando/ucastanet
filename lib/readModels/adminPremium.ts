@@ -67,6 +67,8 @@ export type AdminPremiumWorkspaceRow = {
   ownerWalletBalance: number;
   activeAgentCount: number;
   pendingInviteCount: number;
+  usedSeats: number;
+  remainingSeats: number;
   privateJobCount: number;
   totalJobCount: number;
   createdAt: string;
@@ -240,22 +242,7 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
     }
   }
 
-  // ── 4. Compute summary ────────────────────────────────────────────────────
-
-  const activeWorkspaces = workspaces.filter((w) => w.status === "active" && !w.deleted_at);
-  const activeAgentCount = (allMembers ?? []).filter(
-    (m) => m.role === "agent" && m.status === "active"
-  ).length;
-  const privateJobCount = (allJobs ?? []).filter((j) => j.visibility === "private_invite").length;
-  const pendingInviteCount = (allInvites ?? []).length;
-
-  const totalUsedSeats = activeAgentCount;
-  const totalAllowedSeats = activeWorkspaces.reduce(
-    (sum, w) => sum + Number(w.included_agent_seats ?? 2) + Number(w.extra_agent_seats ?? 0),
-    0
-  );
-
-  // ── 5. Assemble workspace rows ─────────────────────────────────────────────
+  // ── 4. Assemble workspace rows ─────────────────────────────────────────────
 
   const workspaceRows: AdminPremiumWorkspaceRow[] = workspaces.map((ws) => {
     const wsId = String(ws.id);
@@ -279,6 +266,8 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
 
     const includedSeats = Number(ws.included_agent_seats ?? 2);
     const extraSeats = Number(ws.extra_agent_seats ?? 0);
+    const totalSeats = includedSeats + extraSeats;
+    const usedSeats = activeAgents.length + (wsInvites?.length ?? 0);
 
     // Build agent rows
     const agents: AdminPremiumAgentRow[] = wsMembers.map((m) => {
@@ -331,7 +320,7 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
       status: String(ws.status),
       includedSeats,
       extraSeats,
-      totalSeats: includedSeats + extraSeats,
+      totalSeats,
       ownerUserId,
       agencyId,
       ownerCompanyName,
@@ -340,6 +329,8 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
       ownerWalletBalance,
       activeAgentCount: activeAgents.length,
       pendingInviteCount: wsInvites?.length ?? 0,
+      usedSeats,
+      remainingSeats: Math.max(0, totalSeats - usedSeats),
       privateJobCount: privateJobs.length,
       totalJobCount: wsJobs.length,
       createdAt: String(ws.created_at),
@@ -352,14 +343,16 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
     };
   });
 
+  const activeWorkspaceRows = workspaceRows.filter((row) => row.status === "active" && !row.deletedAt);
+
   return {
     summary: {
-      activeWorkspaceCount: activeWorkspaces.length,
-      activeAgentCount,
-      privateJobCount,
-      pendingInviteCount,
-      totalUsedSeats,
-      totalAllowedSeats,
+      activeWorkspaceCount: activeWorkspaceRows.length,
+      activeAgentCount: activeWorkspaceRows.reduce((sum, row) => sum + row.activeAgentCount, 0),
+      privateJobCount: activeWorkspaceRows.reduce((sum, row) => sum + row.privateJobCount, 0),
+      pendingInviteCount: activeWorkspaceRows.reduce((sum, row) => sum + row.pendingInviteCount, 0),
+      totalUsedSeats: activeWorkspaceRows.reduce((sum, row) => sum + row.usedSeats, 0),
+      totalAllowedSeats: activeWorkspaceRows.reduce((sum, row) => sum + row.totalSeats, 0),
     },
     workspaces: workspaceRows,
   };

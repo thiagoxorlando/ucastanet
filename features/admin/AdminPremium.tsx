@@ -5,10 +5,12 @@ import Link from "next/link";
 import { brl } from "@/lib/brl";
 import type {
   AdminPremiumData,
+  AdminPremiumSummary,
   AdminPremiumWorkspaceRow,
   AdminPremiumAgentRow,
   AdminPremiumJobRow,
 } from "@/lib/readModels/adminPremium";
+import { useT } from "@/lib/LanguageContext";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -71,8 +73,7 @@ function agentStatusBadge(s: string) {
 
 // ── Summary cards ─────────────────────────────────────────────────────────────
 
-function SummaryCards({ data }: { data: AdminPremiumData }) {
-  const { summary } = data;
+function SummaryCards({ summary }: { summary: AdminPremiumSummary }) {
   const cards = [
     { label: "Espaços ativos",        value: String(summary.activeWorkspaceCount), accent: "text-amber-600" },
     { label: "Agentes ativos",        value: String(summary.activeAgentCount),     accent: "text-indigo-600" },
@@ -93,6 +94,17 @@ function SummaryCards({ data }: { data: AdminPremiumData }) {
           <p className={`text-[22px] font-bold ${c.accent}`}>{c.value}</p>
         </div>
       ))}
+    </div>
+  );
+}
+
+function SeatUsageLabel({ ws }: { ws: AdminPremiumWorkspaceRow }) {
+  return (
+    <div>
+      <p className={`text-[13px] font-semibold ${ws.usedSeats >= ws.totalSeats ? "text-rose-600" : "text-zinc-700"}`}>
+        {ws.usedSeats}/{ws.totalSeats}
+      </p>
+      <p className="text-[10px] text-zinc-400">Usados</p>
     </div>
   );
 }
@@ -417,32 +429,172 @@ function OwnerSection({ ws }: { ws: AdminPremiumWorkspaceRow }) {
   );
 }
 
+function SeatAdminSection({
+  ws,
+  onWorkspaceUpdate,
+}: {
+  ws: AdminPremiumWorkspaceRow;
+  onWorkspaceUpdate: (next: Partial<AdminPremiumWorkspaceRow>) => void;
+}) {
+  const [extraSeats, setExtraSeats] = useState(String(ws.extraSeats));
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState<{ ok: boolean; message: string } | null>(null);
+
+  async function handleSave() {
+    setSaving(true);
+    setFeedback(null);
+
+    try {
+      const res = await fetch(`/api/admin/premium/workspaces/${ws.id}/seats`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          extraAgentSeats: Number(extraSeats),
+          reason,
+        }),
+      });
+
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+        usage?: { totalAllowed: number; usedSeats: number; remaining: number };
+      };
+
+      if (!res.ok) {
+        setFeedback({ ok: false, message: data.error ?? "Não foi possível atualizar os assentos extras." });
+        return;
+      }
+
+      onWorkspaceUpdate({
+        extraSeats: Number(extraSeats),
+        totalSeats: ws.includedSeats + Number(extraSeats),
+        usedSeats: data.usage?.usedSeats ?? ws.usedSeats,
+        remainingSeats: data.usage?.remaining ?? Math.max(0, ws.includedSeats + Number(extraSeats) - ws.usedSeats),
+      });
+      setFeedback({ ok: true, message: data.message ?? "Assentos extras atualizados com sucesso." });
+      setReason("");
+    } catch {
+      setFeedback({ ok: false, message: "Não foi possível atualizar os assentos extras." });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div>
+      <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-3">Assentos</p>
+      <div className="grid gap-3 md:grid-cols-4">
+        <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Incluídos</p>
+          <p className="mt-1 text-[15px] font-semibold text-zinc-900">{ws.includedSeats}</p>
+        </div>
+        <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Extras</p>
+          <p className="mt-1 text-[15px] font-semibold text-zinc-900">{ws.extraSeats}</p>
+        </div>
+        <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Total</p>
+          <p className="mt-1 text-[15px] font-semibold text-zinc-900">{ws.totalSeats}</p>
+        </div>
+        <div className="rounded-xl border border-zinc-200 bg-white px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Uso atual</p>
+          <p className="mt-1 text-[15px] font-semibold text-zinc-900">
+            {ws.usedSeats} / {ws.totalSeats}
+          </p>
+          <p className="mt-1 text-[11px] text-zinc-400">
+            {ws.activeAgentCount} ativos • {ws.pendingInviteCount} pendentes
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] leading-relaxed text-amber-700">
+        Assentos extras são controlados manualmente nesta versão. Cobrança automática será adicionada depois.
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)_auto]">
+        <div>
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+            Assentos extras
+          </label>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={extraSeats}
+            onChange={(e) => setExtraSeats(e.target.value)}
+            className="w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-[13px] text-zinc-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+            Motivo da alteração
+          </label>
+          <input
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Ex.: ajuste comercial aprovado pelo suporte"
+            className="w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-[13px] text-zinc-700 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
+          />
+        </div>
+        <div className="flex items-end">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !reason.trim() || extraSeats.trim() === ""}
+            className="inline-flex h-[42px] items-center rounded-xl bg-amber-500 px-4 text-[12px] font-semibold text-white transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {saving ? "Salvando…" : "Atualizar"}
+          </button>
+        </div>
+      </div>
+
+      {feedback ? (
+        <p className={`mt-3 text-[12px] font-medium ${feedback.ok ? "text-emerald-600" : "text-rose-600"}`}>
+          {feedback.message}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 // ── Expanded panel ────────────────────────────────────────────────────────────
 
-function ExpandedPanel({ ws }: { ws: AdminPremiumWorkspaceRow }) {
+function ExpandedPanel({
+  ws,
+  onWorkspaceUpdate,
+}: {
+  ws: AdminPremiumWorkspaceRow;
+  onWorkspaceUpdate: (next: Partial<AdminPremiumWorkspaceRow>) => void;
+}) {
   return (
     <div className="border-t border-zinc-50 bg-zinc-50/50 px-5 py-5 space-y-6">
       <OwnerSection ws={ws} />
+      <div className="border-t border-zinc-100 pt-5">
+        <SeatAdminSection ws={ws} onWorkspaceUpdate={onWorkspaceUpdate} />
+      </div>
       <div className="border-t border-zinc-100 pt-5"><AgentsTable agents={ws.agents} /></div>
       <div className="border-t border-zinc-100 pt-5"><InvitesTable invites={ws.pendingInvites} /></div>
       <div className="border-t border-zinc-100 pt-5"><JobsTable jobs={ws.recentJobs} /></div>
       <div className="border-t border-zinc-100 pt-5"><BrandingSection ws={ws} /></div>
-      <div className="border-t border-zinc-100 pt-4">
-        <p className="text-[11px] text-zinc-400 italic">
-          Ações administrativas serão adicionadas em uma próxima etapa.
-        </p>
-      </div>
     </div>
   );
 }
 
 // ── Workspace row ─────────────────────────────────────────────────────────────
 
-function WorkspaceRow({ ws }: { ws: AdminPremiumWorkspaceRow }) {
+function WorkspaceRow({
+  ws,
+  onWorkspaceChange,
+}: {
+  ws: AdminPremiumWorkspaceRow;
+  onWorkspaceChange: (workspaceId: string, next: Partial<AdminPremiumWorkspaceRow>) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
-  const primary = ws.brandPrimaryColor ?? "#1ABC9C";
-  const initials = ws.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
-  const seatsFull = ws.activeAgentCount >= ws.totalSeats;
+  const workspace = ws;
+  const primary = workspace.brandPrimaryColor ?? "#1ABC9C";
+  const initials = workspace.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
 
   return (
     <div className="border-b border-zinc-50 last:border-0">
@@ -453,53 +605,48 @@ function WorkspaceRow({ ws }: { ws: AdminPremiumWorkspaceRow }) {
         {/* Logo/initials */}
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden border border-zinc-200 text-[11px] font-bold text-white"
-          style={{ background: ws.logoUrl ? "#f4f4f5" : primary }}
+          style={{ background: workspace.logoUrl ? "#f4f4f5" : primary }}
         >
-          {ws.logoUrl ? (
+          {workspace.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={ws.logoUrl} alt="" className="w-full h-full object-cover" />
+            <img src={workspace.logoUrl} alt="" className="w-full h-full object-cover" />
           ) : initials}
         </div>
 
         {/* Name + owner */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-[13px] font-semibold text-zinc-900 truncate">{ws.name}</p>
-            {statusBadge(ws.status)}
-            {ws.hasLogo && (
+            <p className="text-[13px] font-semibold text-zinc-900 truncate">{workspace.name}</p>
+            {statusBadge(workspace.status)}
+            {workspace.hasLogo && (
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">Logo</span>
             )}
-            {ws.hasWelcomeMessage && (
+            {workspace.hasWelcomeMessage && (
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">Mensagem</span>
             )}
           </div>
           <p className="text-[11px] text-zinc-400 mt-0.5 truncate">
-            {ws.ownerCompanyName} · {ws.ownerEmail}
+            {workspace.ownerCompanyName} · {workspace.ownerEmail}
           </p>
         </div>
 
         {/* Stats */}
         <div className="hidden sm:flex items-center gap-5 flex-shrink-0 text-center">
+          <SeatUsageLabel ws={workspace} />
           <div>
-            <p className={`text-[13px] font-semibold ${seatsFull ? "text-rose-600" : "text-zinc-700"}`}>
-              {ws.activeAgentCount}/{ws.totalSeats}
-            </p>
-            <p className="text-[10px] text-zinc-400">Agentes</p>
-          </div>
-          <div>
-            <p className="text-[13px] font-semibold text-violet-600">{ws.privateJobCount}</p>
+            <p className="text-[13px] font-semibold text-violet-600">{workspace.privateJobCount}</p>
             <p className="text-[10px] text-zinc-400">Privadas</p>
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-zinc-700">{ws.totalJobCount}</p>
+            <p className="text-[13px] font-semibold text-zinc-700">{workspace.totalJobCount}</p>
             <p className="text-[10px] text-zinc-400">Total vagas</p>
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-amber-600">{ws.pendingInviteCount}</p>
+            <p className="text-[13px] font-semibold text-amber-600">{workspace.pendingInviteCount}</p>
             <p className="text-[10px] text-zinc-400">Convites</p>
           </div>
           <div>
-            <p className="text-[12px] text-zinc-500">{fmtDate(ws.createdAt)}</p>
+            <p className="text-[12px] text-zinc-500">{fmtDate(workspace.createdAt)}</p>
             <p className="text-[10px] text-zinc-400">Criado</p>
           </div>
         </div>
@@ -515,7 +662,12 @@ function WorkspaceRow({ ws }: { ws: AdminPremiumWorkspaceRow }) {
         </div>
       </div>
 
-      {expanded && <ExpandedPanel ws={ws} />}
+      {expanded && (
+        <ExpandedPanel
+          ws={workspace}
+          onWorkspaceUpdate={(next) => onWorkspaceChange(workspace.id, next)}
+        />
+      )}
     </div>
   );
 }
@@ -523,6 +675,8 @@ function WorkspaceRow({ ws }: { ws: AdminPremiumWorkspaceRow }) {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function AdminPremium({ data }: { data: AdminPremiumData }) {
+  const { t } = useT();
+  const [workspaces, setWorkspaces] = useState<AdminPremiumWorkspaceRow[]>(data.workspaces);
   const [filters, setFilters] = useState<Filters>({
     search: "",
     status: "active",
@@ -531,8 +685,20 @@ export default function AdminPremium({ data }: { data: AdminPremiumData }) {
     privateJobs: "all",
   });
 
+  const summary = useMemo<AdminPremiumSummary>(() => {
+    const activeRows = workspaces.filter((row) => row.status === "active" && !row.deletedAt);
+    return {
+      activeWorkspaceCount: activeRows.length,
+      activeAgentCount: activeRows.reduce((sum, row) => sum + row.activeAgentCount, 0),
+      privateJobCount: activeRows.reduce((sum, row) => sum + row.privateJobCount, 0),
+      pendingInviteCount: activeRows.reduce((sum, row) => sum + row.pendingInviteCount, 0),
+      totalUsedSeats: activeRows.reduce((sum, row) => sum + row.usedSeats, 0),
+      totalAllowedSeats: activeRows.reduce((sum, row) => sum + row.totalSeats, 0),
+    };
+  }, [workspaces]);
+
   const filtered = useMemo(() => {
-    return data.workspaces.filter((ws) => {
+    return workspaces.filter((ws) => {
       // Status filter
       if (filters.status !== "all") {
         if (filters.status === "active" && (ws.status !== "active" || ws.deletedAt)) return false;
@@ -556,8 +722,8 @@ export default function AdminPremium({ data }: { data: AdminPremiumData }) {
       if (filters.branding === "without_logo" && ws.hasLogo) return false;
 
       // Seat usage
-      if (filters.seats === "under" && ws.activeAgentCount >= ws.totalSeats) return false;
-      if (filters.seats === "full" && ws.activeAgentCount < ws.totalSeats) return false;
+      if (filters.seats === "under" && ws.usedSeats >= ws.totalSeats) return false;
+      if (filters.seats === "full" && ws.usedSeats < ws.totalSeats) return false;
 
       // Private jobs
       if (filters.privateJobs === "has" && ws.privateJobCount === 0) return false;
@@ -565,7 +731,7 @@ export default function AdminPremium({ data }: { data: AdminPremiumData }) {
 
       return true;
     });
-  }, [data.workspaces, filters]);
+  }, [workspaces, filters]);
 
   return (
     <div className="space-y-6">
@@ -577,8 +743,12 @@ export default function AdminPremium({ data }: { data: AdminPremiumData }) {
         </p>
       </div>
 
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] leading-relaxed text-amber-700">
+        Assentos extras são controlados manualmente nesta versão. Cobrança automática será adicionada depois.
+      </div>
+
       {/* Summary cards */}
-      <SummaryCards data={data} />
+      <SummaryCards summary={summary} />
 
       {/* Filters */}
       <FilterBar filters={filters} onChange={setFilters} />
@@ -591,7 +761,7 @@ export default function AdminPremium({ data }: { data: AdminPremiumData }) {
             <p className="text-[13px] font-semibold text-zinc-900">Workspaces Premium</p>
             <p className="text-[12px] text-zinc-400 mt-0.5">
               {filtered.length} workspace{filtered.length !== 1 ? "s" : ""}
-              {filtered.length !== data.workspaces.length && ` (${data.workspaces.length} total)`}
+              {filtered.length !== workspaces.length && ` (${workspaces.length} total)`}
             </p>
           </div>
           <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
@@ -606,7 +776,15 @@ export default function AdminPremium({ data }: { data: AdminPremiumData }) {
         ) : (
           <div>
             {filtered.map((ws) => (
-              <WorkspaceRow key={ws.id} ws={ws} />
+              <WorkspaceRow
+                key={ws.id}
+                ws={ws}
+                onWorkspaceChange={(workspaceId, next) =>
+                  setWorkspaces((current) =>
+                    current.map((row) => (row.id === workspaceId ? { ...row, ...next } : row))
+                  )
+                }
+              />
             ))}
           </div>
         )}

@@ -4,6 +4,7 @@
  * and Route Handlers, never in client components.
  */
 import { createServerClient } from "@/lib/supabase";
+import { getLivePlanSetting } from "@/lib/planSettings.server";
 
 // -- Types -------------------------------------------------------------------
 
@@ -85,16 +86,18 @@ export type AgentBudgetUsage = {
   availableAmount: number | null; // null = unlimited
 };
 
+export type PremiumWorkspaceAccess = {
+  workspace: PremiumWorkspace;
+  membership: PremiumMembership;
+};
+
 // -- Public API --------------------------------------------------------------
 
 /**
  * Returns the workspace + membership if the user is an active owner or agent.
  * Returns null if the user has no active premium workspace membership.
  */
-export async function getUserPremiumWorkspace(userId: string): Promise<{
-  workspace: PremiumWorkspace;
-  membership: PremiumMembership;
-} | null> {
+export async function getUserPremiumWorkspace(userId: string): Promise<PremiumWorkspaceAccess | null> {
   const supabase = createServerClient({ useServiceRole: true });
 
   const { data: member } = await supabase
@@ -127,6 +130,19 @@ export async function getUserPremiumWorkspace(userId: string): Promise<{
 }
 
 /**
+ * Returns the active workspace access for a user inside a specific workspace.
+ * Returns null if the user is not an active member of that workspace.
+ */
+export async function getPremiumWorkspaceAccessForUser(
+  userId: string,
+  workspaceId: string
+): Promise<PremiumWorkspaceAccess | null> {
+  const access = await getUserPremiumWorkspace(userId);
+  if (!access || access.workspace.id !== workspaceId) return null;
+  return access;
+}
+
+/**
  * If the user has an active Premium plan and no workspace yet, creates one
  * automatically and inserts an owner membership row.
  *
@@ -136,10 +152,7 @@ export async function getUserPremiumWorkspace(userId: string): Promise<{
  *
  * Returns null if the user is not on the Premium plan.
  */
-export async function ensurePremiumWorkspaceForAgency(userId: string): Promise<{
-  workspace: PremiumWorkspace;
-  membership: PremiumMembership;
-} | null> {
+export async function ensurePremiumWorkspaceForAgency(userId: string): Promise<PremiumWorkspaceAccess | null> {
   const supabase = createServerClient({ useServiceRole: true });
 
   // Verify Premium plan before doing anything else.
@@ -164,6 +177,8 @@ export async function ensurePremiumWorkspaceForAgency(userId: string): Promise<{
 
   const workspaceName = agency?.company_name ?? "Meu Workspace Premium";
   const agencyId = agency?.id ?? null;
+  const premiumPlan = await getLivePlanSetting("premium").catch(() => null);
+  const includedAgentSeats = premiumPlan?.included_agent_seats ?? 2;
 
   // Create the workspace (the unique index prevents duplicates on race).
   const { data: newWorkspace, error: wsError } = await supabase
@@ -173,7 +188,7 @@ export async function ensurePremiumWorkspaceForAgency(userId: string): Promise<{
       agency_id: agencyId,
       name: workspaceName,
       status: "active",
-      included_agent_seats: 2,
+      included_agent_seats: includedAgentSeats,
       extra_agent_seats: 0,
     })
     .select(

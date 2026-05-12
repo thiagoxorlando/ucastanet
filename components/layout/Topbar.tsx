@@ -8,60 +8,66 @@ import { useRole } from "@/lib/RoleProvider";
 import { useSubscription } from "@/lib/SubscriptionContext";
 import NotificationBell from "@/components/layout/NotificationBell";
 import Logo from "@/components/Logo";
+import LanguageSelector from "@/components/LanguageSelector";
+import { useT } from "@/lib/LanguageContext";
 
-const pageMeta: Record<string, { title: string; description: string }> = {
-  "/agency/dashboard":      { title: "Painel",                description: "Visão geral da sua agência e dos talentos da sua equipe" },
-  "/agency/talent":         { title: "Talentos",             description: "Visualize e gerencie todos os perfis de talentos" },
-  "/agency/talent-history": { title: "Histórico de talentos", description: "Reveja talentos que já trabalharam com você e facilite novas contratações" },
-  "/agency/create":         { title: "Adicionar talento",    description: "Adicione um novo perfil de talento à sua equipe" },
-  "/agency/post-job":       { title: "Publicar vaga",        description: "Crie uma nova vaga para sua equipe" },
-  "/agency/first-job":      { title: "Primeira vaga",        description: "Configure e publique sua primeira vaga com segurança" },
-  "/agency/jobs":           { title: "Vagas",                description: "Gerencie suas vagas abertas e seus candidatos" },
-  "/agency/submissions":    { title: "Candidaturas",         description: "Acompanhe os talentos que se candidataram às suas vagas" },
-  "/agency/bookings":       { title: "Reservas",             description: "Visualize e gerencie suas reservas" },
-  "/agency/contracts":      { title: "Contratos",            description: "Gerencie os contratos dos seus talentos" },
-  "/agency/finances":       { title: "Financeiro",           description: "Receita, pagamentos e comissões da sua agência" },
-  "/agency/billing":        { title: "Assinatura",           description: "Gerencie o plano e a cobrança da sua agência" },
-  "/agency/workspace":      { title: "Espaço Premium",       description: "Gerencie sua operação privada de talentos." },
-  "/agency/referrals":      { title: "Indicações",           description: "Acompanhe convites, indicações e comissões" },
-  "/agency/support":        { title: "Suporte",              description: "Envie mensagens e acompanhe suas solicitações de suporte" },
-  "/agency/profile":        { title: "Perfil",               description: "Gerencie o perfil da sua agência" },
-  "/talent/dashboard":      { title: "Painel",               description: "Visão geral da sua atividade como talento" },
-  "/talent/jobs":           { title: "Vagas",                description: "Explore oportunidades disponíveis" },
-  "/talent/bookings":       { title: "Minhas reservas",      description: "Visualize suas reservas confirmadas" },
-  "/talent/contracts":      { title: "Contratos",            description: "Acompanhe seus contratos e acordos" },
-  "/talent/profile":        { title: "Perfil",               description: "Gerencie seu perfil de talento" },
-  "/talent/finances":       { title: "Financeiro",           description: "Acompanhe seus ganhos e histórico de pagamentos" },
-  "/talent/availability":   { title: "Disponibilidade",      description: "Defina quando você está disponível para novas contratações" },
-  "/talent/referrals":      { title: "Indicações",           description: "Compartilhe seu link e acompanhe suas comissões" },
-  "/talent/support":        { title: "Suporte",              description: "Envie mensagens e acompanhe suas solicitações de suporte" },
-  "/admin/dashboard":       { title: "Painel",               description: "Visão geral da plataforma" },
-  "/admin/jobs":            { title: "Vagas",                description: "Visualize todas as vagas da plataforma" },
-  "/admin/users":           { title: "Usuários",             description: "Gerencie agências e talentos" },
-  "/admin/bookings":        { title: "Reservas",             description: "Visualize todas as reservas da plataforma" },
-  "/admin/premium":         { title: "Premium",              description: "Monitore os espaços de trabalho Premium da plataforma" },
-  "/admin/finances":        { title: "Financeiro",           description: "Receita e comissões da plataforma" },
-  "/admin/reconciliation":  { title: "Reconciliação",         description: "Compare registros financeiros do app com eventos Asaas" },
-  "/admin/plans":           { title: "Planos",               description: "Acompanhe planos, cobranças e histórico das agências" },
-  "/admin/contracts":       { title: "Contratos",            description: "Visualize todos os contratos da plataforma" },
-  "/admin/referrals":       { title: "Indicações",           description: "Acompanhe indicações e comissões da plataforma" },
-  "/admin/trash":           { title: "Lixeira",              description: "Restaure ou exclua itens removidos da plataforma" },
-  "/admin/support":         { title: "Suporte",              description: "Gerencie e responda solicitações de suporte dos usuários" },
-  "/admin/audit":           { title: "Auditoria",            description: "Histórico de ações administrativas importantes" },
-  "/admin/system":          { title: "Sistema",              description: "Saúde da infraestrutura da plataforma" },
-  "/admin/settings":        { title: "Configurações",        description: "Controles globais da plataforma" },
-  "/admin/profile":         { title: "Perfil",               description: "Gerencie as informações da conta administrativa" },
+type MetaEntry = {
+  titleKey?: string;
+  descKey?: string;
+  title?: string;
+  description?: string;
+};
+
+const pageMeta: Record<string, MetaEntry> = {
+  "/agency/dashboard": { titleKey: "page_dashboard", descKey: "topbar_agency_dashboard_desc" },
+  "/agency/talent": { titleKey: "page_talent", descKey: "topbar_agency_talent_desc" },
+  "/agency/talent-history": { titleKey: "topbar_agency_talent_history_title", descKey: "topbar_agency_talent_history_desc" },
+  "/agency/create": { titleKey: "topbar_agency_create_talent_title", descKey: "topbar_agency_create_talent_desc" },
+  "/agency/post-job": { titleKey: "page_post_job", descKey: "topbar_agency_post_job_desc" },
+  "/agency/first-job": { titleKey: "topbar_agency_first_job_title", descKey: "topbar_agency_first_job_desc" },
+  "/agency/jobs": { titleKey: "page_jobs", descKey: "topbar_agency_jobs_desc" },
+  "/agency/submissions": { titleKey: "topbar_agency_submissions_title", descKey: "topbar_agency_submissions_desc" },
+  "/agency/bookings": { titleKey: "page_bookings", descKey: "topbar_agency_bookings_desc" },
+  "/agency/contracts": { titleKey: "page_contracts", descKey: "topbar_agency_contracts_desc" },
+  "/agency/finances": { titleKey: "page_finances", descKey: "topbar_agency_finances_desc" },
+  "/agency/billing": { titleKey: "topbar_agency_billing_title", descKey: "topbar_agency_billing_desc" },
+  "/agency/workspace": { titleKey: "nav_workspace", descKey: "topbar_agency_workspace_desc" },
+  "/agency/referrals": { titleKey: "page_referrals", descKey: "topbar_agency_referrals_desc" },
+  "/agency/support": { titleKey: "nav_support", descKey: "topbar_agency_support_desc" },
+  "/agency/profile": { titleKey: "page_profile", descKey: "topbar_agency_profile_desc" },
+  "/talent/dashboard": { titleKey: "page_dashboard", descKey: "topbar_talent_dashboard_desc" },
+  "/talent/jobs": { titleKey: "page_jobs", descKey: "topbar_talent_jobs_desc" },
+  "/talent/bookings": { titleKey: "topbar_talent_bookings_title", descKey: "topbar_talent_bookings_desc" },
+  "/talent/contracts": { titleKey: "page_contracts", descKey: "topbar_talent_contracts_desc" },
+  "/talent/profile": { titleKey: "page_profile", descKey: "topbar_talent_profile_desc" },
+  "/talent/finances": { titleKey: "page_finances", descKey: "topbar_talent_finances_desc" },
+  "/talent/availability": { titleKey: "nav_availability", descKey: "topbar_talent_availability_desc" },
+  "/talent/referrals": { titleKey: "page_referrals", descKey: "topbar_talent_referrals_desc" },
+  "/talent/support": { titleKey: "nav_support", descKey: "topbar_talent_support_desc" },
+  "/admin/dashboard":     { titleKey: "topbar_admin_dashboard_title",     descKey: "topbar_admin_dashboard_desc"     },
+  "/admin/jobs":          { titleKey: "topbar_admin_jobs_title",          descKey: "topbar_admin_jobs_desc"          },
+  "/admin/users":         { titleKey: "topbar_admin_users_title",         descKey: "topbar_admin_users_desc"         },
+  "/admin/bookings":      { titleKey: "topbar_admin_bookings_title",      descKey: "topbar_admin_bookings_desc"      },
+  "/admin/premium":       { titleKey: "topbar_admin_premium_title",       descKey: "topbar_admin_premium_desc"       },
+  "/admin/finances":      { titleKey: "topbar_admin_finances_title",      descKey: "topbar_admin_finances_desc"      },
+  "/admin/reconciliation":{ titleKey: "topbar_admin_reconciliation_title",descKey: "topbar_admin_reconciliation_desc"},
+  "/admin/plans":         { titleKey: "topbar_admin_plans_title",         descKey: "topbar_admin_plans_desc"         },
+  "/admin/contracts":     { titleKey: "topbar_admin_contracts_title",     descKey: "topbar_admin_contracts_desc"     },
+  "/admin/referrals":     { titleKey: "topbar_admin_referrals_title",     descKey: "topbar_admin_referrals_desc"     },
+  "/admin/trash":         { titleKey: "topbar_admin_trash_title",         descKey: "topbar_admin_trash_desc"         },
+  "/admin/support":       { titleKey: "topbar_admin_support_title",       descKey: "topbar_admin_support_desc"       },
+  "/admin/audit":         { titleKey: "topbar_admin_audit_title",         descKey: "topbar_admin_audit_desc"         },
+  "/admin/system":        { titleKey: "topbar_admin_system_title",        descKey: "topbar_admin_system_desc"        },
+  "/admin/settings":      { titleKey: "topbar_admin_settings_title",      descKey: "topbar_admin_settings_desc"      },
+  "/admin/notifications": { titleKey: "topbar_admin_notifications_title", descKey: "topbar_admin_notifications_desc" },
+  "/admin/profile":       { titleKey: "topbar_admin_profile_title",       descKey: "topbar_admin_profile_desc"       },
 };
 
 function getPageMeta(pathname: string) {
   const entries = Object.entries(pageMeta).sort((left, right) => right[0].length - left[0].length);
-
   for (const [route, meta] of entries) {
-    if (pathname === route || pathname.startsWith(`${route}/`)) {
-      return meta;
-    }
+    if (pathname === route || pathname.startsWith(`${route}/`)) return meta;
   }
-
   return { title: "", description: "" };
 }
 
@@ -74,88 +80,90 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
   const { displayName, email, initials, avatarUrl, loading } = useUserProfile();
   const { role } = useRole();
   const { plan, isWorkspaceAgent } = useSubscription();
+  const { t } = useT();
   const [imgError, setImgError] = useState(false);
 
-  const meta = getPageMeta(pathname);
+  const rawMeta = getPageMeta(pathname);
+  const meta = {
+    title: rawMeta.titleKey ? t(rawMeta.titleKey as never) : (rawMeta.title ?? ""),
+    description: rawMeta.descKey ? t(rawMeta.descKey as never) : (rawMeta.description ?? ""),
+  };
   const isAdmin = pathname.startsWith("/admin");
 
   const dashboardHref =
     pathname.startsWith("/talent") ? "/talent/dashboard" :
-    pathname.startsWith("/admin")  ? "/admin/dashboard"  :
+    pathname.startsWith("/admin") ? "/admin/dashboard" :
     "/agency/dashboard";
 
   return (
-    <header className="bg-white border-b border-[#DDE6E6] px-6 py-4 flex items-center justify-between flex-shrink-0 sticky top-0 z-20">
-      {/* Left — logo + hamburger (mobile) + page title */}
-      <div className="flex items-center gap-4 min-w-0">
-        <Link href={dashboardHref} className="flex-shrink-0 hidden lg:flex items-center">
+    <header className="sticky top-0 z-20 flex flex-shrink-0 items-center justify-between border-b border-[#DDE6E6] bg-white px-6 py-4">
+      <div className="flex min-w-0 items-center gap-4">
+        <Link href={dashboardHref} className="hidden flex-shrink-0 items-center lg:flex">
           <Logo size="md" />
         </Link>
         <button
           onClick={onMenuClick}
-          className="lg:hidden w-8 h-8 flex items-center justify-center rounded-xl text-[#647B7B] hover:bg-[#E6F0F0] hover:text-[#1F2D2E] transition-colors flex-shrink-0"
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl text-[#647B7B] transition-colors hover:bg-[#E6F0F0] hover:text-[#1F2D2E] lg:hidden"
           aria-label="Open menu"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
-              d="M4 6h16M4 12h16M4 18h16" />
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
 
         <div className="min-w-0">
-          <h1 className="text-[14px] font-semibold leading-none tracking-tight truncate text-[#1F2D2E]">
+          <h1 className="truncate text-[14px] font-semibold leading-none tracking-tight text-[#1F2D2E]">
             {meta.title}
           </h1>
-          {meta.description && (
-            <p className="text-[12px] text-[#647B7B] mt-0.5 leading-none hidden sm:block truncate">
+          {meta.description ? (
+            <p className="mt-0.5 hidden truncate text-[12px] leading-none text-[#647B7B] sm:block">
               {meta.description}
             </p>
-          )}
+          ) : null}
         </div>
       </div>
 
-      {/* Right — bell + user */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex flex-shrink-0 items-center gap-2">
+        {!isAdmin ? <LanguageSelector variant="light" /> : null}
         <NotificationBell />
+        <div className="mx-1 hidden h-5 w-px bg-[#DDE6E6] sm:block" />
 
-        {/* Divider */}
-        <div className="hidden sm:block w-px h-5 mx-1 bg-[#DDE6E6]" />
-
-        {/* User */}
-        <div className="flex items-center gap-2 pl-1 py-1 pr-2.5">
-          <div className="w-7 h-7 rounded-full flex-shrink-0 overflow-hidden">
+        <div className="flex items-center gap-2 py-1 pl-1 pr-2.5">
+          <div className="h-7 w-7 flex-shrink-0 overflow-hidden rounded-full">
             {!loading && avatarUrl && !imgError ? (
               <img
                 src={avatarUrl}
                 alt={initials}
-                className="w-full h-full object-cover"
+                className="h-full w-full object-cover"
                 onError={() => setImgError(true)}
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-[#1ABC9C] to-[#27C1D6] flex items-center justify-center text-[10px] font-bold text-white">
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1ABC9C] to-[#27C1D6] text-[10px] font-bold text-white">
                 {loading ? "…" : initials}
               </div>
             )}
           </div>
-          <div className="hidden md:block text-left">
+          <div className="hidden text-left md:block">
             <div className="flex items-center gap-1.5">
-              <p className="text-[12px] font-semibold leading-none truncate max-w-[120px] text-[#1F2D2E]">
+              <p className="max-w-[120px] truncate text-[12px] font-semibold leading-none text-[#1F2D2E]">
                 {loading ? "…" : (displayName || email)}
               </p>
-              {role === "agency" && !loading && (
-                <span className={[
-                  "text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wide leading-none",
-                  isWorkspaceAgent
-                    ? "badge-premium"
-                    : plan === "premium" ? "badge-premium"
-                    : plan === "pro"     ? "badge-pro"
-                    :                      "bg-[#E6F0F0] text-[#647B7B]",
-                ].join(" ")}>
-                  {isWorkspaceAgent ? "Agente" : plan.toUpperCase()}
+              {role === "agency" && !loading ? (
+                <span
+                  className={[
+                    "rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wide",
+                    isWorkspaceAgent
+                      ? "badge-premium"
+                      : plan === "premium" ? "badge-premium"
+                      : plan === "pro" ? "badge-pro"
+                      : "bg-[#E6F0F0] text-[#647B7B]",
+                  ].join(" ")}
+                >
+                  {isWorkspaceAgent ? t("workspace_role_agent" as never) : plan.toUpperCase()}
                 </span>
-              )}
+              ) : null}
             </div>
-            <p className="text-[10px] text-[#647B7B] mt-0.5 leading-none truncate max-w-[140px]">
+            <p className="mt-0.5 max-w-[140px] truncate text-[10px] leading-none text-[#647B7B]">
               {loading ? "" : email}
             </p>
           </div>

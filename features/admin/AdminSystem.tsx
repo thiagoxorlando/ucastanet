@@ -1,5 +1,7 @@
 "use client";
 
+import { useT } from "@/lib/LanguageContext";
+
 const ENV_LABELS: Record<string, string> = {
   NEXT_PUBLIC_SUPABASE_URL:      "Supabase URL",
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "Supabase Anon Key",
@@ -60,6 +62,7 @@ function formatDateTime(value: string | null) {
 }
 
 export default function AdminSystem({ health }: { health: SystemHealth }) {
+  const { t } = useT();
   const tablesOk = Object.values(health.database.tables).every(Boolean);
   const bucketsOk = Object.values(health.storage.buckets).every((b) => b.exists);
   const asaasEnvOk = health.environment.vars["ASAAS_API_KEY"] && health.environment.vars["ASAAS_API_URL"];

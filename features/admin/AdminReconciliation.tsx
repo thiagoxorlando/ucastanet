@@ -13,6 +13,7 @@ import type {
   AlertSeverity,
   AlertType,
 } from "@/lib/readModels/reconciliation";
+import { useT } from "@/lib/LanguageContext";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -546,6 +547,7 @@ function WebhooksTab({ webhooks }: { webhooks: WebhookRow[] }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function AdminReconciliation({ data }: { data: ReconciliationData }) {
+  const { t } = useT();
   const [activeTab, setActiveTab] = useState<Tab>("alerts");
   const { summary, alerts, deposits, withdrawals, planCharges, webhooks } = data;
 

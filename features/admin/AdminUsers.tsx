@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/ui/Avatar";
+import { useT } from "@/lib/LanguageContext";
 
 export type AdminUser = {
   id: string;
@@ -81,6 +82,7 @@ function FinancialCell({
 
 export default function AdminUsers({ users: initialUsers }: { users: AdminUser[] }) {
   const router = useRouter();
+  const { t } = useT();
   const [users, setUsers] = useState<AdminUser[]>(initialUsers);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
@@ -553,9 +555,9 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
       ) : null}
 
       <div>
-        <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Admin da plataforma</p>
-        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-zinc-900">Usuarios</h1>
-        <p className="mt-1 text-[13px] text-zinc-400">{users.length} usuarios no total</p>
+        <p className="mb-1 text-[11px] font-semibold uppercase tracking-widest text-zinc-400">{t("admin_platform")}</p>
+        <h1 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-zinc-900">{t("admin_users")}</h1>
+        <p className="mt-1 text-[13px] text-zinc-400">{users.length} {t("admin_users").toLowerCase()}</p>
       </div>
 
       {error ? (
@@ -569,7 +571,7 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
           </svg>
           <input
             type="text"
-            placeholder="Buscar usuarios..."
+            placeholder={t("admin_search_users")}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="w-full rounded-xl border border-zinc-200 bg-white py-2.5 pl-10 pr-4 text-[13px] transition-colors placeholder:text-zinc-400 hover:border-zinc-300 focus:border-zinc-900 focus:outline-none"
@@ -586,17 +588,17 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                 roleFilter === role ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-700",
               ].join(" ")}
             >
-              {role === "all" ? "Todos" : role}
+              {role === "all" ? t("admin_all_status") : role}
             </button>
           ))}
         </div>
 
         <div className="flex items-center gap-1 self-start rounded-xl bg-zinc-100 p-1">
           {([
-            { key: "none" as SortKey, label: "Padrao" },
-            { key: "earned" as SortKey, label: "Ganhos / saldo" },
-            { key: "spent" as SortKey, label: "Gastos" },
-            { key: "commission" as SortKey, label: "Comissao" },
+            { key: "none" as SortKey, label: t("admin_sort_default") },
+            { key: "earned" as SortKey, label: t("admin_sort_earnings") },
+            { key: "spent" as SortKey, label: t("admin_sort_spending") },
+            { key: "commission" as SortKey, label: t("admin_sort_commission") },
           ]).map(({ key, label }) => (
             <button
               key={key}
@@ -614,28 +616,28 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
 
       {selectedCount > 0 ? (
         <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-[0_1px_4px_rgba(0,0,0,0.04)] sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[13px] font-semibold text-zinc-900">{selectedCount} selecionados</p>
+          <p className="text-[13px] font-semibold text-zinc-900">{selectedCount} {t("admin_selected")}</p>
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleBulkFreeze}
               disabled={bulkBusy !== null}
               className="rounded-xl border border-zinc-200 px-3.5 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {bulkBusy === "freeze" ? "Desabilitando..." : "Desabilitar selecionados"}
+              {bulkBusy === "freeze" ? t("admin_disabling") : t("admin_disable_selected")}
             </button>
             <button
               onClick={handleBulkDelete}
               disabled={bulkBusy !== null}
               className="rounded-xl bg-amber-600 px-3.5 py-2 text-[12px] font-semibold text-white transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {bulkBusy === "delete" ? "Movendo..." : "Mover para lixeira"}
+              {bulkBusy === "delete" ? t("admin_moving") : t("admin_trash_selected")}
             </button>
             <button
               onClick={() => setSelectedIds(new Set())}
               disabled={bulkBusy !== null}
               className="rounded-xl px-3.5 py-2 text-[12px] font-medium text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Limpar seleção
+              {t("admin_clear_selection")}
             </button>
           </div>
         </div>
@@ -658,15 +660,15 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                     className="h-4 w-4 cursor-pointer rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
                   />
                 </th>
-                <th className="px-6 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Usuario</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400">{t("admin_users")}</th>
                 <th className="hidden px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400 sm:table-cell">Email</th>
-                <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Papel</th>
-                <th className="hidden px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400 sm:table-cell">Plano</th>
-                <th className="hidden px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400 md:table-cell">Entrou</th>
-                <th className="hidden px-4 py-3.5 text-right text-[11px] font-semibold uppercase tracking-widest text-zinc-400 lg:table-cell">Ganhos / saldo</th>
-                <th className="hidden px-4 py-3.5 text-right text-[11px] font-semibold uppercase tracking-widest text-zinc-400 lg:table-cell">Gastos</th>
-                <th className="hidden px-4 py-3.5 text-right text-[11px] font-semibold uppercase tracking-widest text-zinc-400 xl:table-cell">Comissao</th>
-                <th className="px-6 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Alterar papel</th>
+                <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400">{t("admin_role_label")}</th>
+                <th className="hidden px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400 sm:table-cell">{t("admin_plan_label")}</th>
+                <th className="hidden px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400 md:table-cell">{t("admin_joined_label")}</th>
+                <th className="hidden px-4 py-3.5 text-right text-[11px] font-semibold uppercase tracking-widest text-zinc-400 lg:table-cell">{t("admin_earnings_balance")}</th>
+                <th className="hidden px-4 py-3.5 text-right text-[11px] font-semibold uppercase tracking-widest text-zinc-400 lg:table-cell">{t("admin_spending")}</th>
+                <th className="hidden px-4 py-3.5 text-right text-[11px] font-semibold uppercase tracking-widest text-zinc-400 xl:table-cell">{t("admin_commission_col")}</th>
+                <th className="px-6 py-3.5 text-left text-[11px] font-semibold uppercase tracking-widest text-zinc-400">{t("admin_change_role")}</th>
                 <th className="w-36 px-4 py-3.5" />
               </tr>
             </thead>
@@ -694,7 +696,7 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                         <Avatar name={user.name || user.email} imageUrl={user.avatarUrl} size="sm" />
                         <div className="min-w-0">
                           <p className="max-w-[160px] truncate text-[13px] font-semibold text-zinc-900">
-                            {user.name || <span className="font-normal text-zinc-400">Sem nome</span>}
+                            {user.name || <span className="font-normal text-zinc-400">{t("admin_no_name")}</span>}
                           </p>
                           {user.isFrozen ? (
                             <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-600 ring-1 ring-sky-100">
@@ -705,7 +707,7 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                                   clipRule="evenodd"
                                 />
                               </svg>
-                              Congelado
+                              {t("admin_frozen")}
                             </span>
                           ) : null}
                         </div>
@@ -750,14 +752,14 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                         <FinancialCell
                           value={user.walletBalance}
                           tone={user.walletBalance > 0 ? "text-emerald-700" : "text-zinc-500"}
-                          note="saldo em carteira"
+                          note={t("admin_wallet_balance")}
                           zeroLabel="R$ 0"
                         />
                       ) : user.role === "talent" ? (
                         <FinancialCell
                           value={user.walletBalance}
                           tone={user.walletBalance > 0 ? "text-emerald-700" : "text-zinc-500"}
-                          note="saldo atual"
+                          note={t("admin_wallet_current")}
                           zeroLabel="R$ 0"
                         />
                       ) : (
@@ -770,7 +772,7 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                         <FinancialCell
                           value={user.totalSpent}
                           tone={user.totalSpent > 0 ? "text-zinc-900" : "text-[#647B7B]"}
-                          note="gastos confirmados"
+                          note={t("admin_confirmed_spending")}
                         />
                       ) : (
                         <span className="text-[13px] text-[#647B7B]">—</span>
@@ -782,7 +784,7 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                         <FinancialCell
                           value={user.commissionGenerated}
                           tone={user.commissionGenerated > 0 ? "text-violet-700" : "text-[#647B7B]"}
-                          note="comissao da plataforma"
+                          note={t("admin_platform_commission")}
                         />
                       ) : (
                         <span className="text-[13px] text-[#647B7B]">—</span>
@@ -813,10 +815,10 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                                 setCreditAmount("");
                                 setCreditNote("");
                               }}
-                              title="Adicionar saldo à carteira"
+                              title={t("admin_add_balance")}
                               className="rounded-lg px-2 py-1 text-[11px] font-medium text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-800"
                             >
-                              + Saldo
+                              {t("admin_add_balance")}
                             </button>
                             <button
                               onClick={() => {
@@ -825,10 +827,10 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                                 setDebitReason("");
                                 setDebitError("");
                               }}
-                              title="Debitar saldo da carteira"
+                              title={t("admin_debit_balance")}
                               className="rounded-lg px-2 py-1 text-[11px] font-medium text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-700"
                             >
-                              − Saldo
+                              {t("admin_debit_balance")}
                             </button>
                           </>
                         ) : null}
@@ -836,7 +838,7 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                         <button
                           onClick={() => toggleFreeze(user)}
                           disabled={updating === user.id}
-                          title={user.isFrozen ? "Descongelar conta" : "Congelar conta"}
+                          title={user.isFrozen ? t("admin_unfreeze") : t("admin_freeze")}
                           className={[
                             "rounded-lg px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-50",
                             user.isFrozen
@@ -844,14 +846,14 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                               : "text-zinc-400 hover:bg-sky-50 hover:text-sky-600",
                           ].join(" ")}
                         >
-                          {user.isFrozen ? "Descongelar" : "Congelar"}
+                          {user.isFrozen ? t("admin_unfreeze") : t("admin_freeze")}
                         </button>
 
                         <button
                           onClick={() => setDeleting(user.id)}
                           className="rounded-lg px-2 py-1 text-[11px] font-medium text-amber-500 transition-colors hover:bg-amber-50 hover:text-amber-700"
                         >
-                          Lixeira
+                          {t("admin_trash_btn")}
                         </button>
                       </div>
                     </td>
@@ -862,8 +864,8 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="px-6 py-16 text-center">
-                    <p className="text-[14px] font-medium text-zinc-500">Nenhum usuario encontrado</p>
-                    <p className="mt-1 text-[13px] text-zinc-400">Tente ajustar a busca ou o filtro.</p>
+                    <p className="text-[14px] font-medium text-zinc-500">{t("admin_no_users_found")}</p>
+                    <p className="mt-1 text-[13px] text-zinc-400">{t("admin_no_users_hint")}</p>
                   </td>
                 </tr>
               ) : null}
@@ -873,7 +875,7 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
 
         <div className="border-t border-zinc-100 bg-zinc-50/50 px-6 py-3.5">
           <p className="text-[12px] font-medium text-zinc-400">
-            {filtered.length} de {users.length} usuarios
+            {filtered.length} / {users.length} {t("admin_users").toLowerCase()}
           </p>
         </div>
       </div>

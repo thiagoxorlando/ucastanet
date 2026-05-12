@@ -10,6 +10,8 @@ export type PublicPlanSetting = {
   is_available: boolean;
   job_limit: number | null;
   max_hires_per_job: number | null;
+  included_agent_seats: number | null;
+  extra_agent_seat_price: number | null;
 };
 
 export function buildPlanSettingsFallback(): Record<Plan, PublicPlanSetting> {
@@ -26,6 +28,8 @@ export function buildPlanSettingsFallback(): Record<Plan, PublicPlanSetting> {
       is_available: def.available,
       job_limit: def.maxActiveJobs,
       max_hires_per_job: def.maxHiresPerJob,
+      included_agent_seats: plan === "premium" ? 2 : null,
+      extra_agent_seat_price: plan === "premium" ? 0 : null,
     };
   }
 
@@ -44,6 +48,54 @@ export function formatPlanMonthlyPrice(price: number, lang: "pt-BR" | "en" = "pt
 
 export function formatPlanCommission(commissionPercent: number): string {
   return `${commissionPercent.toFixed(0)}%`;
+}
+
+type PremiumSeatSetting = Pick<
+  PublicPlanSetting,
+  "plan_key" | "included_agent_seats" | "extra_agent_seat_price"
+>;
+
+export function formatExtraSeatPriceLabel(
+  setting: PremiumSeatSetting,
+  lang: "pt-BR" | "en" = "pt-BR"
+): string | null {
+  if (setting.plan_key !== "premium") return null;
+  if (setting.extra_agent_seat_price == null || setting.extra_agent_seat_price <= 0) {
+    return lang === "en" ? "On request" : "Sob consulta";
+  }
+  return formatPlanMonthlyPrice(setting.extra_agent_seat_price, lang);
+}
+
+export function premiumSeatHighlights(
+  setting: PremiumSeatSetting,
+  lang: "pt-BR" | "en" = "pt-BR"
+): string[] {
+  if (setting.plan_key !== "premium") return [];
+
+  const includedSeats = setting.included_agent_seats ?? 2;
+  const extraSeatPrice = formatExtraSeatPriceLabel(setting, lang);
+
+  if (lang === "en") {
+    return [
+      "Private agency workspace",
+      `${includedSeats} agents included`,
+      "Invite-only private jobs",
+      "Custom branding",
+      "Team management",
+      "Agent spending controls",
+      `Extra agent seat: ${extraSeatPrice ?? "On request"}`,
+    ];
+  }
+
+  return [
+    "Ambiente privado da agência",
+    `${includedSeats} agentes incluídos`,
+    "Vagas privadas por convite",
+    "Personalização com logo e cores",
+    "Gestão da equipe",
+    "Controle de limites por agente",
+    `Assento extra: ${extraSeatPrice ?? "Sob consulta"}`,
+  ];
 }
 
 export function formatTalentShareLabel(commissionPercent: number): string {

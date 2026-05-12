@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getUserRole } from "@/lib/getUserRole";
 import { getAgencyLanding } from "@/lib/getAgencyLanding";
-import { buildPlanSettingsFallback, formatPlanCommission, formatPlanMonthlyPrice, planLimitHighlights, type PublicPlanSetting } from "@/lib/planSettings.shared";
+import { buildPlanSettingsFallback, formatPlanCommission, formatPlanMonthlyPrice, planLimitHighlights, premiumSeatHighlights, type PublicPlanSetting } from "@/lib/planSettings.shared";
 import { useT } from "@/lib/LanguageContext";
 import LanguageSelector from "@/components/LanguageSelector";
 import heroBrandImage from "@/public/landing/brisahub-hero-brand.png";
@@ -195,7 +195,9 @@ export default function Home() {
 
   function getPlanHighlights(livePlan: PublicPlanSetting) {
     const liveHighlights = planLimitHighlights(livePlan, lang);
-    return livePlan.plan_key === "premium" ? [t("plan_everything_in_pro"), ...liveHighlights] : liveHighlights;
+    return livePlan.plan_key === "premium"
+      ? [t("plan_everything_in_pro"), ...premiumSeatHighlights(livePlan, lang), ...liveHighlights]
+      : liveHighlights;
   }
 
   // ── Effects ───────────────────────────────────────────────────────────────

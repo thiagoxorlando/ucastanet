@@ -46,7 +46,7 @@ export default async function AdminAuditPage() {
   const now = Date.now();
   const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
 
-  const FINANCIAL_ACTIONS = new Set(["balance_adjusted", "withdrawal_cancelled", "plan_settings_changed"]);
+  const FINANCIAL_ACTIONS = new Set(["balance_adjusted", "withdrawal_cancelled", "plan_settings_changed", "premium_extra_seats_updated"]);
   const USER_ACTIONS = new Set(["user_deleted", "user_restored", "user_frozen"]);
 
   const logs = (rawLogs ?? []).map((l): AuditLogEntry => ({

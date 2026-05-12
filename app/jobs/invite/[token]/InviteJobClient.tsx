@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 type JobData = {
   id: string;
@@ -29,6 +29,21 @@ type Props = {
   userRole: string | null;
 };
 
+function InfoCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400">{label}</p>
+      <p className="mt-2 text-[14px] font-semibold text-zinc-800">{value}</p>
+    </div>
+  );
+}
+
 export default function InviteJobClient({
   token,
   job,
@@ -45,15 +60,15 @@ export default function InviteJobClient({
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const displayName = workspaceName ?? agencyName;
+  const displayName = workspaceName ?? agencyName ?? "Espaço Premium";
   const next = encodeURIComponent(`/jobs/invite/${token}`);
-
   const primary = workspacePrimaryColor ?? "#1ABC9C";
   const accent = workspaceAccentColor ?? workspacePrimaryColor ?? "#27C1D6";
-
   const initials = displayName
-    ? displayName.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")
-    : "W";
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
 
   async function handleApply() {
     setError(null);
@@ -62,154 +77,156 @@ export default function InviteJobClient({
   }
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] text-[#1F2D2E]">
-      {/* Brand color top stripe */}
+    <main className="min-h-screen bg-[linear-gradient(180deg,#F3F7F8_0%,#FFFFFF_100%)] text-[#1F2D2E]">
       <div className="h-1" style={{ background: `linear-gradient(to right, ${primary}, ${accent})` }} />
 
-      <div className="mx-auto w-full max-w-2xl px-5 py-8 sm:px-8">
-
-        {/* Header */}
-        <header className="mb-8 flex items-center justify-between">
+      <div className="mx-auto w-full max-w-5xl px-5 py-8 sm:px-8 lg:px-10">
+        <header className="flex items-center justify-between">
           <Link href="/" className="text-[15px] font-bold tracking-tight text-[#1F2D2E]">
             BrisaHub
           </Link>
-          {!isLoggedIn && (
+          {!isLoggedIn ? (
             <Link href={`/login?next=${next}`} className="text-[13px] font-semibold text-[#0E7C86] hover:underline">
               Entrar
             </Link>
-          )}
+          ) : null}
         </header>
 
-        {/* Workspace identity card */}
-        {displayName && (
-          <div className="mb-6 flex items-center gap-3 p-4 rounded-2xl bg-white border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
-            {workspaceLogoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={workspaceLogoUrl} alt={displayName} className="w-10 h-10 rounded-xl object-cover flex-shrink-0 border border-zinc-100" />
-            ) : (
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold text-[13px]"
-                style={{ background: primary }}
-              >
-                {initials}
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+          <section className="overflow-hidden rounded-[30px] border border-zinc-200 bg-white shadow-[0_18px_46px_rgba(15,23,42,0.07)]">
+            <div
+              className="px-6 py-8 text-white sm:px-8"
+              style={{
+                background: `radial-gradient(circle at top left, ${primary}55, transparent 28%), linear-gradient(135deg, ${primary} 0%, ${accent} 100%)`,
+              }}
+            >
+              <div className="flex items-start gap-4">
+                {workspaceLogoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={workspaceLogoUrl} alt={displayName} className="h-16 w-16 rounded-2xl border border-white/20 object-cover shadow-lg" />
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-white/12 text-[18px] font-bold text-white shadow-lg">
+                    {initials || "EP"}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <span className="inline-flex items-center rounded-full border border-white/16 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
+                    Convite privado
+                  </span>
+                  <h1 className="mt-3 text-[2rem] font-bold tracking-tight sm:text-[2.4rem]">
+                    {job.title}
+                  </h1>
+                  <p className="mt-2 text-[14px] leading-6 text-white/80">
+                    {displayName}
+                  </p>
+                </div>
               </div>
-            )}
-            <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-zinc-900 truncate">{displayName}</p>
-              <p className="text-[11px] text-zinc-400">Ambiente privado de seleção de talentos</p>
             </div>
-          </div>
-        )}
 
-        {/* Invite badge */}
-        <div className="mb-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[12px] font-semibold"
-          style={{ background: `${primary}15`, borderColor: `${primary}30`, color: primary }}>
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-          Vaga exclusiva por convite
-        </div>
-
-        {/* Job title */}
-        <h1 className="text-[2rem] font-semibold leading-tight tracking-tight text-[#1F2D2E] sm:text-[2.5rem]">
-          {job.title}
-        </h1>
-
-        {/* Meta chips */}
-        <div className="mt-5 flex flex-wrap gap-2 text-[13px] font-semibold text-[#647B7B]">
-          {job.category && (
-            <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">{job.category}</span>
-          )}
-          <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">{job.budget}</span>
-          {job.location && (
-            <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">{job.location}</span>
-          )}
-          {job.deadline && (
-            <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">Prazo: {job.deadline}</span>
-          )}
-          {job.jobDate && (
-            <span className="rounded-full border border-[#DDE6E6] bg-white px-3 py-1">Data: {job.jobDate}{job.jobTime ? ` às ${job.jobTime}` : ""}</span>
-          )}
-        </div>
-
-        {/* Description */}
-        {job.description && (
-          <p className="mt-6 whitespace-pre-line text-[15px] leading-7 text-[#475D5E]">
-            {job.description}
-          </p>
-        )}
-
-        {/* Workspace welcome message */}
-        {workspaceWelcome && (
-          <div className="mt-6 rounded-2xl bg-white px-5 py-4 border" style={{ borderColor: `${primary}25` }}>
-            <div className="flex items-start gap-3">
-              <div className="w-1 rounded-full self-stretch flex-shrink-0" style={{ background: primary }} />
-              <p className="text-[14px] leading-6 text-[#475D5E]">{workspaceWelcome}</p>
-            </div>
-          </div>
-        )}
-
-        {/* CTA */}
-        <div className="mt-8">
-          {isLoggedIn && userRole === "talent" ? (
-            <div className="space-y-3">
-              {error && (
-                <p className="text-[13px] text-rose-500 bg-rose-50 border border-rose-100 rounded-xl px-4 py-2.5">{error}</p>
+            <div className="space-y-6 px-6 py-6 sm:px-8">
+              {workspaceWelcome ? (
+                <div className="rounded-2xl border px-4 py-4" style={{ borderColor: `${primary}25`, background: `${primary}08` }}>
+                  <p className="text-[14px] leading-7 text-[#415556]">{workspaceWelcome}</p>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-4 py-4">
+                  <p className="text-[13px] text-zinc-500">
+                    Convite privado enviado para uma seleção exclusiva dentro do Espaço Premium.
+                  </p>
+                </div>
               )}
-              <button
-                onClick={handleApply}
-                disabled={applying}
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-white text-[15px] font-semibold transition-all disabled:opacity-60 cursor-pointer"
-                style={{ background: `linear-gradient(to right, ${primary}, ${accent})` }}
-              >
-                {applying ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                    </svg>
-                    Redirecionando…
-                  </>
-                ) : "Candidatar-se"}
-              </button>
-            </div>
-          ) : isLoggedIn && userRole !== "talent" ? (
-            <div className="rounded-2xl border border-amber-100 bg-amber-50 px-5 py-4">
-              <p className="text-[14px] font-medium text-amber-800">
-                Entre com uma conta de talento para se candidatar.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <p className="text-[14px] text-[#647B7B]">Faça login ou crie uma conta de talento para se candidatar a esta vaga.</p>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link
-                  href={`/login?next=${next}`}
-                  className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-[#1F2D2E] hover:bg-zinc-700 text-white text-[15px] font-semibold transition-colors"
-                >
-                  Entrar para se candidatar
-                </Link>
-                <Link
-                  href={`/signup?role=talent&next=${next}`}
-                  className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl border border-zinc-200 bg-white hover:border-zinc-300 text-[#1F2D2E] text-[15px] font-semibold transition-colors"
-                >
-                  Criar conta
-                </Link>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {job.category ? <InfoCard label="Categoria" value={job.category} /> : null}
+                <InfoCard label="Cachê" value={job.budget} />
+                {job.location ? <InfoCard label="Local" value={job.location} /> : null}
+                {job.deadline ? <InfoCard label="Prazo" value={job.deadline} /> : null}
+                {job.jobDate ? <InfoCard label="Data" value={`${job.jobDate}${job.jobTime ? ` às ${job.jobTime}` : ""}`} /> : null}
+              </div>
+
+              <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-5 py-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Sobre a vaga</p>
+                <p className="mt-3 whitespace-pre-line text-[15px] leading-7 text-[#475D5E]">
+                  {job.description || "Mais detalhes serão compartilhados durante o processo com a agência responsável."}
+                </p>
               </div>
             </div>
-          )}
-        </div>
+          </section>
 
-        {/* Footer */}
-        <footer className="mt-16 text-center">
-          <p className="text-[12px] text-zinc-400">
-            Powered by{" "}
-            <Link href="/" className="font-semibold hover:text-zinc-600 transition-colors">
-              BrisaHub
-            </Link>
-          </p>
-        </footer>
+          <aside className="space-y-4">
+            <div className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Candidatura</p>
+              <p className="mt-2 text-[16px] font-semibold text-zinc-900">
+                Candidate-se à vaga privada
+              </p>
+              <p className="mt-2 text-[13px] leading-6 text-zinc-500">
+                Sua candidatura será enviada diretamente para a equipe responsável dentro do Espaço Premium.
+              </p>
+
+              <div className="mt-5 space-y-3">
+                {isLoggedIn && userRole === "talent" ? (
+                  <>
+                    {error ? (
+                      <p className="rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-[12px] text-rose-600">
+                        {error}
+                      </p>
+                    ) : null}
+                    <button
+                      onClick={handleApply}
+                      disabled={applying}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-[15px] font-semibold text-white shadow-[0_14px_30px_rgba(26,188,156,0.20)] transition-all hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-60"
+                      style={{ background: `linear-gradient(to right, ${primary}, ${accent})` }}
+                    >
+                      {applying ? "Redirecionando..." : "Candidatar-se"}
+                    </button>
+                  </>
+                ) : isLoggedIn && userRole !== "talent" ? (
+                  <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-4">
+                    <p className="text-[13px] font-medium text-amber-800">
+                      Entre com uma conta de talento para se candidatar.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-[13px] leading-6 text-zinc-500">
+                      Entre ou crie uma conta para se candidatar.
+                    </p>
+                    <div className="space-y-2">
+                      <Link
+                        href={`/login?next=${next}`}
+                        className="inline-flex w-full items-center justify-center rounded-2xl bg-[#1F2D2E] px-5 py-3 text-[14px] font-semibold text-white transition-colors hover:bg-zinc-700"
+                      >
+                        Entrar
+                      </Link>
+                      <Link
+                        href={`/signup?role=talent&next=${next}`}
+                        className="inline-flex w-full items-center justify-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-[14px] font-semibold text-zinc-800 transition-colors hover:bg-zinc-50"
+                      >
+                        Criar conta
+                      </Link>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">Convite privado</p>
+              <div className="mt-3 space-y-2 text-[13px] text-zinc-600">
+                <p>Seleção exclusiva dentro do Espaço Premium.</p>
+                <p>Vaga privada visível apenas por este convite.</p>
+                <p>Fluxo direto com a equipe da agência.</p>
+              </div>
+            </div>
+
+            <p className="text-center text-[12px] text-zinc-400">
+              Powered by{" "}
+              <Link href="/" className="font-semibold text-zinc-500 transition-colors hover:text-zinc-700">
+                BrisaHub
+              </Link>
+            </p>
+          </aside>
+        </div>
       </div>
     </main>
   );

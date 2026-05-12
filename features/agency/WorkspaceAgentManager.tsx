@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import Link from "next/link";
+import { useRef, useState } from "react";
+import { brl } from "@/lib/brl";
 import type {
-  PremiumWorkspace,
   PremiumMembership,
   WorkspaceSeatUsage,
   PremiumAgentInvite,
@@ -11,16 +12,11 @@ import type {
 } from "@/lib/premiumWorkspace.server";
 
 interface Props {
-  workspace: PremiumWorkspace;
   membership: PremiumMembership;
   initialSeatUsage: WorkspaceSeatUsage;
   initialMembers: WorkspaceMemberDetail[];
   initialInvites: PremiumAgentInvite[];
   initialBudgetUsages?: AgentBudgetUsage[];
-}
-
-function brl(n: number) {
-  return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function fmtDate(iso: string) {
@@ -34,46 +30,65 @@ function fmtDate(iso: string) {
 function Toast({ msg, ok }: { msg: string; ok: boolean }) {
   return (
     <p className={`text-[12px] font-medium ${ok ? "text-emerald-600" : "text-rose-500"}`}>
-      {ok ? "✓ " : "✗ "}
       {msg}
     </p>
   );
 }
 
-// ── Seat usage bar ─────────────────────────────────────────────────────────────
-
-function SeatBar({ usage }: { usage: WorkspaceSeatUsage }) {
-  const pct = usage.totalAllowed === 0 ? 0 : Math.min(100, (usage.usedSeats / usage.totalAllowed) * 100);
-  const full = usage.remaining === 0;
+function EmptyBlock({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <p className="text-[12px] font-semibold text-zinc-700">
-          {usage.usedSeats} / {usage.totalAllowed} agente{usage.totalAllowed !== 1 ? "s" : ""} usado{usage.usedSeats !== 1 ? "s" : ""}
-        </p>
-        {usage.pendingInviteCount > 0 && (
-          <p className="text-[11px] text-zinc-400">
-            {usage.pendingInviteCount} convite{usage.pendingInviteCount !== 1 ? "s" : ""} pendente{usage.pendingInviteCount !== 1 ? "s" : ""}
-          </p>
-        )}
-      </div>
-      <div className="h-1.5 rounded-full bg-zinc-100 overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all ${full ? "bg-rose-400" : "bg-amber-400"}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      {full && (
-        <p className="text-[11px] text-amber-600 font-medium">
-          Seu plano Premium inclui {usage.includedSeats} agente{usage.includedSeats !== 1 ? "s" : ""}.
-          Assentos extras serão adicionados em breve.
-        </p>
-      )}
+    <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-5 py-6 text-center">
+      <p className="text-[14px] font-semibold text-zinc-800">{title}</p>
+      <p className="mt-2 text-[12px] leading-6 text-zinc-500">{description}</p>
     </div>
   );
 }
 
-// ── Invite form ────────────────────────────────────────────────────────────────
+function SeatBar({ usage }: { usage: WorkspaceSeatUsage }) {
+  const pct = usage.totalAllowed === 0 ? 0 : Math.min(100, (usage.usedSeats / usage.totalAllowed) * 100);
+  const full = usage.remaining === 0;
+
+  return (
+    <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-[12px] font-semibold text-zinc-800">
+            Assentos: {usage.usedSeats} / {usage.totalAllowed}
+          </p>
+          <p className="text-[11px] text-zinc-500">
+            {usage.activeAgentCount} agente{usage.activeAgentCount === 1 ? "" : "s"} ativo{usage.activeAgentCount === 1 ? "" : "s"}
+            {usage.pendingInviteCount > 0 ? ` • ${usage.pendingInviteCount} convite${usage.pendingInviteCount === 1 ? "" : "s"} privado${usage.pendingInviteCount === 1 ? "" : "s"} pendente${usage.pendingInviteCount === 1 ? "" : "s"}` : ""}
+          </p>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-[11px] font-semibold ${full ? "bg-amber-100 text-amber-700" : "bg-white text-zinc-600"}`}>
+          {usage.remaining} disponível{usage.remaining === 1 ? "" : "eis"}
+        </span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+        <div
+          className={`h-full rounded-full transition-all ${full ? "bg-amber-400" : "bg-[#1ABC9C]"}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {full ? (
+        <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3">
+          <p className="text-[12px] font-semibold text-amber-800">
+            Você atingiu o limite de agentes do Premium.
+          </p>
+          <p className="mt-1 text-[12px] text-amber-700">
+            Precisa de mais agentes? Solicite assentos extras.
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 interface InviteFormProps {
   onSuccess: (email: string, url: string, invite: PremiumAgentInvite, usage: WorkspaceSeatUsage) => void;
@@ -89,6 +104,7 @@ function InviteForm({ onSuccess, onError, onCancel }: InviteFormProps) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim()) return;
+
     setLoading(true);
     const res = await fetch("/api/agency/workspace/agents/invite", {
       method: "POST",
@@ -99,6 +115,7 @@ function InviteForm({ onSuccess, onError, onCancel }: InviteFormProps) {
       }),
     });
     setLoading(false);
+
     if (res.ok) {
       const data = (await res.json()) as {
         invite: PremiumAgentInvite;
@@ -108,14 +125,14 @@ function InviteForm({ onSuccess, onError, onCancel }: InviteFormProps) {
       onSuccess(email.trim().toLowerCase(), data.inviteUrl, data.invite, data.usage!);
     } else {
       const data = (await res.json().catch(() => ({}))) as { error?: string };
-      onError(data.error ?? "Não foi possível criar o convite.");
+      onError(data.error ?? "Não foi possível criar o convite privado.");
     }
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3 pt-3 border-t border-zinc-50">
+    <form onSubmit={submit} className="space-y-3 rounded-2xl border border-zinc-100 bg-zinc-50 p-4">
       <div className="space-y-1">
-        <label className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wide">
+        <label className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
           E-mail do agente
         </label>
         <input
@@ -125,12 +142,12 @@ function InviteForm({ onSuccess, onError, onCancel }: InviteFormProps) {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="agente@empresa.com"
-          className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-[13px] text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
+          className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-[13px] text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
         />
       </div>
       <div className="space-y-1">
-        <label className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wide">
-          Limite de gastos (opcional)
+        <label className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+          Limite de uso
         </label>
         <input
           type="number"
@@ -139,30 +156,28 @@ function InviteForm({ onSuccess, onError, onCancel }: InviteFormProps) {
           value={limit}
           onChange={(e) => setLimit(e.target.value)}
           placeholder="Deixe vazio para ilimitado"
-          className="w-full rounded-xl border border-zinc-200 px-3 py-2 text-[13px] text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
+          className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-[13px] text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-300"
         />
       </div>
       <div className="flex gap-2">
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 py-2 rounded-xl border border-zinc-200 text-[12px] font-semibold text-zinc-600 hover:bg-zinc-50 transition-colors cursor-pointer"
+          className="flex-1 rounded-xl border border-zinc-200 bg-white py-2.5 text-[12px] font-semibold text-zinc-600 transition-colors hover:bg-zinc-50"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={loading || !email.trim()}
-          className="flex-1 py-2 rounded-xl bg-amber-500 text-[12px] font-semibold text-white hover:bg-amber-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          className="flex-1 rounded-xl bg-amber-500 py-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {loading ? "Criando…" : "Criar convite"}
+          {loading ? "Criando..." : "Criar convite privado"}
         </button>
       </div>
     </form>
   );
 }
-
-// ── New invite link ────────────────────────────────────────────────────────────
 
 function NewInviteLink({ email, url, onClose }: { email: string; url: string; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
@@ -177,27 +192,27 @@ function NewInviteLink({ email, url, onClose }: { email: string; url: string; on
   }
 
   return (
-    <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4 space-y-3">
-      <div>
-        <p className="text-[12px] font-semibold text-emerald-700">
-          Convite criado para {email}
+    <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+      <div className="space-y-1">
+        <p className="text-[13px] font-semibold text-emerald-800">
+          Convite privado criado para {email}
         </p>
-        <p className="text-[11px] text-emerald-600 mt-0.5">
-          Copie o link e envie ao agente. Válido por 7 dias.
+        <p className="text-[12px] text-emerald-700">
+          Copie o link e envie ao agente. Ele fica válido por 7 dias.
         </p>
       </div>
-      <div className="flex gap-2">
+      <div className="mt-3 flex gap-2">
         <input
           ref={inputRef}
           readOnly
           value={url}
-          className="flex-1 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-[11px] text-zinc-600 font-mono truncate focus:outline-none"
+          className="flex-1 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-[11px] font-mono text-zinc-600 focus:outline-none"
           onClick={() => inputRef.current?.select()}
         />
         <button
           type="button"
           onClick={copyLink}
-          className="flex-shrink-0 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-semibold hover:bg-emerald-700 transition-colors cursor-pointer"
+          className="rounded-xl bg-emerald-600 px-3 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-emerald-700"
         >
           {copied ? "Copiado!" : "Copiar"}
         </button>
@@ -205,15 +220,13 @@ function NewInviteLink({ email, url, onClose }: { email: string; url: string; on
       <button
         type="button"
         onClick={onClose}
-        className="text-[11px] text-emerald-600 hover:text-emerald-800 underline cursor-pointer"
+        className="mt-3 text-[11px] font-medium text-emerald-700 underline"
       >
         Fechar
       </button>
     </div>
   );
 }
-
-// ── Pending invite row ─────────────────────────────────────────────────────────
 
 function PendingInviteRow({
   invite,
@@ -242,23 +255,22 @@ function PendingInviteRow({
   }
 
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-zinc-50 last:border-0">
-      <div className="w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-zinc-500 uppercase">
+    <div className="flex flex-col gap-3 rounded-2xl border border-zinc-100 bg-white px-4 py-4 sm:flex-row sm:items-center">
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-zinc-100 text-[12px] font-bold uppercase text-zinc-500">
         {invite.invitedEmail[0]}
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-zinc-800 truncate">{invite.invitedEmail}</p>
-        <p className="text-[11px] text-zinc-400">
-          Expira {fmtDate(invite.expiresAt)}
-          {invite.spendingLimit != null && ` · Limite ${brl(invite.spendingLimit)}`}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-semibold text-zinc-800">{invite.invitedEmail}</p>
+        <p className="mt-1 text-[11px] text-zinc-500">
+          Convite privado • expira em {fmtDate(invite.expiresAt)}
+          {invite.spendingLimit != null ? ` • Limite de uso ${brl(invite.spendingLimit)}` : " • Limite de uso ilimitado"}
         </p>
       </div>
-      <div className="flex gap-1.5 flex-shrink-0">
+      <div className="flex gap-2">
         <button
           type="button"
           onClick={copyLink}
-          title="Copiar link"
-          className="px-2.5 py-1.5 rounded-lg border border-zinc-200 text-[11px] font-semibold text-zinc-600 hover:bg-zinc-50 transition-colors cursor-pointer"
+          className="rounded-xl border border-zinc-200 px-3 py-2 text-[11px] font-semibold text-zinc-600 transition-colors hover:bg-zinc-50"
         >
           {copied ? "Copiado!" : "Copiar link"}
         </button>
@@ -266,17 +278,14 @@ function PendingInviteRow({
           type="button"
           onClick={cancel}
           disabled={cancelling}
-          title="Cancelar convite"
-          className="px-2.5 py-1.5 rounded-lg border border-red-100 text-[11px] font-semibold text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40 cursor-pointer"
+          className="rounded-xl border border-red-100 px-3 py-2 text-[11px] font-semibold text-red-500 transition-colors hover:bg-red-50 disabled:opacity-40"
         >
-          {cancelling ? "…" : "Cancelar"}
+          {cancelling ? "..." : "Cancelar"}
         </button>
       </div>
     </div>
   );
 }
-
-// ── Active agent row ───────────────────────────────────────────────────────────
 
 function AgentRow({
   member,
@@ -290,11 +299,15 @@ function AgentRow({
   onUpdateLimit: (id: string, limit: number | null) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
-  const [limitValue, setLimitValue] = useState(
-    member.spendingLimit != null ? String(member.spendingLimit) : ""
-  );
+  const [limitValue, setLimitValue] = useState(member.spendingLimit != null ? String(member.spendingLimit) : "");
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const initials = (member.displayName || member.email || "?")
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+  const isSuspended = member.status === "suspended";
 
   async function saveLimit() {
     setSaving(true);
@@ -305,47 +318,50 @@ function AgentRow({
   }
 
   async function remove() {
-    if (!confirm(`Remover ${member.displayName || member.email} do workspace?`)) return;
+    if (!confirm(`Remover ${member.displayName || member.email} do Espaço Premium?`)) return;
     setRemoving(true);
     await onRemove(member.id);
     setRemoving(false);
   }
 
-  const initials = (member.displayName || member.email || "?")
-    .split(" ")
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
-
-  const isSuspended = member.status === "suspended";
-
   return (
-    <div className={`flex items-start gap-3 py-3 border-b border-zinc-50 last:border-0 ${isSuspended ? "opacity-60" : ""}`}>
-      <div className="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-indigo-500">
-        {initials}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-[13px] font-medium text-zinc-800 truncate">
-            {member.displayName || member.email || member.userId}
-          </p>
-          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100">
-            Agente
-          </span>
-          {isSuspended && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 text-zinc-500 border border-zinc-200">
-              Suspenso
-            </span>
-          )}
+    <div className={`flex flex-col gap-3 rounded-2xl border border-zinc-100 bg-white px-4 py-4 ${isSuspended ? "opacity-70" : ""}`}>
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-[12px] font-bold text-indigo-600">
+          {initials}
         </div>
-        {member.email && (
-          <p className="text-[11px] text-zinc-400">{member.email}</p>
-        )}
-        <p className="text-[11px] text-zinc-400 mt-0.5">
-          Desde {fmtDate(member.createdAt)}
-          {" · "}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-[13px] font-semibold text-zinc-800">
+              {member.displayName || member.email || member.userId}
+            </p>
+            <span className="inline-flex items-center rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-600">
+              Agente
+            </span>
+            {isSuspended ? (
+              <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500">
+                Suspenso
+              </span>
+            ) : null}
+          </div>
+          {member.email ? <p className="mt-1 text-[11px] text-zinc-500">{member.email}</p> : null}
+          <p className="mt-1 text-[11px] text-zinc-400">Desde {fmtDate(member.createdAt)}</p>
+        </div>
+        <button
+          type="button"
+          onClick={remove}
+          disabled={removing}
+          className="rounded-xl border border-red-100 px-3 py-2 text-[11px] font-semibold text-red-500 transition-colors hover:bg-red-50 disabled:opacity-40"
+        >
+          {removing ? "..." : "Remover"}
+        </button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Limite de uso</p>
           {editing ? (
-            <span className="inline-flex items-center gap-1">
+            <div className="mt-2 space-y-2">
               <input
                 type="number"
                 min={0}
@@ -353,68 +369,51 @@ function AgentRow({
                 value={limitValue}
                 onChange={(e) => setLimitValue(e.target.value)}
                 placeholder="Ilimitado"
-                className="w-24 rounded border border-zinc-200 px-1.5 py-0.5 text-[11px] text-zinc-700 focus:outline-none focus:ring-1 focus:ring-amber-300"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-[12px] text-zinc-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
                 autoFocus
               />
-              <button
-                type="button"
-                onClick={saveLimit}
-                disabled={saving}
-                className="text-[11px] font-semibold text-emerald-600 hover:text-emerald-800 cursor-pointer"
-              >
-                {saving ? "…" : "Salvar"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditing(false)}
-                className="text-[11px] text-zinc-400 hover:text-zinc-600 cursor-pointer"
-              >
-                Cancelar
-              </button>
-            </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={saveLimit}
+                  disabled={saving}
+                  className="text-[11px] font-semibold text-emerald-600"
+                >
+                  {saving ? "Salvando..." : "Salvar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="text-[11px] text-zinc-500"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
           ) : (
             <button
               type="button"
               onClick={() => setEditing(true)}
-              className="text-[11px] text-zinc-500 hover:text-zinc-700 underline cursor-pointer"
+              className="mt-1 text-left text-[13px] font-semibold text-zinc-800 underline decoration-zinc-300 underline-offset-4"
             >
-              Limite:{" "}
               {member.spendingLimit != null ? brl(member.spendingLimit) : "Ilimitado"}
             </button>
           )}
-        </p>
-        {budgetUsage && budgetUsage.spendingLimit != null && (() => {
-          const pct = Math.min(100, (budgetUsage.usedAmount / budgetUsage.spendingLimit) * 100);
-          const over = budgetUsage.usedAmount > budgetUsage.spendingLimit;
-          return (
-            <div className="mt-1.5 space-y-0.5">
-              <div className="h-1 rounded-full bg-zinc-100 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${over ? "bg-rose-400" : "bg-indigo-400"}`}
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-zinc-400">
-                Usado: {brl(budgetUsage.usedAmount)} · Disponível: {brl(Math.max(0, budgetUsage.availableAmount ?? 0))}
-              </p>
-            </div>
-          );
-        })()}
+        </div>
+        <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Usado</p>
+          <p className="mt-1 text-[13px] font-semibold text-amber-700">{brl(budgetUsage?.usedAmount ?? 0)}</p>
+        </div>
+        <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Disponível</p>
+          <p className={`mt-1 text-[13px] font-semibold ${(budgetUsage?.availableAmount ?? null) === 0 ? "text-rose-600" : "text-emerald-700"}`}>
+            {budgetUsage?.availableAmount != null ? brl(Math.max(0, budgetUsage.availableAmount)) : "Ilimitado"}
+          </p>
+        </div>
       </div>
-      <button
-        type="button"
-        onClick={remove}
-        disabled={removing}
-        title="Remover agente"
-        className="flex-shrink-0 px-2.5 py-1.5 rounded-lg border border-red-100 text-[11px] font-semibold text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40 cursor-pointer mt-0.5"
-      >
-        {removing ? "…" : "Remover"}
-      </button>
     </div>
   );
 }
-
-// ── Owner row ──────────────────────────────────────────────────────────────────
 
 function OwnerRow({ member }: { member: WorkspaceMemberDetail }) {
   const initials = (member.displayName || member.email || "P")
@@ -424,31 +423,26 @@ function OwnerRow({ member }: { member: WorkspaceMemberDetail }) {
     .join("");
 
   return (
-    <div className="flex items-center gap-3 py-3 border-b border-zinc-50">
-      <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-amber-600">
+    <div className="flex items-center gap-3 rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-[12px] font-bold text-amber-600">
         {initials}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-[13px] font-medium text-zinc-800 truncate">
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="truncate text-[13px] font-semibold text-zinc-800">
             {member.displayName || member.email || "Proprietário"}
           </p>
-          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-100">
+          <span className="inline-flex items-center rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-600">
             Proprietário
           </span>
         </div>
-        {member.email && (
-          <p className="text-[11px] text-zinc-400">{member.email}</p>
-        )}
+        {member.email ? <p className="mt-1 text-[11px] text-zinc-500">{member.email}</p> : null}
       </div>
     </div>
   );
 }
 
-// ── Main component ─────────────────────────────────────────────────────────────
-
 export default function WorkspaceAgentManager({
-  workspace,
   membership,
   initialSeatUsage,
   initialMembers,
@@ -458,9 +452,7 @@ export default function WorkspaceAgentManager({
   const [members, setMembers] = useState<WorkspaceMemberDetail[]>(initialMembers);
   const [invites, setInvites] = useState<PremiumAgentInvite[]>(initialInvites);
   const [seatUsage, setSeatUsage] = useState<WorkspaceSeatUsage>(initialSeatUsage);
-  const budgetMap = new Map<string, AgentBudgetUsage>(
-    (initialBudgetUsages ?? []).map((b) => [b.userId, b])
-  );
+  const budgetMap = new Map<string, AgentBudgetUsage>((initialBudgetUsages ?? []).map((b) => [b.userId, b]));
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [newLink, setNewLink] = useState<{ email: string; url: string } | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -488,6 +480,7 @@ export default function WorkspaceAgentManager({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "cancel" }),
     });
+
     if (res.ok) {
       setInvites((prev) => prev.filter((inv) => inv.id !== id));
       setSeatUsage((prev) => ({
@@ -496,10 +489,10 @@ export default function WorkspaceAgentManager({
         usedSeats: Math.max(0, prev.usedSeats - 1),
         remaining: prev.remaining + 1,
       }));
-      showToast("Convite cancelado.", true);
+      showToast("Convite privado cancelado.", true);
     } else {
       const data = (await res.json().catch(() => ({}))) as { error?: string };
-      showToast(data.error ?? "Erro ao cancelar convite.", false);
+      showToast(data.error ?? "Erro ao cancelar convite privado.", false);
     }
   }
 
@@ -509,6 +502,7 @@ export default function WorkspaceAgentManager({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "removed" }),
     });
+
     if (res.ok) {
       setMembers((prev) => prev.filter((m) => m.id !== id));
       setSeatUsage((prev) => ({
@@ -517,7 +511,7 @@ export default function WorkspaceAgentManager({
         usedSeats: Math.max(0, prev.usedSeats - 1),
         remaining: prev.remaining + 1,
       }));
-      showToast("Agente removido do workspace.", true);
+      showToast("Agente removido do Espaço Premium.", true);
     } else {
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       showToast(data.error ?? "Erro ao remover agente.", false);
@@ -530,14 +524,13 @@ export default function WorkspaceAgentManager({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ spendingLimit: limit }),
     });
+
     if (res.ok) {
-      setMembers((prev) =>
-        prev.map((m) => (m.id === id ? { ...m, spendingLimit: limit } : m))
-      );
-      showToast("Limite atualizado.", true);
+      setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, spendingLimit: limit } : m)));
+      showToast("Limite de uso atualizado.", true);
     } else {
       const data = (await res.json().catch(() => ({}))) as { error?: string };
-      showToast(data.error ?? "Erro ao atualizar limite.", false);
+      showToast(data.error ?? "Erro ao atualizar limite de uso.", false);
     }
   }
 
@@ -547,144 +540,132 @@ export default function WorkspaceAgentManager({
   const canInvite = seatUsage.remaining > 0;
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
-  // ── Agent view ──────────────────────────────────────────────────────────────
   if (!isOwner) {
     const selfMember = members.find((m) => m.userId === membership.userId) ?? null;
     const selfBudget = budgetMap.get(membership.userId) ?? null;
-    const hasLimit = (selfMember?.spendingLimit ?? null) != null;
+
     return (
-      <div className="space-y-3 py-2">
-        {hasLimit && selfBudget ? (
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "Meu limite", value: brl(selfBudget.spendingLimit!), color: "text-zinc-700" },
-              { label: "Usado", value: brl(selfBudget.usedAmount), color: "text-amber-600" },
-              {
-                label: "Disponível",
-                value: brl(Math.max(0, selfBudget.availableAmount ?? 0)),
-                color: (selfBudget.availableAmount ?? 0) > 0 ? "text-emerald-600" : "text-rose-500",
-              },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="rounded-xl bg-zinc-50 border border-zinc-100 px-3 py-2.5 text-center">
-                <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide mb-1">{label}</p>
-                <p className={`text-[13px] font-bold ${color}`}>{value}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-xl bg-zinc-50 border border-zinc-100 px-4 py-3 space-y-1">
-            <p className="text-[12px] font-semibold text-zinc-500 uppercase tracking-wide">
-              Sua participação
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Agente</p>
+            <p className="mt-1 text-[14px] font-semibold text-zinc-800">Limite de uso</p>
+            <p className="mt-2 text-[13px] text-zinc-600">
+              {selfBudget?.spendingLimit != null ? brl(selfBudget.spendingLimit) : "Ilimitado"}
             </p>
-            <p className="text-[13px] text-zinc-700">
-              Função: <strong>Agente</strong>
-            </p>
-            {selfMember && (
-              <p className="text-[13px] text-zinc-700">
-                Limite de gastos: <strong>Ilimitado</strong>
-              </p>
-            )}
           </div>
-        )}
-        <p className="text-[12px] text-zinc-400">
-          Somente o proprietário pode gerenciar agentes.
+          <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Usado</p>
+            <p className="mt-2 text-[13px] font-semibold text-amber-700">{brl(selfBudget?.usedAmount ?? 0)}</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Disponível</p>
+            <p className={`mt-2 text-[13px] font-semibold ${(selfBudget?.availableAmount ?? null) === 0 ? "text-rose-600" : "text-emerald-700"}`}>
+              {selfBudget?.availableAmount != null ? brl(Math.max(0, selfBudget.availableAmount)) : "Ilimitado"}
+            </p>
+          </div>
+        </div>
+
+        {!selfMember ? (
+          <EmptyBlock
+            title="Seu acesso de agente está sendo atualizado."
+            description="Se este estado persistir, peça ao proprietário para revisar sua participação no Espaço Premium."
+          />
+        ) : null}
+
+        <p className="text-[12px] text-zinc-500">
+          Somente o proprietário pode convidar agentes, remover membros ou editar limites de uso.
         </p>
       </div>
     );
   }
 
-  // ── Owner view ──────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
-      {/* Seat usage */}
       <SeatBar usage={seatUsage} />
 
-      {/* Toast */}
-      {toast && <Toast msg={toast.msg} ok={toast.ok} />}
+      {toast ? <Toast msg={toast.msg} ok={toast.ok} /> : null}
 
-      {/* New invite link banner */}
-      {newLink && (
-        <NewInviteLink
-          email={newLink.email}
-          url={newLink.url}
-          onClose={() => setNewLink(null)}
-        />
-      )}
+      {newLink ? (
+        <NewInviteLink email={newLink.email} url={newLink.url} onClose={() => setNewLink(null)} />
+      ) : null}
 
-      {/* Invite button / form */}
-      {!showInviteForm && !newLink && (
-        <button
-          type="button"
-          onClick={() => setShowInviteForm(true)}
-          disabled={!canInvite}
-          title={
-            canInvite
-              ? "Convidar novo agente"
-              : `Seu plano Premium inclui ${seatUsage.includedSeats} agente${seatUsage.includedSeats !== 1 ? "s" : ""}. Assentos extras em breve.`
-          }
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-amber-200 bg-amber-50 text-[12px] font-semibold text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Convidar agente
-        </button>
-      )}
+      {!showInviteForm && !newLink ? (
+        canInvite ? (
+          <button
+            type="button"
+            onClick={() => setShowInviteForm(true)}
+            className="inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-[12px] font-semibold text-amber-700 transition-colors hover:bg-amber-100"
+          >
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Convidar agente
+          </button>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-[12px] font-medium text-amber-700">
+              Você atingiu o limite de agentes do Premium.
+            </div>
+            <Link
+              href="/agency/support"
+              className="inline-flex items-center rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
+            >
+              Falar com suporte
+            </Link>
+          </div>
+        )
+      ) : null}
 
-      {showInviteForm && (
+      {showInviteForm ? (
         <InviteForm
-          onSuccess={(email, url, invite) => {
-            // Recalculate usage after invite creation
-            setSeatUsage((prev) => ({
-              ...prev,
-              pendingInviteCount: prev.pendingInviteCount + 1,
-              usedSeats: prev.usedSeats + 1,
-              remaining: Math.max(0, prev.remaining - 1),
-            }));
-            handleInviteSuccess(email, url, invite, seatUsage);
-          }}
+          onSuccess={handleInviteSuccess}
           onError={(msg) => showToast(msg, false)}
           onCancel={() => setShowInviteForm(false)}
         />
-      )}
+      ) : null}
 
-      {/* Member list */}
-      <div className="border-t border-zinc-50 pt-4 space-y-0">
-        {/* Owner */}
-        {ownerMember && <OwnerRow member={ownerMember} />}
+      <div className="space-y-3">
+        {ownerMember ? <OwnerRow member={ownerMember} /> : null}
 
-        {/* Active agents */}
-        {agentMembers.map((m) => (
-          <AgentRow
-            key={m.id}
-            member={m}
-            budgetUsage={budgetMap.get(m.userId) ?? null}
-            onRemove={removeMember}
-            onUpdateLimit={updateLimit}
+        {agentMembers.length > 0 ? (
+          agentMembers.map((member) => (
+            <AgentRow
+              key={member.id}
+              member={member}
+              budgetUsage={budgetMap.get(member.userId) ?? null}
+              onRemove={removeMember}
+              onUpdateLimit={updateLimit}
+            />
+          ))
+        ) : (
+          <EmptyBlock
+            title="Nenhum agente ainda. Convide sua equipe para começar."
+            description="Os agentes convidados aparecem aqui com função, limite de uso, total usado e saldo disponível."
           />
-        ))}
-
-        {agentMembers.length === 0 && invites.length === 0 && (
-          <p className="text-[13px] text-zinc-400 py-4">Nenhum agente adicionado ainda.</p>
         )}
       </div>
 
-      {/* Pending invites */}
-      {invites.length > 0 && (
-        <div className="border-t border-zinc-50 pt-4">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">
-            Convites pendentes
-          </p>
-          {invites.map((inv) => (
+      <div className="space-y-3 border-t border-zinc-100 pt-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+          Convites privados
+        </p>
+        {invites.length > 0 ? (
+          invites.map((invite) => (
             <PendingInviteRow
-              key={inv.id}
-              invite={inv}
+              key={invite.id}
+              invite={invite}
               origin={origin}
               onCancel={cancelInvite}
             />
-          ))}
-        </div>
-      )}
+          ))
+        ) : (
+          <EmptyBlock
+            title="Nenhum convite privado pendente."
+            description="Quando você enviar um novo convite privado para um agente, ele aparecerá aqui até ser aceito ou cancelado."
+          />
+        )}
+      </div>
     </div>
   );
 }

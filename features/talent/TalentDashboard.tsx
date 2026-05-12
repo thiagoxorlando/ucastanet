@@ -38,21 +38,21 @@ function brl(n: number) {
   }).format(n);
 }
 
-function fmtJobDate(s: string | null) {
+function fmtJobDate(s: string | null, lang: "pt-BR" | "en") {
   if (!s) return "—";
-  return new Date(s + "T00:00:00").toLocaleDateString("pt-BR", {
+  return new Date(s + "T00:00:00").toLocaleDateString(lang === "en" ? "en-US" : "pt-BR", {
     weekday: "short", day: "numeric", month: "short",
   });
 }
 
-function daysUntil(s: string | null) {
+function daysUntil(s: string | null, lang: "pt-BR" | "en") {
   if (!s) return null;
   const diff = Math.ceil(
     (new Date(s + "T00:00:00").getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   );
-  if (diff === 0) return "Hoje";
-  if (diff === 1) return "Amanhã";
-  return `em ${diff} dias`;
+  if (diff === 0) return lang === "en" ? "Today" : "Hoje";
+  if (diff === 1) return lang === "en" ? "Tomorrow" : "Amanhã";
+  return lang === "en" ? `in ${diff} days` : `em ${diff} dias`;
 }
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
@@ -216,7 +216,7 @@ export default function TalentDashboard({
           <div className="flex items-center gap-2.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
             <p className="text-[13px] font-medium text-emerald-800">
-              Você está disponível hoje
+              {lang === "en" ? "You are available today" : "Você está disponível hoje"}
               {todayAvailability.start_time && (
                 <span className="font-normal text-emerald-600">
                   {" · "}{todayAvailability.start_time.slice(0, 5)}
@@ -226,7 +226,7 @@ export default function TalentDashboard({
             </p>
           </div>
           <Link href="/talent/availability" className="text-[12px] font-medium text-emerald-600 hover:text-emerald-800 underline underline-offset-2 whitespace-nowrap transition-colors">
-            Editar
+            {t("action_edit")}
           </Link>
         </div>
       ) : (
@@ -235,12 +235,12 @@ export default function TalentDashboard({
             <span className="w-2 h-2 rounded-full bg-zinc-300 flex-shrink-0" />
             <p className="text-[13px] text-zinc-500">
               {todayAvailability?.is_available === false
-                ? "Você está indisponível hoje"
-                : "Marque sua disponibilidade para receber mais convites"}
+                ? (lang === "en" ? "You are unavailable today" : "Você está indisponível hoje")
+                : (lang === "en" ? "Set your availability to receive more invites" : "Marque sua disponibilidade para receber mais convites")}
             </p>
           </div>
           <Link href="/talent/availability" className="text-[12px] font-medium text-violet-600 hover:text-violet-800 underline underline-offset-2 whitespace-nowrap transition-colors">
-            Atualizar
+            {lang === "en" ? "Update" : "Atualizar"}
           </Link>
         </div>
       )}
@@ -266,9 +266,11 @@ export default function TalentDashboard({
           ) : (
             <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] divide-y divide-zinc-50 overflow-hidden">
               {upcomingBookings.map((b) => {
-                const countdown = daysUntil(b.jobDate);
-                const isToday   = countdown === "Hoje";
-                const isSoon    = typeof countdown === "string" && countdown.startsWith("em") && parseInt(countdown) <= 3;
+                const countdown = daysUntil(b.jobDate, lang);
+                const isToday = countdown === (lang === "en" ? "Today" : "Hoje");
+                const isSoon = typeof countdown === "string" && (
+                  lang === "en" ? countdown.startsWith("in ") : countdown.startsWith("em")
+                ) && parseInt(countdown.replace(/\D/g, ""), 10) <= 3;
 
                 return (
                   <div key={b.id} className="flex items-center gap-4 px-5 py-4">
@@ -280,7 +282,7 @@ export default function TalentDashboard({
                       {b.jobDate ? (
                         <>
                           <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400 leading-none">
-                            {new Date(b.jobDate + "T00:00:00").toLocaleDateString("pt-BR", { month: "short" })}
+                            {new Date(b.jobDate + "T00:00:00").toLocaleDateString(lang === "en" ? "en-US" : "pt-BR", { month: "short" })}
                           </p>
                           <p className={`text-[18px] font-bold leading-tight ${isToday ? "text-amber-600" : "text-zinc-900"}`}>
                             {new Date(b.jobDate + "T00:00:00").getDate()}
@@ -382,4 +384,3 @@ export default function TalentDashboard({
     </div>
   );
 }
-

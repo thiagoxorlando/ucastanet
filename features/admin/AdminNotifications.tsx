@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useT } from "@/lib/LanguageContext";
 
 export type UserOption = {
   id: string;
@@ -72,6 +73,7 @@ export default function AdminNotifications({
   users: UserOption[];
   broadcasts: BroadcastEntry[];
 }) {
+  const { t } = useT();
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [audience, setAudience] = useState<Audience>("all");

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useT } from "@/lib/LanguageContext";
 
 export type PlatformSettings = {
   platform_name: string;
@@ -77,6 +78,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function AdminSettings({ initialSettings }: { initialSettings: PlatformSettings }) {
+  const { t } = useT();
   const [settings, setSettings] = useState<PlatformSettings>(initialSettings);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);

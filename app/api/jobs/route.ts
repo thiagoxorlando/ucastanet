@@ -5,7 +5,11 @@ import { notify } from "@/lib/notify";
 import { requireJobLimit, requireTalentsNeededForJob } from "@/lib/requireActiveSubscription";
 import { getJobSuggestions } from "@/lib/getJobSuggestions";
 import { resolvePlanInfo } from "@/lib/plans";
-import { getUserPremiumWorkspace, ensurePremiumWorkspaceForAgency, getAgentBudgetUsage } from "@/lib/premiumWorkspace.server";
+import {
+  ensurePremiumWorkspaceForAgency,
+  getAgentBudgetUsage,
+  getUserPremiumWorkspace,
+} from "@/lib/premiumWorkspace.server";
 
 function mapJobCreationError(message: string) {
   const normalized = message.toLowerCase();
@@ -20,25 +24,40 @@ function mapJobCreationError(message: string) {
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
-    title, description, category, budget, deadline,
-    job_date, job_time, job_role, agency_id, location,
-    gender, age_min, age_max, status,
-    number_of_talents_required, auto_invite,
+    title,
+    description,
+    category,
+    budget,
+    deadline,
+    job_date,
+    job_time,
+    job_role,
+    location,
+    gender,
+    age_min,
+    age_max,
+    status,
+    number_of_talents_required,
+    auto_invite,
     visibility: rawVisibility,
     application_requirements,
   } = body;
 
   const session = await createSessionClient();
-  const { data: { user } } = await session.auth.getUser();
+  const {
+    data: { user },
+  } = await session.auth.getUser();
+
   if (!user) {
     return NextResponse.json({ error: "Não autenticado. Faça login novamente." }, { status: 401 });
   }
 
+  const actorUserId = user.id;
   const supabase = createServerClient({ useServiceRole: true });
   const { data: caller, error: callerError } = await supabase
     .from("profiles")
     .select("role")
-    .eq("id", user.id)
+    .eq("id", actorUserId)
     .maybeSingle();
 
   if (callerError) {
@@ -50,18 +69,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Perfil da conta não encontrado. Complete seu cadastro novamente." }, { status: 404 });
   }
 
-  if (caller?.role !== "agency") {
+  if (caller.role !== "agency") {
     return NextResponse.json({ error: "Apenas contas de agência podem publicar vagas." }, { status: 403 });
   }
-  if (agency_id && agency_id !== user.id) {
-    return NextResponse.json({ error: "Você não pode publicar vagas para outra agência." }, { status: 403 });
+
+  const [{ data: profile }, existingWorkspace] = await Promise.all([
+    supabase.from("profiles").select("plan").eq("id", actorUserId).single(),
+    getUserPremiumWorkspace(actorUserId),
+  ]);
+
+  const planInfo = resolvePlanInfo(profile);
+
+  let workspaceAccess = existingWorkspace;
+  let workspaceId = workspaceAccess?.workspace.id ?? null;
+  const isPremiumPlan = planInfo.plan === "premium";
+  const isWorkspaceMember = !!workspaceAccess;
+
+  if (!workspaceId && isPremiumPlan) {
+    workspaceAccess = await ensurePremiumWorkspaceForAgency(actorUserId);
+    workspaceId = workspaceAccess?.workspace.id ?? null;
   }
 
-  const agencyId = user.id;
+  const workspaceOwnerUserId = workspaceAccess?.workspace.ownerUserId ?? actorUserId;
+  const canUsePrivateInvite = !!workspaceId;
+
   const { data: agency, error: agencyError } = await supabase
     .from("agencies")
     .select("id")
-    .eq("id", agencyId)
+    .eq("id", workspaceOwnerUserId)
     .maybeSingle();
 
   if (agencyError) {
@@ -70,33 +105,20 @@ export async function POST(req: NextRequest) {
   }
 
   if (!agency) {
-    return NextResponse.json({ error: "Cadastro de agência não encontrado. Atualize seu perfil antes de publicar uma vaga." }, { status: 404 });
+    return NextResponse.json(
+      { error: "Cadastro de agência não encontrado. Atualize seu perfil antes de publicar uma vaga." },
+      { status: 404 }
+    );
   }
 
-  const limited = await requireJobLimit(agencyId);
+  const limited = await requireJobLimit(workspaceOwnerUserId);
   if (limited) return limited;
 
-  const hiresLimited = await requireTalentsNeededForJob(agencyId, Number(number_of_talents_required) || 1);
+  const hiresLimited = await requireTalentsNeededForJob(
+    workspaceOwnerUserId,
+    Number(number_of_talents_required) || 1
+  );
   if (hiresLimited) return hiresLimited;
-
-  const [{ data: profile }, wsResult] = await Promise.all([
-    supabase.from("profiles").select("plan").eq("id", agencyId).single(),
-    getUserPremiumWorkspace(agencyId),
-  ]);
-  const planInfo = resolvePlanInfo(profile);
-
-  // Resolve workspace: check membership first (agents may have plan=free),
-  // then auto-create for Premium owners who haven't visited workspace page yet.
-  let workspaceId: string | null = wsResult?.workspace.id ?? null;
-  const isPremiumPlan = planInfo.plan === "premium";
-  const isWorkspaceMember = !!wsResult;
-
-  if (!workspaceId && isPremiumPlan) {
-    const created = await ensurePremiumWorkspaceForAgency(agencyId);
-    workspaceId = created?.workspace.id ?? null;
-  }
-
-  const canUsePrivateInvite = isWorkspaceMember || (isPremiumPlan && !!workspaceId);
 
   if (rawVisibility === "private_invite" && !canUsePrivateInvite) {
     return NextResponse.json(
@@ -105,32 +127,33 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Spending limit check: agents with a set limit cannot exceed it
-  if (isWorkspaceMember && wsResult?.membership.role === "agent" && workspaceId) {
-    const spendingLimit = wsResult.membership.spendingLimit;
+  if (isWorkspaceMember && workspaceAccess?.membership.role === "agent" && workspaceId) {
+    const spendingLimit = workspaceAccess.membership.spendingLimit;
     if (spendingLimit != null) {
-      const budgetUsage = await getAgentBudgetUsage(workspaceId, agencyId);
+      const budgetUsage = await getAgentBudgetUsage(workspaceId, actorUserId);
       const jobEstimate = Number(budget ?? 0) * (Number(number_of_talents_required) || 1);
       if (budgetUsage && budgetUsage.availableAmount !== null && jobEstimate > budgetUsage.availableAmount) {
         return NextResponse.json(
-          { error: "Seu limite disponível para criar vagas é insuficiente. Solicite ajuste ao responsável da conta Premium." },
+          {
+            error:
+              "Seu limite disponível para criar vagas é insuficiente. Solicite ajuste ao responsável da conta Premium.",
+          },
           { status: 403 }
         );
       }
     }
   }
 
-  let visibility: string;
-  if (canUsePrivateInvite && rawVisibility === "private_invite") {
+  let visibility: "public" | "private" | "private_invite" = "public";
+  if (workspaceId && (rawVisibility === "private" || rawVisibility === "private_invite")) {
     visibility = "private_invite";
-  } else if (isPremiumPlan && rawVisibility === "private") {
+  } else if (!workspaceId && isPremiumPlan && rawVisibility === "private") {
     visibility = "private";
-  } else {
-    visibility = "public";
   }
 
   console.log("[plan] create_job", {
-    agencyId,
+    agencyId: workspaceOwnerUserId,
+    actorUserId,
     plan: planInfo.plan,
     visibility,
     workspaceId,
@@ -138,39 +161,41 @@ export async function POST(req: NextRequest) {
   });
 
   const baseInsert: Record<string, unknown> = {
-    title, description, category, budget, deadline, agency_id: agencyId,
+    title,
+    description,
+    category,
+    budget,
+    deadline,
+    agency_id: workspaceOwnerUserId,
     visibility,
-    job_date:                   job_date  ?? null,
-    job_time:                   job_time  ?? null,
-    job_role:                   job_role  ?? null,
-    location:                   location  ?? null,
-    gender:                     gender    ?? null,
-    age_min:                    age_min   ?? null,
-    age_max:                    age_max   ?? null,
+    job_date: job_date ?? null,
+    job_time: job_time ?? null,
+    job_role: job_role ?? null,
+    location: location ?? null,
+    gender: gender ?? null,
+    age_min: age_min ?? null,
+    age_max: age_max ?? null,
     number_of_talents_required: number_of_talents_required ?? 1,
-    status:                     status ?? "open",
+    status: status ?? "open",
   };
 
-  // Tag workspace jobs with server-resolved workspace_id and creator identity
-  if (workspaceId && canUsePrivateInvite) {
-    baseInsert.workspace_id       = workspaceId;
-    baseInsert.created_by_user_id = agencyId;
-    baseInsert.invite_only        = visibility === "private_invite";
+  if (workspaceId) {
+    baseInsert.workspace_id = workspaceId;
+    baseInsert.created_by_user_id = actorUserId;
+    baseInsert.invite_only = visibility === "private_invite";
   }
 
   let { data, error } = await supabase
     .from("jobs")
-    .insert({ ...baseInsert, application_requirements: Array.isArray(application_requirements) ? application_requirements : [] })
+    .insert({
+      ...baseInsert,
+      application_requirements: Array.isArray(application_requirements) ? application_requirements : [],
+    })
     .select()
     .single();
 
-  // Column may not be in schema cache yet — fall back without it
   if (error?.message?.includes("application_requirements")) {
-    ({ data, error } = await supabase
-      .from("jobs")
-      .insert(baseInsert)
-      .select()
-      .single());
+    ({ data, error } = await supabase.from("jobs").insert(baseInsert).select().single());
   }
 
   if (error) {
@@ -180,53 +205,68 @@ export async function POST(req: NextRequest) {
 
   const isPublished = !status || status === "open";
 
-  // Auto-invite — for private jobs, only invite from agency history + existing invitees
   if (auto_invite && isPublished) {
-    const supabaseInvite = createServerClient({ useServiceRole: true });
-    const { suggestions, job_date: jDate } = await getJobSuggestions(data.id, agencyId, 5, visibility === "private" || visibility === "private_invite");
-    const toInvite = suggestions.filter((s) => !s.is_unavailable);
+    const { suggestions, job_date: suggestedDate } = await getJobSuggestions(
+      data.id,
+      workspaceOwnerUserId,
+      5,
+      visibility === "private" || visibility === "private_invite"
+    );
+    const toInvite = suggestions.filter((suggestion) => !suggestion.is_unavailable);
 
     if (toInvite.length > 0) {
-      await supabaseInvite.from("job_invites").insert(
-        toInvite.map((t) => ({
-          job_id:    data.id,
-          talent_id: t.id,
-          agency_id: agencyId,
-          status:    "pending",
-        })),
+      await supabase.from("job_invites").insert(
+        toInvite.map((talent) => ({
+          job_id: data.id,
+          talent_id: talent.id,
+          agency_id: workspaceOwnerUserId,
+          status: "pending",
+        }))
       );
 
-      const dateStr = jDate
-        ? new Date(jDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+      const dateStr = suggestedDate
+        ? new Date(suggestedDate + "T00:00:00").toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "short",
+          })
         : null;
-      const msg = dateStr
+      const message = dateStr
         ? `Você foi convidado para um trabalho em ${dateStr}: "${title ?? "Nova vaga"}"`
         : `Você foi convidado para uma vaga: "${title ?? "Nova vaga"}"`;
 
-      await notify(toInvite.map((t) => t.id), "job_invite", msg, `/talent/jobs/${data.id}`);
+      await notify(
+        toInvite.map((talent) => talent.id),
+        "job_invite",
+        message,
+        `/talent/jobs/${data.id}`
+      );
     }
   }
 
-  // Public jobs: notify all available talents. Private jobs: invites only (above).
   if (isPublished && visibility === "public" && !workspaceId) {
     let talentIds: string[] = [];
 
     if (job_date) {
-      const { data: availRows } = await supabase
+      const { data: availabilityRows } = await supabase
         .from("talent_availability")
         .select("talent_id")
         .eq("date", job_date)
         .eq("is_available", true);
-      talentIds = (availRows ?? []).map((r) => r.talent_id);
+      talentIds = (availabilityRows ?? []).map((row) => row.talent_id);
     }
 
     if (!talentIds.length) {
       const { data: talentProfiles } = await supabase.from("talent_profiles").select("id");
-      talentIds = (talentProfiles ?? []).map((p) => p.id);
+      talentIds = (talentProfiles ?? []).map((profileRow) => profileRow.id);
     }
 
     if (talentIds.length) {
-      await notify(talentIds, "new_job", `Nova vaga publicada: "${title ?? "Sem título"}"`, `/talent/jobs/${data.id}`);
+      await notify(
+        talentIds,
+        "new_job",
+        `Nova vaga publicada: "${title ?? "Sem título"}"`,
+        `/talent/jobs/${data.id}`
+      );
     }
   }
 

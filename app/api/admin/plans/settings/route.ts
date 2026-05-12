@@ -12,7 +12,7 @@ export async function GET() {
   const supabase = createServerClient({ useServiceRole: true });
   const { data, error } = await supabase
     .from("plan_settings")
-    .select("plan_key, name, price, commission_percent, is_available, job_limit, max_hires_per_job")
+    .select("plan_key, name, price, commission_percent, is_available, job_limit, max_hires_per_job, included_agent_seats, extra_agent_seat_price")
     .order("plan_key");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest) {
   // Fetch all current settings before making any changes
   const { data: currentRows } = await supabase
     .from("plan_settings")
-    .select("plan_key, name, price, commission_percent, is_available, job_limit, max_hires_per_job");
+    .select("plan_key, name, price, commission_percent, is_available, job_limit, max_hires_per_job, included_agent_seats, extra_agent_seat_price");
 
   const currentMap = new Map(
     (currentRows ?? []).map((row) => [
@@ -54,6 +54,8 @@ export async function PATCH(req: NextRequest) {
         is_available: Boolean(row.is_available),
         job_limit: (row.job_limit as number | null) ?? null,
         max_hires_per_job: (row.max_hires_per_job as number | null) ?? null,
+        included_agent_seats: (row.included_agent_seats as number | null) ?? null,
+        extra_agent_seat_price: (row.extra_agent_seat_price as number | null) ?? null,
         name: String(row.name ?? row.plan_key),
       },
     ]),
@@ -91,6 +93,24 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "max_hires_per_job must be null or at least 1." }, { status: 400 });
     }
 
+    const includedSeatsRaw = setting.included_agent_seats;
+    const includedAgentSeats =
+      includedSeatsRaw === null || includedSeatsRaw === undefined || includedSeatsRaw === ""
+        ? null
+        : Number(includedSeatsRaw);
+    const extraSeatPriceRaw = setting.extra_agent_seat_price;
+    const extraAgentSeatPrice =
+      extraSeatPriceRaw === null || extraSeatPriceRaw === undefined || extraSeatPriceRaw === ""
+        ? null
+        : Number(extraSeatPriceRaw);
+
+    if (includedAgentSeats !== null && (!Number.isInteger(includedAgentSeats) || includedAgentSeats < 0)) {
+      return NextResponse.json({ error: "included_agent_seats must be null or a non-negative integer." }, { status: 400 });
+    }
+    if (extraAgentSeatPrice !== null && (!Number.isFinite(extraAgentSeatPrice) || extraAgentSeatPrice < 0)) {
+      return NextResponse.json({ error: "extra_agent_seat_price must be null or a non-negative number." }, { status: 400 });
+    }
+
     const current = currentMap.get(planKey);
     if (!current) {
       return NextResponse.json({ error: `Plan settings for "${planKey}" not found. Run the migration first.` }, { status: 404 });
@@ -105,7 +125,17 @@ export async function PATCH(req: NextRequest) {
     const availabilityChanged = newIsAvailable !== current.is_available;
     const jobLimitChanged = jobLimit !== current.job_limit;
     const maxHiresChanged = maxHiresPerJob !== current.max_hires_per_job;
-    const anythingChanged = nameChanged || priceChanged || commissionChanged || availabilityChanged || jobLimitChanged || maxHiresChanged;
+    const includedSeatsChanged = includedAgentSeats !== current.included_agent_seats;
+    const extraSeatPriceChanged = extraAgentSeatPrice !== current.extra_agent_seat_price;
+    const anythingChanged =
+      nameChanged ||
+      priceChanged ||
+      commissionChanged ||
+      availabilityChanged ||
+      jobLimitChanged ||
+      maxHiresChanged ||
+      includedSeatsChanged ||
+      extraSeatPriceChanged;
 
     // 1. Update the plan_settings row
     const { error: updateError } = await supabase
@@ -117,6 +147,8 @@ export async function PATCH(req: NextRequest) {
         is_available: newIsAvailable,
         job_limit: jobLimit,
         max_hires_per_job: maxHiresPerJob,
+        included_agent_seats: includedAgentSeats,
+        extra_agent_seat_price: extraAgentSeatPrice,
         updated_at: new Date().toISOString(),
       } as Record<string, unknown>)
       .eq("plan_key", planKey);
@@ -137,6 +169,8 @@ export async function PATCH(req: NextRequest) {
         is_available: newIsAvailable,
         job_limit: jobLimit,
         max_hires_per_job: maxHiresPerJob,
+        included_agent_seats: includedAgentSeats,
+        extra_agent_seat_price: extraAgentSeatPrice,
       },
     });
 
@@ -155,6 +189,10 @@ export async function PATCH(req: NextRequest) {
           new_is_available: newIsAvailable,
           old_job_limit: current.job_limit,
           new_job_limit: jobLimit,
+          old_included_agent_seats: current.included_agent_seats,
+          new_included_agent_seats: includedAgentSeats,
+          old_extra_agent_seat_price: current.extra_agent_seat_price,
+          new_extra_agent_seat_price: extraAgentSeatPrice,
         } as Record<string, unknown>);
 
       if (historyError) {

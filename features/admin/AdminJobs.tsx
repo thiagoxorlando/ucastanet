@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { MouseEvent } from "react";
 import { brl } from "@/lib/brl";
 import { jobStatusTone } from "@/lib/jobStatus";
+import { useT } from "@/lib/LanguageContext";
 import {
   getContractPaymentStatus,
   contractStatusLabel,
@@ -418,6 +419,7 @@ function JobRow({
 }
 
 export default function AdminJobs({ jobs: initialJobs }: { jobs: AdminJob[] }) {
+  const { t } = useT();
   const [jobs, setJobs] = useState<AdminJob[]>(initialJobs);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");

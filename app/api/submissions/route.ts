@@ -16,9 +16,17 @@ type LinkedReferral = {
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
-    job_id, talent_id, email, bio, mode,
-    photo_front_url, photo_left_url, photo_right_url, video_url,
-    curriculum_url, portfolio_url,
+    job_id,
+    talent_id,
+    email,
+    bio,
+    mode,
+    photo_front_url,
+    photo_left_url,
+    photo_right_url,
+    video_url,
+    curriculum_url,
+    portfolio_url,
     talent_name,
     invite_token,
   } = body;
@@ -36,20 +44,21 @@ export async function POST(req: NextRequest) {
   }
 
   const session = await createSessionClient();
-  const { data: { user } } = await session.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const {
+    data: { user },
+  } = await session.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+  }
 
   const supabase = createServerClient({ useServiceRole: true });
-  const { data: caller } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+  const { data: caller } = await supabase.from("profiles").select("role").eq("id", user.id).single();
 
   const isSelfApplication = Boolean(talent_id);
   if (isSelfApplication) {
     if (caller?.role !== "talent" || talent_id !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Somente talentos podem se candidatar a esta vaga." }, { status: 403 });
     }
     if (referrer_id && referrer_id !== user.id) {
       return NextResponse.json({ error: "Invalid referrer" }, { status: 403 });
@@ -73,7 +82,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (jobError || !job) {
-    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    return NextResponse.json({ error: "Vaga não encontrada." }, { status: 404 });
   }
 
   const [{ data: agencyProfile }, { count: activeHires }] = await Promise.all([
@@ -89,14 +98,16 @@ export async function POST(req: NextRequest) {
   ]);
 
   const liveSetting = await getLivePlanSetting((agencyProfile?.plan ?? "free") as Plan);
-  if (!isJobOpenForApplications({
-    status: job.status ?? null,
-    deletedAt: (job as { deleted_at?: string | null }).deleted_at ?? null,
-    currentHires: activeHires ?? 0,
-    talentsNeeded: (job as { number_of_talents_required?: number | null }).number_of_talents_required ?? 1,
-    maxHiresPerJob: liveSetting.max_hires_per_job,
-  })) {
-    return NextResponse.json({ error: JOB_UNAVAILABLE_MESSAGE }, { status: 409 });
+  if (
+    !isJobOpenForApplications({
+      status: job.status ?? null,
+      deletedAt: (job as { deleted_at?: string | null }).deleted_at ?? null,
+      currentHires: activeHires ?? 0,
+      talentsNeeded: (job as { number_of_talents_required?: number | null }).number_of_talents_required ?? 1,
+      maxHiresPerJob: liveSetting.max_hires_per_job,
+    })
+  ) {
+    return NextResponse.json({ error: "Vaga não disponível para novas candidaturas." }, { status: 409 });
   }
 
   let linkedReferral: LinkedReferral | null = null;
@@ -129,39 +140,48 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  const normalizedInviteToken =
+    typeof invite_token === "string" && invite_token.trim() ? invite_token.trim() : null;
+  let inviteLinkId: string | null = null;
+  let inviteUseCount = 0;
+
   if (job.visibility === "private_invite") {
-    let hasInviteAccess = false;
-
-    if (typeof invite_token === "string" && invite_token.trim()) {
-      const { data: link } = await supabase
-        .from("job_invite_links")
-        .select("id, status, expires_at, revoked_at")
-        .eq("token", invite_token.trim())
-        .eq("job_id", job_id)
-        .maybeSingle();
-
-      hasInviteAccess = !!(
-        link &&
-        link.status === "active" &&
-        !link.revoked_at &&
-        (!link.expires_at || new Date(link.expires_at) > new Date())
-      );
-
-      if (hasInviteAccess) {
-        // Increment use_count (best-effort, don't fail the submission if this errors)
-        await supabase
-          .from("job_invite_links")
-          .update({ use_count: (link as unknown as { use_count: number }).use_count + 1 })
-          .eq("id", link!.id)
-          .then(() => null);
-      }
+    if (!normalizedInviteToken) {
+      return NextResponse.json({ error: "Convite inválido ou expirado." }, { status: 403 });
     }
 
-    if (!hasInviteAccess && !linkedReferral) {
-      return NextResponse.json(
-        { error: "Esta vaga é privada e exige convite." },
-        { status: 403 }
-      );
+    const { data: link } = await supabase
+      .from("job_invite_links")
+      .select("id, status, expires_at, revoked_at, use_count, max_uses")
+      .eq("token", normalizedInviteToken)
+      .eq("job_id", job_id)
+      .maybeSingle();
+
+    const validInvite =
+      !!link &&
+      link.status === "active" &&
+      !link.revoked_at &&
+      (!link.expires_at || new Date(link.expires_at) > new Date()) &&
+      (link.max_uses == null || Number(link.use_count ?? 0) < Number(link.max_uses));
+
+    if (!validInvite) {
+      return NextResponse.json({ error: "Convite inválido ou expirado." }, { status: 403 });
+    }
+
+    inviteLinkId = String(link.id);
+    inviteUseCount = Number(link.use_count ?? 0);
+  }
+
+  if (isSelfApplication) {
+    const { data: existingSubmission } = await supabase
+      .from("submissions")
+      .select("id")
+      .eq("job_id", job_id)
+      .eq("talent_user_id", user.id)
+      .maybeSingle();
+
+    if (existingSubmission && (!linkedReferral?.submission_id || linkedReferral.submission_id !== existingSubmission.id)) {
+      return NextResponse.json({ error: "Você já se candidatou a esta vaga." }, { status: 409 });
     }
   }
 
@@ -192,17 +212,17 @@ export async function POST(req: NextRequest) {
 
   const baseSubmission = {
     job_id,
-    talent_user_id:  talent_id ? user.id : null,
-    talent_name:     talent_id ? null : (talent_name ?? null),
-    email:           email ?? null,
-    bio:             bio ?? null,
-    referrer_id:     talent_id ? (linkedReferral?.referrer_id ?? null) : (referrer_id ?? null),
-    status:          "pending",
+    talent_user_id: talent_id ? user.id : null,
+    talent_name: talent_id ? null : (talent_name ?? null),
+    email: email ?? null,
+    bio: bio ?? null,
+    referrer_id: talent_id ? (linkedReferral?.referrer_id ?? null) : (referrer_id ?? null),
+    status: "pending",
     mode,
     photo_front_url: photo_front_url ?? null,
-    photo_left_url:  photo_left_url ?? null,
+    photo_left_url: photo_left_url ?? null,
     photo_right_url: photo_right_url ?? null,
-    video_url:       video_url ?? null,
+    video_url: video_url ?? null,
   };
   const fullSubmission = {
     ...baseSubmission,
@@ -221,11 +241,7 @@ export async function POST(req: NextRequest) {
       .select()
       .single());
   } else {
-    ({ data, error } = await supabase
-      .from("submissions")
-      .insert(fullSubmission)
-      .select()
-      .single());
+    ({ data, error } = await supabase.from("submissions").insert(fullSubmission).select().single());
   }
 
   if (error?.message?.includes("curriculum_url") || error?.message?.includes("portfolio_url")) {
@@ -237,11 +253,7 @@ export async function POST(req: NextRequest) {
         .select()
         .single());
     } else {
-      ({ data, error } = await supabase
-        .from("submissions")
-        .insert(baseSubmission)
-        .select()
-        .single());
+      ({ data, error } = await supabase.from("submissions").insert(baseSubmission).select().single());
     }
   }
 
@@ -250,10 +262,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  if (inviteLinkId) {
+    await supabase
+      .from("job_invite_links")
+      .update({ use_count: inviteUseCount + 1 })
+      .eq("id", inviteLinkId)
+      .then(() => null);
+  }
+
   if (isSelfApplication && linkedReferral) {
-    // Commission foundation: after this referred job is completed/paid,
-    // finalize referral_invites.commission_amount as paid_job_amount * 0.02
-    // and move status through commission_due -> paid when payout is handled.
     await supabase
       .from("referral_invites")
       .update({
@@ -266,10 +283,12 @@ export async function POST(req: NextRequest) {
   }
 
   if (job.agency_id) {
-    const displayName = talent_name ?? (talent_id
-      ? (await supabase.from("talent_profiles").select("full_name").eq("id", talent_id).single())
-          .data?.full_name ?? "A talent"
-      : "A talent");
+    const displayName =
+      talent_name ??
+      (talent_id
+        ? (await supabase.from("talent_profiles").select("full_name").eq("id", talent_id).single()).data?.full_name ??
+          "Talento"
+        : "Talento");
 
     await notify(
       job.agency_id,

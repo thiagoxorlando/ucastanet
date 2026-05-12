@@ -8,62 +8,58 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-// POST /api/agency/workspace/agents/invite
-// Owner-only: creates a pending invite for an agent email.
-// Returns { invite, inviteUrl }
 export async function POST(req: NextRequest) {
   const session = await createSessionClient();
-  const { data: { user } } = await session.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const {
+    data: { user },
+  } = await session.auth.getUser();
 
-  const ws = await getUserPremiumWorkspace(user.id);
-  if (!ws || ws.membership.role !== "owner") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!user) {
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   }
 
-  if (ws.workspace.status !== "active") {
-    return NextResponse.json({ error: "Workspace inativo." }, { status: 422 });
+  const workspaceAccess = await getUserPremiumWorkspace(user.id);
+  if (!workspaceAccess || workspaceAccess.membership.role !== "owner") {
+    return NextResponse.json({ error: "Somente o proprietário pode realizar esta ação." }, { status: 403 });
+  }
+
+  if (workspaceAccess.workspace.status !== "active") {
+    return NextResponse.json({ error: "Você não tem acesso a este espaço Premium." }, { status: 422 });
   }
 
   const body = (await req.json()) as { email?: string; spendingLimit?: number | null };
   const email = (body.email ?? "").trim().toLowerCase();
-
   if (!email || !isValidEmail(email)) {
     return NextResponse.json({ error: "E-mail inválido." }, { status: 400 });
   }
 
   const spendingLimit =
-    body.spendingLimit != null && Number(body.spendingLimit) >= 0
-      ? Number(body.spendingLimit)
-      : null;
+    body.spendingLimit != null && Number(body.spendingLimit) >= 0 ? Number(body.spendingLimit) : null;
 
-  // Check seat limit (active agents + pending invites vs. allowed)
-  const usage = await getWorkspaceSeatUsage(ws.workspace.id);
+  const usage = await getWorkspaceSeatUsage(workspaceAccess.workspace.id);
   if (usage.remaining <= 0) {
     return NextResponse.json(
       {
-        error: `Seu plano Premium inclui ${usage.includedSeats} agente${usage.includedSeats !== 1 ? "s" : ""}. Adicione assentos extras para convidar mais agentes.`,
+        error:
+          usage.extraSeats > 0
+            ? "Você atingiu o limite de agentes do Premium."
+            : `Seu plano Premium inclui ${usage.includedSeats} agente${usage.includedSeats === 1 ? "" : "s"}. Entre em contato para adicionar assentos extras.`,
       },
       { status: 422 }
     );
   }
 
   const supabase = createServerClient({ useServiceRole: true });
-
-  // Check no existing pending invite for this email in this workspace
-  const { data: dup } = await supabase
+  const { data: duplicateInvite } = await supabase
     .from("premium_agent_invites")
     .select("id")
-    .eq("workspace_id", ws.workspace.id)
+    .eq("workspace_id", workspaceAccess.workspace.id)
     .eq("invited_email", email)
     .eq("status", "pending")
     .maybeSingle();
 
-  if (dup) {
-    return NextResponse.json(
-      { error: "Já existe um convite pendente para este e-mail." },
-      { status: 422 }
-    );
+  if (duplicateInvite) {
+    return NextResponse.json({ error: "Já existe um convite pendente para este e-mail." }, { status: 422 });
   }
 
   const token = randomBytes(32).toString("hex");
@@ -72,7 +68,7 @@ export async function POST(req: NextRequest) {
   const { data: invite, error } = await supabase
     .from("premium_agent_invites")
     .insert({
-      workspace_id: ws.workspace.id,
+      workspace_id: workspaceAccess.workspace.id,
       invited_email: email,
       role: "agent",
       token,
@@ -81,9 +77,7 @@ export async function POST(req: NextRequest) {
       created_by: user.id,
       spending_limit: spendingLimit,
     })
-    .select(
-      "id, workspace_id, invited_email, role, token, status, expires_at, created_at, spending_limit"
-    )
+    .select("id, workspace_id, invited_email, role, token, status, expires_at, created_at, spending_limit")
     .single();
 
   if (error || !invite) {
@@ -92,7 +86,14 @@ export async function POST(req: NextRequest) {
   }
 
   const origin = new URL(req.url).origin;
-  const inviteUrl = `${origin}/premium/invite/${token}`;
+  const updatedUsage = await getWorkspaceSeatUsage(workspaceAccess.workspace.id);
 
-  return NextResponse.json({ invite, inviteUrl }, { status: 201 });
+  return NextResponse.json(
+    {
+      invite,
+      inviteUrl: `${origin}/premium/invite/${token}`,
+      usage: updatedUsage,
+    },
+    { status: 201 }
+  );
 }

@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
+import { useT } from "@/lib/LanguageContext";
 
 export type AdminReferral = {
   id: string;
@@ -127,6 +128,7 @@ function ReferralTable({
 }
 
 export default function AdminReferrals({ referrals: initial }: { referrals: AdminReferral[] }) {
+  const { t } = useT();
   const [referrals, setReferrals] = useState<AdminReferral[]>(initial);
   const [resending, setResending] = useState<string | null>(null);
   const [toast, setToast]         = useState<{ msg: string; ok: boolean } | null>(null);

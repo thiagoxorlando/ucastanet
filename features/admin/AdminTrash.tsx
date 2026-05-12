@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/lib/LanguageContext";
 
 export type TrashItem = {
   id: string;
@@ -74,6 +75,7 @@ function ConfirmDialog({
 }
 
 export default function AdminTrash({ items: initialItems }: { items: TrashItem[] }) {
+  const { t } = useT();
   const [items, setItems] = useState<TrashItem[]>(initialItems);
   const [typeFilter, setTypeFilter] = useState("all");
   const [search, setSearch] = useState("");

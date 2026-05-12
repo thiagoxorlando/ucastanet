@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/lib/LanguageContext";
 
 export type AuditLogEntry = {
   id: string;
@@ -24,6 +25,7 @@ export type AuditSummary = {
 
 const ACTION_LABELS: Record<string, string> = {
   plan_settings_changed:        "Plano alterado",
+  premium_extra_seats_updated:  "Assentos extras alterados",
   user_deleted:                 "Usuário movido para lixeira",
   user_restored:                "Usuário restaurado",
   user_frozen:                  "Usuário congelado",
@@ -39,12 +41,13 @@ const ACTION_LABELS: Record<string, string> = {
   platform_settings_updated:    "Configurações da plataforma alteradas",
 };
 
-const FINANCIAL_ACTIONS = new Set(["balance_adjusted", "withdrawal_cancelled", "plan_settings_changed"]);
+const FINANCIAL_ACTIONS = new Set(["balance_adjusted", "withdrawal_cancelled", "plan_settings_changed", "premium_extra_seats_updated"]);
 const USER_ACTIONS = new Set(["user_deleted", "user_restored", "user_frozen"]);
 
 const ENTITY_LABELS: Record<string, string> = {
   user:              "Usuário",
   plan_settings:     "Plano",
+  premium_workspace: "Workspace Premium",
   wallet:            "Carteira",
   notification:      "Notificação",
   support:           "Suporte",
@@ -120,6 +123,7 @@ export default function AdminAudit({
   logs: AuditLogEntry[];
   summary: AuditSummary;
 }) {
+  const { t } = useT();
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState("all");
   const [entityFilter, setEntityFilter] = useState("all");

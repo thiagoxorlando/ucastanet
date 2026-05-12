@@ -9,7 +9,7 @@ import PhoneInput from "@/components/ui/PhoneInput";
 import { supabase } from "@/lib/supabase";
 import { TALENT_CATEGORY_LABELS } from "@/lib/talentCategories";
 import { formatCpf, formatCpfCnpj, isValidCpf, isValidCpfCnpj, normalizeCpfCnpj, digitsOnly } from "@/lib/cpf";
-import { buildPlanSettingsFallback, formatPlanMonthlyPrice, planLimitHighlights, type PublicPlanSetting } from "@/lib/planSettings.shared";
+import { buildPlanSettingsFallback, formatPlanMonthlyPrice, planLimitHighlights, premiumSeatHighlights, type PublicPlanSetting } from "@/lib/planSettings.shared";
 import { useT } from "@/lib/LanguageContext";
 import LanguageSelector from "@/components/LanguageSelector";
 
@@ -985,7 +985,9 @@ function SignupPageContent() {
                                     {available ? <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded-full">{livePlans.premium.commission_percent}% {t("plan_commission_badge")}</span> : null}
                                   </div>
                                   <p className={["text-[12px] leading-relaxed", available ? "text-zinc-500" : "text-zinc-400"].join(" ")}>
-                                    {available ? planLimitHighlights(livePlans.premium, lang).slice(0, 2).join(" · ") : t("plan_coming_soon")}
+                                    {available
+                                      ? [...premiumSeatHighlights(livePlans.premium, lang), ...planLimitHighlights(livePlans.premium, lang).slice(0, 1)].join(" · ")
+                                      : t("plan_coming_soon")}
                                   </p>
                                 </div>
                               </button>

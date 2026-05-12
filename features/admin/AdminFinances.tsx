@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { REFERRAL_RATE } from "@/lib/plans";
 import { getContractPaymentStatus, contractStatusLabel, contractStatusTone } from "@/lib/contractStatus";
+import { useT } from "@/lib/LanguageContext";
 
 // -- Types -------------------------------------------------------------------
 
@@ -1449,6 +1450,8 @@ export default function AdminFinances({
   talentWallets?: FinancesWallet[];
   deposits?: FinancesDeposit[];
 }) {
+  const { t, lang } = useT();
+  const statusLang = lang === "en" ? "en" : "pt-BR" as const;
   const [activeTab, setActiveTab] = useState<Tab>("saques");
   const [platformBalance, setPlatformBalance] = useState<PlatformBalanceState>({ status: "loading" });
 

@@ -7,6 +7,7 @@ import {
   contractStatusLabel,
   contractStatusTone,
 } from "@/lib/contractStatus";
+import { useT } from "@/lib/LanguageContext";
 
 export type AdminContractRow = {
   id: string;
@@ -536,6 +537,8 @@ function ContractRow({
 }
 
 export default function AdminContracts({ contracts: initialContracts }: { contracts: AdminContractRow[] }) {
+  const { t, lang } = useT();
+  const statusLang = lang === "en" ? "en" : "pt-BR" as const;
   const [contracts, setContracts] = useState<AdminContractRow[]>(initialContracts);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");

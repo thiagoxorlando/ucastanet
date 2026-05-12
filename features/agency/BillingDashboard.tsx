@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { PLAN_DEFINITIONS, type Plan } from "@/lib/plans";
-import { buildPlanSettingsFallback, formatPlanCommission, formatPlanMonthlyPrice, formatPlanPrice, planLimitHighlights, type PublicPlanSetting } from "@/lib/planSettings.shared";
+import { brl } from "@/lib/brl";
+import { buildPlanSettingsFallback, formatPlanCommission, formatPlanMonthlyPrice, planLimitHighlights, premiumSeatHighlights, type PublicPlanSetting } from "@/lib/planSettings.shared";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -75,13 +76,13 @@ const PLANS = [
     period: "",
     badge: null,
     gradient: "from-violet-500 to-purple-700",
-    headline: "",
+    headline: "Espaço Premium para operação privada da agência",
     commission: `${PLAN_DEFINITIONS.premium.commissionLabel} de comissao`,
     features: [
-      "Tudo do Pro",
-      "Vagas fechadas",
-      "Gerencie sua equipe internamente",
-      "Ambiente privado",
+      "Espaço Premium com branding próprio",
+      "Vagas privadas por convite",
+      "Gestão de equipe e assentos",
+      "Controle de limites por agente",
     ],
   },
 ] as const;
@@ -99,10 +100,6 @@ function getBillingReturnBanner(): "success" | "canceled" | null {
   if (params.get("success") === "true") return "success";
   if (params.get("canceled") === "true") return "canceled";
   return null;
-}
-
-function brl(n: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 }
 
 function fmtDate(s: string | Date) {
@@ -574,7 +571,12 @@ export default function BillingDashboard({
             const isCurrent  = activePlan === p.key;
             const isDowngrade = effectivePrice(p) < effectivePrice(currentPlanDef);
             const isPending  = pendingChange?.plan === p.key;
-            const featureList = available ? planLimitHighlights(setting).slice(0, 2) : ["Em breve"];
+            const baseFeatures = available ? planLimitHighlights(setting).slice(0, 2) : ["Em breve"];
+            const featureList = p.key === "premium"
+              ? available
+                ? ["Espaço Premium", ...premiumSeatHighlights(setting)]
+                : ["Em breve"]
+              : baseFeatures;
             return (
               <div
                 key={p.key}
@@ -651,11 +653,15 @@ export default function BillingDashboard({
                         ? "Em breve"
                         : isLoading
                         ? "Aguarde..."
+                        : p.key === "premium" && activePlan === "free"
+                          ? "Escolher Premium"
                         : activePlan === "free"
                           ? `Assinar ${setting.name}`
                           : isDowngrade
                             ? `Mudar para ${setting.name}`
-                            : `Fazer upgrade para ${setting.name}`}
+                            : p.key === "premium"
+                              ? "Fazer upgrade"
+                              : `Fazer upgrade para ${setting.name}`}
                     </button>
                   )}
                   {isPending && !isCurrent && (

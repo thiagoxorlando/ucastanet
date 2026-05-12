@@ -4,11 +4,8 @@ import { createServerClient } from "@/lib/supabase";
 import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
 
 const VALID_STATUSES = ["active", "suspended", "removed"] as const;
-type MemberStatus = typeof VALID_STATUSES[number];
+type MemberStatus = (typeof VALID_STATUSES)[number];
 
-// PATCH /api/agency/workspace/agents/[memberId]
-// Owner-only. Can update spending_limit and/or status.
-// status = "removed" also sets removed_at = now().
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ memberId: string }> }
@@ -16,16 +13,20 @@ export async function PATCH(
   const { memberId } = await params;
 
   const session = await createSessionClient();
-  const { data: { user } } = await session.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const {
+    data: { user },
+  } = await session.auth.getUser();
 
-  const ws = await getUserPremiumWorkspace(user.id);
-  if (!ws || ws.membership.role !== "owner") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!user) {
+    return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+  }
+
+  const workspaceAccess = await getUserPremiumWorkspace(user.id);
+  if (!workspaceAccess || workspaceAccess.membership.role !== "owner") {
+    return NextResponse.json({ error: "Somente o proprietário pode realizar esta ação." }, { status: 403 });
   }
 
   const supabase = createServerClient({ useServiceRole: true });
-
   const { data: member } = await supabase
     .from("premium_workspace_members")
     .select("id, workspace_id, role, status, user_id")
@@ -35,11 +36,11 @@ export async function PATCH(
   if (!member) {
     return NextResponse.json({ error: "Membro não encontrado." }, { status: 404 });
   }
-  if (member.workspace_id !== ws.workspace.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (member.workspace_id !== workspaceAccess.workspace.id) {
+    return NextResponse.json({ error: "Você não tem acesso a este espaço Premium." }, { status: 403 });
   }
   if (member.role === "owner") {
-    return NextResponse.json({ error: "Não é possível modificar o proprietário." }, { status: 422 });
+    return NextResponse.json({ error: "Somente o proprietário pode realizar esta ação." }, { status: 422 });
   }
 
   const body = (await req.json()) as { status?: string; spendingLimit?: number | null };
@@ -50,30 +51,23 @@ export async function PATCH(
       return NextResponse.json({ error: "Status inválido." }, { status: 400 });
     }
     updates.status = body.status;
-    if (body.status === "removed") {
-      updates.removed_at = new Date().toISOString();
-    }
+    updates.removed_at = body.status === "removed" ? new Date().toISOString() : null;
   }
 
   if (body.spendingLimit !== undefined) {
     updates.spending_limit =
-      body.spendingLimit != null && Number(body.spendingLimit) >= 0
-        ? Number(body.spendingLimit)
-        : null;
+      body.spendingLimit != null && Number(body.spendingLimit) >= 0 ? Number(body.spendingLimit) : null;
   }
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "Nenhuma alteração enviada." }, { status: 400 });
   }
 
-  const { error } = await supabase
-    .from("premium_workspace_members")
-    .update(updates)
-    .eq("id", memberId);
+  const { error } = await supabase.from("premium_workspace_members").update(updates).eq("id", memberId);
 
   if (error) {
     console.error("[workspace/members/update] Update failed:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Não foi possível atualizar o agente." }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

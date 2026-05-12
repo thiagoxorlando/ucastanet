@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { notFound, redirect } from "next/navigation";
 import JobDetail from "@/features/agency/JobDetail";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -15,15 +17,37 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function JobDetailPage({ params }: Props) {
   const { id } = await params;
   const supabase = createServerClient({ useServiceRole: true });
-  const session  = await createSessionClient();
-  const { data: { user } } = await session.auth.getUser();
+  const session = await createSessionClient();
+  const {
+    data: { user },
+  } = await session.auth.getUser();
 
-  const [{ data: jobData }, { data: submissionsData }, { data: bookingsData }] = await Promise.all([
-    supabase
-      .from("jobs")
-      .select("id, title, description, category, budget, deadline, job_date, job_time, status, created_at, number_of_talents_required, visibility, invite_only, workspace_id")
-      .eq("id", id)
-      .single(),
+  if (!user) redirect("/login");
+
+  const workspaceAccess = await getUserPremiumWorkspace(user.id);
+
+  const { data: jobData } = await supabase
+    .from("jobs")
+    .select(
+      "id, title, description, category, budget, deadline, job_date, job_time, status, created_at, number_of_talents_required, visibility, invite_only, workspace_id, agency_id, created_by_user_id"
+    )
+    .eq("id", id)
+    .single();
+
+  if (!jobData) notFound();
+
+  const workspaceId = (jobData as { workspace_id?: string | null }).workspace_id ?? null;
+  const canAccessWorkspaceJob =
+    !!workspaceId &&
+    workspaceAccess?.workspace.id === workspaceId &&
+    workspaceAccess.membership.status === "active";
+  const canAccessStandaloneJob = !workspaceId && jobData.agency_id === user.id;
+
+  if (!canAccessWorkspaceJob && !canAccessStandaloneJob) {
+    notFound();
+  }
+
+  const [{ data: submissionsData }, { data: bookingsData }] = await Promise.all([
     supabase
       .from("submissions")
       .select("id, talent_user_id, talent_name, referrer_id, bio, status, mode, created_at, photo_front_url, photo_left_url, photo_right_url, video_url")
@@ -39,12 +63,13 @@ export default async function JobDetailPage({ params }: Props) {
       .order("created_at", { ascending: false }),
   ]);
 
-  // Resolve talent names from talent_profiles
   const talentIds = [
-    ...new Set([
-      ...(submissionsData ?? []).map((s) => s.talent_user_id),
-      ...(bookingsData ?? []).map((b) => b.talent_user_id),
-    ].filter((id): id is string => !!id)),
+    ...new Set(
+      [
+        ...(submissionsData ?? []).map((submission) => submission.talent_user_id),
+        ...(bookingsData ?? []).map((booking) => booking.talent_user_id),
+      ].filter((talentId): talentId is string => !!talentId)
+    ),
   ];
 
   const profileMap = new Map<string, { full_name: string; avatar_url: string | null }>();
@@ -53,64 +78,68 @@ export default async function JobDetailPage({ params }: Props) {
       .from("talent_profiles")
       .select("id, full_name, avatar_url")
       .in("id", talentIds);
-    for (const p of profiles ?? []) {
-      profileMap.set(p.id, { full_name: p.full_name ?? "", avatar_url: p.avatar_url ?? null });
+    for (const profile of profiles ?? []) {
+      profileMap.set(profile.id, {
+        full_name: profile.full_name ?? "",
+        avatar_url: profile.avatar_url ?? null,
+      });
     }
   }
 
-  const job = jobData
-    ? {
-        id:          String(jobData.id),
-        title:       jobData.title       ?? "",
-        description: jobData.description ?? "",
-        category:    jobData.category    ?? "",
-        budget:      jobData.budget      ?? 0,
-        deadline:    jobData.deadline    ?? "",
-        jobDate:     jobData.job_date  ?? null,
-        jobTime:     jobData.job_time  ?? null,
-        visibility:  (jobData.visibility ?? "public") as "public" | "private" | "private_invite",
-        inviteOnly:  (jobData as unknown as { invite_only?: boolean }).invite_only ?? false,
-        workspaceId: (jobData as unknown as { workspace_id?: string | null }).workspace_id ?? null,
-        status:                    (jobData.status ?? "open") as "open" | "closed" | "draft" | "inactive",
-        postedAt:                  jobData.created_at ?? "",
-        agencyId:                  user?.id,
-        numberOfTalentsRequired:   jobData.number_of_talents_required ?? 1,
-      }
-    : null;
+  const job = {
+    id: String(jobData.id),
+    title: jobData.title ?? "",
+    description: jobData.description ?? "",
+    category: jobData.category ?? "",
+    budget: jobData.budget ?? 0,
+    deadline: jobData.deadline ?? "",
+    jobDate: jobData.job_date ?? null,
+    jobTime: jobData.job_time ?? null,
+    visibility: (jobData.visibility ?? "public") as "public" | "private" | "private_invite",
+    inviteOnly: (jobData as { invite_only?: boolean }).invite_only ?? false,
+    workspaceId: workspaceId,
+    status: (jobData.status ?? "open") as "open" | "closed" | "draft" | "inactive",
+    postedAt: jobData.created_at ?? "",
+    agencyId: String(jobData.agency_id ?? user.id),
+    numberOfTalentsRequired: jobData.number_of_talents_required ?? 1,
+  };
 
-  const submissions = (submissionsData ?? []).map((s) => {
-    const profile = s.talent_user_id ? profileMap.get(s.talent_user_id) : null;
+  const submissions = (submissionsData ?? []).map((submission) => {
+    const profile = submission.talent_user_id ? profileMap.get(submission.talent_user_id) : null;
     return {
-      id:             String(s.id),
-      talentId:       s.talent_user_id ?? null,
-      talentName:     profile?.full_name ?? s.talent_name ?? "",
-      avatarUrl:      profile?.avatar_url ?? null,
-      bio:            s.bio              ?? "",
-      status:         s.status           ?? "pending",
-      mode:           s.mode             ?? "other",
-      isReferral:     Boolean(s.referrer_id),
-      submittedAt:    s.created_at       ?? "",
-      photoFrontUrl:  s.photo_front_url  ?? null,
-      photoLeftUrl:   s.photo_left_url   ?? null,
-      photoRightUrl:  s.photo_right_url  ?? null,
-      videoUrl:       s.video_url        ?? null,
+      id: String(submission.id),
+      talentId: submission.talent_user_id ?? null,
+      talentName: profile?.full_name ?? submission.talent_name ?? "",
+      avatarUrl: profile?.avatar_url ?? null,
+      bio: submission.bio ?? "",
+      status: submission.status ?? "pending",
+      mode: submission.mode ?? "other",
+      isReferral: Boolean(submission.referrer_id),
+      submittedAt: submission.created_at ?? "",
+      photoFrontUrl: submission.photo_front_url ?? null,
+      photoLeftUrl: submission.photo_left_url ?? null,
+      photoRightUrl: submission.photo_right_url ?? null,
+      videoUrl: submission.video_url ?? null,
     };
   });
 
-  const bookings = (bookingsData ?? []).map((b) => {
-    const profile     = b.talent_user_id ? profileMap.get(b.talent_user_id) : null;
-    const contractArr = Array.isArray((b as any).contracts) ? (b as any).contracts : [];
+  const bookings = (bookingsData ?? []).map((booking) => {
+    const profile = booking.talent_user_id ? profileMap.get(booking.talent_user_id) : null;
+    const contractArr = Array.isArray((booking as { contracts?: Array<{ id?: string | null }> }).contracts)
+      ? ((booking as { contracts?: Array<{ id?: string | null }> }).contracts ?? [])
+      : [];
+
     return {
-      id:          String(b.id),
-      talentId:    b.talent_user_id ?? null,
-      talentName:  profile?.full_name ?? "Talento sem nome",
-      jobTitle:    b.job_title  ?? job?.title ?? "—",
-      price:       b.price      ?? 0,
-      status:      b.status     ?? "pending",
-      createdAt:   b.created_at ?? "",
-      contractId:  contractArr[0]?.id ?? null,
+      id: String(booking.id),
+      talentId: booking.talent_user_id ?? null,
+      talentName: profile?.full_name ?? "Talento sem nome",
+      jobTitle: booking.job_title ?? job.title ?? "—",
+      price: booking.price ?? 0,
+      status: booking.status ?? "pending",
+      createdAt: booking.created_at ?? "",
+      contractId: contractArr[0]?.id ?? null,
     };
   });
 
-  return <JobDetail job={job} submissions={submissions} bookings={bookings} agencyId={user?.id} />;
+  return <JobDetail job={job} submissions={submissions} bookings={bookings} agencyId={String(jobData.agency_id ?? user.id)} />;
 }

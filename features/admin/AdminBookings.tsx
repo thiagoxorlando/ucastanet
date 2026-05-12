@@ -8,6 +8,7 @@ import {
   unifiedStatusInfo,
   type UnifiedBookingStatus,
 } from "@/lib/bookingStatus";
+import { useT } from "@/lib/LanguageContext";
 import { useRealtimeRefresh } from "@/lib/hooks/useRealtimeRefresh";
 
 export type AdminBooking = {
@@ -383,6 +384,8 @@ function BookingRow({
 }
 
 export default function AdminBookings({ bookings: initialBookings }: { bookings: AdminBooking[] }) {
+  const { t, lang } = useT();
+  const statusLang = lang === "en" ? "en" : "pt-BR" as const;
   const [bookings, setBookings] = useState<AdminBooking[]>(initialBookings);
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");

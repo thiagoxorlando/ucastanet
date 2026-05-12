@@ -1,8 +1,18 @@
-const SUBMISSION_LABEL: Record<string, string> = {
-  pending:  "Pendente",
-  selected: "Selecionado",
-  approved: "Aprovado",
-  rejected: "Recusado",
+type StatusLang = "pt-BR" | "en";
+
+const SUBMISSION_LABEL: Record<StatusLang, Record<string, string>> = {
+  "pt-BR": {
+    pending: "Pendente",
+    selected: "Selecionado",
+    approved: "Aprovado",
+    rejected: "Recusado",
+  },
+  en: {
+    pending: "Pending",
+    selected: "Selected",
+    approved: "Approved",
+    rejected: "Rejected",
+  },
 };
 
 const SUBMISSION_TONE: Record<string, string> = {
@@ -12,8 +22,8 @@ const SUBMISSION_TONE: Record<string, string> = {
   rejected: "bg-zinc-100   text-zinc-400    ring-1 ring-zinc-200",
 };
 
-export function submissionStatusLabel(status: string): string {
-  return SUBMISSION_LABEL[status] ?? status;
+export function submissionStatusLabel(status: string, lang: StatusLang = "pt-BR"): string {
+  return SUBMISSION_LABEL[lang][status] ?? status;
 }
 
 export function submissionStatusTone(status: string): string {

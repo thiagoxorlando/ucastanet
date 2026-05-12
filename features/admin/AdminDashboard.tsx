@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { statusInfo } from "@/lib/bookingStatus";
+import { useT } from "@/lib/LanguageContext";
 
 type Booking = {
   id: string;
@@ -39,16 +40,6 @@ function formatDate(s: string) {
 }
 
 const STATUS_FALLBACK = { label: "Outro", cls: "badge-info" };
-
-const STATUS: Record<string, { label: string; cls: string }> = {
-  confirmed: { label: "Confirmado", cls: "badge-success" },
-  completed: { label: "Concluído",  cls: "badge-success" },
-  pending:   { label: "Pendente",   cls: "badge-pending" },
-  pending_payment: { label: statusInfo("pending_payment").label, cls: "badge-pending" },
-  paid:      { label: statusInfo("paid").label, cls: "badge-success" },
-  cancelled: { label: "Cancelado",  cls: "badge-info"   },
-  disputed:  { label: "Em disputa", cls: "badge-error"  },
-};
 
 function StatCard({
   label, value, sub, icon, stripe, href,
@@ -121,11 +112,24 @@ function matchesDateFilter(bookedAt: string, df: DateFilter): boolean {
 }
 
 export default function AdminDashboard({ bookings, stats }: { bookings: Booking[]; stats: AdminStats }) {
+  const { t, lang } = useT();
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter]     = useState<DateFilter>("all");
   const [sortKey, setSortKey]           = useState<SortKey>("bookedAt");
   const [sortDir, setSortDir]           = useState<SortDir>("desc");
   const [search, setSearch]             = useState("");
+
+  const statusLang = lang === "en" ? "en" : "pt-BR" as const;
+
+  const STATUS: Record<string, { label: string; cls: string }> = {
+    confirmed: { label: t("status_confirmed"), cls: "badge-success" },
+    completed: { label: t("status_completed"), cls: "badge-success" },
+    pending:   { label: t("status_pending"),   cls: "badge-pending" },
+    pending_payment: { label: statusInfo("pending_payment", statusLang).label, cls: "badge-pending" },
+    paid:      { label: statusInfo("paid", statusLang).label, cls: "badge-success" },
+    cancelled: { label: t("status_cancelled"), cls: "badge-info"   },
+    disputed:  { label: t("admin_disputed"),   cls: "badge-error"  },
+  };
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -180,15 +184,15 @@ export default function AdminDashboard({ bookings, stats }: { bookings: Booking[
       {/* ── Page header ── */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1">Admin da Plataforma</p>
-          <h1 className="text-[1.75rem] font-semibold tracking-tight text-[#1F2D2E] leading-tight">Visão Geral</h1>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1">{t("admin_platform")}</p>
+          <h1 className="text-[1.75rem] font-semibold tracking-tight text-[#1F2D2E] leading-tight">{t("admin_overview")}</h1>
         </div>
         <div className="flex items-center gap-1 bg-[#E6F0F0] rounded-xl p-1">
           {(["all", "today", "this_month"] as const).map((df) => (
             <button key={df} onClick={() => setDateFilter(df)}
               className={["px-3 py-1.5 text-[12px] font-medium rounded-lg transition-all cursor-pointer whitespace-nowrap",
                 dateFilter === df ? "bg-white text-[#0E7C86] shadow-sm font-semibold" : "text-[#647B7B] hover:text-[#1F2D2E]"].join(" ")}>
-              {df === "all" ? "Todo Período" : df === "today" ? "Hoje" : "Este Mês"}
+              {df === "all" ? t("admin_period_all") : df === "today" ? t("admin_period_today") : t("admin_period_month")}
             </button>
           ))}
         </div>
@@ -197,23 +201,23 @@ export default function AdminDashboard({ bookings, stats }: { bookings: Booking[
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
-          label="Total de Vagas" value={String(stats.totalJobs)} sub="Em todas as categorias"
+          label={t("admin_total_jobs")} value={String(stats.totalJobs)}
           href="/admin/jobs" stripe="from-[#1ABC9C] to-[#27C1D6]"
           icon={<svg className="w-4 h-4 text-[#0E7C86]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>}
         />
         <StatCard
-          label="Total de Usuários" value={String(stats.totalUsers)} sub="Agências e talentos"
+          label={t("admin_total_users")} value={String(stats.totalUsers)}
           href="/admin/users" stripe="from-[#0E7C86] to-[#2F8F8F]"
           icon={<svg className="w-4 h-4 text-[#0E7C86]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
         />
         <StatCard
-          label="Total de Reservas" value={String(dateFilteredBookings.length)}
-          sub={dateFilter === "all" ? "Todo período" : dateFilter === "today" ? "Hoje" : "Este mês"}
+          label={t("admin_total_bookings")} value={String(dateFilteredBookings.length)}
+          sub={dateFilter === "all" ? t("admin_period_all") : dateFilter === "today" ? t("admin_period_today") : t("admin_period_month")}
           href="/admin/bookings" stripe="from-[#27C1D6] to-[#1ABC9C]"
           icon={<svg className="w-4 h-4 text-[#27C1D6]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>}
         />
         <StatCard
-          label="Receita da Plataforma" value={brl(dateFilteredRevenue + (dateFilter === "all" ? (stats.monthlySubscriptionTotal ?? 0) : 0))}
+          label={t("admin_platform_revenue")} value={brl(dateFilteredRevenue + (dateFilter === "all" ? (stats.monthlySubscriptionTotal ?? 0) : 0))}
           sub={`Comissões${stats.monthlySubscriptionTotal ? ` + R$${(stats.monthlySubscriptionTotal / 1000).toFixed(1)}k assinaturas/mês` : ""}`}
           href="/admin/finances" stripe="from-[#F5A623] to-[#FFD166]"
           icon={<svg className="w-4 h-4 text-[#F5A623]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
@@ -277,14 +281,14 @@ export default function AdminDashboard({ bookings, stats }: { bookings: Booking[
         return (
           <div className="card overflow-hidden">
             <div className="px-6 py-4 border-b border-[#DDE6E6]">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">Ações pendentes</p>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">{t("admin_pending_actions")}</p>
             </div>
             {items.length === 0 ? (
               <div className="px-6 py-5 flex items-center gap-2.5 text-emerald-600">
                 <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <p className="text-[13px] font-semibold">Nenhuma ação pendente.</p>
+                <p className="text-[13px] font-semibold">{t("admin_no_pending")}</p>
               </div>
             ) : (
               <div className="divide-y divide-[#DDE6E6]">
@@ -322,7 +326,7 @@ export default function AdminDashboard({ bookings, stats }: { bookings: Booking[
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
-                type="text" placeholder="Buscar reservas…" value={search}
+                type="text" placeholder={t("admin_search_bookings")} value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="flex-1 min-w-0 bg-transparent text-[14px] text-[#1F2D2E] placeholder-[#7FA9A8] outline-none"
               />
@@ -331,7 +335,7 @@ export default function AdminDashboard({ bookings, stats }: { bookings: Booking[
               {(["all", "pending", "pending_payment", "confirmed", "paid", "cancelled", "disputed"] as const).map((s) => (
                 <button key={s} onClick={() => setStatusFilter(s)}
                   className={["px-3 py-1.5 text-[12px] font-medium rounded-lg transition-all capitalize cursor-pointer", statusFilter === s ? "bg-white text-[#0E7C86] shadow-sm font-semibold" : "text-[#647B7B] hover:text-[#1F2D2E]"].join(" ")}>
-                  {s === "all" ? "Todos" : (STATUS[s]?.label ?? s)}
+                  {s === "all" ? t("admin_all_status") : (STATUS[s]?.label ?? s)}
                 </button>
               ))}
             </div>
@@ -342,13 +346,13 @@ export default function AdminDashboard({ bookings, stats }: { bookings: Booking[
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#DDE6E6] bg-[#F8FAFC]">
-                <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wide text-[#647B7B] whitespace-nowrap">ID Reserva</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#647B7B] whitespace-nowrap">Vaga</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#647B7B] whitespace-nowrap">Talento</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#647B7B] whitespace-nowrap">Status</th>
-                <ColHeader col="totalValue"         label="Valor Total"         />
-                <ColHeader col="platformCommission" label="Comissão Plataforma" />
-                <ColHeader col="referralPayout"     label="Pagamento Indicação" />
+                <th className="text-left px-6 py-3 text-xs font-semibold uppercase tracking-wide text-[#647B7B] whitespace-nowrap">{t("admin_booking_id")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#647B7B] whitespace-nowrap">{t("bookings_job")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#647B7B] whitespace-nowrap">{t("admin_talent_name_col")}</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#647B7B] whitespace-nowrap">{t("bookings_status")}</th>
+                <ColHeader col="totalValue"         label={t("admin_total_value")}         />
+                <ColHeader col="platformCommission" label={t("admin_commission")} />
+                <ColHeader col="referralPayout"     label={t("admin_referral_payout")} />
               </tr>
             </thead>
             <tbody className="divide-y divide-[#DDE6E6]">
@@ -399,8 +403,8 @@ export default function AdminDashboard({ bookings, stats }: { bookings: Booking[
               })}
               {filtered.length === 0 && (
                 <tr><td colSpan={7} className="px-6 py-16 text-center">
-                  <p className="text-[14px] font-semibold text-[#647B7B]">Nenhuma reserva encontrada</p>
-                  <p className="text-[13px] text-[#7FA9A8] mt-1">Tente ajustar a busca ou o filtro.</p>
+                  <p className="text-[14px] font-semibold text-[#647B7B]">{t("admin_no_bookings")}</p>
+                  <p className="text-[13px] text-[#7FA9A8] mt-1">{t("admin_no_bookings_hint")}</p>
                 </td></tr>
               )}
             </tbody>
@@ -408,7 +412,7 @@ export default function AdminDashboard({ bookings, stats }: { bookings: Booking[
               <tfoot>
                 <tr className="border-t-2 border-[#DDE6E6] bg-[#F8FAFC]">
                   <td className="px-6 py-3.5" colSpan={4}>
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">Totais — {filtered.length} reservas</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-[#647B7B]">{t("admin_totals")} — {filtered.length}</p>
                   </td>
                   <td className="px-4 py-3.5 text-right">
                     <p className="text-[13px] font-semibold text-[#1F2D2E] tabular-nums">{brl(totalValue)}</p>

@@ -39,18 +39,42 @@ export interface StatusInfo {
   section: ContractStatus;
 }
 
-const STATUS_MAP: Record<ContractStatus, StatusInfo> = {
-  sent:      { label: "Aguardando Assinatura", badge: "bg-violet-50  text-violet-700  ring-1 ring-violet-100",   section: "sent"      },
-  signed:    { label: "Aguardando Depósito",   badge: "bg-sky-50     text-sky-700     ring-1 ring-sky-100",      section: "signed"    },
-  confirmed: { label: "Aguardando Pagamento",  badge: "bg-amber-50   text-amber-700   ring-1 ring-amber-100",    section: "confirmed" },
-  paid:      { label: "Pago",                  badge: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",  section: "paid"      },
-  cancelled: { label: "Cancelado",             badge: "bg-zinc-100   text-zinc-500    ring-1 ring-zinc-200",     section: "cancelled" },
-  rejected:  { label: "Recusado",              badge: "bg-rose-50    text-rose-600    ring-1 ring-rose-100",     section: "rejected"  },
+type StatusLang = "pt-BR" | "en";
+
+const STATUS_LABELS: Record<StatusLang, Record<ContractStatus, string>> = {
+  "pt-BR": {
+    sent:      "Aguardando Assinatura",
+    signed:    "Aguardando Depósito",
+    confirmed: "Aguardando Pagamento",
+    paid:      "Pago",
+    cancelled: "Cancelado",
+    rejected:  "Recusado",
+  },
+  en: {
+    sent:      "Awaiting Signature",
+    signed:    "Awaiting Deposit",
+    confirmed: "Awaiting Payment",
+    paid:      "Paid",
+    cancelled: "Cancelled",
+    rejected:  "Rejected",
+  },
 };
 
-export function statusInfo(raw: string): StatusInfo {
+const STATUS_BADGES: Record<ContractStatus, string> = {
+  sent:      "bg-violet-50  text-violet-700  ring-1 ring-violet-100",
+  signed:    "bg-sky-50     text-sky-700     ring-1 ring-sky-100",
+  confirmed: "bg-amber-50   text-amber-700   ring-1 ring-amber-100",
+  paid:      "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
+  cancelled: "bg-zinc-100   text-zinc-500    ring-1 ring-zinc-200",
+  rejected:  "bg-rose-50    text-rose-600    ring-1 ring-rose-100",
+};
+
+export function statusInfo(raw: string, lang: StatusLang = "pt-BR"): StatusInfo {
   const normalised = normaliseStatus(raw);
-  return STATUS_MAP[normalised] ?? { label: raw, badge: "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200", section: "sent" };
+  const labels = STATUS_LABELS[lang] ?? STATUS_LABELS["pt-BR"];
+  const label = labels[normalised] ?? raw;
+  const badge = STATUS_BADGES[normalised] ?? "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200";
+  return { label, badge, section: normalised };
 }
 
 /**
@@ -115,14 +139,38 @@ export interface UnifiedStatusInfo {
   section: UnifiedBookingStatus;
 }
 
-const UNIFIED_STATUS_MAP: Record<UnifiedBookingStatus, UnifiedStatusInfo> = {
-  aguardando_assinatura: { label: "Aguardando Assinatura", badge: "bg-violet-50  text-violet-700  ring-1 ring-violet-100",   section: "aguardando_assinatura" },
-  aguardando_deposito:   { label: "Aguardando Depósito",   badge: "bg-sky-50     text-sky-700     ring-1 ring-sky-100",      section: "aguardando_deposito"   },
-  aguardando_pagamento:  { label: "Aguardando Pagamento",  badge: "bg-amber-50   text-amber-700   ring-1 ring-amber-100",    section: "aguardando_pagamento"  },
-  pago:                  { label: "Pago",                  badge: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",  section: "pago"                  },
-  cancelado:             { label: "Cancelado",             badge: "bg-zinc-100   text-zinc-500    ring-1 ring-zinc-200",     section: "cancelado"             },
+const UNIFIED_LABELS: Record<StatusLang, Record<UnifiedBookingStatus, string>> = {
+  "pt-BR": {
+    aguardando_assinatura: "Aguardando Assinatura",
+    aguardando_deposito:   "Aguardando Depósito",
+    aguardando_pagamento:  "Aguardando Pagamento",
+    pago:                  "Pago",
+    cancelado:             "Cancelado",
+  },
+  en: {
+    aguardando_assinatura: "Awaiting Signature",
+    aguardando_deposito:   "Awaiting Deposit",
+    aguardando_pagamento:  "Awaiting Payment",
+    pago:                  "Paid",
+    cancelado:             "Cancelled",
+  },
 };
 
-export function unifiedStatusInfo(status: UnifiedBookingStatus | string | null | undefined): UnifiedStatusInfo {
-  return UNIFIED_STATUS_MAP[status as UnifiedBookingStatus] ?? UNIFIED_STATUS_MAP["aguardando_assinatura"];
+const UNIFIED_BADGES: Record<UnifiedBookingStatus, string> = {
+  aguardando_assinatura: "bg-violet-50  text-violet-700  ring-1 ring-violet-100",
+  aguardando_deposito:   "bg-sky-50     text-sky-700     ring-1 ring-sky-100",
+  aguardando_pagamento:  "bg-amber-50   text-amber-700   ring-1 ring-amber-100",
+  pago:                  "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
+  cancelado:             "bg-zinc-100   text-zinc-500    ring-1 ring-zinc-200",
+};
+
+export function unifiedStatusInfo(
+  status: UnifiedBookingStatus | string | null | undefined,
+  lang: StatusLang = "pt-BR",
+): UnifiedStatusInfo {
+  const key = (status as UnifiedBookingStatus) ?? "aguardando_assinatura";
+  const labels = UNIFIED_LABELS[lang] ?? UNIFIED_LABELS["pt-BR"];
+  const label = labels[key] ?? UNIFIED_LABELS["pt-BR"][key] ?? String(status ?? "");
+  const badge = UNIFIED_BADGES[key] ?? UNIFIED_BADGES["aguardando_assinatura"];
+  return { label, badge, section: key };
 }

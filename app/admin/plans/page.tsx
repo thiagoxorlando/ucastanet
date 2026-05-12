@@ -49,6 +49,8 @@ type PlanSettingRow = {
   is_available: boolean;
   job_limit: number | null;
   max_hires_per_job: number | null;
+  included_agent_seats: number | null;
+  extra_agent_seat_price: number | null;
 };
 
 type PlanHistoryRow = {
@@ -64,6 +66,10 @@ type PlanHistoryRow = {
   new_is_available: boolean;
   old_job_limit: number | null;
   new_job_limit: number | null;
+  old_included_agent_seats: number | null;
+  new_included_agent_seats: number | null;
+  old_extra_agent_seat_price: number | null;
+  new_extra_agent_seat_price: number | null;
 };
 
 async function fetchPlanChargeRows(supabase: ReturnType<typeof createServerClient>) {
@@ -121,7 +127,7 @@ export default async function AdminPlansPage() {
     Promise.resolve(
       supabase
         .from("plan_settings")
-        .select("plan_key, name, price, commission_percent, is_available, job_limit, max_hires_per_job")
+        .select("plan_key, name, price, commission_percent, is_available, job_limit, max_hires_per_job, included_agent_seats, extra_agent_seat_price")
         .order("plan_key"),
     )
       .then((r) => ({ data: (r.data ?? []) as PlanSettingRow[] }))
@@ -129,7 +135,7 @@ export default async function AdminPlansPage() {
     Promise.resolve(
       supabase
         .from("plan_settings_history")
-        .select("id, plan_key, changed_by, changed_at, old_price, new_price, old_commission_percent, new_commission_percent, old_is_available, new_is_available, old_job_limit, new_job_limit")
+        .select("id, plan_key, changed_by, changed_at, old_price, new_price, old_commission_percent, new_commission_percent, old_is_available, new_is_available, old_job_limit, new_job_limit, old_included_agent_seats, new_included_agent_seats, old_extra_agent_seat_price, new_extra_agent_seat_price")
         .order("changed_at", { ascending: false })
         .limit(30),
     )
@@ -248,13 +254,15 @@ export default async function AdminPlansPage() {
   };
 
   const planSettings: PlanSetting[] = planSettingsResult.data.map((row) => ({
-    plan_key: row.plan_key,
+    plan_key: parsePlan(row.plan_key),
     name: row.name,
     price: Number(row.price),
     commission_percent: Number(row.commission_percent),
     is_available: row.is_available,
     job_limit: row.job_limit ?? null,
     max_hires_per_job: row.max_hires_per_job ?? null,
+    included_agent_seats: row.included_agent_seats ?? null,
+    extra_agent_seat_price: row.extra_agent_seat_price ?? null,
   }));
 
   const planHistory: PlanSettingHistoryEntry[] = planHistoryResult.data.map((row) => ({
@@ -271,6 +279,10 @@ export default async function AdminPlansPage() {
     new_is_available: row.new_is_available,
     old_job_limit: row.old_job_limit ?? null,
     new_job_limit: row.new_job_limit ?? null,
+    old_included_agent_seats: row.old_included_agent_seats ?? null,
+    new_included_agent_seats: row.new_included_agent_seats ?? null,
+    old_extra_agent_seat_price: row.old_extra_agent_seat_price ?? null,
+    new_extra_agent_seat_price: row.new_extra_agent_seat_price ?? null,
   }));
 
   return (

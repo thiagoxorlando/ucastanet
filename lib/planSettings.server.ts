@@ -37,6 +37,8 @@ export async function getLivePlanSettings(): Promise<Record<Plan, LivePlanSettin
       commission_rate: commissionPercent / 100,
       is_available: Boolean(row.is_available),
       job_limit: row.job_limit ?? null,
+      included_agent_seats: result[key].included_agent_seats,
+      extra_agent_seat_price: result[key].extra_agent_seat_price,
     };
   }
 
@@ -54,6 +56,23 @@ export async function getLivePlanSettings(): Promise<Record<Plan, LivePlanSettin
     }
   } catch {
     // Column doesn't exist yet — keep the PLAN_DEFINITIONS fallback value already in result.
+  }
+
+  try {
+    const { data: seatData } = await supabase
+      .from("plan_settings")
+      .select("plan_key, included_agent_seats, extra_agent_seat_price");
+
+    for (const row of seatData ?? []) {
+      const key = row.plan_key as Plan;
+      if (!PLAN_KEYS.includes(key)) continue;
+      result[key].included_agent_seats =
+        (row as { included_agent_seats?: number | null }).included_agent_seats ?? result[key].included_agent_seats;
+      result[key].extra_agent_seat_price =
+        (row as { extra_agent_seat_price?: number | null }).extra_agent_seat_price ?? result[key].extra_agent_seat_price;
+    }
+  } catch {
+    // Seat fields may not exist yet — keep fallback values.
   }
 
   return result;

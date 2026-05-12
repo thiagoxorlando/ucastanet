@@ -109,7 +109,7 @@ function JobCard({ job, onUpdate, onRemove }: {
               </span>
             )}
             <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${jobStatusTone(job.status)}`}>
-              {lang === "en" ? job.status : jobStatusLabel(job.status)}
+              {jobStatusLabel(job.status, lang)}
             </span>
           </div>
         </div>
@@ -142,7 +142,7 @@ function JobCard({ job, onUpdate, onRemove }: {
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <span className="text-[#647B7B] text-[11px] mr-0.5">{t("jobs_apply_by")}</span>
-            {urgent ? `${days}d left` : formatDeadline(job.deadline)}
+            {urgent ? (lang === "en" ? `${days}d left` : `${days}d restantes`) : formatDeadline(job.deadline)}
           </div>
 
           {/* Job date */}
@@ -215,7 +215,7 @@ function JobCard({ job, onUpdate, onRemove }: {
             {menuOpen && (
               <div className="absolute bottom-full right-0 mb-1.5 w-36 bg-white rounded-xl border border-zinc-100 shadow-[0_4px_16px_rgba(0,0,0,0.1)] z-10 overflow-hidden">
                 {(["open", "inactive", "closed", "draft"] as Job["status"][]).map((s) => {
-                  const label = lang === "en" ? s : jobStatusLabel(s);
+                  const label = jobStatusLabel(s, lang);
                   return (
                     <button
                       key={s}
@@ -238,7 +238,7 @@ function JobCard({ job, onUpdate, onRemove }: {
             onClick={handleDelete}
             disabled={deleting}
             className="w-9 h-9 flex items-center justify-center rounded-xl border border-zinc-200 hover:border-rose-200 hover:bg-rose-50 text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer disabled:opacity-40"
-            title="Delete job"
+            title={t("jobs_delete_job")}
           >
             {deleting ? (
               <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -329,7 +329,7 @@ export default function JobList({ jobs: initial }: { jobs: Job[] }) {
           </svg>
           <input
             type="text"
-            placeholder="Buscar vagas…"
+            placeholder={t("jobs_search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#DDE6E6] bg-white text-[14px] text-[#1F2D2E] placeholder:text-[#647B7B] hover:border-[#B8D4D4] focus:border-[#1ABC9C] focus:ring-2 focus:ring-[#1ABC9C]/20 focus:outline-none transition-colors duration-150"
@@ -445,4 +445,3 @@ export default function JobList({ jobs: initial }: { jobs: Job[] }) {
     </div>
   );
 }
-

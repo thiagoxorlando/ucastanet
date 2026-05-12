@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { brl } from "@/lib/brl";
 import type { Plan } from "@/lib/plans";
+import { premiumSeatHighlights } from "@/lib/planSettings.shared";
+import { useT } from "@/lib/LanguageContext";
 
 export type AdminPlansCharge = {
   id: string;
@@ -39,13 +41,15 @@ export type AdminPlansAgency = {
 };
 
 export type PlanSetting = {
-  plan_key: string;
+  plan_key: Plan;
   name: string;
   price: number;
   commission_percent: number;
   is_available: boolean;
   job_limit: number | null;
   max_hires_per_job: number | null;
+  included_agent_seats: number | null;
+  extra_agent_seat_price: number | null;
 };
 
 export type PlanSettingHistoryEntry = {
@@ -62,6 +66,10 @@ export type PlanSettingHistoryEntry = {
   new_is_available: boolean;
   old_job_limit: number | null;
   new_job_limit: number | null;
+  old_included_agent_seats: number | null;
+  new_included_agent_seats: number | null;
+  old_extra_agent_seat_price: number | null;
+  new_extra_agent_seat_price: number | null;
 };
 
 type AdminPlansProps = {
@@ -219,7 +227,7 @@ function ChargeSection({ title, charges }: { title: string; charges: AdminPlansC
 
 // ── Plan Settings Editor ──────────────────────────────────────────────────────
 
-const PLAN_KEY_ORDER = ["free", "pro", "premium"];
+const PLAN_KEY_ORDER: Plan[] = ["free", "pro", "premium"];
 
 const PLAN_THEME: Record<string, { border: string; badge: string; label: string }> = {
   free:    { border: "border-[#DDE6E6]",     badge: "bg-zinc-100 text-zinc-600",                       label: "Free" },
@@ -247,6 +255,8 @@ function PlanSettingsSection({
         is_available: true,
         job_limit: null,
         max_hires_per_job: null,
+        included_agent_seats: key === "premium" ? 2 : null,
+        extra_agent_seat_price: key === "premium" ? 0 : null,
       };
     }),
   );
@@ -318,11 +328,17 @@ function PlanSettingsSection({
         </div>
       </div>
 
+      <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-[12px] leading-relaxed text-zinc-600">
+        Alterações afetam novos espaços Premium. Espaços existentes podem ser ajustados em /admin/premium.
+      </div>
+
       {/* Plan cards */}
       <div className="space-y-4">
         {settings.map((setting, index) => {
           const theme = PLAN_THEME[setting.plan_key] ?? PLAN_THEME.free;
           const activeCount = activeByPlan[setting.plan_key as keyof typeof activeByPlan] ?? 0;
+          const isPremium = setting.plan_key === "premium";
+          const premiumHighlights = isPremium ? premiumSeatHighlights(setting) : [];
 
           return (
             <div key={setting.plan_key} className={`rounded-2xl border-2 ${theme.border} bg-white p-5`}>
@@ -338,7 +354,7 @@ function PlanSettingsSection({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+              <div className={`grid grid-cols-2 gap-4 ${isPremium ? "lg:grid-cols-7" : "lg:grid-cols-5"}`}>
                 {/* Price — fixed R$ prefix with flex, no absolute overlap */}
                 <div>
                   <label className="block text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1.5">
@@ -429,7 +445,59 @@ function PlanSettingsSection({
                     {setting.is_available ? "Ativo" : "Inativo"}
                   </button>
                 </div>
+
+                {isPremium ? (
+                  <>
+                    <div>
+                      <label className="block text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1.5">
+                        Agentes incluídos
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={setting.included_agent_seats === null ? "" : setting.included_agent_seats}
+                        onChange={(e) => updateSetting(index, "included_agent_seats", e.target.value === "" ? null : Number(e.target.value))}
+                        className="w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-[13px] text-[#1F2D2E] focus:outline-none focus:border-[#0E7C86] transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold uppercase tracking-widest text-[#647B7B] mb-1.5">
+                        Assento extra
+                      </label>
+                      <div className="flex items-stretch rounded-xl border border-zinc-200 overflow-hidden focus-within:border-[#0E7C86] transition-colors">
+                        <span className="flex items-center px-3 text-[13px] font-medium text-zinc-500 bg-zinc-50 border-r border-zinc-200 select-none flex-shrink-0">
+                          R$
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={setting.extra_agent_seat_price === null ? "" : setting.extra_agent_seat_price}
+                          onChange={(e) => updateSetting(index, "extra_agent_seat_price", e.target.value === "" ? null : Number(e.target.value))}
+                          className="flex-1 min-w-0 px-3 py-2.5 text-[13px] text-[#1F2D2E] bg-white focus:outline-none"
+                          placeholder="Sob consulta"
+                        />
+                      </div>
+                    </div>
+                  </>
+                ) : null}
               </div>
+
+              {isPremium ? (
+                <div className="mt-4 space-y-2">
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] leading-relaxed text-amber-700">
+                    Assentos extras são controlados manualmente nesta versão. Cobrança automática será adicionada depois.
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {premiumHighlights.map((item) => (
+                      <span key={item} className="inline-flex items-center rounded-full bg-zinc-100 px-3 py-1 text-[11px] font-medium text-zinc-600">
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           );
         })}
@@ -475,6 +543,8 @@ function PlanSettingsSection({
                 const priceChanged = entry.old_price !== entry.new_price;
                 const commChanged = entry.old_commission_percent !== entry.new_commission_percent;
                 const availChanged = entry.old_is_available !== entry.new_is_available;
+                const includedSeatsChanged = entry.old_included_agent_seats !== entry.new_included_agent_seats;
+                const extraSeatPriceChanged = entry.old_extra_agent_seat_price !== entry.new_extra_agent_seat_price;
                 return (
                   <div key={entry.id} className="rounded-xl border border-[#DDE6E6] bg-[#F8FAFC] px-4 py-3">
                     <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -494,6 +564,16 @@ function PlanSettingsSection({
                           {availChanged && (
                             <span className="text-[11px] text-[#647B7B]">
                               Disponível: {entry.old_is_available ? "Sim" : "Não"} → <span className="font-semibold text-[#0E7C86]">{entry.new_is_available ? "Sim" : "Não"}</span>
+                            </span>
+                          )}
+                          {includedSeatsChanged && (
+                            <span className="text-[11px] text-[#647B7B]">
+                              Agentes incluídos: {entry.old_included_agent_seats ?? "—"} → <span className="font-semibold text-[#0E7C86]">{entry.new_included_agent_seats ?? "—"}</span>
+                            </span>
+                          )}
+                          {extraSeatPriceChanged && (
+                            <span className="text-[11px] text-[#647B7B]">
+                              Assento extra: {entry.old_extra_agent_seat_price != null ? brl(entry.old_extra_agent_seat_price) : "Sob consulta"} → <span className="font-semibold text-[#0E7C86]">{entry.new_extra_agent_seat_price != null ? brl(entry.new_extra_agent_seat_price) : "Sob consulta"}</span>
                             </span>
                           )}
                         </div>
@@ -588,6 +668,7 @@ function AllPendingCharges({ agencies }: { agencies: AdminPlansAgency[] }) {
 }
 
 export default function AdminPlans({ agencies, summary, planSettings, planHistory, activeByPlan }: AdminPlansProps) {
+  const { t } = useT();
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState<"all" | Plan>("all");
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_OPTIONS)[number]>("all");
