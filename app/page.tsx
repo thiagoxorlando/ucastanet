@@ -6,160 +6,28 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getUserRole } from "@/lib/getUserRole";
 import { getAgencyLanding } from "@/lib/getAgencyLanding";
-import { PLAN_DEFINITIONS } from "@/lib/plans";
 import { buildPlanSettingsFallback, formatPlanCommission, formatPlanMonthlyPrice, planLimitHighlights, type PublicPlanSetting } from "@/lib/planSettings.shared";
+import { useT } from "@/lib/LanguageContext";
+import LanguageSelector from "@/components/LanguageSelector";
 import heroBrandImage from "@/public/landing/brisahub-hero-brand.png";
 import dashboardScreenshot from "@/public/landing/dashboard.png";
 import financesScreenshot from "@/public/landing/finances.png";
 import jobsScreenshot from "@/public/landing/jobs.png";
 import talentScreenshot from "@/public/landing/talent.png";
 
-const HOW_IT_WORKS = [
-  {
-    step: "01",
-    title: "Crie a vaga com critérios claros",
-    description: "Informe perfil, data, cachê, entregáveis e os materiais que a agência precisa avaliar.",
-  },
-  {
-    step: "02",
-    title: "Compare candidaturas e indicações",
-    description: "Veja talentos interessados, convites enviados e indicações em uma fila simples de acompanhar.",
-  },
-  {
-    step: "03",
-    title: "Formalize antes de pagar",
-    description: "Confirme a reserva, gere contrato digital e mantenha o valor em custódia até a conclusão.",
-  },
-  {
-    step: "04",
-    title: "Recontrate com histórico",
-    description: "Consulte trabalhos anteriores, pagamentos e talentos aprovados para acelerar novas campanhas.",
-  },
+const FEATURE_ICON_PATHS = [
+  "M12 3l7 4v5c0 4.5-2.9 8.5-7 9-4.1-.5-7-4.5-7-9V7l7-4z",
+  "M7 3h7l4 4v14H7V3zm7 0v5h5M9 13h6M9 17h6M9 9h2",
+  "M4 7h16v10H4V7zm3 4h.01M17 11h.01M8 17v2m8-2v2M7 7V5m10 2V5",
+  "M17 20v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9.5 10a4 4 0 100-8 4 4 0 000 8zm10.5 10v-2a3 3 0 00-2-2.83M16 3.13a4 4 0 010 7.75",
+  "M4 4v6h6M20 20v-6h-6M5 15a7 7 0 0011.9 3.8M19 9A7 7 0 007.1 5.2",
+  "M7 11V8a5 5 0 0110 0v3M6 11h12v10H6V11zm6 4v2",
 ] as const;
 
-const FEATURES = [
-  {
-    title: "Pagamentos seguros",
-    description: "Use custódia para reservar valores, acompanhar o status financeiro e liberar pagamento com mais controle.",
-    icon: "M12 3l7 4v5c0 4.5-2.9 8.5-7 9-4.1-.5-7-4.5-7-9V7l7-4z",
-  },
-  {
-    title: "Contratos digitais",
-    description: "Registre valor, entrega e aceite para que agência e talento tenham o mesmo combinado.",
-    icon: "M7 3h7l4 4v14H7V3zm7 0v5h5M9 13h6M9 17h6M9 9h2",
-  },
-  {
-    title: "Gestão financeira",
-    description: "Acompanhe carteira, cobranças, reservas e repasses sem depender de planilhas paralelas.",
-    icon: "M4 7h16v10H4V7zm3 4h.01M17 11h.01M8 17v2m8-2v2M7 7V5m10 2V5",
-  },
-  {
-    title: "Indicação de talentos",
-    description: "Receba indicações de talentos e identifique a origem de cada oportunidade dentro da vaga.",
-    icon: "M17 20v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9.5 10a4 4 0 100-8 4 4 0 000 8zm10.5 10v-2a3 3 0 00-2-2.83M16 3.13a4 4 0 010 7.75",
-  },
-  {
-    title: "Histórico e recontratação",
-    description: "Mantenha contexto sobre quem já trabalhou bem com a agência e reduza tempo na próxima contratação.",
-    icon: "M4 4v6h6M20 20v-6h-6M5 15a7 7 0 0011.9 3.8M19 9A7 7 0 007.1 5.2",
-  },
-  {
-    title: "Vagas privadas no Premium",
-    description: "Convide talentos para oportunidades fechadas e opere um fluxo privado quando a campanha exigir.",
-    icon: "M7 11V8a5 5 0 0110 0v3M6 11h12v10H6V11zm6 4v2",
-  },
-] as const;
-
-const TRUST_PILLARS = [
-  {
-    title: "Segurança de pagamento",
-    description: "O valor pode ficar em custódia durante a reserva e ser liberado apenas após a confirmação do trabalho.",
-  },
-  {
-    title: "Contratos claros",
-    description: "Entregas, valores e aceite ficam definidos antes do pagamento, com registro do acordo entre as partes.",
-  },
-  {
-    title: "Transparência e controle",
-    description: "Histórico completo, status visível e menos retrabalho para acompanhar cada contratação com contexto.",
-  },
-] as const;
-
-const BUSINESS_TYPES = [
-  "agências de marketing",
-  "criadores de conteúdo",
-  "produção audiovisual",
-  "freelancers criativos",
-  "pequenos e médios negócios",
-] as const;
-
-const SHOWCASE = [
-  {
-    eyebrow: "Vagas",
-    title: "Gestão de oportunidades",
-    description: "Acompanhe vagas, status, valores e candidaturas com uma leitura rápida para o time.",
-    image: jobsScreenshot,
-    alt: "Tela de lista de vagas da BrisaHub",
-    width: jobsScreenshot.width,
-    height: jobsScreenshot.height,
-  },
-  {
-    eyebrow: "Financeiro",
-    title: "Saldo, depósitos e histórico",
-    description: "Visualize carteira, depósitos, custódia e movimentações financeiras em um painel claro.",
-    image: financesScreenshot,
-    alt: "Tela financeira da agência na BrisaHub",
-    width: financesScreenshot.width,
-    height: financesScreenshot.height,
-  },
-  {
-    eyebrow: "Talentos",
-    title: "Perfis prontos para avaliar",
-    description: "Compare profissionais com fotos, tags e contexto para decidir com mais confiança.",
-    image: talentScreenshot,
-    alt: "Tela de talentos da BrisaHub",
-    width: talentScreenshot.width,
-    height: talentScreenshot.height,
-  },
-] as const;
-
-const PLANS = [
-  {
-    key: "free",
-    name: PLAN_DEFINITIONS.free.label,
-    price: PLAN_DEFINITIONS.free.priceLabel,
-    period: "",
-    audience: "Para a primeira vaga",
-    summary: "Ideal para testar a plataforma, validar o processo e conduzir uma contratação inicial sem mensalidade.",
-    commission: PLAN_DEFINITIONS.free.commissionLabel,
-    highlights: ["1 vaga ativa", "Até 3 contratações por vaga", `Comissão de ${PLAN_DEFINITIONS.free.commissionLabel}`],
-    featured: false,
-    premium: false,
-  },
-  {
-    key: "pro",
-    name: PLAN_DEFINITIONS.pro.label,
-    price: PLAN_DEFINITIONS.pro.priceLabel,
-    period: "/mês",
-    audience: "Para contratar com recorrência",
-    summary: "O plano principal para agências que publicam vagas com frequência e querem operar com menos atrito e comissão menor.",
-    commission: PLAN_DEFINITIONS.pro.commissionLabel,
-    highlights: ["Vagas públicas ilimitadas", "Contratações ilimitadas", `Comissão de ${PLAN_DEFINITIONS.pro.commissionLabel}`],
-    featured: true,
-    premium: false,
-  },
-  {
-    key: "premium",
-    name: PLAN_DEFINITIONS.premium.label,
-    price: PLAN_DEFINITIONS.premium.priceLabel,
-    period: "",
-    audience: "Plataforma privada completa",
-    summary: "Um ambiente fechado exclusivo para a sua agência — vagas, talentos, contratos e pagamentos operando dentro do seu próprio espaço, sem mistura com o marketplace público.",
-    commission: PLAN_DEFINITIONS.premium.commissionLabel,
-    highlights: ["Tudo do Pro", "Ambiente 100% privado e fechado", "Vagas apenas para convidados", "Pool de talentos exclusivo da agência"],
-    featured: false,
-    premium: true,
-  },
+const SHOWCASE_IMAGES = [
+  { image: jobsScreenshot,     alt: "Tela de lista de vagas da BrisaHub",         width: jobsScreenshot.width,     height: jobsScreenshot.height,     sizes: "(min-width: 1024px) 58vw, 92vw" },
+  { image: financesScreenshot, alt: "Tela financeira da agência na BrisaHub",     width: financesScreenshot.width, height: financesScreenshot.height, sizes: "(min-width: 1024px) 34vw, 92vw" },
+  { image: talentScreenshot,   alt: "Tela de talentos da BrisaHub",               width: talentScreenshot.width,   height: talentScreenshot.height,   sizes: "(min-width: 1024px) 34vw, 92vw" },
 ] as const;
 
 // ── Reusable primitives ───────────────────────────────────────────────────────
@@ -255,7 +123,6 @@ const primaryLink =
 const ghostLink =
   "inline-flex items-center justify-center rounded-2xl border border-white/15 bg-white/8 px-6 py-4 text-[15px] font-bold text-white transition-all hover:-translate-y-0.5 hover:bg-white/12";
 
-// ── Grid texture overlay ──────────────────────────────────────────────────────
 function GridTexture() {
   return (
     <div
@@ -273,16 +140,65 @@ function GridTexture() {
 
 type LivePlanMap = Record<string, PublicPlanSetting>;
 
-function planHighlights(setting: PublicPlanSetting, fallback: readonly string[]) {
-  const liveHighlights = planLimitHighlights(setting);
-  return setting.plan_key === "premium" ? ["Tudo do Pro", ...liveHighlights] : liveHighlights.length ? liveHighlights : [...fallback];
-}
-
 export default function Home() {
   const router = useRouter();
+  const { t, lang } = useT();
   const [checking, setChecking] = useState(true);
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [livePlans, setLivePlans] = useState<LivePlanMap>(buildPlanSettingsFallback);
+
+  // ── Translated data arrays ────────────────────────────────────────────────
+
+  const howItWorks = [
+    { step: "01", title: t("landing_hiw_step1_title"), description: t("landing_hiw_step1_desc") },
+    { step: "02", title: t("landing_hiw_step2_title"), description: t("landing_hiw_step2_desc") },
+    { step: "03", title: t("landing_hiw_step3_title"), description: t("landing_hiw_step3_desc") },
+    { step: "04", title: t("landing_hiw_step4_title"), description: t("landing_hiw_step4_desc") },
+  ];
+
+  const features = [
+    { title: t("landing_feat1_title"), description: t("landing_feat1_desc"), icon: FEATURE_ICON_PATHS[0] },
+    { title: t("landing_feat2_title"), description: t("landing_feat2_desc"), icon: FEATURE_ICON_PATHS[1] },
+    { title: t("landing_feat3_title"), description: t("landing_feat3_desc"), icon: FEATURE_ICON_PATHS[2] },
+    { title: t("landing_feat4_title"), description: t("landing_feat4_desc"), icon: FEATURE_ICON_PATHS[3] },
+    { title: t("landing_feat5_title"), description: t("landing_feat5_desc"), icon: FEATURE_ICON_PATHS[4] },
+    { title: t("landing_feat6_title"), description: t("landing_feat6_desc"), icon: FEATURE_ICON_PATHS[5] },
+  ];
+
+  const trustPillars = [
+    { title: t("landing_trust1_title"), description: t("landing_trust1_desc") },
+    { title: t("landing_trust2_title"), description: t("landing_trust2_desc") },
+    { title: t("landing_trust3_title"), description: t("landing_trust3_desc") },
+  ];
+
+  const businessTypes = [
+    t("landing_biz_marketing"),
+    t("landing_biz_content"),
+    t("landing_biz_audiovisual"),
+    t("landing_biz_freelancers"),
+    t("landing_biz_smb"),
+  ];
+
+  const showcase = [
+    { ...SHOWCASE_IMAGES[0], eyebrow: t("landing_showcase_jobs_eyebrow"), title: t("landing_showcase_jobs_title"), description: t("landing_showcase_jobs_desc") },
+    { ...SHOWCASE_IMAGES[1], eyebrow: t("landing_showcase_fin_eyebrow"),  title: t("landing_showcase_fin_title"),  description: t("landing_showcase_fin_desc")  },
+    { ...SHOWCASE_IMAGES[2], eyebrow: t("landing_showcase_tal_eyebrow"),  title: t("landing_showcase_tal_title"),  description: t("landing_showcase_tal_desc")  },
+  ];
+
+  const plans = [
+    { key: "free"    as const, audience: t("landing_plan_free_audience"),    summary: t("landing_plan_free_summary"),    featured: false, premium: false },
+    { key: "pro"     as const, audience: t("landing_plan_pro_audience"),     summary: t("landing_plan_pro_summary"),     featured: true,  premium: false },
+    { key: "premium" as const, audience: t("landing_plan_premium_audience"), summary: t("landing_plan_premium_summary"), featured: false, premium: true  },
+  ];
+
+  const ctrustItems = [t("landing_ctrust_item1"), t("landing_ctrust_item2"), t("landing_ctrust_item3")];
+
+  function getPlanHighlights(livePlan: PublicPlanSetting) {
+    const liveHighlights = planLimitHighlights(livePlan, lang);
+    return livePlan.plan_key === "premium" ? [t("plan_everything_in_pro"), ...liveHighlights] : liveHighlights;
+  }
+
+  // ── Effects ───────────────────────────────────────────────────────────────
 
   useEffect(() => {
     getUserRole().then(async (role) => {
@@ -325,18 +241,19 @@ export default function Home() {
             />
           </Link>
           <div className="flex items-center gap-2">
+            <LanguageSelector variant="dark" />
             <Link
               href="/login"
               className="rounded-xl px-3 py-2 text-[13px] font-semibold text-white/50 transition-colors hover:bg-white/8 hover:text-white"
             >
-              Entrar
+              {t("landing_nav_signin")}
             </Link>
             <div className="relative hidden sm:block">
               <button
                 onClick={() => setShowRoleMenu((v) => !v)}
                 className="rounded-xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-4 py-2 text-[13px] font-black text-white shadow-[0_4px_16px_rgba(26,188,156,0.28)] transition-all hover:brightness-105 cursor-pointer"
               >
-                Criar conta
+                {t("landing_nav_register")}
               </button>
               {showRoleMenu && (
                 <>
@@ -353,8 +270,8 @@ export default function Home() {
                         </svg>
                       </span>
                       <div>
-                        <p>Agência</p>
-                        <p className="text-[11px] font-normal text-white/40">Publique vagas e contrate</p>
+                        <p>{t("landing_nav_agency")}</p>
+                        <p className="text-[11px] font-normal text-white/40">{t("landing_nav_agency_sub")}</p>
                       </div>
                     </Link>
                     <div className="h-px bg-white/8 mx-4" />
@@ -369,8 +286,8 @@ export default function Home() {
                         </svg>
                       </span>
                       <div>
-                        <p>Talento</p>
-                        <p className="text-[11px] font-normal text-white/40">Candidate-se a vagas</p>
+                        <p>{t("landing_nav_talent")}</p>
+                        <p className="text-[11px] font-normal text-white/40">{t("landing_nav_talent_sub")}</p>
                       </div>
                     </Link>
                   </div>
@@ -383,16 +300,12 @@ export default function Home() {
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden">
-        {/* Background — matches login left panel */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(39,193,214,0.22),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(26,188,156,0.18),transparent_35%),linear-gradient(180deg,#081718_0%,#041012_100%)]" />
         <div className="absolute inset-0 opacity-[0.04]" style={{backgroundImage:"linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)",backgroundSize:"48px 48px"}} />
 
         <div className="relative mx-auto grid max-w-7xl lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)]">
 
-          {/* ── Left panel (login-style) ── */}
           <div className="flex flex-col justify-between px-6 py-14 sm:px-10 lg:px-12 lg:py-12">
-
-            {/* Logo — top */}
             <div>
               <Image
                 src={heroBrandImage}
@@ -404,38 +317,36 @@ export default function Home() {
               />
             </div>
 
-            {/* Center content */}
             <div className="space-y-6 py-10 lg:py-0">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/8 border border-white/10 px-4 py-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#1ABC9C]" />
-                <span className="text-[12px] font-semibold text-white/60 tracking-wide">Plataforma de talentos</span>
+                <span className="text-[12px] font-semibold text-white/60 tracking-wide">{t("landing_hero_badge")}</span>
               </div>
               <h1 className="text-[2.2rem] font-black tracking-[-0.04em] leading-[1.1] text-white sm:text-[2.6rem]">
-                O lugar onde<br />
+                {t("landing_hero_title_line1")}<br />
                 <span className="bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] bg-clip-text text-transparent">
-                  talentos e agências
+                  {t("landing_hero_title_gradient")}
                 </span><br />
-                se encontram.
+                {t("landing_hero_title_line3")}
               </h1>
               <p className="text-[15px] leading-7 text-white/50 max-w-sm">
-                Gerencie contratações, contratos e pagamentos em um só lugar — rápido, seguro e sem burocracia.
+                {t("landing_hero_subtitle")}
               </p>
               <div className="flex flex-col gap-3 pt-2 sm:flex-row">
                 <Link href="/signup?role=agency" className={primaryLink}>
-                  Começar como agência
+                  {t("landing_hero_cta_agency")}
                 </Link>
                 <Link href="/signup?role=talent" className={ghostLink}>
-                  Entrar como talento
+                  {t("landing_hero_cta_talent")}
                 </Link>
               </div>
             </div>
 
-            {/* Stats — bottom */}
             <div className="flex items-center gap-8">
               {[
-                { value: "100%", label: "Seguro" },
-                { value: "PIX",  label: "Pagamentos" },
-                { value: "24h",  label: "Suporte" },
+                { value: "100%", label: t("landing_stat_secure") },
+                { value: "PIX",  label: t("landing_stat_payments") },
+                { value: "24h",  label: t("landing_stat_support") },
               ].map(({ value, label }) => (
                 <div key={label}>
                   <p className="text-[1.25rem] font-black text-white tracking-tight">{value}</p>
@@ -445,7 +356,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* ── Right: product preview ── */}
           <div className="hidden lg:flex items-center justify-center px-6 py-12 lg:px-10">
             <ProductPreview />
           </div>
@@ -458,25 +368,24 @@ export default function Home() {
         <GridTexture />
         <div className="relative mx-auto max-w-7xl">
           <div className="mx-auto max-w-3xl text-center">
-            <Pill>Sem WhatsApp. Sem planilhas.</Pill>
+            <Pill>{t("landing_hiw_pill1")}</Pill>
             <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
-              Um fluxo único para sair do briefing e chegar à contratação
+              {t("landing_hiw_title1")}
             </h2>
             <p className="mt-5 text-base leading-7 text-white/50">
-              A Brisa substitui mensagens soltas, planilhas e comprovantes dispersos por um processo estruturado
-              para a agência publicar, selecionar, contratar e pagar com mais previsibilidade.
+              {t("landing_hiw_desc1")}
             </p>
           </div>
 
           <div className="mx-auto mt-14 max-w-2xl text-center">
-            <Pill>Como funciona</Pill>
+            <Pill>{t("landing_hiw_pill2")}</Pill>
             <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
-              Um fluxo claro para conduzir cada contratação
+              {t("landing_hiw_title2")}
             </h2>
           </div>
 
           <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {HOW_IT_WORKS.map((item) => (
+            {howItWorks.map((item) => (
               <GlassCard key={item.step} className="transition-transform duration-200 hover:-translate-y-1">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[#1ABC9C]/20 to-[#27C1D6]/20 text-sm font-black text-[#1ABC9C] border border-[#1ABC9C]/20">
                   {item.step}
@@ -495,17 +404,16 @@ export default function Home() {
         <GridTexture />
         <div className="relative mx-auto max-w-7xl">
           <div className="mx-auto max-w-2xl text-center">
-            <Pill>Recursos principais</Pill>
+            <Pill>{t("landing_feat_pill")}</Pill>
             <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
-              Tudo o que a agência precisa para contratar com mais segurança
+              {t("landing_feat_title")}
             </h2>
             <p className="mt-5 text-base leading-7 text-white/50">
-              Da publicação da vaga ao pagamento final, a plataforma mantém contexto, documentos e
-              status no mesmo fluxo para a agência não perder tempo em controles paralelos.
+              {t("landing_feat_desc")}
             </p>
           </div>
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map((feature) => (
+            {features.map((feature) => (
               <GlassCard key={feature.title}>
                 <FeatureIcon path={feature.icon} />
                 <h3 className="mt-5 text-base font-black text-white">{feature.title}</h3>
@@ -523,22 +431,21 @@ export default function Home() {
           <div className="rounded-[2rem] border border-white/8 bg-[radial-gradient(circle_at_14%_0%,rgba(26,188,156,0.12),transparent_40%)] p-8 lg:p-14">
             <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
               <div>
-                <Pill>Uso profissional</Pill>
+                <Pill>{t("landing_use_pill")}</Pill>
                 <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-4xl lg:text-5xl">
-                  Contratação segura para diferentes tipos de negócio
+                  {t("landing_use_title")}
                 </h2>
                 <p className="mt-5 text-base leading-7 text-white/50">
-                  A BrisaHub substitui processos informais em WhatsApp, planilhas e comprovantes soltos
-                  por um fluxo estruturado: da criação da vaga à contratação, contrato e pagamento.
+                  {t("landing_use_desc")}
                 </p>
 
                 <div className="mt-8 rounded-2xl border border-white/8 bg-white/5 p-5">
-                  <p className="text-sm font-black text-white">Para quem é</p>
+                  <p className="text-sm font-black text-white">{t("landing_use_for_whom")}</p>
                   <p className="mt-2 text-sm leading-6 text-white/50">
-                    Para equipes e profissionais que contratam, indicam ou prestam serviços criativos com frequência.
+                    {t("landing_use_who_desc")}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    {BUSINESS_TYPES.map((type) => (
+                    {businessTypes.map((type) => (
                       <span key={type} className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[12px] font-medium text-white/60 capitalize">
                         {type}
                       </span>
@@ -548,7 +455,7 @@ export default function Home() {
               </div>
 
               <div className="grid gap-4">
-                {TRUST_PILLARS.map((pillar) => (
+                {trustPillars.map((pillar) => (
                   <div key={pillar.title} className="rounded-2xl border border-white/8 bg-white/5 px-6 py-5 flex items-start gap-4">
                     <div className="flex-shrink-0 mt-0.5 w-8 h-8 rounded-xl bg-[#1ABC9C]/15 flex items-center justify-center">
                       <CheckIcon />
@@ -572,43 +479,42 @@ export default function Home() {
         <div className="relative mx-auto max-w-7xl">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="max-w-2xl">
-              <Pill>Veja a plataforma em ação</Pill>
+              <Pill>{t("landing_ss_pill")}</Pill>
               <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
-                Uma visão rápida do que a agência acompanha
+                {t("landing_ss_title")}
               </h2>
             </div>
             <p className="max-w-md text-sm leading-6 text-white/40">
-              Screenshots do produto organizados para mostrar, sem ruído, como a agência acompanha
-              vagas, financeiro e talentos no dia a dia.
+              {t("landing_ss_desc")}
             </p>
           </div>
 
           <div className="mt-12 grid gap-6 lg:grid-cols-[minmax(0,1.12fr)_minmax(0,0.88fr)]">
             <article className="flex flex-col gap-4">
               <ScreenshotFrame
-                src={SHOWCASE[0].image}
-                alt={SHOWCASE[0].alt}
-                width={SHOWCASE[0].width}
-                height={SHOWCASE[0].height}
-                sizes="(min-width: 1024px) 58vw, 92vw"
-                aspectRatio={`${SHOWCASE[0].width} / ${SHOWCASE[0].height}`}
+                src={showcase[0].image}
+                alt={showcase[0].alt}
+                width={showcase[0].width}
+                height={showcase[0].height}
+                sizes={showcase[0].sizes}
+                aspectRatio={`${showcase[0].width} / ${showcase[0].height}`}
               />
               <div className="space-y-2 px-1">
-                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#1ABC9C]">{SHOWCASE[0].eyebrow}</p>
-                <h3 className="text-lg font-black text-white">{SHOWCASE[0].title}</h3>
-                <p className="max-w-2xl text-sm leading-6 text-white/50">{SHOWCASE[0].description}</p>
+                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#1ABC9C]">{showcase[0].eyebrow}</p>
+                <h3 className="text-lg font-black text-white">{showcase[0].title}</h3>
+                <p className="max-w-2xl text-sm leading-6 text-white/50">{showcase[0].description}</p>
               </div>
             </article>
 
             <div className="grid gap-6">
-              {SHOWCASE.slice(1).map((item) => (
+              {showcase.slice(1).map((item) => (
                 <article key={item.title} className="flex flex-col gap-4">
                   <ScreenshotFrame
                     src={item.image}
                     alt={item.alt}
                     width={item.width}
                     height={item.height}
-                    sizes="(min-width: 1024px) 34vw, 92vw"
+                    sizes={item.sizes}
                     aspectRatio={`${item.width} / ${item.height}`}
                   />
                   <div className="space-y-2 px-1">
@@ -629,21 +535,20 @@ export default function Home() {
         <GridTexture />
         <div className="relative mx-auto max-w-7xl">
           <div className="mx-auto max-w-2xl text-center">
-            <Pill>Planos</Pill>
+            <Pill>{t("landing_plans_pill")}</Pill>
             <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
-              Escolha o plano pelo ritmo da sua operação
+              {t("landing_plans_title")}
             </h2>
             <p className="mt-5 text-base leading-7 text-white/50">
-              Comece sem mensalidade para validar a primeira vaga, evolua para o Pro quando a agência
-              precisar contratar com frequência e use o Premium para processos privados e seleções mais reservadas.
+              {t("landing_plans_desc")}
             </p>
           </div>
 
           <div className="mt-14 grid items-stretch gap-6 lg:grid-cols-3">
-            {PLANS.map((plan) => {
+            {plans.map((plan) => {
               const livePlan = livePlans[plan.key] ?? buildPlanSettingsFallback()[plan.key];
               const isDisabled = !livePlan.is_available;
-              const highlights = planHighlights(livePlan, plan.highlights);
+              const highlights = getPlanHighlights(livePlan);
 
               return <div
                 key={plan.key}
@@ -658,12 +563,12 @@ export default function Home() {
               >
                 {plan.featured && (
                   <span className="absolute right-5 top-5 rounded-full bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-[0_4px_16px_rgba(26,188,156,0.28)]">
-                    Mais popular
+                    {t("plan_popular_badge")}
                   </span>
                 )}
                 {isDisabled && (
                   <span className="absolute right-5 top-5 rounded-full border border-white/15 bg-white/8 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-white/50">
-                    Em breve
+                    {t("plan_coming_soon")}
                   </span>
                 )}
                 <div className={plan.featured || plan.key === "premium" ? "flex h-full flex-col pt-8" : "flex h-full flex-col"}>
@@ -672,14 +577,14 @@ export default function Home() {
                   <p className="mt-3 text-sm leading-6 text-white/50">{plan.summary}</p>
                   {livePlan.is_available ? (
                     <div className="mt-4 flex items-end gap-1">
-                      <span className="text-4xl font-black tracking-[-0.04em] text-white">{formatPlanMonthlyPrice(livePlan.price)}</span>
+                      <span className="text-4xl font-black tracking-[-0.04em] text-white">{formatPlanMonthlyPrice(livePlan.price, lang)}</span>
                     </div>
                   ) : (
-                    <p className="mt-4 text-4xl font-black tracking-[-0.04em] text-white/45">Em breve</p>
+                    <p className="mt-4 text-4xl font-black tracking-[-0.04em] text-white/45">{t("plan_coming_soon")}</p>
                   )}
                   {livePlan.is_available && (
                     <div className="mt-5 rounded-2xl border border-[#1ABC9C]/20 bg-[#1ABC9C]/8 px-4 py-3 flex items-center justify-between gap-3">
-                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#1ABC9C]/80">Comissão da plataforma</p>
+                      <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#1ABC9C]/80">{t("plan_commission_label")}</p>
                       <p className="text-xl font-black text-white flex-shrink-0">{formatPlanCommission(livePlan.commission_percent)}</p>
                     </div>
                   )}
@@ -693,7 +598,7 @@ export default function Home() {
                   </ul>
                   {isDisabled ? (
                     <span className="mt-auto inline-flex w-full items-center justify-center rounded-2xl px-5 py-3.5 text-sm font-black border border-white/10 bg-white/5 text-white/30 cursor-not-allowed">
-                      Em breve
+                      {t("plan_coming_soon")}
                     </span>
                   ) : (
                     <Link
@@ -705,7 +610,7 @@ export default function Home() {
                           : "border border-white/12 bg-white/8 text-white hover:bg-white/12",
                       ].join(" ")}
                     >
-                      Começar com {livePlan.name}
+                      {t("plan_cta_prefix")} {livePlan.name}
                     </Link>
                   )}
                 </div>
@@ -720,17 +625,16 @@ export default function Home() {
         <GridTexture />
         <div className="relative mx-auto grid max-w-7xl gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
-            <Pill>Confiança</Pill>
+            <Pill>{t("landing_ctrust_pill")}</Pill>
             <h2 className="mt-5 text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
-              Segurança jurídica e financeira para contratar com mais tranquilidade
+              {t("landing_ctrust_title")}
             </h2>
             <p className="mt-5 max-w-xl text-base leading-7 text-white/50">
-              Contrato, pagamento e histórico ficam registrados para a agência ter previsibilidade operacional
-              e o talento saber exatamente em que etapa está.
+              {t("landing_ctrust_desc")}
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
-            {["Escopo e valores registrados", "Pagamento com status rastreável", "Histórico para decisão e recontratação"].map((item) => (
+            {ctrustItems.map((item) => (
               <GlassCard key={item}>
                 <CheckIcon />
                 <p className="mt-4 text-sm font-black leading-6 text-white">{item}</p>
@@ -746,20 +650,19 @@ export default function Home() {
         <GridTexture />
         <div className="relative mx-auto max-w-7xl">
           <div className="rounded-[2rem] border border-white/8 bg-white/[0.03] px-6 py-14 text-center sm:px-10">
-            <Pill>Estruture a próxima contratação</Pill>
+            <Pill>{t("landing_cta_pill")}</Pill>
             <h2 className="mx-auto mt-5 max-w-3xl text-3xl font-black tracking-[-0.04em] text-white sm:text-5xl">
-              Abra sua conta de agência e conduza a próxima vaga com contrato, pagamento seguro e menos retrabalho.
+              {t("landing_cta_title")}
             </h2>
             <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-white/50">
-              Se você contrata com frequência, o Pro já deixa claro o ganho operacional. Se você é talento,
-              também pode criar seu perfil para receber convites e acompanhar oportunidades.
+              {t("landing_cta_desc")}
             </p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Link href="/signup?role=agency" className={primaryLink}>
-                Começar como agência
+                {t("landing_cta_btn_agency")}
               </Link>
               <Link href="/signup?role=talent" className={ghostLink}>
-                Entrar como talento
+                {t("landing_cta_btn_talent")}
               </Link>
             </div>
           </div>
@@ -776,7 +679,7 @@ export default function Home() {
             height={heroBrandImage.height}
             className="h-auto w-full max-w-[64px] mx-auto sm:mx-0 opacity-70"
           />
-          <p className="text-[12px] text-white/30">© 2026 BrisaHub. Todos os direitos reservados.</p>
+          <p className="text-[12px] text-white/30">{t("landing_footer_rights")}</p>
         </div>
       </footer>
 

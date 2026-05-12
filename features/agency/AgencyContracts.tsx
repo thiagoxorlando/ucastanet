@@ -48,21 +48,21 @@ type FilterStatus = typeof ALL_STATUSES[number];
 
 function brl(n: number) { return fmtBrl(n); }
 
-function fmtDate(s: string | null, lang = "pt") {
+function fmtDate(s: string | null, lang = "pt-BR") {
   if (!s) return "—";
-  const locale = lang === "pt" ? "pt-BR" : "en-US";
+  const locale = lang === "pt-BR" ? "pt-BR" : "en-US";
   return new Date(s).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function fmtJobDate(s: string | null, lang = "pt") {
+function fmtJobDate(s: string | null, lang = "pt-BR") {
   if (!s) return "—";
-  const locale = lang === "pt" ? "pt-BR" : "en-US";
+  const locale = lang === "pt-BR" ? "pt-BR" : "en-US";
   return new Date(s + "T00:00:00").toLocaleDateString(locale, { weekday: "short", month: "short", day: "numeric", year: "numeric" });
 }
 
-function fmtDateTime(s: string | null, lang = "pt") {
+function fmtDateTime(s: string | null, lang = "pt-BR") {
   if (!s) return null;
-  const locale = lang === "pt" ? "pt-BR" : "en-US";
+  const locale = lang === "pt-BR" ? "pt-BR" : "en-US";
   return new Date(s).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 

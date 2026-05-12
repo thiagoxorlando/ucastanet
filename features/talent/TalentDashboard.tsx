@@ -148,7 +148,7 @@ export default function TalentDashboard({
 
   const statCards = [
     {
-      label: lang === "pt" ? "Trabalhos" : "Applied Jobs",
+      label: lang === "pt-BR" ? "Trabalhos" : "Applied Jobs",
       value: String(stats.applied),
       sub:   t("page_jobs"),
       href:  "/talent/jobs",
@@ -260,7 +260,7 @@ export default function TalentDashboard({
           {upcomingBookings.length === 0 ? (
             <Empty
               msg={t("bookings_no_bookings")}
-              cta={lang === "pt" ? "Ver Vagas" : "View Jobs"}
+              cta={lang === "pt-BR" ? "Ver Vagas" : "View Jobs"}
               href="/talent/jobs"
             />
           ) : (

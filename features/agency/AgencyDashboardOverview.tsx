@@ -72,7 +72,7 @@ function brl(n: number) {
 
 function timeAgo(iso: string, lang: string) {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (lang === "pt") {
+  if (lang === "pt-BR") {
     if (diff < 60)    return "agora mesmo";
     if (diff < 3600)  return `há ${Math.floor(diff / 60)}min`;
     if (diff < 86400) return `há ${Math.floor(diff / 3600)}h`;
@@ -94,7 +94,7 @@ function daysUntilJobDate(s: string | null): number | null {
 
 function fmtJobDate(s: string | null, lang: string) {
   if (!s) return null;
-  const locale = lang === "pt" ? "pt-BR" : "en-US";
+  const locale = lang === "pt-BR" ? "pt-BR" : "en-US";
   return new Date(s + "T00:00:00").toLocaleDateString(locale, { weekday: "short", month: "short", day: "numeric" });
 }
 
@@ -561,7 +561,7 @@ export default function AgencyDashboardOverview({
                     <p className="text-[13px] font-semibold text-emerald-700 tabular-nums">{brl(c.amount)}</p>
                     {c.paidAt && (
                       <p className="text-[11px] text-[#647B7B] mt-0.5">
-                        {new Date(c.paidAt).toLocaleDateString(lang === "pt" ? "pt-BR" : "en-US", { day: "numeric", month: "short" })}
+                        {new Date(c.paidAt).toLocaleDateString(lang === "pt-BR" ? "pt-BR" : "en-US", { day: "numeric", month: "short" })}
                       </p>
                     )}
                   </div>

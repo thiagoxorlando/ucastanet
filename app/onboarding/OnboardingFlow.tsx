@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getAgencyLanding } from "@/lib/getAgencyLanding";
+import { useT } from "@/lib/LanguageContext";
 import heroBrandImage from "@/public/landing/brisahub-hero-brand.png";
 
 type Role = "agency" | "talent";
@@ -15,10 +16,8 @@ type StepCard = {
   tone: string;
 };
 
-const AGENCY_CARDS: StepCard[] = [
+const AGENCY_ICON_TONES = [
   {
-    title: "Publique sua vaga",
-    body: "Abra oportunidades com briefing claro, categoria definida e valor bem comunicado desde o início.",
     tone: "from-cyan-500/18 to-cyan-300/8 text-cyan-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -27,8 +26,6 @@ const AGENCY_CARDS: StepCard[] = [
     ),
   },
   {
-    title: "Receba candidaturas",
-    body: "Talentos se candidatam dentro da plataforma e você acompanha tudo centralizado em um só painel.",
     tone: "from-emerald-500/18 to-emerald-300/8 text-emerald-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -37,8 +34,6 @@ const AGENCY_CARDS: StepCard[] = [
     ),
   },
   {
-    title: "Escolha um talento",
-    body: "Compare perfis, histórico e disponibilidade antes de confirmar a contratação com segurança.",
     tone: "from-teal-500/18 to-teal-300/8 text-teal-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -47,8 +42,6 @@ const AGENCY_CARDS: StepCard[] = [
     ),
   },
   {
-    title: "Confirme a reserva com saldo na carteira",
-    body: "A reserva usa o saldo disponível em carteira para travar o valor da contratação dentro do fluxo seguro.",
     tone: "from-amber-500/18 to-amber-300/8 text-amber-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,8 +50,6 @@ const AGENCY_CARDS: StepCard[] = [
     ),
   },
   {
-    title: "Libere o pagamento com segurança",
-    body: "Depois da entrega, a liberação segue o fluxo interno até a carteira do talento, sem atalhos por fora.",
     tone: "from-fuchsia-500/18 to-fuchsia-300/8 text-fuchsia-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -68,10 +59,8 @@ const AGENCY_CARDS: StepCard[] = [
   },
 ];
 
-const TALENT_CARDS: StepCard[] = [
+const TALENT_ICON_TONES = [
   {
-    title: "Seu perfil já entra pronto",
-    body: "Os dados principais já foram salvos no cadastro para você começar sem retrabalho.",
     tone: "from-cyan-500/18 to-cyan-300/8 text-cyan-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,8 +69,6 @@ const TALENT_CARDS: StepCard[] = [
     ),
   },
   {
-    title: "Candidate-se a vagas",
-    body: "Explore oportunidades abertas e envie candidatura quando o trabalho combinar com seu perfil.",
     tone: "from-emerald-500/18 to-emerald-300/8 text-emerald-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,8 +77,6 @@ const TALENT_CARDS: StepCard[] = [
     ),
   },
   {
-    title: "Aceite contratos",
-    body: "Quando for escolhido, acompanhe o contrato e os próximos passos do trabalho dentro da BrisaHub.",
     tone: "from-teal-500/18 to-teal-300/8 text-teal-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -100,8 +85,6 @@ const TALENT_CARDS: StepCard[] = [
     ),
   },
   {
-    title: "Receba na carteira",
-    body: "Depois da liberação pela agência, o valor entra no seu saldo dentro da plataforma.",
     tone: "from-amber-500/18 to-amber-300/8 text-amber-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,8 +93,6 @@ const TALENT_CARDS: StepCard[] = [
     ),
   },
   {
-    title: "Saque via PIX",
-    body: "Com a chave PIX já configurada, você consegue sacar o saldo disponível quando quiser.",
     tone: "from-fuchsia-500/18 to-fuchsia-300/8 text-fuchsia-200",
     icon: (
       <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -129,17 +110,32 @@ export default function OnboardingFlow({
   nextPath: string | null;
   initialPlan: "free" | "pro";
 }) {
+  const { t } = useT();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const cards = role === "agency" ? AGENCY_CARDS : TALENT_CARDS;
-  const primaryLabel = role === "agency" ? "Entrar como agência" : "Entrar como talento";
-  const eyebrow = role === "agency" ? "Fluxo da agência" : "Fluxo do talento";
-  const heading = role === "agency"
-    ? "Tudo certo. Agora veja rapidamente como sua operação acontece na BrisaHub"
-    : "Tudo certo. Agora veja rapidamente como sua jornada funciona na BrisaHub";
-  const subheading = role === "agency"
-    ? "Sua conta e o perfil base já foram salvos. Este passo é apenas uma explicação visual antes de seguir para a área da agência."
-    : "Sua conta e o perfil base já foram salvos. Este passo é apenas uma explicação visual antes de seguir para a área do talento.";
+
+  const agencyCards: StepCard[] = [
+    { title: t("onboarding_agency_step1_title"), body: t("onboarding_agency_step1_body"), ...AGENCY_ICON_TONES[0] },
+    { title: t("onboarding_agency_step2_title"), body: t("onboarding_agency_step2_body"), ...AGENCY_ICON_TONES[1] },
+    { title: t("onboarding_agency_step3_title"), body: t("onboarding_agency_step3_body"), ...AGENCY_ICON_TONES[2] },
+    { title: t("onboarding_agency_step4_title"), body: t("onboarding_agency_step4_body"), ...AGENCY_ICON_TONES[3] },
+    { title: t("onboarding_agency_step5_title"), body: t("onboarding_agency_step5_body"), ...AGENCY_ICON_TONES[4] },
+  ];
+
+  const talentCards: StepCard[] = [
+    { title: t("onboarding_talent_step1_title"), body: t("onboarding_talent_step1_body"), ...TALENT_ICON_TONES[0] },
+    { title: t("onboarding_talent_step2_title"), body: t("onboarding_talent_step2_body"), ...TALENT_ICON_TONES[1] },
+    { title: t("onboarding_talent_step3_title"), body: t("onboarding_talent_step3_body"), ...TALENT_ICON_TONES[2] },
+    { title: t("onboarding_talent_step4_title"), body: t("onboarding_talent_step4_body"), ...TALENT_ICON_TONES[3] },
+    { title: t("onboarding_talent_step5_title"), body: t("onboarding_talent_step5_body"), ...TALENT_ICON_TONES[4] },
+  ];
+
+  const cards = role === "agency" ? agencyCards : talentCards;
+  const primaryLabel = role === "agency" ? t("onboarding_agency_enter") : t("onboarding_talent_enter");
+  const eyebrow = role === "agency" ? t("onboarding_agency_eyebrow") : t("onboarding_talent_eyebrow");
+  const heading = role === "agency" ? t("onboarding_agency_heading") : t("onboarding_talent_heading");
+  const subheading = role === "agency" ? t("onboarding_agency_subheading") : t("onboarding_talent_subheading");
+  const nextDesc = role === "agency" ? t("onboarding_agency_next_desc") : t("onboarding_talent_next_desc");
 
   async function finish() {
     if (loading) return;
@@ -190,11 +186,9 @@ export default function OnboardingFlow({
 
                 <div className="mt-8 space-y-4 lg:mt-auto">
                   <div className="rounded-[28px] border border-white/10 bg-white/6 p-5 backdrop-blur-sm">
-                    <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-white/45">Próximo passo</p>
+                    <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-white/45">{t("onboarding_next_step")}</p>
                     <p className="mt-2 text-sm leading-6 text-white/82">
-                      {role === "agency"
-                        ? "Você segue direto para publicar sua primeira vaga ou cair no painel, sem preencher o perfil de novo."
-                        : "Você segue direto para o painel do talento ou para o destino inicial correto, sem preencher o perfil de novo."}
+                      {nextDesc}
                     </p>
                   </div>
                 </div>
@@ -216,9 +210,9 @@ export default function OnboardingFlow({
 
               <div className="mt-6 flex flex-col gap-3 rounded-[28px] border border-white/8 bg-white/[0.04] p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-[15px] font-semibold text-white">Conta e perfil base criados com sucesso</p>
+                  <p className="text-[15px] font-semibold text-white">{t("onboarding_account_ready")}</p>
                   <p className="mt-1 text-[13px] text-white/65">
-                    Nenhum segundo formulário é necessário no fluxo normal de novos usuários.
+                    {t("onboarding_no_second_form")}
                   </p>
                 </div>
                 <button
@@ -227,7 +221,7 @@ export default function OnboardingFlow({
                   disabled={loading}
                   className="rounded-2xl bg-gradient-to-r from-[#0E7C86] via-[#15A6A8] to-[#1ABC9C] px-5 py-3 text-[14px] font-semibold text-white shadow-[0_14px_28px_rgba(18,150,153,0.22)] transition-all hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {loading ? "Entrando..." : primaryLabel}
+                  {loading ? t("onboarding_loading") : primaryLabel}
                 </button>
               </div>
             </div>

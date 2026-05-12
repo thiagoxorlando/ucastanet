@@ -36,8 +36,10 @@ export function formatPlanPrice(price: number): string {
   return brlPlan(price);
 }
 
-export function formatPlanMonthlyPrice(price: number): string {
-  return price === 0 ? formatPlanPrice(price) : `${formatPlanPrice(price)}/mês`;
+export function formatPlanMonthlyPrice(price: number, lang: "pt-BR" | "en" = "pt-BR"): string {
+  if (price === 0) return formatPlanPrice(price);
+  const period = lang === "en" ? "/month" : "/mês";
+  return `${formatPlanPrice(price)}${period}`;
 }
 
 export function formatPlanCommission(commissionPercent: number): string {
@@ -48,7 +50,23 @@ export function formatTalentShareLabel(commissionPercent: number): string {
   return `${Math.round(100 - commissionPercent)}%`;
 }
 
-export function planLimitHighlights(setting: PublicPlanSetting): string[] {
+export function planLimitHighlights(setting: PublicPlanSetting, lang: "pt-BR" | "en" = "pt-BR"): string[] {
+  if (lang === "en") {
+    const jobs =
+      setting.job_limit === null
+        ? "Unlimited active jobs"
+        : `${setting.job_limit} active job${setting.job_limit === 1 ? "" : "s"}`;
+    const hires =
+      setting.max_hires_per_job === null
+        ? "Unlimited hires per job"
+        : `Up to ${setting.max_hires_per_job} hire${setting.max_hires_per_job === 1 ? "" : "s"} per job`;
+    return [
+      jobs,
+      hires,
+      `Platform commission of ${formatPlanCommission(setting.commission_percent)}`,
+    ];
+  }
+
   const jobs =
     setting.job_limit === null
       ? "Vagas ativas ilimitadas"
