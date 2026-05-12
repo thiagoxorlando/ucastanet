@@ -132,15 +132,19 @@ export default async function InviteJobPage({ params }: Props) {
   let workspaceName: string | null = null;
   let workspaceWelcome: string | null = null;
   let workspaceLogoUrl: string | null = null;
+  let workspacePrimaryColor: string | null = null;
+  let workspaceAccentColor: string | null = null;
   if (link.workspace_id) {
     const { data: ws } = await supabase
       .from("premium_workspaces")
-      .select("name, welcome_message, logo_url")
+      .select("name, welcome_message, logo_url, brand_primary_color, brand_accent_color")
       .eq("id", link.workspace_id)
       .maybeSingle();
     workspaceName = ws?.name ?? null;
-    workspaceWelcome = ws?.welcome_message ?? null;
-    workspaceLogoUrl = ws?.logo_url ?? null;
+    workspaceWelcome = (ws?.welcome_message as string | null) ?? null;
+    workspaceLogoUrl = (ws?.logo_url as string | null) ?? null;
+    workspacePrimaryColor = (ws?.brand_primary_color as string | null) ?? null;
+    workspaceAccentColor = (ws?.brand_accent_color as string | null) ?? null;
   }
 
   // Load agency name as fallback
@@ -184,6 +188,8 @@ export default async function InviteJobPage({ params }: Props) {
       workspaceName={workspaceName}
       workspaceWelcome={workspaceWelcome}
       workspaceLogoUrl={workspaceLogoUrl}
+      workspacePrimaryColor={workspacePrimaryColor}
+      workspaceAccentColor={workspaceAccentColor}
       agencyName={agencyName}
       isLoggedIn={!!user}
       userRole={userRole}

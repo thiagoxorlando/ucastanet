@@ -22,6 +22,8 @@ type Props = {
   workspaceName: string | null;
   workspaceWelcome: string | null;
   workspaceLogoUrl: string | null;
+  workspacePrimaryColor: string | null;
+  workspaceAccentColor: string | null;
   agencyName: string | null;
   isLoggedIn: boolean;
   userRole: string | null;
@@ -32,6 +34,9 @@ export default function InviteJobClient({
   job,
   workspaceName,
   workspaceWelcome,
+  workspaceLogoUrl,
+  workspacePrimaryColor,
+  workspaceAccentColor,
   agencyName,
   isLoggedIn,
   userRole,
@@ -43,6 +48,13 @@ export default function InviteJobClient({
   const displayName = workspaceName ?? agencyName;
   const next = encodeURIComponent(`/jobs/invite/${token}`);
 
+  const primary = workspacePrimaryColor ?? "#1ABC9C";
+  const accent = workspaceAccentColor ?? workspacePrimaryColor ?? "#27C1D6";
+
+  const initials = displayName
+    ? displayName.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")
+    : "W";
+
   async function handleApply() {
     setError(null);
     setApplying(true);
@@ -51,6 +63,9 @@ export default function InviteJobClient({
 
   return (
     <main className="min-h-screen bg-[#F8FAFC] text-[#1F2D2E]">
+      {/* Brand color top stripe */}
+      <div className="h-1" style={{ background: `linear-gradient(to right, ${primary}, ${accent})` }} />
+
       <div className="mx-auto w-full max-w-2xl px-5 py-8 sm:px-8">
 
         {/* Header */}
@@ -65,21 +80,36 @@ export default function InviteJobClient({
           )}
         </header>
 
+        {/* Workspace identity card */}
+        {displayName && (
+          <div className="mb-6 flex items-center gap-3 p-4 rounded-2xl bg-white border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+            {workspaceLogoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={workspaceLogoUrl} alt={displayName} className="w-10 h-10 rounded-xl object-cover flex-shrink-0 border border-zinc-100" />
+            ) : (
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold text-[13px]"
+                style={{ background: primary }}
+              >
+                {initials}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold text-zinc-900 truncate">{displayName}</p>
+              <p className="text-[11px] text-zinc-400">Ambiente privado de seleção de talentos</p>
+            </div>
+          </div>
+        )}
+
         {/* Invite badge */}
-        <div className="mb-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-50 border border-violet-100 text-violet-700 text-[12px] font-semibold">
+        <div className="mb-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-[12px] font-semibold"
+          style={{ background: `${primary}15`, borderColor: `${primary}30`, color: primary }}>
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
           Vaga exclusiva por convite
         </div>
-
-        {/* Workspace / agency banner */}
-        {displayName && (
-          <p className="mb-4 text-[13px] font-semibold uppercase tracking-[0.14em] text-[#0E7C86]">
-            {displayName}
-          </p>
-        )}
 
         {/* Job title */}
         <h1 className="text-[2rem] font-semibold leading-tight tracking-tight text-[#1F2D2E] sm:text-[2.5rem]">
@@ -112,8 +142,11 @@ export default function InviteJobClient({
 
         {/* Workspace welcome message */}
         {workspaceWelcome && (
-          <div className="mt-6 rounded-2xl border border-[#DDE6E6] bg-white px-5 py-4">
-            <p className="text-[14px] leading-6 text-[#475D5E]">{workspaceWelcome}</p>
+          <div className="mt-6 rounded-2xl bg-white px-5 py-4 border" style={{ borderColor: `${primary}25` }}>
+            <div className="flex items-start gap-3">
+              <div className="w-1 rounded-full self-stretch flex-shrink-0" style={{ background: primary }} />
+              <p className="text-[14px] leading-6 text-[#475D5E]">{workspaceWelcome}</p>
+            </div>
           </div>
         )}
 
@@ -127,7 +160,8 @@ export default function InviteJobClient({
               <button
                 onClick={handleApply}
                 disabled={applying}
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] text-white text-[15px] font-semibold transition-all disabled:opacity-60 cursor-pointer"
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl text-white text-[15px] font-semibold transition-all disabled:opacity-60 cursor-pointer"
+                style={{ background: `linear-gradient(to right, ${primary}, ${accent})` }}
               >
                 {applying ? (
                   <>

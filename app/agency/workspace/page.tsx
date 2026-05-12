@@ -15,6 +15,7 @@ import {
   type AgentBudgetUsage,
 } from "@/lib/premiumWorkspace.server";
 import WorkspaceAgentManager from "@/features/agency/WorkspaceAgentManager";
+import WorkspaceBrandingForm from "@/features/agency/WorkspaceBrandingForm";
 import { jobStatusLabel, jobStatusTone } from "@/lib/jobStatus";
 import { brl } from "@/lib/brl";
 
@@ -56,25 +57,55 @@ function WorkspaceHeader({
   membership: PremiumMembership;
 }) {
   const isOwner = membership.role === "owner";
+  const primary = workspace.brandPrimaryColor;
+  const accent = workspace.brandAccentColor;
+  const hasColors = !!(primary || accent);
+
+  const stripeStyle = hasColors
+    ? { background: `linear-gradient(to right, ${primary ?? "#1ABC9C"}, ${accent ?? primary ?? "#27C1D6"})` }
+    : undefined;
+  const stripeClass = hasColors
+    ? "h-[3px]"
+    : `h-[3px] bg-gradient-to-r ${isOwner ? "from-amber-400 to-amber-600" : "from-indigo-400 to-indigo-600"}`;
+
+  const initials = workspace.name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("") || "P";
+
   return (
     <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
-      <div
-        className={`h-[3px] bg-gradient-to-r ${isOwner ? "from-amber-400 to-amber-600" : "from-indigo-400 to-indigo-600"}`}
-      />
+      <div className={stripeClass} style={stripeStyle} />
       <div className="p-6 flex items-start gap-4">
-        <div
-          className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isOwner ? "bg-amber-50 border border-amber-100" : "bg-indigo-50 border border-indigo-100"}`}
-        >
-          <svg
-            className={`w-6 h-6 ${isOwner ? "text-amber-500" : "text-indigo-500"}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        {/* Logo or icon */}
+        {workspace.logoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={workspace.logoUrl}
+            alt="Logo"
+            className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-zinc-100"
+          />
+        ) : primary ? (
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold text-[14px]"
+            style={{ background: primary }}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
-              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-          </svg>
-        </div>
+            {initials}
+          </div>
+        ) : (
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isOwner ? "bg-amber-50 border border-amber-100" : "bg-indigo-50 border border-indigo-100"}`}>
+            <svg
+              className={`w-6 h-6 ${isOwner ? "text-amber-500" : "text-indigo-500"}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
+                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+            </svg>
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-[16px] font-bold text-zinc-900 truncate">{workspace.name}</h2>
@@ -84,7 +115,10 @@ function WorkspaceHeader({
               {isOwner ? "Premium · Proprietário" : "Agente"}
             </span>
           </div>
-          <p className="text-[13px] text-zinc-500 mt-0.5">
+          {workspace.welcomeMessage && (
+            <p className="text-[13px] text-zinc-500 mt-0.5 leading-snug">{workspace.welcomeMessage}</p>
+          )}
+          <p className="text-[12px] text-zinc-400 mt-0.5">
             {isOwner
               ? `Workspace criado em ${new Date(workspace.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`
               : `Membro desde ${new Date(membership.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}`}
@@ -279,6 +313,18 @@ export default async function WorkspacePage() {
   return (
     <div className="space-y-6">
       <WorkspaceHeader workspace={workspace} membership={membership} />
+
+      {/* Branding / customization section */}
+      <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
+        <div className="h-[3px] bg-gradient-to-r from-amber-400 to-orange-400" />
+        <div className="p-5 border-b border-zinc-50">
+          <p className="text-[13px] font-semibold text-zinc-900">Personalização do espaço</p>
+          <p className="text-[12px] text-zinc-400 mt-0.5">Logo, cores e mensagem de boas-vindas do seu workspace</p>
+        </div>
+        <div className="p-5">
+          <WorkspaceBrandingForm workspace={workspace} membership={membership} />
+        </div>
+      </div>
 
       {/* Agents section */}
       <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
