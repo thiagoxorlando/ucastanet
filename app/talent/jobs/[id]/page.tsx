@@ -7,7 +7,10 @@ import { isJobOpenForApplications, JOB_UNAVAILABLE_MESSAGE } from "@/lib/jobAvai
 import { PLAN_DEFINITIONS, type Plan } from "@/lib/plans";
 import TalentJobDetail from "@/features/talent/TalentJobDetail";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ invite?: string }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -16,8 +19,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: data ? `${data.title} — BrisaHub` : "Vaga — BrisaHub" };
 }
 
-export default async function TalentJobDetailPage({ params }: Props) {
-  const { id } = await params;
+export default async function TalentJobDetailPage({ params, searchParams }: Props) {
+  const [{ id }, query] = await Promise.all([params, searchParams]);
+  const inviteToken = typeof query.invite === "string" ? query.invite.trim() : null;
   const supabase = createServerClient({ useServiceRole: true });
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
@@ -77,6 +81,39 @@ export default async function TalentJobDetailPage({ params }: Props) {
     }
   }
 
+  if (data.visibility === "private_invite") {
+    let hasAccess = false;
+
+    if (inviteToken) {
+      const { data: link } = await supabase
+        .from("job_invite_links")
+        .select("id, status, expires_at, revoked_at")
+        .eq("token", inviteToken)
+        .eq("job_id", id)
+        .maybeSingle();
+
+      hasAccess = !!(
+        link &&
+        link.status === "active" &&
+        !link.revoked_at &&
+        (!link.expires_at || new Date(link.expires_at) > new Date())
+      );
+    }
+
+    if (!hasAccess) {
+      // Also allow if talent already applied (so they can view their application)
+      const { data: existingSub } = await supabase
+        .from("submissions")
+        .select("id")
+        .eq("job_id", id)
+        .eq("talent_user_id", user.id)
+        .maybeSingle();
+      hasAccess = !!existingSub;
+    }
+
+    if (!hasAccess) return notFound();
+  }
+
   let agencyName = "";
   let agencyPlan = "free";
   let isAvailableForApplications = true;
@@ -133,6 +170,7 @@ export default async function TalentJobDetailPage({ params }: Props) {
       talentGender={talentProfile?.gender ?? null}
       talentAge={talentProfile?.age ?? null}
       liveCommissionRate={liveCommissionRate}
+      inviteToken={inviteToken}
     />
   );
 }

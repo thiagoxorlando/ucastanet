@@ -21,7 +21,7 @@ export default async function JobDetailPage({ params }: Props) {
   const [{ data: jobData }, { data: submissionsData }, { data: bookingsData }] = await Promise.all([
     supabase
       .from("jobs")
-      .select("id, title, description, category, budget, deadline, job_date, job_time, status, created_at, number_of_talents_required, visibility")
+      .select("id, title, description, category, budget, deadline, job_date, job_time, status, created_at, number_of_talents_required, visibility, invite_only, workspace_id")
       .eq("id", id)
       .single(),
     supabase
@@ -68,7 +68,9 @@ export default async function JobDetailPage({ params }: Props) {
         deadline:    jobData.deadline    ?? "",
         jobDate:     jobData.job_date  ?? null,
         jobTime:     jobData.job_time  ?? null,
-        visibility:  (jobData.visibility ?? "public") as "public" | "private",
+        visibility:  (jobData.visibility ?? "public") as "public" | "private" | "private_invite",
+        inviteOnly:  (jobData as unknown as { invite_only?: boolean }).invite_only ?? false,
+        workspaceId: (jobData as unknown as { workspace_id?: string | null }).workspace_id ?? null,
         status:                    (jobData.status ?? "open") as "open" | "closed" | "draft" | "inactive",
         postedAt:                  jobData.created_at ?? "",
         agencyId:                  user?.id,

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
@@ -12,6 +13,8 @@ import {
   type PremiumMembership,
 } from "@/lib/premiumWorkspace.server";
 import WorkspaceAgentManager from "@/features/agency/WorkspaceAgentManager";
+import { jobStatusLabel, jobStatusTone } from "@/lib/jobStatus";
+import { brl } from "@/lib/brl";
 
 export const metadata: Metadata = { title: "Espaço Premium — BrisaHub" };
 
@@ -90,32 +93,100 @@ function WorkspaceHeader({
   );
 }
 
-// ── Jobs placeholder ──────────────────────────────────────────────────────────
+// ── Team jobs section ─────────────────────────────────────────────────────────
 
-function JobsPlaceholder() {
+type WorkspaceJob = {
+  id: string;
+  title: string;
+  status: string;
+  visibility: string;
+  budget: number | null;
+  createdAt: string;
+  applicants: number;
+  creatorName: string | null;
+};
+
+function TeamJobRow({ job }: { job: WorkspaceJob }) {
+  const isPrivate = job.visibility === "private_invite";
+  return (
+    <Link
+      href={`/agency/jobs/${job.id}`}
+      className="flex items-center gap-4 px-5 py-3.5 hover:bg-zinc-50 transition-colors border-b border-zinc-50 last:border-0"
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-[13px] font-semibold text-zinc-900 truncate">{job.title}</p>
+          {isPrivate && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-100 flex-shrink-0">
+              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              Privada
+            </span>
+          )}
+        </div>
+        {job.creatorName && (
+          <p className="text-[11px] text-zinc-400 mt-0.5">Criada por {job.creatorName}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-3 flex-shrink-0">
+        {job.budget != null && job.budget > 0 && (
+          <span className="text-[12px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+            {brl(job.budget)}
+          </span>
+        )}
+        {job.applicants > 0 && (
+          <span className="text-[11px] text-zinc-500 bg-zinc-50 px-2 py-0.5 rounded-full">
+            {job.applicants} candidatura{job.applicants !== 1 ? "s" : ""}
+          </span>
+        )}
+        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${jobStatusTone(job.status)}`}>
+          {jobStatusLabel(job.status)}
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function TeamJobsSection({ jobs, isOwner }: { jobs: WorkspaceJob[]; isOwner: boolean }) {
   return (
     <div className="bg-white rounded-2xl border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04)] overflow-hidden">
+      <div className="h-[3px] bg-gradient-to-r from-emerald-400 to-teal-500" />
       <div className="p-5 border-b border-zinc-50 flex items-center justify-between">
         <div>
-          <p className="text-[13px] font-semibold text-zinc-900">Vagas exclusivas</p>
+          <p className="text-[13px] font-semibold text-zinc-900">Vagas da equipe</p>
           <p className="text-[12px] text-zinc-400 mt-0.5">
-            Vagas privadas visíveis apenas para membros do workspace
+            {jobs.length} vaga{jobs.length !== 1 ? "s" : ""} no workspace
           </p>
         </div>
-        <button
-          disabled
-          title="Em breve"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-[12px] font-semibold text-zinc-400 cursor-not-allowed"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nova vaga exclusiva
-        </button>
+        {isOwner && (
+          <Link
+            href="/agency/post-job"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] text-white text-[12px] font-semibold hover:from-[#17A58A] hover:to-[#22B5C2] transition-all"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nova vaga
+          </Link>
+        )}
       </div>
-      <div className="p-8 text-center">
-        <p className="text-[13px] text-zinc-400">Vagas exclusivas em breve.</p>
-      </div>
+      {jobs.length === 0 ? (
+        <div className="p-8 text-center">
+          <p className="text-[13px] text-zinc-400">Nenhuma vaga criada no workspace ainda.</p>
+          {isOwner && (
+            <Link href="/agency/post-job" className="mt-3 inline-block text-[13px] font-semibold text-[#1ABC9C] hover:underline">
+              Criar primeira vaga
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div>
+          {jobs.map((job) => (
+            <TeamJobRow key={job.id} job={job} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -156,11 +227,49 @@ export default async function WorkspacePage() {
   const { workspace, membership } = ws;
 
   // Fetch full data in parallel
-  const [seatUsage, members, invites] = await Promise.all([
+  const [seatUsage, members, invites, jobsResult] = await Promise.all([
     getWorkspaceSeatUsage(workspace.id),
     getWorkspaceMembers(workspace.id),
     membership.role === "owner" ? getWorkspacePendingInvites(workspace.id) : Promise.resolve([]),
+    supabase
+      .from("jobs")
+      .select("id, title, status, visibility, budget, created_at, created_by_user_id")
+      .eq("workspace_id", workspace.id)
+      .order("created_at", { ascending: false }),
   ]);
+
+  // Enrich jobs with submission counts and creator names
+  const jobRows = jobsResult.data ?? [];
+  const jobIds = jobRows.map((r) => r.id);
+  const creatorIds = [...new Set(jobRows.map((r) => r.created_by_user_id).filter((id): id is string => !!id))];
+
+  const [subsCountMap, creatorNameMap] = await Promise.all([
+    jobIds.length
+      ? supabase.from("submissions").select("job_id").in("job_id", jobIds).then(({ data }) => {
+          const m = new Map<string, number>();
+          for (const s of data ?? []) m.set(s.job_id, (m.get(s.job_id) ?? 0) + 1);
+          return m;
+        })
+      : Promise.resolve(new Map<string, number>()),
+    creatorIds.length
+      ? supabase.from("agencies").select("id, company_name").in("id", creatorIds).then(({ data }) => {
+          const m = new Map<string, string>();
+          for (const a of data ?? []) m.set(a.id, a.company_name ?? "");
+          return m;
+        })
+      : Promise.resolve(new Map<string, string>()),
+  ]);
+
+  const workspaceJobs: WorkspaceJob[] = jobRows.map((r) => ({
+    id:          String(r.id),
+    title:       r.title ?? "",
+    status:      r.status ?? "open",
+    visibility:  r.visibility ?? "public",
+    budget:      r.budget ?? null,
+    createdAt:   r.created_at ?? "",
+    applicants:  subsCountMap.get(r.id) ?? 0,
+    creatorName: r.created_by_user_id ? (creatorNameMap.get(r.created_by_user_id) ?? null) : null,
+  }));
 
   return (
     <div className="space-y-6">
@@ -188,8 +297,8 @@ export default async function WorkspacePage() {
         </div>
       </div>
 
-      {/* Jobs placeholder */}
-      <JobsPlaceholder />
+      {/* Team jobs */}
+      <TeamJobsSection jobs={workspaceJobs} isOwner={membership.role === "owner"} />
     </div>
   );
 }

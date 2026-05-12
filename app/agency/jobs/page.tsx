@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import JobList from "@/features/agency/JobList";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
 
 export const metadata: Metadata = { title: "Vagas — BrisaHub" };
 
@@ -11,12 +12,20 @@ export default async function JobsPage() {
 
   const supabase = createServerClient({ useServiceRole: true });
 
+  // Workspace members see their own jobs + all workspace jobs
+  const ws = user ? await getUserPremiumWorkspace(user.id) : null;
+
   let query = supabase
     .from("jobs")
     .select("id, title, category, budget, deadline, job_date, description, status, created_at, number_of_talents_required, visibility")
     .order("created_at", { ascending: false });
 
-  if (user) query = query.eq("agency_id", user.id);
+  if (user && ws) {
+    // Show personal jobs + all workspace jobs (includes teammates' private jobs)
+    query = query.or(`agency_id.eq.${user.id},workspace_id.eq.${ws.workspace.id}`);
+  } else if (user) {
+    query = query.eq("agency_id", user.id);
+  }
 
   const { data, error } = await query;
   if (error) console.error("[JobsPage] Failed to fetch jobs:", error.message);
@@ -56,7 +65,7 @@ export default async function JobsPage() {
     jobDate:         row.job_date    ?? null,
     description:     row.description ?? "",
     status:          (row.status     ?? "open") as "open" | "closed" | "draft" | "inactive",
-    visibility:      (row.visibility ?? "public") as "public" | "private",
+    visibility:      (row.visibility ?? "public") as "public" | "private" | "private_invite",
     applicants:      submissionsCountMap.get(row.id) ?? 0,
     talentsNeeded:   row.number_of_talents_required ?? 1,
     talentsSelected: selectedCountMap.get(row.id) ?? 0,

@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
     photo_front_url, photo_left_url, photo_right_url, video_url,
     curriculum_url, portfolio_url,
     talent_name,
+    invite_token,
   } = body;
 
   const referrer_id: string | null =
@@ -123,6 +124,42 @@ export async function POST(req: NextRequest) {
     if (!invite && !linkedReferral) {
       return NextResponse.json(
         { error: "Esta vaga é privada e está disponível apenas para talentos convidados ou indicados." },
+        { status: 403 }
+      );
+    }
+  }
+
+  if (job.visibility === "private_invite") {
+    let hasInviteAccess = false;
+
+    if (typeof invite_token === "string" && invite_token.trim()) {
+      const { data: link } = await supabase
+        .from("job_invite_links")
+        .select("id, status, expires_at, revoked_at")
+        .eq("token", invite_token.trim())
+        .eq("job_id", job_id)
+        .maybeSingle();
+
+      hasInviteAccess = !!(
+        link &&
+        link.status === "active" &&
+        !link.revoked_at &&
+        (!link.expires_at || new Date(link.expires_at) > new Date())
+      );
+
+      if (hasInviteAccess) {
+        // Increment use_count (best-effort, don't fail the submission if this errors)
+        await supabase
+          .from("job_invite_links")
+          .update({ use_count: (link as unknown as { use_count: number }).use_count + 1 })
+          .eq("id", link!.id)
+          .then(() => null);
+      }
+    }
+
+    if (!hasInviteAccess && !linkedReferral) {
+      return NextResponse.json(
+        { error: "Esta vaga é privada e exige convite." },
         { status: 403 }
       );
     }

@@ -22,7 +22,7 @@ type FormData = {
   age_max: string;
   number_of_talents_required: string;
   auto_invite: boolean;
-  visibility: "public" | "private";
+  visibility: "public" | "private_invite";
   application_requirements: string[];
 };
 
@@ -347,8 +347,9 @@ function SuccessScreen({ title, draft }: { title: string; draft?: boolean }) {
 
 export default function PostJobForm() {
   const router = useRouter();
-  const { isActive, isPremium, maxHiresPerJob } = useSubscription();
-  const [form, setForm]       = useState<FormData>(INITIAL);
+  const { isActive, isPremium, isWorkspaceAgent, maxHiresPerJob } = useSubscription();
+  const isWorkspaceMember = isPremium || isWorkspaceAgent;
+  const [form, setForm]       = useState<FormData>({ ...INITIAL, visibility: isWorkspaceMember ? "private_invite" : "public" });
   const [touched, setTouched] = useState<Partial<Record<keyof FormData, boolean>>>({});
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [submitted, setSubmitted] = useState<"posted" | "draft" | null>(null);
@@ -402,7 +403,7 @@ export default function PostJobForm() {
         age_max: form.age_max ? Number(form.age_max) : null,
         number_of_talents_required: Number(form.number_of_talents_required) || 1,
         auto_invite: status === "open" ? form.auto_invite : false,
-        visibility: isPremium ? form.visibility : "public",
+        visibility: isWorkspaceMember ? form.visibility : "public",
         application_requirements: form.application_requirements,
         status,
       }),
@@ -765,42 +766,65 @@ export default function PostJobForm() {
               <p className="text-[12px] text-zinc-400">Opcional. Deixe em branco para aceitar qualquer candidatura.</p>
             </div>
 
-            {/* Private job toggle — premium only */}
-            {isPremium && (
-              <button
-                type="button"
-                onClick={() => setForm((p) => ({ ...p, visibility: p.visibility === "private" ? "public" : "private" }))}
-                className={[
-                  "w-full flex items-start gap-4 px-5 py-4 rounded-2xl border text-left transition-all cursor-pointer",
-                  form.visibility === "private"
-                    ? "bg-violet-50 border-violet-200"
-                    : "bg-zinc-50 border-zinc-100 hover:border-zinc-200",
-                ].join(" ")}
-              >
-                <div className={[
-                  "relative flex-shrink-0 w-10 h-6 rounded-full transition-colors mt-0.5",
-                  form.visibility === "private" ? "bg-violet-600" : "bg-zinc-300",
-                ].join(" ")}>
-                  <div className={[
-                    "absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform",
-                    form.visibility === "private" ? "translate-x-5" : "translate-x-1",
-                  ].join(" ")} />
+            {/* Visibility selector — workspace members only */}
+            {isWorkspaceMember && (
+              <div className="flex flex-col gap-2">
+                <label className="text-[13px] font-medium text-zinc-500 tracking-tight">
+                  Visibilidade da vaga
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setForm((p) => ({ ...p, visibility: "public" }))}
+                    className={[
+                      "flex items-start gap-3 px-4 py-3.5 rounded-2xl border text-left transition-all cursor-pointer",
+                      form.visibility === "public"
+                        ? "bg-emerald-50 border-emerald-200"
+                        : "bg-zinc-50 border-zinc-100 hover:border-zinc-200",
+                    ].join(" ")}
+                  >
+                    <div className={[
+                      "mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0",
+                      form.visibility === "public" ? "border-emerald-500 bg-emerald-500" : "border-zinc-300",
+                    ].join(" ")}>
+                      {form.visibility === "public" && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div>
+                      <p className={["text-[13px] font-semibold", form.visibility === "public" ? "text-emerald-900" : "text-zinc-700"].join(" ")}>
+                        Pública
+                      </p>
+                      <p className={["text-[12px] mt-0.5", form.visibility === "public" ? "text-emerald-600" : "text-zinc-400"].join(" ")}>
+                        Aparece para talentos na plataforma.
+                      </p>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm((p) => ({ ...p, visibility: "private_invite" }))}
+                    className={[
+                      "flex items-start gap-3 px-4 py-3.5 rounded-2xl border text-left transition-all cursor-pointer",
+                      form.visibility === "private_invite"
+                        ? "bg-violet-50 border-violet-200"
+                        : "bg-zinc-50 border-zinc-100 hover:border-zinc-200",
+                    ].join(" ")}
+                  >
+                    <div className={[
+                      "mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0",
+                      form.visibility === "private_invite" ? "border-violet-500 bg-violet-500" : "border-zinc-300",
+                    ].join(" ")}>
+                      {form.visibility === "private_invite" && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div>
+                      <p className={["text-[13px] font-semibold", form.visibility === "private_invite" ? "text-violet-900" : "text-zinc-700"].join(" ")}>
+                        Privada por convite
+                      </p>
+                      <p className={["text-[12px] mt-0.5", form.visibility === "private_invite" ? "text-violet-600" : "text-zinc-400"].join(" ")}>
+                        Somente talentos com o link privado podem acessar.
+                      </p>
+                    </div>
+                  </button>
                 </div>
-                <div>
-                  <p className={[
-                    "text-[14px] font-semibold",
-                    form.visibility === "private" ? "text-violet-900" : "text-zinc-700",
-                  ].join(" ")}>
-                    Vaga privada (apenas convidados)
-                  </p>
-                  <p className={[
-                    "text-[12px] mt-0.5 leading-relaxed",
-                    form.visibility === "private" ? "text-violet-600" : "text-zinc-400",
-                  ].join(" ")}>
-                    A vaga não aparece no marketplace público. Somente talentos que você convidar poderão se candidatar.
-                  </p>
-                </div>
-              </button>
+              </div>
             )}
 
             {/* Auto-invite toggle */}

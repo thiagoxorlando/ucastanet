@@ -163,7 +163,7 @@ export default async function PublicJobPage({ params, searchParams }: Props) {
       .neq("status", "fraud_reported")
       .maybeSingle();
 
-    if (job.visibility === "private" && !invite) notFound();
+    if ((job.visibility === "private" || job.visibility === "private_invite") && !invite) notFound();
 
     const [{ data: agency }, { data: referrer }] = await Promise.all([
       job.agency_id

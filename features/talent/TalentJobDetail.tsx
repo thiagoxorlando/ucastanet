@@ -578,11 +578,13 @@ export default function TalentJobDetail({
   talentGender = null,
   talentAge = null,
   liveCommissionRate = 0.2,
+  inviteToken = null,
 }: {
   job: TalentJobDetailProps | null;
   talentGender?: string | null;
   talentAge?: number | null;
   liveCommissionRate?: number;
+  inviteToken?: string | null;
 }) {
   const router = useRouter();
   const [step, setStep]             = useState<StepId>("info");
@@ -668,9 +670,10 @@ export default function TalentJobDetail({
       const uid = user.id;
       const ts  = Date.now();
       const payload: Record<string, string | null> = {
-        job_id:      job.id,
-        talent_id:   uid,
-        email:       user.email ?? "",
+        job_id:       job.id,
+        talent_id:    uid,
+        email:        user.email ?? "",
+        invite_token: inviteToken ?? null,
         bio:         "",
         mode:        "self",
         referrer_id: null,

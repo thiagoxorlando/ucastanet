@@ -16,7 +16,7 @@ export type Job = {
   jobDate: string | null;
   description: string;
   status: "open" | "closed" | "draft" | "inactive";
-  visibility: "public" | "private";
+  visibility: "public" | "private" | "private_invite";
   applicants: number;
   talentsNeeded: number;
   talentsSelected: number;
@@ -92,9 +92,9 @@ function JobCard({ job, onUpdate, onRemove }: {
       <div className="p-5 flex flex-col gap-4 flex-1">
         {/* Title row */}
         <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-1.5 min-w-0">
-            {job.visibility === "private" && (
-              <svg className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            {(job.visibility === "private" || job.visibility === "private_invite") && (
+              <svg className="w-3.5 h-3.5 text-violet-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             )}
@@ -102,9 +102,16 @@ function JobCard({ job, onUpdate, onRemove }: {
               {job.title}
             </h3>
           </div>
-          <span className={`flex-shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${jobStatusTone(job.status)}`}>
-            {lang === "en" ? job.status : jobStatusLabel(job.status)}
-          </span>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {job.visibility === "private_invite" && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-600 border border-violet-100">
+                Privada
+              </span>
+            )}
+            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${jobStatusTone(job.status)}`}>
+              {lang === "en" ? job.status : jobStatusLabel(job.status)}
+            </span>
+          </div>
         </div>
 
         {/* Category */}

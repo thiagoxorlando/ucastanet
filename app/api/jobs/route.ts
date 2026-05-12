@@ -5,6 +5,7 @@ import { notify } from "@/lib/notify";
 import { requireJobLimit, requireTalentsNeededForJob } from "@/lib/requireActiveSubscription";
 import { getJobSuggestions } from "@/lib/getJobSuggestions";
 import { resolvePlanInfo } from "@/lib/plans";
+import { getUserPremiumWorkspace, ensurePremiumWorkspaceForAgency } from "@/lib/premiumWorkspace.server";
 
 function mapJobCreationError(message: string) {
   const normalized = message.toLowerCase();
@@ -78,25 +79,50 @@ export async function POST(req: NextRequest) {
   const hiresLimited = await requireTalentsNeededForJob(agencyId, Number(number_of_talents_required) || 1);
   if (hiresLimited) return hiresLimited;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("plan")
-    .eq("id", agencyId)
-    .single();
+  const [{ data: profile }, wsResult] = await Promise.all([
+    supabase.from("profiles").select("plan").eq("id", agencyId).single(),
+    getUserPremiumWorkspace(agencyId),
+  ]);
   const planInfo = resolvePlanInfo(profile);
 
-  // Only premium agencies may create private jobs
-  const isPremium = planInfo.plan === "premium";
-  const visibility = isPremium && rawVisibility === "private" ? "private" : "public";
+  // Resolve workspace: check membership first (agents may have plan=free),
+  // then auto-create for Premium owners who haven't visited workspace page yet.
+  let workspaceId: string | null = wsResult?.workspace.id ?? null;
+  const isPremiumPlan = planInfo.plan === "premium";
+  const isWorkspaceMember = !!wsResult;
+
+  if (!workspaceId && isPremiumPlan) {
+    const created = await ensurePremiumWorkspaceForAgency(agencyId);
+    workspaceId = created?.workspace.id ?? null;
+  }
+
+  const canUsePrivateInvite = isWorkspaceMember || (isPremiumPlan && !!workspaceId);
+
+  if (rawVisibility === "private_invite" && !canUsePrivateInvite) {
+    return NextResponse.json(
+      { error: "Vagas privadas estão disponíveis apenas no Premium." },
+      { status: 403 }
+    );
+  }
+
+  let visibility: string;
+  if (canUsePrivateInvite && rawVisibility === "private_invite") {
+    visibility = "private_invite";
+  } else if (isPremiumPlan && rawVisibility === "private") {
+    visibility = "private";
+  } else {
+    visibility = "public";
+  }
 
   console.log("[plan] create_job", {
     agencyId,
     plan: planInfo.plan,
     visibility,
+    workspaceId,
     maxActiveJobs: planInfo.maxActiveJobs,
   });
 
-  const baseInsert = {
+  const baseInsert: Record<string, unknown> = {
     title, description, category, budget, deadline, agency_id: agencyId,
     visibility,
     job_date:                   job_date  ?? null,
@@ -109,6 +135,13 @@ export async function POST(req: NextRequest) {
     number_of_talents_required: number_of_talents_required ?? 1,
     status:                     status ?? "open",
   };
+
+  // Tag workspace jobs with server-resolved workspace_id and creator identity
+  if (workspaceId && canUsePrivateInvite) {
+    baseInsert.workspace_id       = workspaceId;
+    baseInsert.created_by_user_id = agencyId;
+    baseInsert.invite_only        = visibility === "private_invite";
+  }
 
   let { data, error } = await supabase
     .from("jobs")
@@ -135,7 +168,7 @@ export async function POST(req: NextRequest) {
   // Auto-invite — for private jobs, only invite from agency history + existing invitees
   if (auto_invite && isPublished) {
     const supabaseInvite = createServerClient({ useServiceRole: true });
-    const { suggestions, job_date: jDate } = await getJobSuggestions(data.id, agencyId, 5, visibility === "private");
+    const { suggestions, job_date: jDate } = await getJobSuggestions(data.id, agencyId, 5, visibility === "private" || visibility === "private_invite");
     const toInvite = suggestions.filter((s) => !s.is_unavailable);
 
     if (toInvite.length > 0) {
@@ -160,7 +193,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Public jobs: notify all available talents. Private jobs: invites only (above).
-  if (isPublished && visibility === "public") {
+  if (isPublished && visibility === "public" && !workspaceId) {
     let talentIds: string[] = [];
 
     if (job_date) {

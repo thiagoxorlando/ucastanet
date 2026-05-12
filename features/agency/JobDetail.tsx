@@ -25,7 +25,9 @@ type Job = {
   jobDate?: string | null;
   jobTime?: string | null;
   status: "open" | "closed" | "draft" | "inactive";
-  visibility?: "public" | "private";
+  visibility?: "public" | "private" | "private_invite";
+  inviteOnly?: boolean;
+  workspaceId?: string | null;
   postedAt: string;
   agencyId?: string;
   numberOfTalentsRequired?: number;
@@ -1048,6 +1050,9 @@ export default function JobDetail({
   const [submissionList, setSubmissionList] = useState<Submission[]>(submissions ?? []);
   const [copyFeedback, setCopyFeedback] = useState("");
   const [manualCopyUrl, setManualCopyUrl] = useState("");
+  const [inviteCopyFeedback, setInviteCopyFeedback] = useState("");
+  const [inviteLinkUrl, setInviteLinkUrl] = useState<string | null>(null);
+  const [inviteLinkLoading, setInviteLinkLoading] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<Job["status"]>(job?.status ?? "open");
   const [pendingStatus, setPendingStatus]  = useState<Job["status"]>(job?.status ?? "open");
   const [statusChanging, setStatusChanging] = useState(false);
@@ -1170,6 +1175,32 @@ export default function JobDetail({
     }
   }
 
+  async function handleCopyInviteLink() {
+    if (!job) return;
+    setInviteLinkLoading(true);
+    setInviteCopyFeedback("");
+    try {
+      const res = await fetch(`/api/agency/jobs/${job.id}/invite-link`, { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setInviteCopyFeedback(body.error ?? "Não foi possível gerar o link.");
+        setInviteLinkLoading(false);
+        return;
+      }
+      const { inviteUrl } = await res.json();
+      setInviteLinkUrl(inviteUrl);
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+        setInviteCopyFeedback("Link de convite copiado!");
+      } catch {
+        setInviteCopyFeedback("Copie o link abaixo manualmente.");
+      }
+    } catch {
+      setInviteCopyFeedback("Erro ao gerar link.");
+    }
+    setInviteLinkLoading(false);
+  }
+
   return (
     <div className="max-w-5xl space-y-6">
 
@@ -1203,12 +1234,12 @@ export default function JobDetail({
               <span className={`text-[12px] font-medium px-2.5 py-1 rounded-full ${jobStatusTone(currentStatus)}`}>
                 {{ open: "Aberta", closed: "Fechada", draft: "Rascunho", inactive: "Inativa" }[currentStatus] ?? currentStatus}
               </span>
-              {job.visibility === "private" && (
+              {(job.visibility === "private" || job.visibility === "private_invite") && (
                 <span className="inline-flex items-center gap-1 text-[12px] font-medium bg-violet-50 text-violet-600 border border-violet-100 px-2.5 py-1 rounded-full">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
-                  Privada
+                  {job.visibility === "private_invite" ? "Privada por convite" : "Privada"}
                 </span>
               )}
               <span className="text-[12px] font-medium bg-white/20 text-white border border-white/20 px-2.5 py-1 rounded-full">
@@ -1235,6 +1266,26 @@ export default function JobDetail({
           {role === "agency" && (
             <div className="space-y-3 flex-shrink-0">
               <div className="flex items-center gap-3 flex-wrap">
+                {job.visibility === "private_invite" ? (
+                  <button
+                    type="button"
+                    onClick={handleCopyInviteLink}
+                    disabled={inviteLinkLoading}
+                    className="inline-flex items-center gap-2 bg-white text-[#1F2D2E] text-[13px] font-bold px-5 py-2.5 rounded-xl transition-all duration-150 hover:bg-white/90 cursor-pointer disabled:opacity-60"
+                  >
+                    {inviteLinkLoading ? (
+                      <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    )}
+                    Copiar convite privado
+                  </button>
+                ) : (
                 <button
                   type="button"
                   onClick={handleCopyJobLink}
@@ -1246,6 +1297,7 @@ export default function JobDetail({
                   </svg>
                   Compartilhar Vaga
                 </button>
+                )}
 
                 {currentStatus !== "closed" && (
                   <Link
@@ -1265,7 +1317,20 @@ export default function JobDetail({
                 <p className="text-[12px] font-medium text-white/80">{copyFeedback}</p>
               )}
 
-              {!canShareJob && (
+              {inviteCopyFeedback && (
+                <p className="text-[12px] font-medium text-white/80">{inviteCopyFeedback}</p>
+              )}
+
+              {inviteLinkUrl && inviteCopyFeedback === "Copie o link abaixo manualmente." && (
+                <input
+                  readOnly
+                  value={inviteLinkUrl}
+                  className="w-full text-[11px] bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white font-mono select-all"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
+              )}
+
+              {!canShareJob && job.visibility !== "private_invite" && (
                 <p className="text-[12px] font-medium text-white/80">
                   Esta vaga não está aberta para novas candidaturas.
                 </p>
