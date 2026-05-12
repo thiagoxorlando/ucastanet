@@ -39,6 +39,7 @@ const pageMeta: Record<string, { title: string; description: string }> = {
   "/admin/jobs":            { title: "Vagas",                description: "Visualize todas as vagas da plataforma" },
   "/admin/users":           { title: "Usuários",             description: "Gerencie agências e talentos" },
   "/admin/bookings":        { title: "Reservas",             description: "Visualize todas as reservas da plataforma" },
+  "/admin/premium":         { title: "Premium",              description: "Monitore os espaços de trabalho Premium da plataforma" },
   "/admin/finances":        { title: "Financeiro",           description: "Receita e comissões da plataforma" },
   "/admin/reconciliation":  { title: "Reconciliação",         description: "Compare registros financeiros do app com eventos Asaas" },
   "/admin/plans":           { title: "Planos",               description: "Acompanhe planos, cobranças e histórico das agências" },
