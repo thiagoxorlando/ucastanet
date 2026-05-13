@@ -8,6 +8,7 @@ import { useRole } from "@/lib/RoleProvider";
 import { supabase } from "@/lib/supabase";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { useT } from "@/lib/LanguageContext";
+import { useSubscription } from "@/lib/SubscriptionContext";
 import heroBrandImage from "@/public/landing/brisahub-hero-brand.png";
 
 type NavItem = {
@@ -17,7 +18,7 @@ type NavItem = {
   icon: React.ReactNode;
 };
 
-const AGENCY_NAV: NavItem[] = [
+const AGENCY_OPEN_NAV: NavItem[] = [
   {
     labelKey: "nav_dashboard",
     href: "/agency/dashboard",
@@ -32,7 +33,7 @@ const AGENCY_NAV: NavItem[] = [
     ),
   },
   {
-    labelKey: "nav_jobs",
+    labelKey: "nav_public_jobs",
     href: "/agency/jobs",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,32 +53,12 @@ const AGENCY_NAV: NavItem[] = [
     ),
   },
   {
-    labelKey: "nav_team",
-    href: "/agency/talent-history",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
-          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    ),
-  },
-  {
     labelKey: "nav_bookings",
     href: "/agency/bookings",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-      </svg>
-    ),
-  },
-  {
-    labelKey: "nav_post_job",
-    href: "/agency/post-job",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
-          d="M12 4v16m8-8H4" />
       </svg>
     ),
   },
@@ -112,16 +93,6 @@ const AGENCY_NAV: NavItem[] = [
     ),
   },
   {
-    labelKey: "nav_workspace",
-    href: "/agency/workspace",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
-          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-      </svg>
-    ),
-  },
-  {
     labelKey: "nav_support",
     href: "/agency/support",
     icon: (
@@ -131,13 +102,133 @@ const AGENCY_NAV: NavItem[] = [
       </svg>
     ),
   },
+];
+
+// Agents only see dashboard in the open platform section (no billing/plan controls)
+const AGENCY_AGENT_OPEN_NAV: NavItem[] = [
+  AGENCY_OPEN_NAV[0],
+];
+
+const AGENCY_PREMIUM_NAV: NavItem[] = [
+  {
+    labelKey: "nav_workspace_overview",
+    href: "/agency/workspace",
+    exact: true,
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 21V12h6v9" />
+      </svg>
+    ),
+  },
+  {
+    labelKey: "nav_workspace_jobs",
+    href: "/agency/workspace/jobs",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+    ),
+  },
+  {
+    labelKey: "nav_workspace_talents",
+    href: "/agency/workspace/talents",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M17 20h5v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2h5M12 12a4 4 0 100-8 4 4 0 000 8z" />
+      </svg>
+    ),
+  },
+  {
+    labelKey: "nav_workspace_agents",
+    href: "/agency/workspace/agents",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+  },
+  {
+    labelKey: "nav_workspace_wallet",
+    href: "/agency/workspace/wallet",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  {
+    labelKey: "nav_workspace_contracts",
+    href: "/agency/workspace/contracts",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
+  },
+  {
+    labelKey: "nav_workspace_bookings",
+    href: "/agency/workspace/bookings",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+      </svg>
+    ),
+  },
+  {
+    labelKey: "nav_workspace_branding",
+    href: "/agency/workspace/branding",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 6l2.3 4.66L19 12l-4.7 1.34L12 18l-2.3-4.66L5 12l4.7-1.34L12 6z" />
+      </svg>
+    ),
+  },
+];
+
+// Open platform nav for non-Premium agencies (no workspace upsell — goes in its own section)
+const AGENCY_NON_PREMIUM_OPEN_NAV: NavItem[] = [
+  ...AGENCY_OPEN_NAV.slice(0, 3),
+  {
+    labelKey: "nav_team",
+    href: "/agency/talent-history",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
+          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    ),
+  },
+  AGENCY_OPEN_NAV[3],
+  {
+    labelKey: "nav_post_job",
+    href: "/agency/post-job",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 4v16m8-8H4" />
+      </svg>
+    ),
+  },
+  ...AGENCY_OPEN_NAV.slice(4),
   {
     labelKey: "nav_profile",
     href: "/agency/profile",
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
-          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+      </svg>
+    ),
+  },
+];
+
+// Single upsell entry shown to non-Premium agencies in the Premium section
+const AGENCY_WORKSPACE_UPSELL_NAV: NavItem[] = [
+  {
+    labelKey: "nav_workspace",
+    href: "/agency/workspace",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
       </svg>
     ),
   },
@@ -431,6 +522,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { displayName, agentName, email, initials, avatarUrl, loading } = useUserProfile();
   const [imgError, setImgError] = useState(false);
   const { t } = useT();
+  const { isPremium, isWorkspaceAgent } = useSubscription();
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -441,12 +533,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     pathname.startsWith("/talent") ? "talent" :
     pathname.startsWith("/admin")  ? "admin"  : "agency"
   );
-  const navItems =
-    inferredRole === "talent" ? TALENT_NAV :
-    inferredRole === "admin"  ? ADMIN_NAV  : AGENCY_NAV;
   const portalLabel =
     inferredRole === "talent" ? t("portal_talent") :
     inferredRole === "admin"  ? t("portal_admin")  : t("portal_agency");
+  const hasPremiumAccess = inferredRole === "agency" && (isPremium || isWorkspaceAgent);
+  const openAgencyNav = isWorkspaceAgent ? AGENCY_AGENT_OPEN_NAV : AGENCY_OPEN_NAV;
+  const navSections = inferredRole === "agency"
+    ? hasPremiumAccess
+      ? [
+          { titleKey: "nav_open_platform", items: openAgencyNav },
+          { titleKey: "nav_premium_workspace_section", items: AGENCY_PREMIUM_NAV },
+        ]
+      : [
+          { titleKey: "nav_open_platform", items: AGENCY_NON_PREMIUM_OPEN_NAV },
+          { titleKey: "nav_premium_workspace_section", items: AGENCY_WORKSPACE_UPSELL_NAV },
+        ]
+    : [
+        { titleKey: "nav_menu", items: inferredRole === "talent" ? TALENT_NAV : ADMIN_NAV },
+      ];
 
   return (
     <>
@@ -497,36 +601,42 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="relative flex-1 px-3 py-5 overflow-y-auto">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#88A6A1] px-3 mb-2.5">
-            {t("nav_menu")}
-          </p>
-          <ul className="flex flex-col gap-0.5">
-            {navItems.map((item) => {
-              const isActive = item.exact
-                ? pathname === item.href
-                : pathname.startsWith(item.href);
+          <div className="space-y-5">
+            {navSections.map((section) => (
+              <div key={section.titleKey}>
+                <p className="mb-2.5 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#88A6A1]">
+                  {t(section.titleKey as any)}
+                </p>
+                <ul className="flex flex-col gap-0.5">
+                  {section.items.map((item) => {
+                    const isActive = item.exact
+                      ? pathname === item.href
+                      : pathname.startsWith(item.href);
 
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={onClose}
-                    className={[
-                      "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all",
-                      isActive
-                        ? "bg-[#1ABC9C]/18 text-white ring-1 ring-[#49D5C3]/35 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
-                        : "text-[#C7D9D5] hover:bg-white/8 hover:text-white",
-                    ].join(" ")}
-                  >
-                    <span className={isActive ? "text-[#7BF0DE]" : "text-[#8FB1AB]"}>
-                      {item.icon}
-                    </span>
-                    {t(item.labelKey as any)}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+                    return (
+                      <li key={item.href}>
+                        <Link
+                          href={item.href}
+                          onClick={onClose}
+                          className={[
+                            "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all",
+                            isActive
+                              ? "bg-[#1ABC9C]/18 text-white ring-1 ring-[#49D5C3]/35 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                              : "text-[#C7D9D5] hover:bg-white/8 hover:text-white",
+                          ].join(" ")}
+                        >
+                          <span className={isActive ? "text-[#7BF0DE]" : "text-[#8FB1AB]"}>
+                            {item.icon}
+                          </span>
+                          {t(item.labelKey as any)}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
         </nav>
 
         {/* Divider */}
