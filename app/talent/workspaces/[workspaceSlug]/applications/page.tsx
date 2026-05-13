@@ -99,7 +99,7 @@ export default async function WorkspaceApplicationsPage({ params }: Props) {
                     </span>
                     {job?.id && (
                       <Link
-                        href={`/talent/jobs/${job.id}`}
+                        href={`/talent/workspaces/${workspaceSlug}/jobs/${job.id}`}
                         className="ml-auto text-[12px] font-medium text-zinc-500 hover:text-zinc-700"
                       >
                         Ver vaga →

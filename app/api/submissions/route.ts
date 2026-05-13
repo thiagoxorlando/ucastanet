@@ -5,6 +5,7 @@ import { notify } from "@/lib/notify";
 import { getLivePlanSetting } from "@/lib/planSettings.server";
 import { isJobOpenForApplications, JOB_UNAVAILABLE_MESSAGE } from "@/lib/jobAvailability";
 import type { Plan } from "@/lib/plans";
+import { hasActivePremiumWorkspaceTalentMembership, isWorkspacePortalJobVisibility } from "@/lib/workspacePortalJobs";
 
 type LinkedReferral = {
   id: string;
@@ -69,14 +70,14 @@ export async function POST(req: NextRequest) {
 
   let { data: job, error: jobError } = await supabase
     .from("jobs")
-    .select("id, title, agency_id, visibility, status, deleted_at, number_of_talents_required, application_requirements")
+    .select("id, title, agency_id, workspace_id, visibility, status, deleted_at, number_of_talents_required, application_requirements")
     .eq("id", job_id)
     .single();
 
   if (jobError?.message?.includes("application_requirements")) {
     ({ data: job, error: jobError } = await supabase
       .from("jobs")
-      .select("id, title, agency_id, visibility, status, deleted_at, number_of_talents_required")
+      .select("id, title, agency_id, workspace_id, visibility, status, deleted_at, number_of_talents_required")
       .eq("id", job_id)
       .single());
   }
@@ -144,32 +145,44 @@ export async function POST(req: NextRequest) {
     typeof invite_token === "string" && invite_token.trim() ? invite_token.trim() : null;
   let inviteLinkId: string | null = null;
   let inviteUseCount = 0;
+  const workspaceMemberAccess = await hasActivePremiumWorkspaceTalentMembership(
+    supabase,
+    (job as { workspace_id?: string | null }).workspace_id ?? null,
+    user.id,
+  );
 
   if (job.visibility === "private_invite") {
-    if (!normalizedInviteToken) {
+    if (!normalizedInviteToken && !workspaceMemberAccess) {
       return NextResponse.json({ error: "Convite inválido ou expirado." }, { status: 403 });
     }
 
-    const { data: link } = await supabase
+    if (!workspaceMemberAccess) {
+      const { data: link } = await supabase
       .from("job_invite_links")
       .select("id, status, expires_at, revoked_at, use_count, max_uses")
       .eq("token", normalizedInviteToken)
       .eq("job_id", job_id)
       .maybeSingle();
 
-    const validInvite =
+      const validInvite =
       !!link &&
       link.status === "active" &&
       !link.revoked_at &&
       (!link.expires_at || new Date(link.expires_at) > new Date()) &&
       (link.max_uses == null || Number(link.use_count ?? 0) < Number(link.max_uses));
 
-    if (!validInvite) {
+      if (!validInvite) {
       return NextResponse.json({ error: "Convite inválido ou expirado." }, { status: 403 });
     }
 
-    inviteLinkId = String(link.id);
-    inviteUseCount = Number(link.use_count ?? 0);
+      inviteLinkId = String(link.id);
+      inviteUseCount = Number(link.use_count ?? 0);
+    }
+  } else if (isWorkspacePortalJobVisibility(job.visibility) && !workspaceMemberAccess) {
+    return NextResponse.json(
+      { error: "VocÃª precisa entrar no portal desta agÃªncia para acessar esta vaga." },
+      { status: 403 }
+    );
   }
 
   if (isSelfApplication) {

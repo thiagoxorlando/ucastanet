@@ -574,12 +574,16 @@ export default function TalentJobDetail({
   talentAge = null,
   liveCommissionRate = 0.2,
   inviteToken = null,
+  jobsHref = "/talent/jobs",
+  dashboardHref = "/talent/dashboard",
 }: {
   job: TalentJobDetailProps | null;
   talentGender?: string | null;
   talentAge?: number | null;
   liveCommissionRate?: number;
   inviteToken?: string | null;
+  jobsHref?: string;
+  dashboardHref?: string;
 }) {
   const router = useRouter();
   const [step, setStep]             = useState<StepId>("info");
@@ -596,7 +600,7 @@ export default function TalentJobDetail({
     return (
       <div className="max-w-sm mx-auto pt-20 text-center">
         <p className="text-[15px] font-medium text-zinc-700">Vaga não encontrada</p>
-        <Link href="/talent/jobs" className="text-[13px] text-zinc-400 hover:text-zinc-700 transition-colors mt-3 inline-block">
+        <Link href={jobsHref} className="text-[13px] text-zinc-400 hover:text-zinc-700 transition-colors mt-3 inline-block">
           ← Voltar para Vagas
         </Link>
       </div>
@@ -747,7 +751,7 @@ export default function TalentJobDetail({
           <span className="font-medium text-zinc-700">&quot;{job!.title}&quot;</span>.
         </p>
         <Link
-          href="/talent/dashboard"
+          href={dashboardHref}
           className="inline-flex items-center justify-center gap-2 bg-[#1F2D2E] text-white text-[13px] font-medium px-5 py-2.5 rounded-xl hover:bg-[#2D4142] transition-colors"
         >
           Ir para o Painel
@@ -770,13 +774,13 @@ export default function TalentJobDetail({
         </p>
         <div className="flex flex-col gap-3">
           <Link
-            href="/talent/jobs"
+            href={jobsHref}
             className="inline-flex items-center justify-center gap-2 bg-[#1F2D2E] text-white text-[13px] font-medium px-5 py-2.5 rounded-xl hover:bg-[#2D4142] transition-colors"
           >
             Ver mais vagas
           </Link>
           <Link
-            href="/talent/dashboard"
+            href={dashboardHref}
             className="inline-flex items-center justify-center gap-2 bg-white border border-zinc-200 text-zinc-700 text-[13px] font-medium px-5 py-2.5 rounded-xl hover:border-zinc-300 transition-colors"
           >
             Ir para o Painel
@@ -798,7 +802,7 @@ export default function TalentJobDetail({
 
       {/* Back */}
       <Link
-        href="/talent/jobs"
+        href={jobsHref}
         className="inline-flex items-center gap-1.5 text-[13px] text-zinc-400 hover:text-zinc-700 transition-colors"
       >
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1067,5 +1071,4 @@ export default function TalentJobDetail({
     </div>
   );
 }
-
 

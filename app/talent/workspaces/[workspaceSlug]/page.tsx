@@ -103,7 +103,7 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
             {privateJobs.slice(0, 4).map((job) => (
               <li key={job.id}>
                 <Link
-                  href={`/talent/jobs/${job.id}`}
+                  href={`/talent/workspaces/${workspaceSlug}/jobs/${job.id}`}
                   className="block rounded-[18px] border border-zinc-200 bg-white p-4 transition-shadow hover:shadow-[0_6px_20px_rgba(15,23,42,0.08)]"
                 >
                   <p className="text-[14px] font-semibold text-zinc-950 truncate">{job.title}</p>

@@ -5,6 +5,7 @@ import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { isJobOpenForApplications, JOB_UNAVAILABLE_MESSAGE } from "@/lib/jobAvailability";
 import { PLAN_DEFINITIONS, type Plan } from "@/lib/plans";
+import { hasPortalJobAccess, isWorkspacePortalJobVisibility } from "@/lib/workspacePortalJobs";
 import TalentJobDetail from "@/features/talent/TalentJobDetail";
 
 type Props = {
@@ -31,14 +32,14 @@ export default async function TalentJobDetailPage({ params, searchParams }: Prop
   const [jobRes, profileRes] = await Promise.all([
     supabase
       .from("jobs")
-      .select("id, title, description, category, budget, deadline, agency_id, location, gender, age_min, age_max, visibility, status, deleted_at, number_of_talents_required, application_requirements")
+      .select("id, title, description, category, budget, deadline, agency_id, workspace_id, location, gender, age_min, age_max, visibility, status, deleted_at, number_of_talents_required, application_requirements")
       .eq("id", id)
       .single()
       .then(async (res) => {
         if (res.error?.message?.includes("application_requirements")) {
           return supabase
             .from("jobs")
-            .select("id, title, description, category, budget, deadline, agency_id, location, gender, age_min, age_max, visibility, status, deleted_at, number_of_talents_required")
+            .select("id, title, description, category, budget, deadline, agency_id, workspace_id, location, gender, age_min, age_max, visibility, status, deleted_at, number_of_talents_required")
             .eq("id", id)
             .single();
         }
@@ -81,35 +82,15 @@ export default async function TalentJobDetailPage({ params, searchParams }: Prop
     }
   }
 
-  if (data.visibility === "private_invite") {
-    let hasAccess = false;
-
-    if (inviteToken) {
-      const { data: link } = await supabase
-        .from("job_invite_links")
-        .select("id, status, expires_at, revoked_at")
-        .eq("token", inviteToken)
-        .eq("job_id", id)
-        .maybeSingle();
-
-      hasAccess = !!(
-        link &&
-        link.status === "active" &&
-        !link.revoked_at &&
-        (!link.expires_at || new Date(link.expires_at) > new Date())
-      );
-    }
-
-    if (!hasAccess) {
-      // Also allow if talent already applied (so they can view their application)
-      const { data: existingSub } = await supabase
-        .from("submissions")
-        .select("id")
-        .eq("job_id", id)
-        .eq("talent_user_id", user.id)
-        .maybeSingle();
-      hasAccess = !!existingSub;
-    }
+  if (data.visibility === "private_invite" || isWorkspacePortalJobVisibility(data.visibility)) {
+    const hasAccess = await hasPortalJobAccess({
+      supabase,
+      jobId: id,
+      talentUserId: user.id,
+      visibility: data.visibility,
+      workspaceId: (data as { workspace_id?: string | null }).workspace_id ?? null,
+      inviteToken,
+    });
 
     if (!hasAccess) return notFound();
   }
