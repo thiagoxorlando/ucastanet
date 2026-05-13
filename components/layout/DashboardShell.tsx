@@ -3,27 +3,43 @@
 import { useState } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
-import { WorkspacePortalProvider } from "@/lib/WorkspacePortalContext";
+import WorkspaceTalentSidebar from "./WorkspaceTalentSidebar";
+import { WorkspacePortalData, WorkspacePortalProvider, useWorkspacePortal } from "@/lib/WorkspacePortalContext";
 
 export default function DashboardShell({
   children,
+  initialWorkspacePortal = null,
 }: {
   children: React.ReactNode;
+  initialWorkspacePortal?: WorkspacePortalData | null;
 }) {
+  return (
+    <WorkspacePortalProvider initialWorkspace={initialWorkspacePortal}>
+      <DashboardShellFrame>{children}</DashboardShellFrame>
+    </WorkspacePortalProvider>
+  );
+}
+
+function DashboardShellFrame({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { workspace } = useWorkspacePortal();
+  const isWorkspacePortal = Boolean(workspace);
+  const contentOffsetClass = isWorkspacePortal ? "lg:ml-72" : "lg:ml-64";
 
   return (
-    <WorkspacePortalProvider>
-      <div className="flex h-screen bg-[#F8FAFC] overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-[#F8FAFC]">
+      {isWorkspacePortal ? (
+        <WorkspaceTalentSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      ) : (
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      )}
 
-        <div className="lg:ml-64 flex flex-col flex-1 overflow-hidden">
-          <Topbar onMenuClick={() => setSidebarOpen(true)} />
-          <main className="flex-1 overflow-y-auto p-6 bg-[#F8FAFC]">
-            {children}
-          </main>
-        </div>
+      <div className={`${contentOffsetClass} flex flex-1 flex-col overflow-hidden`}>
+        <Topbar onMenuClick={() => setSidebarOpen(true)} />
+        <main className="flex-1 overflow-y-auto bg-[#F8FAFC] p-6">
+          {children}
+        </main>
       </div>
-    </WorkspacePortalProvider>
+    </div>
   );
 }

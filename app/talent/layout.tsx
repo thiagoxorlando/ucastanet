@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import DashboardShell from "@/components/layout/DashboardShell";
+import type { WorkspacePortalData } from "@/lib/WorkspacePortalContext";
 
 export default async function TalentLayout({ children }: { children: React.ReactNode }) {
   // ── Auth check ───────────────────────────────────────────────────────────────
@@ -73,5 +74,28 @@ export default async function TalentLayout({ children }: { children: React.React
     }
   }
 
-  return <DashboardShell>{children}</DashboardShell>;
+  let initialWorkspacePortal: WorkspacePortalData | null = null;
+  const workspaceSlug = pathname.match(/^\/talent\/workspaces\/([^/]+)/)?.[1] ?? null;
+
+  if (workspaceSlug) {
+    const { data: workspace } = await supabase
+      .from("premium_workspaces")
+      .select("slug, name, logo_url, brand_primary_color, brand_accent_color")
+      .eq("slug", workspaceSlug)
+      .is("deleted_at", null)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (workspace) {
+      initialWorkspacePortal = {
+        slug: workspace.slug,
+        name: workspace.name,
+        logoUrl: (workspace.logo_url as string | null) ?? null,
+        primaryColor: (workspace.brand_primary_color as string | null) ?? "#1ABC9C",
+        accentColor: (workspace.brand_accent_color as string | null) ?? "#27C1D6",
+      };
+    }
+  }
+
+  return <DashboardShell initialWorkspacePortal={initialWorkspacePortal}>{children}</DashboardShell>;
 }

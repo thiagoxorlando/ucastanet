@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 export type WorkspacePortalData = {
   slug: string;
@@ -20,8 +20,25 @@ const WorkspacePortalContext = createContext<ContextValue>({
   setWorkspace: () => {},
 });
 
-export function WorkspacePortalProvider({ children }: { children: React.ReactNode }) {
-  const [workspace, setWorkspace] = useState<WorkspacePortalData | null>(null);
+export function WorkspacePortalProvider({
+  children,
+  initialWorkspace = null,
+}: {
+  children: React.ReactNode;
+  initialWorkspace?: WorkspacePortalData | null;
+}) {
+  const [workspace, setWorkspace] = useState<WorkspacePortalData | null>(initialWorkspace);
+
+  useEffect(() => {
+    setWorkspace(initialWorkspace);
+  }, [
+    initialWorkspace?.slug,
+    initialWorkspace?.name,
+    initialWorkspace?.logoUrl,
+    initialWorkspace?.primaryColor,
+    initialWorkspace?.accentColor,
+  ]);
+
   return (
     <WorkspacePortalContext.Provider value={{ workspace, setWorkspace }}>
       {children}
