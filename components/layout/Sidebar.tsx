@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useRole } from "@/lib/RoleProvider";
 import { supabase } from "@/lib/supabase";
@@ -523,6 +523,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [imgError, setImgError] = useState(false);
   const { t } = useT();
   const { isPremium, isWorkspaceAgent } = useSubscription();
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("sidebar_collapsed");
+      if (raw) setCollapsedSections(new Set(JSON.parse(raw) as string[]));
+    } catch { /* ignore */ }
+  }, []);
+
+  function toggleSection(key: string) {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      try { localStorage.setItem("sidebar_collapsed", JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+  }
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -552,6 +570,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { titleKey: "nav_menu", items: inferredRole === "talent" ? TALENT_NAV : ADMIN_NAV },
       ];
 
+  const isMultiSection = navSections.length > 1;
+
   return (
     <>
       {/* Mobile backdrop */}
@@ -571,13 +591,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           isOpen ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
       >
-        {/* Background — login left-panel style */}
+        {/* Background */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(39,193,214,0.22),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(26,188,156,0.18),transparent_35%),linear-gradient(180deg,#081718_0%,#041012_100%)]" />
         <div className="absolute inset-0 opacity-[0.04] pointer-events-none" style={{backgroundImage:"linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)",backgroundSize:"48px 48px"}} />
         {/* Right border */}
-        <div className="absolute inset-y-0 right-0 w-px bg-white/8" />
+        <div className="absolute inset-y-0 right-0 w-px bg-white/[0.08]" />
+
         {/* Logo */}
-        <div className="relative flex items-center justify-between px-5 h-16 border-b border-white/8 flex-shrink-0">
+        <div className="relative flex items-center justify-between px-5 h-16 border-b border-white/[0.08] flex-shrink-0">
           <Link href="/" className="flex flex-1 items-center justify-center">
             <Image
               src={heroBrandImage}
@@ -587,7 +608,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               className="h-auto w-full max-w-[72px]"
             />
           </Link>
-
           <button
             onClick={onClose}
             className="lg:hidden w-7 h-7 flex items-center justify-center rounded-lg text-[#B8CECA] hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
@@ -599,54 +619,128 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="relative flex-1 px-3 py-5 overflow-y-auto">
-          <div className="space-y-5">
-            {navSections.map((section) => (
-              <div key={section.titleKey}>
-                <p className="mb-2.5 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#88A6A1]">
-                  {t(section.titleKey as any)}
-                </p>
-                <ul className="flex flex-col gap-0.5">
-                  {section.items.map((item) => {
-                    const isActive = item.exact
-                      ? pathname === item.href
-                      : pathname.startsWith(item.href);
+        {/* Navigation — scroll container with top/bottom fade overlays */}
+        <div className="relative flex-1 min-h-0">
+          {/* Top fade */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-5 z-10 bg-gradient-to-b from-[#081718] to-transparent" />
+          {/* Bottom fade */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 z-10 bg-gradient-to-t from-[#041012] to-transparent" />
 
-                    return (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          onClick={onClose}
+          <nav className="h-full px-3 py-4 overflow-y-auto sidebar-scroll">
+            <div className="space-y-0.5">
+              {navSections.map((section, sectionIdx) => {
+                const isPremiumSection = section.titleKey === "nav_premium_workspace_section";
+                const isCollapsed = collapsedSections.has(section.titleKey);
+
+                return (
+                  <div key={section.titleKey}>
+                    {/* Visual separator between sections */}
+                    {sectionIdx > 0 && (
+                      <div className="mx-1 my-2 h-px bg-white/[0.07]" />
+                    )}
+
+                    {/* Premium section wrapper card */}
+                    <div
+                      className={isPremiumSection
+                        ? "rounded-[14px] p-1.5 pb-2 bg-[rgba(26,188,156,0.045)] ring-1 ring-[#1ABC9C]/[0.13]"
+                        : ""}
+                    >
+                      {/* Section header — collapsible for agency multi-section */}
+                      {isMultiSection ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleSection(section.titleKey)}
                           className={[
-                            "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all",
-                            isActive
-                              ? "bg-[#1ABC9C]/18 text-white ring-1 ring-[#49D5C3]/35 font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
-                              : "text-[#C7D9D5] hover:bg-white/8 hover:text-white",
+                            "group flex w-full items-center justify-between px-2.5 py-1.5 mb-1 rounded-lg",
+                            "text-[10px] font-semibold uppercase tracking-[0.14em] transition-colors duration-150",
+                            isPremiumSection
+                              ? "text-[#4ECDC4] hover:text-[#7BF0DE]"
+                              : "text-[#88A6A1] hover:text-[#A8C4BF]",
                           ].join(" ")}
                         >
-                          <span className={isActive ? "text-[#7BF0DE]" : "text-[#8FB1AB]"}>
-                            {item.icon}
+                          <span className="flex items-center gap-2">
+                            {isPremiumSection && (
+                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#1ABC9C] shadow-[0_0_5px_rgba(26,188,156,0.65)]" />
+                            )}
+                            {t(section.titleKey as any)}
                           </span>
-                          {t(item.labelKey as any)}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </nav>
+                          <svg
+                            className={[
+                              "w-3 h-3 opacity-50 group-hover:opacity-80 transition-all duration-200",
+                              isCollapsed ? "-rotate-90" : "",
+                            ].join(" ")}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      ) : (
+                        <p className="mb-2 px-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#88A6A1]">
+                          {t(section.titleKey as any)}
+                        </p>
+                      )}
 
-        {/* Divider */}
+                      {/* Nav items */}
+                      {!isCollapsed && (
+                        <ul className="flex flex-col gap-px">
+                          {section.items.map((item) => {
+                            const isActive = item.exact
+                              ? pathname === item.href
+                              : pathname.startsWith(item.href);
+
+                            return (
+                              <li key={item.href}>
+                                <Link
+                                  href={item.href}
+                                  onClick={onClose}
+                                  className={[
+                                    "flex items-center gap-2.5 px-3 py-[7px] rounded-xl text-[13px] font-medium transition-all duration-150",
+                                    isActive
+                                      ? isPremiumSection
+                                        ? "bg-[#1ABC9C]/[0.18] text-white ring-1 ring-[#49D5C3]/35 font-semibold shadow-[0_1px_3px_rgba(26,188,156,0.12)]"
+                                        : "bg-[#1ABC9C]/[0.15] text-white ring-1 ring-[#49D5C3]/30 font-semibold"
+                                      : isPremiumSection
+                                        ? "text-[#AACCC7] hover:bg-[#1ABC9C]/[0.10] hover:text-white"
+                                        : "text-[#C7D9D5] hover:bg-white/[0.065] hover:text-white",
+                                  ].join(" ")}
+                                >
+                                  <span
+                                    className={[
+                                      "flex-shrink-0 transition-colors duration-150",
+                                      isActive
+                                        ? "text-[#7BF0DE]"
+                                        : isPremiumSection
+                                          ? "text-[#3DBDB5]"
+                                          : "text-[#8FB1AB]",
+                                    ].join(" ")}
+                                  >
+                                    {item.icon}
+                                  </span>
+                                  <span className="truncate">{t(item.labelKey as any)}</span>
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </nav>
+        </div>
+
+        {/* Bottom divider */}
         <div className="relative px-5 pb-1">
-          <div className="h-px bg-white/8" />
+          <div className="h-px bg-white/[0.08]" />
         </div>
 
         {/* User + Logout */}
         <div className="relative px-3 py-3 flex-shrink-0 space-y-1">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.05]">
             <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden">
               {!loading && avatarUrl && !imgError ? (
                 <img
@@ -680,7 +774,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-[#C7D9D5] hover:bg-white/8 hover:text-[#FFB3B3] transition-all duration-150 cursor-pointer"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-[#C7D9D5] hover:bg-white/[0.07] hover:text-[#FFB3B3] transition-all duration-150 cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
@@ -693,3 +787,4 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     </>
   );
 }
+
