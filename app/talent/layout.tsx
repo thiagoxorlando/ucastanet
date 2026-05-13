@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 import DashboardShell from "@/components/layout/DashboardShell";
@@ -40,6 +41,35 @@ export default async function TalentLayout({ children }: { children: React.React
     } else {
       // Genuinely new account without a profile — redirect to setup
       redirect("/setup-profile");
+    }
+  }
+
+  // ── Portal-only talent gate ──────────────────────────────────────────────────
+  // If this talent joined via a Premium workspace portal, lock them into that
+  // workspace. Only applies when they're NOT already on a workspace route.
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") ?? "";
+  if (!pathname.startsWith("/talent/workspaces/")) {
+    const { data: portalRow } = await supabase
+      .from("premium_workspace_talents")
+      .select("workspace_id")
+      .eq("talent_user_id", user.id)
+      .is("removed_at", null)
+      .limit(1)
+      .maybeSingle();
+
+    if (portalRow?.workspace_id) {
+      const { data: workspace } = await supabase
+        .from("premium_workspaces")
+        .select("slug")
+        .eq("id", portalRow.workspace_id)
+        .is("deleted_at", null)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (workspace?.slug) {
+        redirect(`/talent/workspaces/${workspace.slug}`);
+      }
     }
   }
 

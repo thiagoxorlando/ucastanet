@@ -11,11 +11,15 @@ export function proxy(req: NextRequest) {
     host: req.headers.get("host"),
   });
 
+  // Pass pathname to server layouts via header so they can make routing decisions
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-pathname", req.nextUrl.pathname);
+
   if (req.nextUrl.pathname === "/") {
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  return NextResponse.next({ request: req });
+  return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
 export const config = {
