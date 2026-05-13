@@ -57,7 +57,7 @@ export default async function TalentDashboardPage() {
     // Paid contracts — to compute earnings and withdrawable balance
     supabase
       .from("contracts")
-      .select("id, payment_amount, net_amount, paid_at, withdrawn_at")
+      .select("id, payment_amount, net_amount, paid_at")
       .eq("talent_id", talentId)
       .eq("payment_status", "paid")
       .is("deleted_at", null),

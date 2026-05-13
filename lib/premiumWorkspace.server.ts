@@ -218,32 +218,77 @@ export async function ensurePremiumWorkspaceForAgency(userId: string): Promise<P
     resolvedWorkspace = existingWorkspace;
   }
 
-  // Upsert owner membership — idempotent on (workspace_id, user_id).
-  // ON CONFLICT reactivates an existing deactivated owner row instead of failing.
-  const { data: upsertedMember, error: memberError } = await supabase
+  // Owner membership — select → update (if exists) → insert (if not) → re-select on race.
+  // Avoids upsert against the partial unique index (WHERE removed_at IS NULL).
+  const memberSelect = "id, workspace_id, user_id, role, status, spending_limit, created_at";
+
+  const { data: existingMember } = await supabase
     .from("premium_workspace_members")
-    .upsert(
-      {
-        workspace_id: resolvedWorkspace!.id,
-        user_id: userId,
-        role: "owner",
-        status: "active",
-        removed_at: null,
-        created_by: userId,
-      },
-      { onConflict: "workspace_id,user_id", ignoreDuplicates: false }
-    )
-    .select("id, workspace_id, user_id, role, status, spending_limit, created_at")
+    .select(memberSelect)
+    .eq("workspace_id", resolvedWorkspace!.id)
+    .eq("user_id", userId)
     .maybeSingle();
 
-  if (memberError || !upsertedMember) {
-    console.error("[premiumWorkspace] Failed to upsert owner membership:", memberError);
-    return null;
+  if (existingMember) {
+    const { data: updatedMember, error: updateErr } = await supabase
+      .from("premium_workspace_members")
+      .update({ role: "owner", status: "active", removed_at: null })
+      .eq("id", existingMember.id)
+      .select(memberSelect)
+      .single();
+    if (updateErr || !updatedMember) {
+      console.error("[premiumWorkspace] Failed to update owner membership:", updateErr);
+      return null;
+    }
+    return {
+      workspace: mapWorkspace(resolvedWorkspace!),
+      membership: mapMembership(updatedMember),
+    };
+  }
+
+  const { data: newMember, error: insertErr } = await supabase
+    .from("premium_workspace_members")
+    .insert({
+      workspace_id: resolvedWorkspace!.id,
+      user_id: userId,
+      role: "owner",
+      status: "active",
+      created_by: userId,
+    })
+    .select(memberSelect)
+    .maybeSingle();
+
+  if (insertErr || !newMember) {
+    // Race: another concurrent call inserted first — re-fetch and update.
+    const { data: raceMember } = await supabase
+      .from("premium_workspace_members")
+      .select(memberSelect)
+      .eq("workspace_id", resolvedWorkspace!.id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!raceMember) {
+      console.error("[premiumWorkspace] Failed to create owner membership:", insertErr);
+      return null;
+    }
+    const { data: raceUpdated, error: raceErr } = await supabase
+      .from("premium_workspace_members")
+      .update({ role: "owner", status: "active", removed_at: null })
+      .eq("id", raceMember.id)
+      .select(memberSelect)
+      .single();
+    if (raceErr || !raceUpdated) {
+      console.error("[premiumWorkspace] Failed to update race membership:", raceErr);
+      return null;
+    }
+    return {
+      workspace: mapWorkspace(resolvedWorkspace!),
+      membership: mapMembership(raceUpdated),
+    };
   }
 
   return {
     workspace: mapWorkspace(resolvedWorkspace!),
-    membership: mapMembership(upsertedMember),
+    membership: mapMembership(newMember),
   };
 }
 

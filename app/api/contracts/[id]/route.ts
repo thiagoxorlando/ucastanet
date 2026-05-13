@@ -7,7 +7,7 @@ import { getUnifiedBookingStatus } from "@/lib/bookingStatus";
 
 const ALLOWED_ACTIONS = [
   "reject", "agency_sign", "pay",
-  "cancel_job", "talent_cancel", "withdraw",
+  "cancel_job", "talent_cancel",
   "set_file_url",
 ];
 const REFERRAL_RATE = 0.02;
@@ -52,7 +52,7 @@ export async function PATCH(
   const isAgencyOwner = caller?.role === "agency" && contract.agency_id === user.id;
   const isTalentOwner = caller?.role === "talent" && contract.talent_id === user.id;
   const agencyActions = ["set_file_url", "agency_sign", "pay", "cancel_job"];
-  const talentActions = ["reject", "talent_cancel", "withdraw"];
+  const talentActions = ["reject", "talent_cancel"];
 
   if (agencyActions.includes(action) && !isAgencyOwner) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -462,22 +462,11 @@ export async function PATCH(
     return NextResponse.json({ ok: true, status: "cancelled", derived_status: getUnifiedBookingStatus("cancelled", "cancelled") });
   }
 
-  // ── Talent: withdraw funds after payment ─────────────────────────────────
   if (action === "withdraw") {
-    if (contract.status !== "paid") {
-      return NextResponse.json({ error: "Contract must be paid before withdrawal" }, { status: 409 });
-    }
-    if (contract.withdrawn_at) {
-      return NextResponse.json({ error: "Already withdrawn" }, { status: 409 });
-    }
-    const { error } = await supabase
-      .from("contracts")
-      .update({ withdrawn_at: now })
-      .eq("id", id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-
-    await notify(contract.talent_id, "payment", "Seu saque foi processado", "/talent/finances");
-    return NextResponse.json({ ok: true, withdrawn_at: now });
+    return NextResponse.json(
+      { error: "Este fluxo de saque foi desativado. Use a área de finanças." },
+      { status: 410 }
+    );
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
