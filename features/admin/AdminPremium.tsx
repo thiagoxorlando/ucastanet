@@ -391,6 +391,39 @@ function BrandingSection({ ws }: { ws: AdminPremiumWorkspaceRow }) {
   );
 }
 
+// ── Expanded: Portal ─────────────────────────────────────────────────────────
+
+function PortalSection({ ws }: { ws: AdminPremiumWorkspaceRow }) {
+  const portalUrl = ws.slug ? `brisahub.com.br/${ws.slug}` : null;
+  return (
+    <div>
+      <p className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide mb-2">Portal público</p>
+      <div className="flex flex-wrap gap-x-6 gap-y-2">
+        <div>
+          <p className="text-[10px] font-semibold text-zinc-400 uppercase">Slug</p>
+          <p className="text-[13px] font-mono text-zinc-800">{ws.slug ?? <span className="text-zinc-400 font-sans">não definido</span>}</p>
+        </div>
+        {portalUrl && (
+          <div>
+            <p className="text-[10px] font-semibold text-zinc-400 uppercase">URL</p>
+            <Link
+              href={`/${ws.slug}`}
+              target="_blank"
+              className="text-[13px] text-[#1ABC9C] hover:underline font-mono"
+            >
+              {portalUrl}
+            </Link>
+          </div>
+        )}
+        <div>
+          <p className="text-[10px] font-semibold text-zinc-400 uppercase">Talentos no portal</p>
+          <p className="text-[13px] font-semibold text-zinc-800">{ws.portalTalentCount}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Expanded: Owner ───────────────────────────────────────────────────────────
 
 function OwnerSection({ ws }: { ws: AdminPremiumWorkspaceRow }) {
@@ -578,6 +611,7 @@ function ExpandedPanel({
       <div className="border-t border-zinc-100 pt-5"><InvitesTable invites={ws.pendingInvites} /></div>
       <div className="border-t border-zinc-100 pt-5"><JobsTable jobs={ws.recentJobs} /></div>
       <div className="border-t border-zinc-100 pt-5"><BrandingSection ws={ws} /></div>
+      <div className="border-t border-zinc-100 pt-5"><PortalSection ws={ws} /></div>
     </div>
   );
 }

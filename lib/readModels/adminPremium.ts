@@ -75,6 +75,8 @@ export type AdminPremiumWorkspaceRow = {
   deletedAt: string | null;
   hasLogo: boolean;
   hasWelcomeMessage: boolean;
+  slug: string | null;
+  portalTalentCount: number;
   // Expanded
   agents: AdminPremiumAgentRow[];
   pendingInvites: AdminPremiumInviteRow[];
@@ -95,7 +97,7 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
   const { data: workspaces } = await supabase
     .from("premium_workspaces")
     .select(
-      "id, owner_user_id, agency_id, name, logo_url, brand_primary_color, brand_accent_color, welcome_message, status, included_agent_seats, extra_agent_seats, created_at, deleted_at"
+      "id, owner_user_id, agency_id, name, slug, logo_url, brand_primary_color, brand_accent_color, welcome_message, status, included_agent_seats, extra_agent_seats, created_at, deleted_at"
     )
     .order("created_at", { ascending: false });
 
@@ -152,6 +154,22 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
       : Promise.resolve({ data: [] }),
     supabase.auth.admin.listUsers({ perPage: 1000 }),
   ]);
+
+  // Fetch portal talent counts per workspace
+  const { data: allPortalTalents } = workspaceIds.length
+    ? await supabase
+        .from("premium_workspace_talents")
+        .select("workspace_id")
+        .in("workspace_id", workspaceIds)
+        .eq("status", "active")
+        .is("removed_at", null)
+    : { data: [] };
+
+  const portalTalentCountMap = new Map<string, number>();
+  for (const pt of allPortalTalents ?? []) {
+    const wsId = String(pt.workspace_id);
+    portalTalentCountMap.set(wsId, (portalTalentCountMap.get(wsId) ?? 0) + 1);
+  }
 
   // Fetch ledger transactions for all workspaces
   const { data: allLedgerTxs } = workspaceIds.length
@@ -350,6 +368,8 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
       deletedAt: (ws.deleted_at as string | null) ?? null,
       hasLogo: !!(ws.logo_url),
       hasWelcomeMessage: !!(ws.welcome_message),
+      slug: (ws.slug as string | null) ?? null,
+      portalTalentCount: portalTalentCountMap.get(wsId) ?? 0,
       agents,
       pendingInvites,
       recentJobs,

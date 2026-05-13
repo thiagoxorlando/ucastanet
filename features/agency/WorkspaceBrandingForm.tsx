@@ -8,6 +8,13 @@ const WELCOME_MAX = 500;
 const DEFAULT_PRIMARY = "#1ABC9C";
 const DEFAULT_ACCENT = "#27C1D6";
 
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$|^[a-z0-9]{3}$/;
+const RESERVED_SLUGS = new Set([
+  "admin","agency","talent","api","login","signup","jobs","job","premium",
+  "support","terms","privacy","dashboard","app","www","brisahub",
+  "onboarding","setup-profile","account-frozen",
+]);
+
 interface Props {
   workspace: PremiumWorkspace;
   membership: PremiumMembership;
@@ -80,6 +87,38 @@ function BrandingForm({ workspace }: { workspace: PremiumWorkspace }) {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Slug state
+  const [slug, setSlug] = useState(workspace.slug ?? "");
+  const [slugSaving, setSlugSaving] = useState(false);
+  const [slugToast, setSlugToast] = useState<{ msg: string; ok: boolean } | null>(null);
+
+  function slugError(value: string): string | null {
+    if (!value) return null;
+    if (!SLUG_RE.test(value)) return "Use apenas letras minúsculas, números e hífens (3–40 chars).";
+    if (RESERVED_SLUGS.has(value)) return "Slug reservado. Escolha outro.";
+    return null;
+  }
+
+  async function handleSlugSave() {
+    const err = slugError(slug);
+    if (err) { setSlugToast({ msg: err, ok: false }); return; }
+    setSlugSaving(true);
+    const res = await fetch("/api/agency/workspace/slug", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug }),
+    });
+    setSlugSaving(false);
+    const data = (await res.json().catch(() => ({}))) as { error?: string; slug?: string };
+    if (res.ok) {
+      setSlug(data.slug ?? slug);
+      setSlugToast({ msg: "Link salvo com sucesso.", ok: true });
+    } else {
+      setSlugToast({ msg: data.error ?? "Não foi possível salvar.", ok: false });
+    }
+    setTimeout(() => setSlugToast(null), 5000);
+  }
 
   function showToast(msg: string, ok: boolean) {
     setToast({ msg, ok });
@@ -243,6 +282,59 @@ function BrandingForm({ workspace }: { workspace: PremiumWorkspace }) {
       >
         {saving ? t("action_loading" as never) : t("workspace_branding_save" as never)}
       </button>
+
+      {/* ── Slug / portal link ── */}
+      <div className="border-t border-zinc-100 pt-6 space-y-3">
+        <div>
+          <label className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
+            Link do espaço
+          </label>
+          <p className="mt-0.5 text-[12px] text-zinc-400">
+            Talentos acessam o portal por este endereço público.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="flex-shrink-0 rounded-l-xl border border-r-0 border-zinc-200 bg-zinc-50 px-3 py-2 text-[13px] text-zinc-400 select-none">
+            brisahub.com.br/
+          </span>
+          <input
+            type="text"
+            value={slug}
+            onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+            maxLength={40}
+            placeholder="minha-agencia"
+            className="flex-1 rounded-r-xl border border-zinc-200 px-3 py-2 font-mono text-[13px] text-zinc-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
+          />
+        </div>
+        {slug && !slugError(slug) ? (
+          <p className="text-[12px] text-zinc-400">
+            Preview:{" "}
+            <a
+              href={`/${slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-amber-600 hover:underline font-mono"
+            >
+              brisahub.com.br/{slug}
+            </a>
+          </p>
+        ) : slug && slugError(slug) ? (
+          <p className="text-[12px] text-rose-500">{slugError(slug)}</p>
+        ) : null}
+        {slugToast ? (
+          <p className={`text-[12px] font-medium ${slugToast.ok ? "text-emerald-600" : "text-rose-500"}`}>
+            {slugToast.msg}
+          </p>
+        ) : null}
+        <button
+          type="button"
+          onClick={handleSlugSave}
+          disabled={slugSaving || !slug || !!slugError(slug)}
+          className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {slugSaving ? "Salvando…" : "Salvar link"}
+        </button>
+      </div>
     </form>
   );
 }
