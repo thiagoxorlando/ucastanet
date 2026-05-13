@@ -1033,4 +1033,11 @@ export const en: Record<string, string> = {
   wallet_owner_allocated: "Allocated to agents",
   wallet_owner_unallocated: "Available to allocate",
   wallet_insufficient_alloc: "Insufficient allocated balance. Request more from the owner.",
+  wallet_history:              "Transaction History",
+  wallet_tx_allocation:        "Added by owner",
+  wallet_tx_reversal:          "Recalled by owner",
+  wallet_tx_commitment:        "Reserved for job",
+  wallet_tx_release:           "Released",
+  wallet_tx_refund:            "Refund",
+  wallet_tx_adjustment:        "Adjustment",
 };

@@ -911,6 +911,13 @@ export const pt: Record<string, string> = {
   wallet_owner_allocated: "Alocado a agentes",
   wallet_owner_unallocated: "Disponível para alocar",
   wallet_insufficient_alloc: "Saldo alocado insuficiente. Solicite mais saldo ao proprietário.",
+  wallet_history:              "Histórico de movimentações",
+  wallet_tx_allocation:        "Saldo adicionado pelo proprietário",
+  wallet_tx_reversal:          "Saldo recolhido pelo proprietário",
+  wallet_tx_commitment:        "Valor reservado em vaga",
+  wallet_tx_release:           "Valor liberado",
+  wallet_tx_refund:            "Reembolso",
+  wallet_tx_adjustment:        "Ajuste",
 
   // ── Common actions / feedback ─────────────────────────────────────────────────
   common_cancel:             "Cancelar",
