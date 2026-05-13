@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { createServerClient } from "@/lib/supabase";
@@ -46,7 +46,7 @@ export default async function WorkspacePortalPage({ params }: Props) {
   const primary = workspace.brand_primary_color ?? "#1ABC9C";
   const accent  = workspace.brand_accent_color  ?? "#27C1D6";
 
-  // Detect authenticated user (non-blocking — portal is public)
+  // Detect authenticated user — redirect talent directly into their workspace
   let userRole: string | null = null;
   try {
     const session = await createSessionClient();
@@ -58,6 +58,8 @@ export default async function WorkspacePortalPage({ params }: Props) {
         .eq("id", user.id)
         .maybeSingle();
       userRole = profile?.role ?? null;
+      // Talent already authenticated — skip landing page
+      if (userRole === "talent") redirect(`/talent/workspaces/${workspaceSlug}`);
     }
   } catch { /* unauthenticated — show public portal */ }
 

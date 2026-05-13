@@ -244,6 +244,8 @@ function SignupPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialRole = (searchParams.get("role") ?? "agency") as Role;
+  // When role=talent is explicitly set (e.g. via portal invite link), lock it — don't allow switching to agency
+  const roleLocked = searchParams.get("role") === "talent";
   const refToken = searchParams.get("ref") ?? null;
   const jobId = searchParams.get("job") ?? null;
   const nextPath = safeNextPath(searchParams.get("next")) ?? (jobId ? `/talent/jobs/${jobId}` : null);
@@ -648,47 +650,49 @@ function SignupPageContent() {
           <div className="flex flex-1 items-center justify-center">
             <div className="w-full max-w-3xl rounded-[32px] border border-white/8 bg-white px-5 py-6 text-[#1F2D2E] shadow-[0_18px_60px_rgba(0,0,0,0.28)] sm:px-7 sm:py-7 lg:px-8">
               <div className="space-y-6">
-                <div className="flex flex-col gap-5 rounded-[28px] border border-[#DDE6E6] bg-[#F7FBFB] p-5 sm:p-6">
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#647B7B]">{t("signup_form_account_label")}</p>
-                    <h3 className="text-2xl font-semibold tracking-tight text-[#102224]">{t("signup_form_account_title")}</h3>
-                    <p className="text-sm leading-6 text-[#5A7273]">
-                      {t("signup_form_account_desc")}
-                    </p>
-                  </div>
+                {!roleLocked && (
+                  <div className="flex flex-col gap-5 rounded-[28px] border border-[#DDE6E6] bg-[#F7FBFB] p-5 sm:p-6">
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#647B7B]">{t("signup_form_account_label")}</p>
+                      <h3 className="text-2xl font-semibold tracking-tight text-[#102224]">{t("signup_form_account_title")}</h3>
+                      <p className="text-sm leading-6 text-[#5A7273]">
+                        {t("signup_form_account_desc")}
+                      </p>
+                    </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {(["agency", "talent"] as const).map((roleOption) => {
-                      const active = account.role === roleOption;
-                      const copy = roleOption === "agency"
-                        ? { title: t("signup_role_agency_title"), body: t("signup_role_agency_body") }
-                        : { title: t("signup_role_talent_title"), body: t("signup_role_talent_body") };
-                      return (
-                        <button
-                          key={roleOption}
-                          type="button"
-                          onClick={() => setRole(roleOption)}
-                          className={[
-                            "rounded-[24px] border px-4 py-4 text-left transition-all",
-                            active
-                              ? "border-[#0E7C86] bg-[#0E7C86] text-white shadow-[0_10px_30px_rgba(14,124,134,0.22)]"
-                              : "border-[#DDE6E6] bg-white hover:border-[#A6CACA]",
-                          ].join(" ")}
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className={`text-[15px] font-semibold ${active ? "text-white" : "text-[#102224]"}`}>{copy.title}</p>
-                              <p className={`mt-1 text-[13px] leading-5 ${active ? "text-white/78" : "text-[#647B7B]"}`}>{copy.body}</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {(["agency", "talent"] as const).map((roleOption) => {
+                        const active = account.role === roleOption;
+                        const copy = roleOption === "agency"
+                          ? { title: t("signup_role_agency_title"), body: t("signup_role_agency_body") }
+                          : { title: t("signup_role_talent_title"), body: t("signup_role_talent_body") };
+                        return (
+                          <button
+                            key={roleOption}
+                            type="button"
+                            onClick={() => setRole(roleOption)}
+                            className={[
+                              "rounded-[24px] border px-4 py-4 text-left transition-all",
+                              active
+                                ? "border-[#0E7C86] bg-[#0E7C86] text-white shadow-[0_10px_30px_rgba(14,124,134,0.22)]"
+                                : "border-[#DDE6E6] bg-white hover:border-[#A6CACA]",
+                            ].join(" ")}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className={`text-[15px] font-semibold ${active ? "text-white" : "text-[#102224]"}`}>{copy.title}</p>
+                                <p className={`mt-1 text-[13px] leading-5 ${active ? "text-white/78" : "text-[#647B7B]"}`}>{copy.body}</p>
+                              </div>
+                              <div className={`flex h-5 w-5 items-center justify-center rounded-full border ${active ? "border-white/60 bg-white/15" : "border-[#C7D6D7] bg-white"}`}>
+                                {active ? <span className="h-2.5 w-2.5 rounded-full bg-white" /> : null}
+                              </div>
                             </div>
-                            <div className={`flex h-5 w-5 items-center justify-center rounded-full border ${active ? "border-white/60 bg-white/15" : "border-[#C7D6D7] bg-white"}`}>
-                              {active ? <span className="h-2.5 w-2.5 rounded-full bg-white" /> : null}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <form onSubmit={handleSubmit} className="space-y-6" noValidate>
                   <SectionCard eyebrow={t("signup_creds_eyebrow")} title={t("signup_creds_title")}>
