@@ -17,7 +17,7 @@ function getIpAddress(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { user_id, role, termsAccepted, agency, talent } = await req.json();
+  const { user_id, role, termsAccepted, agency, talent, marketplaceVisible } = await req.json();
 
   if (!user_id || !role) {
     return NextResponse.json({ error: "Missing user_id or role" }, { status: 400 });
@@ -136,6 +136,7 @@ export async function POST(req: NextRequest) {
       .upsert(
         {
           id: user.id,
+          user_id: user.id,
           deleted_at: null,
           full_name: talentData.full_name ?? null,
           phone: talentData.phone ?? null,
@@ -152,6 +153,7 @@ export async function POST(req: NextRequest) {
           linkedin: talentData.linkedin ?? null,
           website: talentData.website ?? null,
           avatar_url: talentData.avatar_url ?? null,
+          marketplace_visible: marketplaceVisible === false ? false : true,
         },
         { onConflict: "id" },
       );

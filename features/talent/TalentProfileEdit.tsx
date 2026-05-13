@@ -245,6 +245,7 @@ export default function TalentProfileEdit() {
       x_handle:   form.xHandle.trim()  || null,
       website:    form.website.trim()  || null,
     };
+    // TODO: expose marketplace_visible here as "Disponível na plataforma aberta".
     if (avatarUrl) payload.avatar_url = avatarUrl;
 
     const { error: profileError } = await supabase
@@ -556,6 +557,5 @@ export default function TalentProfileEdit() {
     </div>
   );
 }
-
 
 

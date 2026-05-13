@@ -268,10 +268,18 @@ export async function POST(req: NextRequest) {
       talentIds = (availabilityRows ?? []).map((row) => row.talent_id);
     }
 
-    if (!talentIds.length) {
-      const { data: talentProfiles } = await supabase.from("talent_profiles").select("id");
-      talentIds = (talentProfiles ?? []).map((profileRow) => profileRow.id);
+    let visibleTalentQuery = supabase
+      .from("talent_profiles")
+      .select("id")
+      .is("deleted_at", null)
+      .eq("marketplace_visible", true);
+
+    if (talentIds.length) {
+      visibleTalentQuery = visibleTalentQuery.in("id", talentIds);
     }
+
+    const { data: visibleTalentProfiles } = await visibleTalentQuery;
+    talentIds = (visibleTalentProfiles ?? []).map((profileRow) => profileRow.id);
 
     if (talentIds.length) {
       await notify(

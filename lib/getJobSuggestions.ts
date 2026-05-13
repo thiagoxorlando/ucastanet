@@ -1,4 +1,5 @@
 import { createServerClient } from "@/lib/supabase";
+import { isMarketplaceVisibilitySchemaError } from "@/lib/talentMarketplace";
 
 export type TalentSuggestion = {
   id: string;
@@ -34,11 +35,15 @@ export async function getJobSuggestions(
 
   if (!job) return { suggestions: [], job_date: null };
 
-  const [{ data: allTalents }, { data: history }, { data: existingInvites }] =
+  const talentQuery = supabase
+    .from("talent_profiles")
+    .select("id, full_name, avatar_url, main_role, city");
+
+  const [{ data: allTalents, error: allTalentsError }, { data: history }, { data: existingInvites }] =
     await Promise.all([
-      supabase
-        .from("talent_profiles")
-        .select("id, full_name, avatar_url, main_role, city"),
+      privateOnly
+        ? talentQuery
+        : talentQuery.eq("marketplace_visible", true),
       supabase
         .from("agency_talent_history")
         .select("talent_id, is_favorite, jobs_count, jobs_completed, jobs_cancelled")
@@ -48,6 +53,12 @@ export async function getJobSuggestions(
         .select("talent_id")
         .eq("job_id", jobId),
     ]);
+
+  let talentRows = allTalents ?? [];
+  if (!privateOnly && isMarketplaceVisibilitySchemaError(allTalentsError)) {
+    const fallbackResult = await talentQuery;
+    talentRows = fallbackResult.data ?? [];
+  }
 
   // Fetch availability separately to avoid TypeScript union issues with conditional Supabase query
   type AvailRow = { talent_id: string; is_available: boolean; start_time: string | null };
@@ -91,8 +102,8 @@ export async function getJobSuggestions(
   }
 
   const talents = privateOnly
-    ? (allTalents ?? []).filter((t) => historyMap.has(t.id))
-    : (allTalents ?? []);
+    ? talentRows.filter((t) => historyMap.has(t.id))
+    : talentRows;
 
   const suggestions = talents
     .map((t) => ({

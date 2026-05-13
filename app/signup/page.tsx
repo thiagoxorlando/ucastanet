@@ -249,6 +249,7 @@ function SignupPageContent() {
   const refToken = searchParams.get("ref") ?? null;
   const jobId = searchParams.get("job") ?? null;
   const nextPath = safeNextPath(searchParams.get("next")) ?? (jobId ? `/talent/jobs/${jobId}` : null);
+  const isPortalWorkspaceSignup = Boolean(nextPath?.startsWith("/talent/workspaces/"));
   const initialPlan = (["free", "pro", "premium"].includes(searchParams.get("plan") ?? "") ? searchParams.get("plan") : "free") as Plan;
 
   const [account, setAccount] = useState<AccountForm>({
@@ -464,6 +465,7 @@ function SignupPageContent() {
               user_id: data.user.id,
               role: account.role,
               termsAccepted: account.termsAccepted,
+              marketplaceVisible: !isPortalWorkspaceSignup,
               talent: {
                 full_name: talent.fullName.trim(),
                 cpf: digitsOnly(talent.cpf),

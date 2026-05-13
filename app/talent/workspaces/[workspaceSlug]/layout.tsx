@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { ensurePortalTalentMarketplacePrivacy } from "@/lib/talentMarketplace";
 import WorkspacePortalShell from "@/features/talent/WorkspacePortalShell";
 
 type Props = {
@@ -64,6 +65,8 @@ export default async function WorkspacePortalLayout({ children, params }: Props)
       .update({ status: "active", removed_at: null })
       .eq("id", membership.id);
   }
+
+  await ensurePortalTalentMarketplacePrivacy(supabase, user.id);
 
   return (
     <WorkspacePortalShell

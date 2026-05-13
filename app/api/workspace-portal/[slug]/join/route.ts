@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { ensurePortalTalentMarketplacePrivacy } from "@/lib/talentMarketplace";
 
 export async function POST(
   _req: NextRequest,
@@ -69,6 +70,8 @@ export async function POST(
       .update({ status: "active", removed_at: null })
       .eq("id", existing.id);
   }
+
+  await ensurePortalTalentMarketplacePrivacy(supabase, user.id);
 
   return NextResponse.json({ ok: true });
 }
