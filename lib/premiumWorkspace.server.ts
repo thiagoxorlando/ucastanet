@@ -86,6 +86,19 @@ export type AgentBudgetUsage = {
   availableAmount: number | null; // null = unlimited
 };
 
+export type AgentLedgerBalance = {
+  agentUserId: string;
+  allocatedAmount: number;   // net: allocation - allocation_reversal
+  committedAmount: number;   // net: job_commitment - job_release - refund
+  availableAmount: number;   // allocatedAmount - committedAmount
+};
+
+export type OwnerAllocationSummary = {
+  ownerWalletBalance: number;
+  totalAllocatedToAgents: number;
+  ownerUnallocatedAvailable: number;
+};
+
 export type PremiumWorkspaceAccess = {
   workspace: PremiumWorkspace;
   membership: PremiumMembership;
@@ -583,6 +596,139 @@ export async function getWorkspaceAgentBudgets(
   }
 
   return result;
+}
+
+/**
+ * Returns the internal allocation ledger balance for a single agent in a workspace.
+ * Reads from premium_agent_wallet_transactions — no wallet_balance mutations.
+ */
+export async function getAgentLedgerBalance(
+  workspaceId: string,
+  agentUserId: string
+): Promise<AgentLedgerBalance> {
+  const supabase = createServerClient({ useServiceRole: true });
+
+  const { data: txs } = await supabase
+    .from("premium_agent_wallet_transactions")
+    .select("type, amount")
+    .eq("workspace_id", workspaceId)
+    .eq("agent_user_id", agentUserId)
+    .eq("status", "completed")
+    .is("reversed_at", null);
+
+  let allocated = 0;
+  let committed = 0;
+
+  for (const tx of txs ?? []) {
+    const amt = Number(tx.amount);
+    switch (tx.type) {
+      case "allocation":           allocated  += amt; break;
+      case "allocation_reversal":  allocated  -= amt; break;
+      case "job_commitment":       committed  += amt; break;
+      case "job_release":          committed  -= amt; break;
+      case "refund":               committed  -= amt; break;
+      // adjustment: intentionally no-op in automatic computation
+    }
+  }
+
+  return {
+    agentUserId,
+    allocatedAmount:  Math.max(0, allocated),
+    committedAmount:  Math.max(0, committed),
+    availableAmount:  Math.max(0, allocated - committed),
+  };
+}
+
+/**
+ * Returns ledger balances for all active agents in a workspace.
+ * Returns a map of agentUserId → AgentLedgerBalance.
+ */
+export async function getWorkspaceAgentLedgerBalances(
+  workspaceId: string
+): Promise<Map<string, AgentLedgerBalance>> {
+  const supabase = createServerClient({ useServiceRole: true });
+
+  const [{ data: agents }, { data: txs }] = await Promise.all([
+    supabase
+      .from("premium_workspace_members")
+      .select("user_id")
+      .eq("workspace_id", workspaceId)
+      .eq("role", "agent")
+      .eq("status", "active"),
+    supabase
+      .from("premium_agent_wallet_transactions")
+      .select("agent_user_id, type, amount")
+      .eq("workspace_id", workspaceId)
+      .eq("status", "completed")
+      .is("reversed_at", null),
+  ]);
+
+  const ledger = new Map<string, { allocated: number; committed: number }>();
+  for (const agent of agents ?? []) {
+    ledger.set(String(agent.user_id), { allocated: 0, committed: 0 });
+  }
+  for (const tx of txs ?? []) {
+    const uid = String(tx.agent_user_id);
+    if (!ledger.has(uid)) ledger.set(uid, { allocated: 0, committed: 0 });
+    const entry = ledger.get(uid)!;
+    const amt = Number(tx.amount);
+    switch (tx.type) {
+      case "allocation":           entry.allocated  += amt; break;
+      case "allocation_reversal":  entry.allocated  -= amt; break;
+      case "job_commitment":       entry.committed  += amt; break;
+      case "job_release":          entry.committed  -= amt; break;
+      case "refund":               entry.committed  -= amt; break;
+    }
+  }
+
+  const result = new Map<string, AgentLedgerBalance>();
+  for (const [uid, entry] of ledger) {
+    result.set(uid, {
+      agentUserId:     uid,
+      allocatedAmount: Math.max(0, entry.allocated),
+      committedAmount: Math.max(0, entry.committed),
+      availableAmount: Math.max(0, entry.allocated - entry.committed),
+    });
+  }
+  return result;
+}
+
+/**
+ * Returns the owner's wallet allocation summary for a workspace.
+ * ownerUnallocatedAvailable = wallet_balance - sum of all active agent allocations.
+ */
+export async function getOwnerAllocationSummary(
+  workspaceId: string,
+  ownerUserId: string
+): Promise<OwnerAllocationSummary> {
+  const supabase = createServerClient({ useServiceRole: true });
+
+  const [profileResult, { data: txs }] = await Promise.all([
+    supabase.from("profiles").select("wallet_balance").eq("id", ownerUserId).maybeSingle(),
+    supabase
+      .from("premium_agent_wallet_transactions")
+      .select("type, amount")
+      .eq("workspace_id", workspaceId)
+      .eq("status", "completed")
+      .is("reversed_at", null)
+      .in("type", ["allocation", "allocation_reversal"]),
+  ]);
+
+  let totalAllocated = 0;
+  for (const tx of txs ?? []) {
+    const amt = Number(tx.amount);
+    if (tx.type === "allocation")          totalAllocated += amt;
+    else if (tx.type === "allocation_reversal") totalAllocated -= amt;
+  }
+
+  const ownerWalletBalance = Number(profileResult.data?.wallet_balance ?? 0);
+  const total = Math.max(0, totalAllocated);
+
+  return {
+    ownerWalletBalance,
+    totalAllocatedToAgents: total,
+    ownerUnallocatedAvailable: Math.max(0, ownerWalletBalance - total),
+  };
 }
 
 // -- Internal mappers --------------------------------------------------------

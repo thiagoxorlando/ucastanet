@@ -181,13 +181,13 @@ function AgentsTable({ agents }: { agents: AdminPremiumAgentRow[] }) {
         </td>
         <td className="py-2.5 pr-4">{agentStatusBadge(a.status)}</td>
         <td className="py-2.5 pr-4 text-[12px] text-zinc-600">
-          {a.spendingLimit != null ? brl(a.spendingLimit) : "Ilimitado"}
+          {brl(a.allocatedAmount)}
         </td>
         <td className="py-2.5 pr-4 text-[12px] text-zinc-600">
-          {a.usedBudget > 0 ? brl(a.usedBudget) : "—"}
+          {a.committedAmount > 0 ? brl(a.committedAmount) : "—"}
         </td>
         <td className="py-2.5 pr-4 text-[12px] text-zinc-600">
-          {a.availableBudget != null ? brl(a.availableBudget) : "—"}
+          {brl(a.availableAmount)}
         </td>
         <td className="py-2.5 text-[11px] text-zinc-400">{fmtDate(a.createdAt)}</td>
       </tr>
@@ -204,7 +204,7 @@ function AgentsTable({ agents }: { agents: AdminPremiumAgentRow[] }) {
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-zinc-100">
-                {["Nome", "Função", "Status", "Limite", "Usado", "Disponível", "Desde"].map((h) => (
+                {["Nome", "Função", "Status", "Alocado", "Comprometido", "Disponível", "Desde"].map((h) => (
                   <th key={h} className="pb-2 pr-4 text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>

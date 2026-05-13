@@ -7,7 +7,7 @@ import { getJobSuggestions } from "@/lib/getJobSuggestions";
 import { resolvePlanInfo } from "@/lib/plans";
 import {
   ensurePremiumWorkspaceForAgency,
-  getAgentBudgetUsage,
+  getAgentLedgerBalance,
   getUserPremiumWorkspace,
 } from "@/lib/premiumWorkspace.server";
 
@@ -128,19 +128,13 @@ export async function POST(req: NextRequest) {
   }
 
   if (isWorkspaceMember && workspaceAccess?.membership.role === "agent" && workspaceId) {
-    const spendingLimit = workspaceAccess.membership.spendingLimit;
-    if (spendingLimit != null) {
-      const budgetUsage = await getAgentBudgetUsage(workspaceId, actorUserId);
-      const jobEstimate = Number(budget ?? 0) * (Number(number_of_talents_required) || 1);
-      if (budgetUsage && budgetUsage.availableAmount !== null && jobEstimate > budgetUsage.availableAmount) {
-        return NextResponse.json(
-          {
-            error:
-              "Seu limite disponível para criar vagas é insuficiente. Solicite ajuste ao responsável da conta Premium.",
-          },
-          { status: 403 }
-        );
-      }
+    const ledger = await getAgentLedgerBalance(workspaceId, actorUserId);
+    const jobEstimate = Number(budget ?? 0) * (Number(number_of_talents_required) || 1);
+    if (jobEstimate > ledger.availableAmount) {
+      return NextResponse.json(
+        { error: "Saldo alocado insuficiente. Solicite mais saldo ao proprietário." },
+        { status: 403 }
+      );
     }
   }
 
@@ -201,6 +195,25 @@ export async function POST(req: NextRequest) {
   if (error) {
     console.error("[POST /api/jobs] Supabase error:", error);
     return NextResponse.json({ error: mapJobCreationError(error.message) }, { status: 400 });
+  }
+
+  // Record internal allocation commitment for agent-created workspace jobs
+  if (isWorkspaceMember && workspaceAccess?.membership.role === "agent" && workspaceId && data?.id) {
+    const jobEstimate = Number(budget ?? 0) * (Number(number_of_talents_required) || 1);
+    if (jobEstimate > 0) {
+      await supabase
+        .from("premium_agent_wallet_transactions")
+        .insert({
+          workspace_id:  workspaceId,
+          agent_user_id: actorUserId,
+          owner_user_id: workspaceAccess.workspace.ownerUserId,
+          type:          "job_commitment",
+          amount:        jobEstimate,
+          status:        "completed",
+          related_job_id: data.id,
+          created_by:    actorUserId,
+        });
+    }
   }
 
   const isPublished = !status || status === "open";

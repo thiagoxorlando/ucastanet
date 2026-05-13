@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import WorkspaceAgentManager from "@/features/agency/WorkspaceAgentManager";
 import {
-  getWorkspaceAgentBudgets,
+  getWorkspaceAgentLedgerBalances,
   getWorkspaceMembers,
   getWorkspacePendingInvites,
   getWorkspaceSeatUsage,
+  getOwnerAllocationSummary,
 } from "@/lib/premiumWorkspace.server";
 import { requirePremiumWorkspacePageContext } from "@/lib/premiumWorkspaceApp.server";
 
@@ -12,11 +13,14 @@ export const metadata: Metadata = { title: "Agentes — BrisaHub" };
 
 export default async function WorkspaceAgentsPage() {
   const context = await requirePremiumWorkspacePageContext();
-  const [seatUsage, members, invites, budgetMap] = await Promise.all([
+  const [seatUsage, members, invites, ledgerMap, ownerSummary] = await Promise.all([
     getWorkspaceSeatUsage(context.workspace.id),
     getWorkspaceMembers(context.workspace.id),
     context.isOwner ? getWorkspacePendingInvites(context.workspace.id) : Promise.resolve([]),
-    getWorkspaceAgentBudgets(context.workspace.id),
+    getWorkspaceAgentLedgerBalances(context.workspace.id),
+    context.isOwner
+      ? getOwnerAllocationSummary(context.workspace.id, context.workspace.ownerUserId)
+      : Promise.resolve(null),
   ]);
 
   return (
@@ -24,7 +28,7 @@ export default async function WorkspaceAgentsPage() {
       <div>
         <h1 className="text-[1.8rem] font-bold tracking-tight text-zinc-950">Agentes</h1>
         <p className="mt-1 text-[14px] text-zinc-500">
-          Convites, uso e alocação de limite do Espaço Premium.
+          Saldo alocado, comprometido e disponível por agente. Somente o proprietário pode adicionar ou recolher saldo.
         </p>
       </div>
 
@@ -34,7 +38,8 @@ export default async function WorkspaceAgentsPage() {
           initialSeatUsage={seatUsage}
           initialMembers={members}
           initialInvites={invites}
-          initialBudgetUsages={Array.from(budgetMap.values())}
+          initialLedgerBalances={Array.from(ledgerMap.values())}
+          initialOwnerSummary={ownerSummary ?? undefined}
         />
       </div>
     </div>

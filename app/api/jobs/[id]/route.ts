@@ -5,7 +5,7 @@ import { requireTalentsNeededForJob } from "@/lib/requireActiveSubscription";
 import { getLivePlanSetting } from "@/lib/planSettings.server";
 import { isJobFull, JOB_FULL_MESSAGE } from "@/lib/jobAvailability";
 import type { Plan } from "@/lib/plans";
-import { getAgentBudgetUsage, getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
+import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
 
 const PATCH_ALLOWED = [
   "title",
@@ -95,40 +95,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Vagas privadas estão disponíveis apenas no Premium." }, { status: 403 });
   }
 
-  if (isWorkspaceCreator && !isWorkspaceOwner) {
-    const hasFinancialChange = "budget" in update || "number_of_talents_required" in update;
-    if (hasFinancialChange && workspaceId) {
-      const spendingLimit = workspaceAccess?.membership.spendingLimit ?? null;
-      if (spendingLimit != null) {
-        const budgetUsage = await getAgentBudgetUsage(workspaceId, user.id);
-        if (budgetUsage) {
-          const oldEstimate =
-            Number((existingJob as { budget?: number | null }).budget ?? 0) *
-            Number(existingJob.number_of_talents_required ?? 1);
-          const newBudget =
-            "budget" in update
-              ? Number(update.budget ?? 0)
-              : Number((existingJob as { budget?: number | null }).budget ?? 0);
-          const newTalents =
-            "number_of_talents_required" in update
-              ? Number(update.number_of_talents_required ?? 1)
-              : Number(existingJob.number_of_talents_required ?? 1);
-          const newEstimate = newBudget * newTalents;
-          const newTotal = budgetUsage.usedAmount - oldEstimate + newEstimate;
-
-          if (newTotal > spendingLimit) {
-            return NextResponse.json(
-              {
-                error:
-                  "Seu limite disponível para criar vagas é insuficiente. Solicite ajuste ao responsável da conta Premium.",
-              },
-              { status: 403 }
-            );
-          }
-        }
-      }
-    }
-  }
+  // No ledger re-check on edit — commitment was set at creation.
+  // A future task can add delta-check if needed.
 
   const ownerAgencyId = workspaceId ? existingJob.agency_id : user.id;
   const liveSetting = await getLivePlanSetting((caller.plan ?? "free") as Plan);
@@ -213,6 +181,37 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  // Release agent allocation commitment when job is deactivated/closed
+  const isDeactivating = update.status === "inactive" || update.status === "closed";
+  const agentCreatorId = (existingJob as { created_by_user_id?: string | null }).created_by_user_id ?? null;
+  if (isDeactivating && workspaceId && agentCreatorId && isWorkspaceCreator && !isWorkspaceOwner) {
+    const { data: wsRow } = await supabase
+      .from("premium_workspaces").select("owner_user_id").eq("id", workspaceId).maybeSingle();
+    if (wsRow) {
+      const { data: commitTx } = await supabase
+        .from("premium_agent_wallet_transactions")
+        .select("id, amount")
+        .eq("related_job_id", id)
+        .eq("type", "job_commitment")
+        .eq("status", "completed")
+        .is("reversed_at", null)
+        .maybeSingle();
+      if (commitTx) {
+        await supabase.from("premium_agent_wallet_transactions").insert({
+          workspace_id:  workspaceId,
+          agent_user_id: agentCreatorId,
+          owner_user_id: wsRow.owner_user_id,
+          type:          "job_release",
+          amount:        Number(commitTx.amount),
+          status:        "completed",
+          related_job_id: id,
+          created_by:    user.id,
+          note:          "Alocação liberada ao fechar/inativar a vaga.",
+        });
+      }
+    }
+  }
+
   return NextResponse.json({ job: data });
 }
 
@@ -274,6 +273,36 @@ export async function DELETE(
     const { error } = await supabase.from("jobs").update({ status: "inactive" }).eq("id", id);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    // Release agent allocation commitment on soft-delete
+    const softDeleteWorkspaceId = (job as { workspace_id?: string | null }).workspace_id ?? null;
+    const softDeleteCreatorId = (job as { created_by_user_id?: string | null }).created_by_user_id ?? null;
+    if (softDeleteWorkspaceId && softDeleteCreatorId) {
+      const { data: wsRow } = await supabase
+        .from("premium_workspaces").select("owner_user_id").eq("id", softDeleteWorkspaceId).maybeSingle();
+      if (wsRow) {
+        const { data: commitTx } = await supabase
+          .from("premium_agent_wallet_transactions")
+          .select("id, amount")
+          .eq("related_job_id", id)
+          .eq("type", "job_commitment")
+          .eq("status", "completed")
+          .is("reversed_at", null)
+          .maybeSingle();
+        if (commitTx) {
+          await supabase.from("premium_agent_wallet_transactions").insert({
+            workspace_id:  softDeleteWorkspaceId,
+            agent_user_id: softDeleteCreatorId,
+            owner_user_id: wsRow.owner_user_id,
+            type:          "job_release",
+            amount:        Number(commitTx.amount),
+            status:        "completed",
+            related_job_id: id,
+            created_by:    user.id,
+            note:          "Alocação liberada ao excluir a vaga.",
+          });
+        }
+      }
     }
     return NextResponse.json({ ok: true, deleted: false });
   }

@@ -900,6 +900,18 @@ export const pt: Record<string, string> = {
   support_status_closed:         "Fechado",
   support_status_pending:        "Aguardando resposta",
 
+  // ── Premium wallet ledger ─────────────────────────────────────────────────────
+  wallet_allocated: "Saldo alocado",
+  wallet_committed: "Saldo comprometido",
+  wallet_available: "Saldo disponível",
+  wallet_add: "Adicionar saldo",
+  wallet_recall: "Recolher saldo",
+  wallet_alloc_history: "Histórico de alocações",
+  wallet_owner_total: "Saldo total da agência",
+  wallet_owner_allocated: "Alocado a agentes",
+  wallet_owner_unallocated: "Disponível para alocar",
+  wallet_insufficient_alloc: "Saldo alocado insuficiente. Solicite mais saldo ao proprietário.",
+
   // ── Common actions / feedback ─────────────────────────────────────────────────
   common_cancel:             "Cancelar",
   common_confirm:            "Confirmar",

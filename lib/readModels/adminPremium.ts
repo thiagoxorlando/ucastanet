@@ -20,9 +20,9 @@ export type AdminPremiumAgentRow = {
   userId: string;
   role: "owner" | "agent";
   status: string;
-  spendingLimit: number | null;
-  usedBudget: number;
-  availableBudget: number | null;
+  allocatedAmount: number;
+  committedAmount: number;
+  availableAmount: number;
   displayName: string;
   email: string;
   createdAt: string;
@@ -153,6 +153,16 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
     supabase.auth.admin.listUsers({ perPage: 1000 }),
   ]);
 
+  // Fetch ledger transactions for all workspaces
+  const { data: allLedgerTxs } = workspaceIds.length
+    ? await supabase
+        .from("premium_agent_wallet_transactions")
+        .select("workspace_id, agent_user_id, type, amount")
+        .in("workspace_id", workspaceIds)
+        .eq("status", "completed")
+        .is("reversed_at", null)
+    : { data: [] };
+
   // Submission counts — fetched after allJobs is resolved to avoid circular reference
   const jobIds = (allJobs ?? []).map((j) => String(j.id));
   const { data: submissionCounts } = jobIds.length
@@ -229,16 +239,20 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
     invitesByWorkspace.get(wsId)!.push(inv);
   }
 
-  // Budget usage per agent: sum(budget * number_of_talents_required) for active workspace jobs
-  // We use job budget directly since number_of_talents_required isn't selected — approximate by budget
-  // For a more accurate result, fetch number_of_talents_required
-  const usedBudgetByUser = new Map<string, number>();
-  for (const job of allJobs ?? []) {
-    if (job.created_by_user_id) {
-      const uid = String(job.created_by_user_id);
-      if ((job.status as string) !== "inactive") {
-        usedBudgetByUser.set(uid, (usedBudgetByUser.get(uid) ?? 0) + Number(job.budget ?? 0));
-      }
+  // Ledger balances per agent from premium_agent_wallet_transactions
+  type LedgerEntry = { allocated: number; committed: number };
+  const ledgerByAgent = new Map<string, LedgerEntry>();
+  for (const tx of allLedgerTxs ?? []) {
+    const uid = String(tx.agent_user_id);
+    if (!ledgerByAgent.has(uid)) ledgerByAgent.set(uid, { allocated: 0, committed: 0 });
+    const entry = ledgerByAgent.get(uid)!;
+    const amt = Number(tx.amount);
+    switch (tx.type) {
+      case "allocation":           entry.allocated  += amt; break;
+      case "allocation_reversal":  entry.allocated  -= amt; break;
+      case "job_commitment":       entry.committed  += amt; break;
+      case "job_release":          entry.committed  -= amt; break;
+      case "refund":               entry.committed  -= amt; break;
     }
   }
 
@@ -272,16 +286,15 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
     // Build agent rows
     const agents: AdminPremiumAgentRow[] = wsMembers.map((m) => {
       const uid = String(m.user_id);
-      const spendingLimit = m.spending_limit != null ? Number(m.spending_limit) : null;
-      const usedBudget = usedBudgetByUser.get(uid) ?? 0;
+      const ledger = ledgerByAgent.get(uid) ?? { allocated: 0, committed: 0 };
       return {
         memberId: String(m.id),
         userId: uid,
         role: m.role === "owner" ? "owner" : "agent",
         status: String(m.status),
-        spendingLimit,
-        usedBudget,
-        availableBudget: spendingLimit != null ? Math.max(0, spendingLimit - usedBudget) : null,
+        allocatedAmount:  Math.max(0, ledger.allocated),
+        committedAmount:  Math.max(0, ledger.committed),
+        availableAmount:  Math.max(0, ledger.allocated - ledger.committed),
         displayName: resolveDisplayName(uid),
         email: authEmailMap.get(uid) ?? "",
         createdAt: String(m.created_at),

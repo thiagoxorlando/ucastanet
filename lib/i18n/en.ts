@@ -1021,4 +1021,16 @@ export const en: Record<string, string> = {
   support_status_open:           "Open",
   support_status_closed:         "Closed",
   support_status_pending:        "Awaiting reply",
+
+  // ── Premium wallet ledger ─────────────────────────────────────────────────────
+  wallet_allocated: "Allocated balance",
+  wallet_committed: "Committed balance",
+  wallet_available: "Available balance",
+  wallet_add: "Add balance",
+  wallet_recall: "Recall balance",
+  wallet_alloc_history: "Allocation history",
+  wallet_owner_total: "Agency total balance",
+  wallet_owner_allocated: "Allocated to agents",
+  wallet_owner_unallocated: "Available to allocate",
+  wallet_insufficient_alloc: "Insufficient allocated balance. Request more from the owner.",
 };

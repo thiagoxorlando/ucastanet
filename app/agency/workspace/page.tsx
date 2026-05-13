@@ -7,11 +7,14 @@ import { createServerClient } from "@/lib/supabase";
 import {
   ensurePremiumWorkspaceForAgency,
   getUserPremiumWorkspace,
-  getWorkspaceAgentBudgets,
+  getWorkspaceAgentLedgerBalances,
+  getOwnerAllocationSummary,
+  getAgentLedgerBalance,
   getWorkspaceMembers,
   getWorkspacePendingInvites,
   getWorkspaceSeatUsage,
-  type AgentBudgetUsage,
+  type AgentLedgerBalance,
+  type OwnerAllocationSummary,
   type PremiumMembership,
   type PremiumWorkspace,
 } from "@/lib/premiumWorkspace.server";
@@ -328,7 +331,7 @@ export default async function WorkspacePage() {
   const { workspace, membership } = workspaceAccess;
   const isOwner = membership.role === "owner";
 
-  const [seatUsage, members, invites, jobsResult, budgetMap, ownerProfile] = await Promise.all([
+  const [seatUsage, members, invites, jobsResult, ledgerMap, ownerSummary, selfLedger, ownerProfile] = await Promise.all([
     getWorkspaceSeatUsage(workspace.id),
     getWorkspaceMembers(workspace.id),
     isOwner ? getWorkspacePendingInvites(workspace.id) : Promise.resolve([]),
@@ -337,7 +340,9 @@ export default async function WorkspacePage() {
       .select("id, title, status, visibility, budget, created_at, created_by_user_id")
       .eq("workspace_id", workspace.id)
       .order("created_at", { ascending: false }),
-    getWorkspaceAgentBudgets(workspace.id),
+    isOwner ? getWorkspaceAgentLedgerBalances(workspace.id) : Promise.resolve(new Map<string, AgentLedgerBalance>()),
+    isOwner ? getOwnerAllocationSummary(workspace.id, workspace.ownerUserId) : Promise.resolve(null as OwnerAllocationSummary | null),
+    !isOwner ? getAgentLedgerBalance(workspace.id, user.id) : Promise.resolve(null),
     supabase.from("profiles").select("wallet_balance").eq("id", workspace.ownerUserId).maybeSingle(),
   ]);
 
@@ -385,8 +390,7 @@ export default async function WorkspacePage() {
   const myJobs = workspaceJobs.filter((job) => job.createdByUserId === user.id);
   const privateJobs = workspaceJobs.filter((job) => job.visibility === "private_invite");
   const walletBalance = Number(ownerProfile.data?.wallet_balance ?? 0);
-  const budgetUsages: AgentBudgetUsage[] = Array.from(budgetMap.values());
-  const selfBudget = budgetMap.get(user.id) ?? null;
+  const ledgerBalances: AgentLedgerBalance[] = Array.from(ledgerMap.values());
   const seatLimitReached = isOwner && seatUsage.remaining === 0;
   const activeAgents = members.filter((member) => member.role === "agent" && member.status === "active");
 
@@ -408,9 +412,9 @@ export default async function WorkspacePage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard label="Agente" value="Operação" hint="Acesso ao Espaço Premium" />
-          <SummaryCard label="Limite de uso" value={selfBudget?.spendingLimit != null ? brl(selfBudget.spendingLimit) : "Ilimitado"} hint="Seu teto para criação de vagas" />
-          <SummaryCard label="Usado" value={brl(selfBudget?.usedAmount ?? 0)} hint="Uso acumulado nas suas vagas" />
-          <SummaryCard label="Disponível" value={selfBudget?.availableAmount != null ? brl(selfBudget.availableAmount) : "Ilimitado"} hint={(selfBudget?.availableAmount ?? null) === 0 ? "Limite de uso esgotado" : "Saldo restante para operar"} />
+          <SummaryCard label="Saldo alocado" value={brl(selfLedger?.allocatedAmount ?? 0)} hint="Total alocado pelo proprietário" />
+          <SummaryCard label="Comprometido" value={brl(selfLedger?.committedAmount ?? 0)} hint="Reservado em vagas ativas" />
+          <SummaryCard label="Disponível" value={brl(selfLedger?.availableAmount ?? 0)} hint={(selfLedger?.availableAmount ?? 0) === 0 ? "Saldo esgotado" : "Saldo restante para operar"} />
         </div>
       )}
 
@@ -460,7 +464,8 @@ export default async function WorkspacePage() {
             initialSeatUsage={seatUsage}
             initialMembers={members}
             initialInvites={invites}
-            initialBudgetUsages={budgetUsages}
+            initialLedgerBalances={ledgerBalances}
+            initialOwnerSummary={ownerSummary ?? undefined}
           />
         </div>
       </div>
