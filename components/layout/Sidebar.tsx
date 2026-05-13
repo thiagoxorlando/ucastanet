@@ -9,10 +9,12 @@ import { supabase } from "@/lib/supabase";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { useT } from "@/lib/LanguageContext";
 import { useSubscription } from "@/lib/SubscriptionContext";
+import { useWorkspacePortal } from "@/lib/WorkspacePortalContext";
 import heroBrandImage from "@/public/landing/brisahub-hero-brand.png";
 
 type NavItem = {
   labelKey: string;
+  label?: string;
   href: string;
   exact?: boolean;
   icon: React.ReactNode;
@@ -539,6 +541,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [imgError, setImgError] = useState(false);
   const { t } = useT();
   const { isPremium, isWorkspaceAgent } = useSubscription();
+  const { workspace: portalWorkspace } = useWorkspacePortal();
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -571,6 +574,87 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     inferredRole === "talent" ? t("portal_talent") :
     inferredRole === "admin"  ? t("portal_admin")  : t("portal_agency");
   const hasPremiumAccess = inferredRole === "agency" && (isPremium || isWorkspaceAgent);
+
+  // When a talent is inside a workspace portal, swap nav entirely
+  const isInWorkspacePortal = inferredRole === "talent" && portalWorkspace !== null;
+  const workspaceNavItems: NavItem[] = isInWorkspacePortal
+    ? [
+        {
+          labelKey: "nav_dashboard",
+          label: "Painel",
+          href: `/talent/workspaces/${portalWorkspace!.slug}`,
+          exact: true,
+          icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 21V12h6v9" />
+            </svg>
+          ),
+        },
+        {
+          labelKey: "nav_jobs",
+          label: "Vagas",
+          href: `/talent/workspaces/${portalWorkspace!.slug}/jobs`,
+          icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          ),
+        },
+        {
+          labelKey: "nav_bookings",
+          label: "Candidaturas",
+          href: `/talent/workspaces/${portalWorkspace!.slug}/applications`,
+          icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+          ),
+        },
+        {
+          labelKey: "nav_contracts",
+          label: "Contratos",
+          href: `/talent/workspaces/${portalWorkspace!.slug}/contracts`,
+          icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          ),
+        },
+        {
+          labelKey: "nav_finances",
+          label: "Financeiro",
+          href: `/talent/workspaces/${portalWorkspace!.slug}/finances`,
+          icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          ),
+        },
+        {
+          labelKey: "nav_profile",
+          label: "Perfil",
+          href: `/talent/workspaces/${portalWorkspace!.slug}/profile`,
+          icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          ),
+        },
+        {
+          labelKey: "nav_support",
+          label: "Suporte",
+          href: "/talent/support",
+          exact: true,
+          icon: (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          ),
+        },
+      ]
+    : [];
+
   const navSections = inferredRole === "agency"
     ? isWorkspaceAgent
       // Invited agents are workspace-only — no open platform section at all
@@ -586,9 +670,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             { titleKey: "nav_open_platform", items: AGENCY_NON_PREMIUM_OPEN_NAV },
             { titleKey: "nav_premium_workspace_section", items: AGENCY_WORKSPACE_UPSELL_NAV },
           ]
-    : [
-        { titleKey: "nav_menu", items: inferredRole === "talent" ? TALENT_NAV : ADMIN_NAV },
-      ];
+    : isInWorkspacePortal
+      ? [{ titleKey: "nav_menu", items: workspaceNavItems }]
+      : [
+          { titleKey: "nav_menu", items: inferredRole === "talent" ? TALENT_NAV : ADMIN_NAV },
+        ];
 
   const isMultiSection = navSections.length > 1;
 
@@ -638,6 +724,48 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </svg>
           </button>
         </div>
+
+        {/* Workspace branding strip — shown when talent is in a portal */}
+        {isInWorkspacePortal && portalWorkspace && (() => {
+          const primary = portalWorkspace.primaryColor;
+          const accent  = portalWorkspace.accentColor;
+          const initials = portalWorkspace.name
+            .split(" ")
+            .slice(0, 2)
+            .map((w) => w[0]?.toUpperCase() ?? "")
+            .join("") || "?";
+          return (
+            <div
+              className="relative mx-3 mb-1 overflow-hidden rounded-[14px] px-3 py-3 flex-shrink-0"
+              style={{
+                background: `linear-gradient(135deg, ${primary}22 0%, ${accent}15 100%)`,
+                borderTop: `2px solid ${primary}`,
+              }}
+            >
+              <div className="flex items-center gap-2.5">
+                <div
+                  className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/20"
+                  style={{ background: portalWorkspace.logoUrl ? "rgba(255,255,255,0.12)" : primary }}
+                >
+                  {portalWorkspace.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={portalWorkspace.logoUrl} alt={portalWorkspace.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-[11px] font-black text-white select-none">{initials}</span>
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: accent }}>
+                    Portal
+                  </p>
+                  <p className="truncate text-[13px] font-bold text-white leading-tight">
+                    {portalWorkspace.name}
+                  </p>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Navigation — scroll container with top/bottom fade overlays */}
         <div className="relative flex-1 min-h-0">
@@ -738,7 +866,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                   >
                                     {item.icon}
                                   </span>
-                                  <span className="truncate">{t(item.labelKey as any)}</span>
+                                  <span className="truncate">{item.label ?? t(item.labelKey as any)}</span>
                                 </Link>
                               </li>
                             );
