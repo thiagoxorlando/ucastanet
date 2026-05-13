@@ -1,5 +1,4 @@
 import { createServerClient } from "@/lib/supabase";
-import { isMarketplaceVisibilitySchemaError } from "@/lib/talentMarketplace";
 
 export type TalentSuggestion = {
   id: string;
@@ -39,7 +38,7 @@ export async function getJobSuggestions(
     .from("talent_profiles")
     .select("id, full_name, avatar_url, main_role, city");
 
-  const [{ data: allTalents, error: allTalentsError }, { data: history }, { data: existingInvites }] =
+  const [{ data: allTalents }, { data: history }, { data: existingInvites }] =
     await Promise.all([
       privateOnly
         ? talentQuery
@@ -54,11 +53,7 @@ export async function getJobSuggestions(
         .eq("job_id", jobId),
     ]);
 
-  let talentRows = allTalents ?? [];
-  if (!privateOnly && isMarketplaceVisibilitySchemaError(allTalentsError)) {
-    const fallbackResult = await talentQuery;
-    talentRows = fallbackResult.data ?? [];
-  }
+  const talentRows = allTalents ?? [];
 
   // Fetch availability separately to avoid TypeScript union issues with conditional Supabase query
   type AvailRow = { talent_id: string; is_available: boolean; start_time: string | null };

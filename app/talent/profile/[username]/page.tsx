@@ -1,64 +1,57 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createServerClient } from "@/lib/supabase";
+import { createSessionClient } from "@/lib/supabase.server";
 import TalentProfilePreview from "@/features/talent/TalentProfilePreview";
-import { isMarketplaceVisibilitySchemaError } from "@/lib/talentMarketplace";
+import { canViewerAccessTalentProfile } from "@/lib/talentMarketplace";
 
 type Props = { params: Promise<{ username: string }> };
 
+async function getTalentByUsername(username: string) {
+  const supabase = createServerClient({ useServiceRole: true });
+  const { data } = await supabase
+    .from("talent_profiles")
+    .select("id, user_id, full_name, bio, city, country, categories, avatar_url, instagram, tiktok, youtube, gender, age, photo_front_url, photo_left_url, photo_right_url, marketplace_visible")
+    .eq("instagram", username)
+    .maybeSingle();
+
+  return data;
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
-  const supabase = createServerClient({ useServiceRole: true });
-  const fetchProfile = async (requireMarketplaceVisibility: boolean) => {
-    let query = supabase
-      .from("talent_profiles")
-      .select("full_name, bio")
-      .eq("instagram", username);
-
-    if (requireMarketplaceVisibility) {
-      query = query.eq("marketplace_visible", true);
-    }
-
-    return query.maybeSingle();
-  };
-
-  let { data, error } = await fetchProfile(true);
-
-  if (isMarketplaceVisibilitySchemaError(error)) {
-    ({ data } = await fetchProfile(false));
-  }
-
-  if (!data) return { title: "Perfil nao encontrado - BrisaHub" };
+  const talent = await getTalentByUsername(username);
+  if (!talent) return { title: "Perfil nao encontrado - BrisaHub" };
 
   return {
-    title: `${data.full_name ?? username} - BrisaHub`,
-    description: data.bio ?? undefined,
+    title: `${talent.full_name ?? username} - BrisaHub`,
+    description: talent.bio ?? undefined,
   };
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function TalentProfilePage({ params }: Props) {
   const { username } = await params;
+  const talent = await getTalentByUsername(username);
+  if (!talent) notFound();
+
+  const session = await createSessionClient();
+  const { data: { user } } = await session.auth.getUser();
   const supabase = createServerClient({ useServiceRole: true });
 
-  const fetchProfile = async (requireMarketplaceVisibility: boolean) => {
-    let query = supabase
-      .from("talent_profiles")
-      .select("id, full_name, bio, city, country, categories, avatar_url, instagram, tiktok, youtube, gender, age, photo_front_url, photo_left_url, photo_right_url")
-      .eq("instagram", username);
+  const canAccess = await canViewerAccessTalentProfile(
+    supabase,
+    {
+      id: String(talent.id),
+      user_id: (talent.user_id as string | null) ?? null,
+      marketplace_visible: (talent.marketplace_visible as boolean | null) ?? null,
+    },
+    user?.id ?? null,
+  );
 
-    if (requireMarketplaceVisibility) {
-      query = query.eq("marketplace_visible", true);
-    }
+  if (!canAccess) notFound();
 
-    return query.maybeSingle();
-  };
-
-  let { data, error } = await fetchProfile(true);
-
-  if (isMarketplaceVisibilitySchemaError(error)) {
-    ({ data } = await fetchProfile(false));
-  }
-
-  if (!data) notFound();
-  return <TalentProfilePreview talent={data} />;
+  const { marketplace_visible: _marketplaceVisible, ...publicTalent } = talent;
+  return <TalentProfilePreview talent={publicTalent} />;
 }
