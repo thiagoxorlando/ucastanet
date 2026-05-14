@@ -160,14 +160,30 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
           } as CSSProperties
         }
       >
+        {/* Dark base gradient */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.04),transparent_28%),linear-gradient(180deg,#071416_0%,#041012_100%)]" />
+        {/* Agency-tinted grid pattern */}
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-1"
+          className="pointer-events-none absolute inset-0 opacity-[0.055]"
+          style={{
+            backgroundImage: `linear-gradient(${hexToRgba(primary, 0.8)} 1px, transparent 1px), linear-gradient(90deg, ${hexToRgba(primary, 0.8)} 1px, transparent 1px)`,
+            backgroundSize: "48px 48px",
+          }}
+        />
+        {/* Top accent strip */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-[2px]"
           style={{ background: `linear-gradient(90deg, ${primary} 0%, ${accent} 100%)` }}
         />
+        {/* Top-left glow */}
         <div
-          className="pointer-events-none absolute -left-12 top-12 h-32 w-32 rounded-full blur-3xl"
+          className="pointer-events-none absolute -left-12 top-12 h-36 w-36 rounded-full blur-3xl"
           style={{ background: glow }}
+        />
+        {/* Bottom-right accent glow */}
+        <div
+          className="pointer-events-none absolute -right-10 bottom-16 h-28 w-28 rounded-full blur-3xl"
+          style={{ background: hexToRgba(accent, 0.14) }}
         />
         <div className="pointer-events-none absolute inset-y-0 right-0 w-px bg-white/[0.08]" />
 
@@ -231,7 +247,7 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
 
         <div className="relative flex-1 min-h-0 px-4 py-5">
           <div className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">
-            Navegacao
+            Navegação
           </div>
           <nav className="h-full overflow-y-auto pr-1 sidebar-scroll">
             <ul className="space-y-1.5">
