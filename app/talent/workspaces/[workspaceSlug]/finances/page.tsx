@@ -10,6 +10,28 @@ export const metadata: Metadata = { title: "Financeiro — BrisaHub" };
 
 type Props = { params: Promise<{ workspaceSlug: string }> };
 
+function StatCard({
+  label, value, sub, accent,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent?: "emerald" | "amber";
+}) {
+  const colors = {
+    emerald: { text: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-100" },
+    amber:   { text: "text-amber-700",   bg: "bg-amber-50",   border: "border-amber-100" },
+  };
+  const c = accent ? colors[accent] : null;
+  return (
+    <div className={`rounded-[20px] border p-5 ${c ? `${c.bg} ${c.border}` : "border-zinc-200 bg-white"} shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)]`}>
+      <p className={`text-[11px] font-semibold uppercase tracking-widest ${c ? c.text : "text-zinc-400"}`}>{label}</p>
+      <p className={`mt-2 text-[1.6rem] font-semibold tracking-tight ${c ? c.text : "text-zinc-950"}`}>{value}</p>
+      {sub && <p className={`mt-1 text-[12px] ${c ? c.text : "text-zinc-400"} opacity-80`}>{sub}</p>}
+    </div>
+  );
+}
+
 export default async function WorkspaceFinancesPage({ params }: Props) {
   const { workspaceSlug } = await params;
 
@@ -21,7 +43,7 @@ export default async function WorkspaceFinancesPage({ params }: Props) {
 
   const workspace = (await supabase
     .from("premium_workspaces")
-    .select("id, name")
+    .select("id, name, brand_primary_color, brand_accent_color")
     .eq("slug", workspaceSlug)
     .is("deleted_at", null)
     .eq("status", "active")
@@ -47,8 +69,10 @@ export default async function WorkspaceFinancesPage({ params }: Props) {
     : { data: [] };
 
   const contracts = contractRows ?? [];
-  const paidContracts = contracts.filter((c) => c.status === "paid");
-  const pendingContracts = contracts.filter((c) => c.status !== "paid" && c.status !== "cancelled" && c.status !== "rejected");
+  const paidContracts    = contracts.filter((c) => c.status === "paid");
+  const pendingContracts = contracts.filter(
+    (c) => c.status !== "paid" && c.status !== "cancelled" && c.status !== "rejected",
+  );
 
   const totalEarned = paidContracts.reduce((s, c) => {
     const { net } = resolveContractAmounts(c as Parameters<typeof resolveContractAmounts>[0]);
@@ -60,7 +84,6 @@ export default async function WorkspaceFinancesPage({ params }: Props) {
     return s + net;
   }, 0);
 
-  // Wallet balance for the third card (static SSR; live value is in the client component)
   const { data: profileData } = await supabase
     .from("profiles")
     .select("wallet_balance")
@@ -68,83 +91,83 @@ export default async function WorkspaceFinancesPage({ params }: Props) {
     .maybeSingle();
   const walletBalance = Number(profileData?.wallet_balance ?? 0);
 
+  const primary = (workspace.brand_primary_color as string | null) ?? "#1ABC9C";
+  const accent  = (workspace.brand_accent_color  as string | null) ?? "#27C1D6";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-[1.3rem] font-bold text-zinc-950">Financeiro</h1>
         <p className="mt-0.5 text-[13px] text-zinc-500">
-          Pagamentos recebidos através do portal da agência.
+          Pagamentos através do portal de{" "}
+          <span className="font-medium">{workspace.name as string}</span>.
         </p>
       </div>
 
-      {/* Summary cards — workspace-scoped only */}
+      {/* Summary cards — workspace-scoped */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-[20px] border border-zinc-200 bg-white p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-            Ganhos com esta agência
-          </p>
-          <p className="mt-2 text-[1.5rem] font-bold text-zinc-950">{brl(totalEarned)}</p>
-          <p className="mt-0.5 text-[12px] text-zinc-400">
-            {paidContracts.length} contrato{paidContracts.length !== 1 ? "s" : ""} pago{paidContracts.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-
-        <div className="rounded-[20px] border border-zinc-200 bg-white p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-            Valores a receber
-          </p>
-          <p className="mt-2 text-[1.5rem] font-bold text-zinc-950">{brl(totalPending)}</p>
-          <p className="mt-0.5 text-[12px] text-zinc-400">
-            {pendingContracts.length} contrato{pendingContracts.length !== 1 ? "s" : ""} em andamento
-          </p>
-        </div>
-
-        <div className="rounded-[20px] border border-emerald-100 bg-emerald-50 p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-500">
-            Saldo disponível para saque
-          </p>
-          <p className="mt-2 text-[1.5rem] font-bold text-emerald-700">{brl(walletBalance)}</p>
-          <p className="mt-0.5 text-[12px] text-emerald-500">
-            Disponível para saque via PIX
-          </p>
-        </div>
+        <StatCard
+          label="Ganhos neste portal"
+          value={brl(totalEarned)}
+          sub={`${paidContracts.length} contrato${paidContracts.length !== 1 ? "s" : ""} pago${paidContracts.length !== 1 ? "s" : ""}`}
+          accent="emerald"
+        />
+        <StatCard
+          label="A receber"
+          value={brl(totalPending)}
+          sub={`${pendingContracts.length} contrato${pendingContracts.length !== 1 ? "s" : ""} em andamento`}
+          accent="amber"
+        />
+        <StatCard
+          label="Saldo disponível para saque"
+          value={brl(walletBalance)}
+          sub="Disponível via PIX"
+          accent={walletBalance > 0 ? "emerald" : undefined}
+        />
       </div>
 
-      {/* Paid contracts history — workspace-scoped */}
+      {/* Paid contracts history */}
       {paidContracts.length > 0 && (
-        <section>
-          <h2 className="mb-3 text-[13px] font-semibold text-zinc-700">Histórico de pagamentos</h2>
-          <ul className="flex flex-col gap-2.5">
-            {paidContracts.map((contract) => {
-              const { net, gross, commissionPct } = resolveContractAmounts(
-                contract as Parameters<typeof resolveContractAmounts>[0],
-              );
-              return (
-                <li key={contract.id}>
-                  <div className="rounded-[18px] border border-zinc-200 bg-white p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="truncate text-[14px] font-semibold text-zinc-900">
+        <section className="space-y-3">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+            Histórico de pagamentos neste portal
+          </p>
+          <div className="overflow-hidden rounded-[22px] border border-zinc-200 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
+            <ul className="divide-y divide-zinc-50">
+              {paidContracts.map((contract) => {
+                const { net, gross, commissionPct } = resolveContractAmounts(
+                  contract as Parameters<typeof resolveContractAmounts>[0],
+                );
+                return (
+                  <li key={contract.id} className="flex items-center gap-4 px-5 py-4">
+                    <div
+                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl"
+                      style={{ background: `linear-gradient(135deg, ${primary}25, ${accent}15)` }}
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: primary }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-semibold text-zinc-900">
                         {jobMap.get(String(contract.job_id)) ?? "Vaga"}
                       </p>
-                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                        Pago
-                      </span>
+                      <p className="mt-0.5 text-[11px] text-zinc-400">
+                        Bruto {brl(gross)} · Comissão {commissionPct}%
+                        {contract.paid_at && (
+                          <> · {new Date(contract.paid_at).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" })}</>
+                        )}
+                      </p>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-4 text-[12px] text-zinc-500">
-                      <span><span className="font-medium text-zinc-700">Valor líq.:</span> {brl(net)}</span>
-                      <span><span className="font-medium text-zinc-700">Bruto:</span> {brl(gross)}</span>
-                      <span><span className="font-medium text-zinc-700">Comissão:</span> {commissionPct}%</span>
-                      {contract.paid_at && (
-                        <span className="ml-auto text-[11px] text-zinc-400">
-                          {new Date(contract.paid_at).toLocaleDateString("pt-BR")}
-                        </span>
-                      )}
+                    <div className="flex-shrink-0 text-right">
+                      <p className="text-[16px] font-semibold tabular-nums text-emerald-700">{brl(net)}</p>
+                      <p className="text-[10px] text-zinc-400">líquido</p>
                     </div>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </section>
       )}
 
@@ -159,7 +182,7 @@ export default async function WorkspaceFinancesPage({ params }: Props) {
         </div>
       )}
 
-      {/* PIX setup + withdrawal (client-side, live balance) */}
+      {/* PIX setup + withdrawal (live, client-side) */}
       <WorkspaceFinancesClient />
     </div>
   );

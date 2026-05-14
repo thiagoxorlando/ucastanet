@@ -34,20 +34,36 @@ export default async function AdminBookingsPage() {
       ? supabase.from("agencies").select("id, company_name").in("id", agencyIds).then((r) => r.data ?? [])
       : Promise.resolve([]),
     jobIds.length
-      ? supabase.from("jobs").select("id, job_date").in("id", jobIds).then((r) => r.data ?? [])
+      ? supabase.from("jobs").select("id, job_date, workspace_id").in("id", jobIds).then((r) => r.data ?? [])
       : Promise.resolve([]),
   ]);
 
   const talentMap = new Map<string, string>();
   const agencyMap = new Map<string, string>();
   const jobDateMap = new Map<string, string | null>();
+  const jobWorkspaceIdMap = new Map<string, string | null>();
   for (const t of talentData) talentMap.set(t.id, t.full_name ?? "Sem nome");
   for (const a of agencyData) agencyMap.set(a.id, a.company_name ?? "Sem nome");
-  for (const job of jobsData) jobDateMap.set(job.id, (job as { job_date?: string | null }).job_date ?? null);
+  for (const job of jobsData) {
+    jobDateMap.set(job.id, (job as { job_date?: string | null }).job_date ?? null);
+    jobWorkspaceIdMap.set(job.id, (job as { workspace_id?: string | null }).workspace_id ?? null);
+  }
+
+  // Resolve workspace names for premium bookings
+  const bookingWorkspaceIds = [...new Set([...jobWorkspaceIdMap.values()].filter((id): id is string => !!id))];
+  const bookingWorkspaceNameMap = new Map<string, string>();
+  if (bookingWorkspaceIds.length) {
+    const { data: wsData } = await supabase
+      .from("premium_workspaces")
+      .select("id, name")
+      .in("id", bookingWorkspaceIds);
+    for (const ws of wsData ?? []) bookingWorkspaceNameMap.set(ws.id, ws.name ?? "Premium");
+  }
 
   const bookings = rows.map((b) => {
     const contractArr = Array.isArray((b as any).contracts) ? (b as any).contracts : [];
     const contract = contractArr[0] ?? null;
+    const wsId = b.job_id ? (jobWorkspaceIdMap.get(b.job_id) ?? null) : null;
 
     return {
       id:                  b.id,
@@ -65,6 +81,8 @@ export default async function AdminBookingsPage() {
       contractSignedAt:    contract?.signed_at      ?? null,
       contractConfirmedAt: contract?.confirmed_at ?? contract?.agency_signed_at ?? null,
       paidAt:              contract?.paid_at        ?? null,
+      workspaceId:         wsId,
+      workspaceName:       wsId ? (bookingWorkspaceNameMap.get(wsId) ?? "Premium") : null,
     };
   });
 

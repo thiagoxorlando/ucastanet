@@ -201,10 +201,13 @@ export default async function AdminFinancesPage() {
   const withdrawalRoleMap = new Map<string, string>();
   const withdrawalTalentNameMap = new Map<string, string>();
   const withdrawalTalentPixMap = new Map<string, { pix_key_type: string | null; pix_key_value: string | null; pix_holder_name: string | null }>();
-  const bookingJobMap = new Map<string, { title: string; agencyId: string | null }>();
+  const bookingJobMap = new Map<string, { title: string; agencyId: string | null; workspaceId: string | null }>();
+  const bookingJobWorkspaceIdMap = new Map<string, string | null>();
   const contractTalentMap = new Map<string, string>();
   const contractAgencyMap = new Map<string, string>();
   const contractJobMap = new Map<string, string>();
+  const contractJobWorkspaceIdMap = new Map<string, string | null>();
+  const financesWorkspaceNameMap = new Map<string, string>();
 
   await Promise.all([
     talentIds.length
@@ -221,14 +224,17 @@ export default async function AdminFinancesPage() {
     jobIds.length
       ? supabase
           .from("jobs")
-          .select("id, title, agency_id")
+          .select("id, title, agency_id, workspace_id")
           .in("id", jobIds)
           .then(({ data }) => {
             for (const job of data ?? []) {
+              const wsId = (job as { workspace_id?: string | null }).workspace_id ?? null;
               bookingJobMap.set(job.id, {
                 title: job.title ?? "-",
                 agencyId: job.agency_id ?? null,
+                workspaceId: wsId,
               });
+              bookingJobWorkspaceIdMap.set(job.id, wsId);
             }
           })
       : Promise.resolve(),
@@ -257,11 +263,12 @@ export default async function AdminFinancesPage() {
     contractJobIds.length
       ? supabase
           .from("jobs")
-          .select("id, title")
+          .select("id, title, workspace_id")
           .in("id", contractJobIds)
           .then(({ data }) => {
             for (const job of data ?? []) {
               contractJobMap.set(job.id, job.title ?? "Untitled Job");
+              contractJobWorkspaceIdMap.set(job.id, (job as { workspace_id?: string | null }).workspace_id ?? null);
             }
           })
       : Promise.resolve(),
@@ -305,6 +312,21 @@ export default async function AdminFinancesPage() {
       : Promise.resolve(),
   ]);
 
+  // Resolve workspace names for premium bookings/contracts
+  const allFinancesWsIds = [
+    ...new Set([
+      ...[...bookingJobWorkspaceIdMap.values()],
+      ...[...contractJobWorkspaceIdMap.values()],
+    ].filter((id): id is string => !!id)),
+  ];
+  if (allFinancesWsIds.length) {
+    const { data: wsData } = await supabase
+      .from("premium_workspaces")
+      .select("id, name")
+      .in("id", allFinancesWsIds);
+    for (const ws of wsData ?? []) financesWorkspaceNameMap.set(ws.id, ws.name ?? "Premium");
+  }
+
   const referralKeys = new Set((referralSubs ?? []).map((submission) => `${submission.job_id}::${submission.talent_user_id}`));
 
   const bookings: FinancesBooking[] = rows.map((booking) => {
@@ -328,6 +350,7 @@ export default async function AdminFinancesPage() {
 
     const referralAmount = isConfirmed && isReferred ? Math.round(price * REFERRAL_RATE * 100) / 100 : 0;
 
+    const bWsId = booking.job_id ? (bookingJobWorkspaceIdMap.get(booking.job_id) ?? null) : null;
     return {
       id: booking.id,
       jobTitle: booking.job_title ?? job?.title ?? "-",
@@ -340,6 +363,8 @@ export default async function AdminFinancesPage() {
       commissionAmount,
       referralAmount,
       netPlatformAmount: commissionAmount - referralAmount,
+      workspaceId:   bWsId,
+      workspaceName: bWsId ? (financesWorkspaceNameMap.get(bWsId) ?? "Premium") : null,
     };
   });
 
@@ -355,6 +380,7 @@ export default async function AdminFinancesPage() {
         ? contract.net_amount
         : calculateNetAmount(amount, agencyPlan);
 
+    const cWsId = contract.job_id ? (contractJobWorkspaceIdMap.get(contract.job_id) ?? null) : null;
     return {
       id: contract.id,
       jobTitle: contract.job_id ? (contractJobMap.get(contract.job_id) ?? "Untitled Job") : "Untitled Job",
@@ -367,6 +393,8 @@ export default async function AdminFinancesPage() {
       status: contract.status ?? "confirmed",
       created_at: contract.created_at ?? "",
       paid_at: contract.paid_at ?? null,
+      workspaceId:   cWsId,
+      workspaceName: cWsId ? (financesWorkspaceNameMap.get(cWsId) ?? "Premium") : null,
     };
   });
 

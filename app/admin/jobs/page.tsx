@@ -11,7 +11,7 @@ export default async function AdminJobsPage() {
   const [jobsRes, agenciesRes] = await Promise.all([
     supabase
       .from("jobs")
-      .select("id, title, category, budget, deadline, created_at, agency_id, status, description, location, gender, age_min, age_max, job_date")
+      .select("id, title, category, budget, deadline, created_at, agency_id, status, description, location, gender, age_min, age_max, job_date, workspace_id, visibility")
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
     supabase.from("agencies").select("id, company_name"),
@@ -23,6 +23,23 @@ export default async function AdminJobsPage() {
   }
 
   const jobIds = (jobsRes.data ?? []).map((j) => j.id);
+
+  // Workspace names for premium jobs
+  const premiumWorkspaceIds = [
+    ...new Set(
+      (jobsRes.data ?? [])
+        .map((j) => (j as { workspace_id?: string | null }).workspace_id)
+        .filter((id): id is string => !!id),
+    ),
+  ];
+  const workspaceNameMap = new Map<string, string>();
+  if (premiumWorkspaceIds.length) {
+    const { data: wsData } = await supabase
+      .from("premium_workspaces")
+      .select("id, name")
+      .in("id", premiumWorkspaceIds);
+    for (const ws of wsData ?? []) workspaceNameMap.set(ws.id, ws.name ?? "Premium");
+  }
 
   // ── Round 2: contracts + submissions for these jobs (parallel) ────────────
   let contractsData: { job_id: string; talent_id: string; status: string }[] = [];
@@ -99,25 +116,32 @@ export default async function AdminJobsPage() {
   }
 
   // ── Assemble final jobs array ─────────────────────────────────────────────
-  const jobs = (jobsRes.data ?? []).map((j) => ({
-    id:              j.id,
-    title:           j.title       ?? "Untitled",
-    category:        j.category    ?? null,
-    budget:          j.budget      ?? null,
-    deadline:        j.deadline    ?? null,
-    created_at:      j.created_at  ?? "",
-    status:          j.status      ?? "open",
-    agencyName:      j.agency_id ? (agencyMap.get(j.agency_id) ?? "Agência sem nome") : "—",
-    submissionCount: submissionCountMap.get(j.id) ?? 0,
-    description:     j.description ?? null,
-    location:        j.location    ?? null,
-    gender:          j.gender      ?? null,
-    ageMin:          j.age_min     ?? null,
-    ageMax:          j.age_max     ?? null,
-    jobDate:         j.job_date    ?? null,
-    assignedTalents: assignedByJob.get(j.id) ?? [],
-    invitedTalents:  invitedByJob.get(j.id)  ?? [],
-  }));
+  const jobs = (jobsRes.data ?? []).map((j) => {
+    const workspaceId = (j as { workspace_id?: string | null }).workspace_id ?? null;
+    const visibility  = (j as { visibility?: string | null }).visibility ?? null;
+    return {
+      id:              j.id,
+      title:           j.title       ?? "Untitled",
+      category:        j.category    ?? null,
+      budget:          j.budget      ?? null,
+      deadline:        j.deadline    ?? null,
+      created_at:      j.created_at  ?? "",
+      status:          j.status      ?? "open",
+      agencyName:      j.agency_id ? (agencyMap.get(j.agency_id) ?? "Agência sem nome") : "—",
+      submissionCount: submissionCountMap.get(j.id) ?? 0,
+      description:     j.description ?? null,
+      location:        j.location    ?? null,
+      gender:          j.gender      ?? null,
+      ageMin:          j.age_min     ?? null,
+      ageMax:          j.age_max     ?? null,
+      jobDate:         j.job_date    ?? null,
+      assignedTalents: assignedByJob.get(j.id) ?? [],
+      invitedTalents:  invitedByJob.get(j.id)  ?? [],
+      workspaceId,
+      workspaceName:   workspaceId ? (workspaceNameMap.get(workspaceId) ?? "Premium") : null,
+      visibility,
+    };
+  });
 
   return <AdminJobs jobs={jobs} />;
 }

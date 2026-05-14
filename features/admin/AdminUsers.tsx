@@ -12,6 +12,7 @@ export type AdminUser = {
   email: string;
   name: string;
   role: string;
+  premiumRole: "owner" | "agent" | "premium_talent" | null;
   plan: string | null;
   isFrozen: boolean;
   created_at: string;
@@ -715,9 +716,26 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                     </td>
 
                     <td className="px-4 py-4">
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${roleTone}`}>
-                        {user.role}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize ${roleTone}`}>
+                          {user.role}
+                        </span>
+                        {user.premiumRole === "owner" && (
+                          <span className="inline-flex rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-violet-100">Main Agent Premium</span>
+                        )}
+                        {user.premiumRole === "agent" && (
+                          <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-100">Agent Premium</span>
+                        )}
+                        {user.premiumRole === "premium_talent" && (
+                          <span className="inline-flex rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700 ring-1 ring-teal-100">Talent Premium</span>
+                        )}
+                        {user.premiumRole === null && user.role === "talent" && (
+                          <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 ring-1 ring-emerald-100">Talent Open</span>
+                        )}
+                        {user.premiumRole === null && user.role === "agency" && (
+                          <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600 ring-1 ring-blue-100">Agency Open</span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="hidden px-4 py-4 sm:table-cell">

@@ -48,6 +48,9 @@ export default async function AdminUserProfilePage({ params }: Props) {
     { data: talentContracts },
     { data: agencyContracts },
     { data: termsAcceptance },
+    { data: wsOwner },
+    { data: wsMember },
+    { data: wsTalent },
   ] = await Promise.all([
     supabase.auth.admin.getUserById(id),
     supabase.from("profiles").select("role, created_at, wallet_balance").eq("id", id).single(),
@@ -58,6 +61,9 @@ export default async function AdminUserProfilePage({ params }: Props) {
     supabase.from("contracts").select("payment_amount, commission_amount, net_amount, status").eq("talent_id", id).in("status", ["signed", "confirmed", "paid"]),
     supabase.from("contracts").select("payment_amount, commission_amount, net_amount, status").eq("agency_id", id).in("status", ["signed", "confirmed", "paid"]),
     supabase.from("terms_acceptances").select("accepted_at").eq("user_id", id).order("accepted_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("premium_workspaces").select("id, name").eq("owner_user_id", id).is("deleted_at", null).maybeSingle(),
+    supabase.from("premium_workspace_members").select("id, role").eq("user_id", id).limit(1).maybeSingle(),
+    supabase.from("premium_workspace_talents").select("id").eq("talent_user_id", id).is("removed_at", null).maybeSingle(),
   ]);
 
   let planData: { plan?: string } | null = null;
@@ -77,6 +83,22 @@ export default async function AdminUserProfilePage({ params }: Props) {
 
   const isTalent = role === "talent";
   const isAgency = role === "agency";
+
+  const premiumIdentityLabel: string | null =
+    isAgency && wsOwner   ? `Main Agent Premium${wsOwner.name ? ` · ${wsOwner.name}` : ""}` :
+    isAgency && wsMember  ? "Agent Premium" :
+    isTalent && wsTalent  ? "Talent Premium" :
+    isTalent              ? "Talent Open" :
+    isAgency              ? "Agency Open" :
+    null;
+
+  const premiumBadgeCls =
+    isAgency && wsOwner  ? "bg-violet-50 text-violet-700 ring-1 ring-violet-100" :
+    isAgency && wsMember ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100" :
+    isTalent && wsTalent ? "bg-teal-50 text-teal-700 ring-1 ring-teal-100" :
+    isTalent             ? "bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100" :
+    isAgency             ? "bg-blue-50 text-blue-600 ring-1 ring-blue-100" :
+    "bg-zinc-100 text-zinc-500";
 
   const relevantContracts = isTalent ? (talentContracts ?? []) : (agencyContracts ?? []);
   const totalEarned = isTalent
@@ -123,6 +145,9 @@ export default async function AdminUserProfilePage({ params }: Props) {
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-[1.5rem] font-semibold tracking-tight text-zinc-900">{name}</h1>
               <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full capitalize ${roleCls}`}>{role}</span>
+              {premiumIdentityLabel && (
+                <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${premiumBadgeCls}`}>{premiumIdentityLabel}</span>
+              )}
             </div>
             <p className="text-[13px] text-zinc-500 mt-1">{email}</p>
             <p className="text-[12px] text-zinc-400 mt-0.5">Entrou em {fmt(joinedAt)}</p>

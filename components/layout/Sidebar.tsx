@@ -582,7 +582,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     ? [
         {
           labelKey: "nav_dashboard",
-          label: "Painel",
           href: `/talent/workspaces/${portalWorkspace!.slug}`,
           exact: true,
           icon: (
@@ -594,7 +593,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         },
         {
           labelKey: "nav_jobs",
-          label: "Vagas",
           href: `/talent/workspaces/${portalWorkspace!.slug}/jobs`,
           icon: (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -604,7 +602,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         },
         {
           labelKey: "nav_bookings",
-          label: "Candidaturas",
           href: `/talent/workspaces/${portalWorkspace!.slug}/applications`,
           icon: (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -614,7 +611,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         },
         {
           labelKey: "nav_contracts",
-          label: "Contratos",
           href: `/talent/workspaces/${portalWorkspace!.slug}/contracts`,
           icon: (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -624,7 +620,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         },
         {
           labelKey: "nav_finances",
-          label: "Financeiro",
           href: `/talent/workspaces/${portalWorkspace!.slug}/finances`,
           icon: (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -634,7 +629,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         },
         {
           labelKey: "nav_profile",
-          label: "Perfil",
           href: `/talent/workspaces/${portalWorkspace!.slug}/profile`,
           icon: (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -644,7 +638,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         },
         {
           labelKey: "nav_support",
-          label: "Suporte",
           href: "/talent/support",
           exact: true,
           icon: (

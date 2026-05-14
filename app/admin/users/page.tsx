@@ -15,6 +15,9 @@ export default async function AdminUsersPage() {
     { data: paidContracts },
     { data: frozenProfiles },
     { data: openJobsData },
+    { data: workspaceOwnerRows },
+    { data: workspaceMemberRows },
+    { data: workspaceTalentRows },
   ] = await Promise.all([
     supabase.auth.admin.listUsers({ perPage: 1000 }),
     // Only active (non-frozen, non-deleted) profiles
@@ -27,6 +30,9 @@ export default async function AdminUsersPage() {
     supabase.from("contracts").select("talent_id, agency_id, commission_amount, payment_amount").eq("status", "paid"),
     supabase.from("profiles").select("id, is_frozen"),
     supabase.from("jobs").select("agency_id").eq("status", "open").is("deleted_at", null),
+    supabase.from("premium_workspaces").select("owner_user_id").is("deleted_at", null),
+    supabase.from("premium_workspace_members").select("user_id"),
+    supabase.from("premium_workspace_talents").select("talent_user_id"),
   ]);
 
   const planMap = new Map<string, string>();
@@ -38,6 +44,10 @@ export default async function AdminUsersPage() {
   } catch {
     // Ignore environments where the plan column is still missing.
   }
+
+  const ownerUserIds  = new Set((workspaceOwnerRows  ?? []).map((w) => String((w as { owner_user_id: string }).owner_user_id)));
+  const memberUserIds = new Set((workspaceMemberRows ?? []).map((m) => String((m as { user_id: string }).user_id)));
+  const premiumTalentUserIds = new Set((workspaceTalentRows ?? []).map((t) => String((t as { talent_user_id: string }).talent_user_id)));
 
   const openJobCountMap = new Map<string, number>();
   for (const job of (openJobsData ?? []) as Array<{ agency_id?: string | null }>) {
@@ -107,11 +117,20 @@ export default async function AdminUsersPage() {
           ? profileMap.get(user.id) || ""
           : talentMap.get(user.id) || "";
 
+    let premiumRole: "owner" | "agent" | "premium_talent" | null = null;
+    if (role === "agency") {
+      if (ownerUserIds.has(user.id))       premiumRole = "owner";
+      else if (memberUserIds.has(user.id)) premiumRole = "agent";
+    } else if (role === "talent" && premiumTalentUserIds.has(user.id)) {
+      premiumRole = "premium_talent";
+    }
+
     return {
       id: user.id,
       email: user.email ?? "",
       name,
       role,
+      premiumRole,
       isFrozen: frozenMap.get(user.id) ?? false,
       created_at: user.created_at ?? "",
       commissionGenerated: commissionMap.get(user.id) ?? 0,

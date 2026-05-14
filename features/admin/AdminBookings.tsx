@@ -28,6 +28,8 @@ export type AdminBooking = {
   contractSignedAt: string | null;
   contractConfirmedAt: string | null;
   paidAt: string | null;
+  workspaceId?: string | null;
+  workspaceName?: string | null;
 };
 
 function formatDate(value: string | null) {
@@ -164,6 +166,14 @@ function BookingRow({
         </td>
         <td className="px-6 py-4">
           <p className="max-w-[180px] truncate text-[13px] font-semibold text-zinc-900">{local.jobTitle || "-"}</p>
+          {local.workspaceId && (
+            <div className="mt-0.5 flex flex-wrap gap-1">
+              <span className="rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-violet-100">Premium</span>
+              {local.workspaceName && (
+                <span className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">{local.workspaceName}</span>
+              )}
+            </div>
+          )}
         </td>
         <td className="hidden px-4 py-4 sm:table-cell">
           <span className="text-[13px] text-zinc-600">{local.talentName}</span>

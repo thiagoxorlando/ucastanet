@@ -34,21 +34,40 @@ export default async function AdminContractsPage() {
   for (const t of talentRes.data ?? []) talentMap.set(t.id, t.full_name ?? "Sem nome");
   for (const a of agencyRes.data ?? []) agencyMap.set(a.id, a.company_name ?? "Sem nome");
 
-  // Resolve job titles
+  // Resolve job titles + workspace info
   const jobIds = [...new Set(contracts_data.map((c) => c.job_id).filter(Boolean))] as string[];
   const jobMap = new Map<string, string>();
+  const contractJobWorkspaceIdMap = new Map<string, string | null>();
   if (jobIds.length) {
-    const { data: jobs } = await supabase.from("jobs").select("id, title").in("id", jobIds);
-    for (const j of jobs ?? []) jobMap.set(j.id, j.title ?? "Untitled Job");
+    const { data: jobs } = await supabase.from("jobs").select("id, title, workspace_id").in("id", jobIds);
+    for (const j of jobs ?? []) {
+      jobMap.set(j.id, j.title ?? "Untitled Job");
+      contractJobWorkspaceIdMap.set(j.id, (j as { workspace_id?: string | null }).workspace_id ?? null);
+    }
   }
 
-  const contracts: AdminContractRow[] = contracts_data.map((c) => ({
+  // Workspace names for premium contracts
+  const contractWorkspaceIds = [...new Set([...contractJobWorkspaceIdMap.values()].filter((id): id is string => !!id))];
+  const contractWorkspaceNameMap = new Map<string, string>();
+  if (contractWorkspaceIds.length) {
+    const { data: wsData } = await supabase
+      .from("premium_workspaces")
+      .select("id, name")
+      .in("id", contractWorkspaceIds);
+    for (const ws of wsData ?? []) contractWorkspaceNameMap.set(ws.id, ws.name ?? "Premium");
+  }
+
+  const contracts: AdminContractRow[] = contracts_data.map((c) => {
+    const wsId = c.job_id ? (contractJobWorkspaceIdMap.get(c.job_id) ?? null) : null;
+    return {
     id:              c.id,
     jobId:           c.job_id          ?? null,
     jobTitle:        c.job_id ? (jobMap.get(c.job_id) ?? "Untitled Job") : "Untitled Job",
     talentId:        c.talent_id       ?? null,
     talentName:      c.talent_id ? (talentMap.get(c.talent_id) ?? "Sem nome")  : "Sem nome",
     agencyName:      c.agency_id ? (agencyMap.get(c.agency_id) ?? "Sem nome") : "—",
+    workspaceId:     wsId,
+    workspaceName:   wsId ? (contractWorkspaceNameMap.get(wsId) ?? "Premium") : null,
     jobDate:         c.job_date        ?? null,
     jobTime:         c.job_time        ?? null,
     location:        c.location        ?? null,
@@ -65,7 +84,8 @@ export default async function AdminContractsPage() {
     paidAt:            c.paid_at            ?? null,
     contractFileUrl:   c.contract_file_url ? buildContractFileAccessUrl(c.id, "original") : null,
     signedContractUrl: c.signed_contract_url ? buildContractFileAccessUrl(c.id, "signed") : null,
-  }));
+  };
+  });
 
   return <AdminContracts contracts={contracts} />;
 }

@@ -22,6 +22,8 @@ export type FinancesBooking = {
   commissionAmount: number;
   referralAmount: number;
   netPlatformAmount: number;
+  workspaceId?: string | null;
+  workspaceName?: string | null;
 };
 
 export type FinancesContract = {
@@ -38,6 +40,8 @@ export type FinancesContract = {
   paid_at: string | null;
   fileUrl?: string | null;
   signedFileUrl?: string | null;
+  workspaceId?: string | null;
+  workspaceName?: string | null;
 };
 
 export type FinancesWithdrawal = {
@@ -372,6 +376,9 @@ function ProfitSection({
                 <div key={c.id} className="flex items-center justify-between px-4 py-2.5 text-[12px]">
                   <div>
                     <p className="font-medium text-[#1F2D2E]">{c.jobTitle}</p>
+                    {c.workspaceId && (
+                      <span className="rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-violet-100">Premium{c.workspaceName ? ` · ${c.workspaceName}` : ""}</span>
+                    )}
                     <p className="text-zinc-500">{c.talentName} · {fmt(c.paid_at)}</p>
                   </div>
                   <span className="font-semibold text-emerald-600 shrink-0 ml-2">{brl(c.commissionAmount)}</span>
@@ -597,6 +604,12 @@ function ContractsSection({
                 <Td>
                   <div>
                     <p className="font-medium text-[#1F2D2E]">{c.jobTitle}</p>
+                    {c.workspaceId && (
+                      <div className="mt-0.5 flex flex-wrap gap-1">
+                        <span className="rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-violet-100">Premium</span>
+                        {c.workspaceName && <span className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">{c.workspaceName}</span>}
+                      </div>
+                    )}
                     <p className="text-xs text-zinc-500">{fmt(c.created_at)}</p>
                   </div>
                 </Td>
@@ -682,6 +695,12 @@ function BookingsSection({ bookings, summary }: { bookings: FinancesBooking[]; s
                       </svg>
                       <div>
                         <p className="font-medium text-[#1F2D2E]">{b.jobTitle}</p>
+                        {b.workspaceId && (
+                          <div className="mt-0.5 flex flex-wrap gap-1">
+                            <span className="rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-violet-100">Premium</span>
+                            {b.workspaceName && <span className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">{b.workspaceName}</span>}
+                          </div>
+                        )}
                         <p className="text-xs text-zinc-500">{fmt(b.created_at)}</p>
                       </div>
                     </div>

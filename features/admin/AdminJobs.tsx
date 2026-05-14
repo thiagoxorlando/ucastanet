@@ -30,6 +30,9 @@ export type AdminJob = {
   jobDate: string | null;
   assignedTalents?: { id: string; name: string; status: string }[];
   invitedTalents?: { id: string; name: string; status: string }[];
+  workspaceId?: string | null;
+  workspaceName?: string | null;
+  visibility?: string | null;
 };
 
 type DateField = "jobDate" | "deadline" | "created_at";
@@ -240,7 +243,25 @@ function JobRow({
             <svg className={`h-3.5 w-3.5 flex-shrink-0 text-[#647B7B] transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
-            <p className="max-w-[180px] truncate text-[13px] font-semibold text-zinc-900">{job.title}</p>
+            <div className="min-w-0">
+              <p className="max-w-[180px] truncate text-[13px] font-semibold text-zinc-900">{job.title}</p>
+              {job.workspaceId ? (
+                <div className="mt-0.5 flex flex-wrap gap-1">
+                  {job.visibility === "private_portal" ? (
+                    <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-100">Portal Job</span>
+                  ) : job.visibility === "private_invite" ? (
+                    <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-100">Private Job</span>
+                  ) : (
+                    <span className="rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700 ring-1 ring-violet-100">Premium Workspace</span>
+                  )}
+                  {job.workspaceName && (
+                    <span className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">{job.workspaceName}</span>
+                  )}
+                </div>
+              ) : (
+                <span className="rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 ring-1 ring-sky-100">Open Platform</span>
+              )}
+            </div>
           </div>
         </td>
         <td className="px-4 py-4">
