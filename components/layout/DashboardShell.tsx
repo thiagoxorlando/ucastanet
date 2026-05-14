@@ -35,7 +35,10 @@ function DashboardShellFrame({ children }: { children: React.ReactNode }) {
       )}
 
       <div className={`${contentOffsetClass} flex flex-1 flex-col overflow-hidden`}>
-        <Topbar onMenuClick={() => setSidebarOpen(true)} />
+        <Topbar
+          onMenuClick={() => setSidebarOpen(true)}
+          homeHref={workspace ? `/talent/workspaces/${workspace.slug}` : undefined}
+        />
         <main className="flex-1 overflow-y-auto bg-[#F8FAFC] p-6">
           {children}
         </main>

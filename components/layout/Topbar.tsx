@@ -80,9 +80,10 @@ function getPageMeta(pathname: string) {
 
 type TopbarProps = {
   onMenuClick: () => void;
+  homeHref?: string;
 };
 
-export default function Topbar({ onMenuClick }: TopbarProps) {
+export default function Topbar({ onMenuClick, homeHref }: TopbarProps) {
   const pathname = usePathname();
   const { displayName, email, initials, avatarUrl, loading } = useUserProfile();
   const { role } = useRole();
@@ -98,9 +99,10 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
   const isAdmin = pathname.startsWith("/admin");
 
   const dashboardHref =
-    pathname.startsWith("/talent") ? "/talent/dashboard" :
+    homeHref ??
+    (pathname.startsWith("/talent") ? "/talent/dashboard" :
     pathname.startsWith("/admin") ? "/admin/dashboard" :
-    "/agency/dashboard";
+    "/agency/dashboard");
 
   return (
     <header className="sticky top-0 z-20 flex flex-shrink-0 items-center justify-between border-b border-[#DDE6E6] bg-white px-6 py-4">

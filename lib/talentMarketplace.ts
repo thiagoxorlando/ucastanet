@@ -35,8 +35,7 @@ export async function ensurePortalTalentMarketplacePrivacy(
   }
 
   for (const talentProfile of talentProfiles) {
-    const hasCompletedProfile = Boolean(String(talentProfile.full_name ?? "").trim());
-    if (!hasCompletedProfile && talentProfile.marketplace_visible !== false) {
+    if (talentProfile.marketplace_visible !== false) {
       await supabase
         .from("talent_profiles")
         .update({ marketplace_visible: false, deleted_at: null })

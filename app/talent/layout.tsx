@@ -46,24 +46,36 @@ export default async function TalentLayout({ children }: { children: React.React
   }
 
   // ── Portal-only talent gate ──────────────────────────────────────────────────
-  // If this talent joined via a Premium workspace portal, lock them into that
-  // workspace. Only applies when they're NOT already on a workspace route.
+  // A talent is portal-only if they have an active premium_workspace_talents row
+  // AND marketplace_visible = false. Open-marketplace talents (marketplace_visible = true)
+  // are never redirected, even if they also have a workspace membership.
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") ?? "";
   if (!pathname.startsWith("/talent/workspaces/")) {
-    const { data: portalRow } = await supabase
-      .from("premium_workspace_talents")
-      .select("workspace_id")
-      .eq("talent_user_id", user.id)
-      .is("removed_at", null)
-      .limit(1)
-      .maybeSingle();
+    const [portalRes, profileRes] = await Promise.all([
+      supabase
+        .from("premium_workspace_talents")
+        .select("workspace_id")
+        .eq("talent_user_id", user.id)
+        .is("removed_at", null)
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("talent_profiles")
+        .select("marketplace_visible")
+        .eq("id", user.id)
+        .maybeSingle(),
+    ]);
 
-    if (portalRow?.workspace_id) {
+    const isPortalOnly =
+      portalRes.data?.workspace_id != null &&
+      profileRes.data?.marketplace_visible === false;
+
+    if (isPortalOnly) {
       const { data: workspace } = await supabase
         .from("premium_workspaces")
         .select("slug")
-        .eq("id", portalRow.workspace_id)
+        .eq("id", portalRes.data!.workspace_id)
         .is("deleted_at", null)
         .eq("status", "active")
         .maybeSingle();
