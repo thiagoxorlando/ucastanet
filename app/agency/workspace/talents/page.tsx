@@ -35,6 +35,9 @@ type TalentProfileRow = {
   user_id: string | null;
   full_name: string | null;
   avatar_url: string | null;
+  city: string | null;
+  country: string | null;
+  bio: string | null;
 };
 
 async function getTalentProfileMap(
@@ -46,11 +49,11 @@ async function getTalentProfileMap(
   const [byUserIdResult, byIdResult] = await Promise.all([
     supabase
       .from("talent_profiles")
-      .select("id, user_id, full_name, avatar_url")
+      .select("id, user_id, full_name, avatar_url, city, country, bio")
       .in("user_id", userIds),
     supabase
       .from("talent_profiles")
-      .select("id, user_id, full_name, avatar_url")
+      .select("id, user_id, full_name, avatar_url, city, country, bio")
       .in("id", userIds),
   ]);
 
@@ -62,6 +65,9 @@ async function getTalentProfileMap(
       user_id: (row.user_id as string | null) ?? null,
       full_name: (row.full_name as string | null) ?? null,
       avatar_url: (row.avatar_url as string | null) ?? null,
+      city: (row as { city?: string | null }).city ?? null,
+      country: (row as { country?: string | null }).country ?? null,
+      bio: (row as { bio?: string | null }).bio ?? null,
     });
   }
 
@@ -237,6 +243,7 @@ export default async function WorkspaceTalentsPage() {
   const talentCardMap = new Map<string, WorkspaceTalentCard>();
 
   for (const member of portalMembers) {
+    const profile = profileMap.get(member.userId);
     talentCardMap.set(member.userId, {
       userId: member.userId,
       name: member.name,
@@ -250,10 +257,14 @@ export default async function WorkspaceTalentsPage() {
       isPortalMember: true,
       isCandidate: member.applicationCount > 0,
       isContracted: member.contractCount > 0,
+      city: profile?.city ?? null,
+      country: profile?.country ?? null,
+      bio: profile?.bio ?? null,
     });
   }
 
   for (const invitedTalent of invitedTalents) {
+    const profile = profileMap.get(invitedTalent.userId);
     const existing = talentCardMap.get(invitedTalent.userId);
     if (existing) {
       existing.email = existing.email || invitedTalent.email;
@@ -280,6 +291,9 @@ export default async function WorkspaceTalentsPage() {
       isPortalMember: false,
       isCandidate: true,
       isContracted: invitedTalent.status === "Contratado",
+      city: profile?.city ?? null,
+      country: profile?.country ?? null,
+      bio: profile?.bio ?? null,
     });
   }
 

@@ -5,6 +5,7 @@ import { createSessionClient } from "@/lib/supabase.server";
 import DashboardShell from "@/components/layout/DashboardShell";
 import { SubscriptionProvider } from "@/lib/SubscriptionContext";
 import SubscriptionBanner from "@/components/agency/SubscriptionBanner";
+import { WorkspacePortalProvider } from "@/lib/WorkspacePortalContext";
 import { resolvePlanInfo } from "@/lib/plans";
 import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
 
@@ -77,6 +78,16 @@ export default async function AgencyLayout({
         ? agencyStatus !== "cancelling" && agencyStatus !== "suspended"
         : planInfo.isPaid);
 
+  const agentWorkspacePortal = isWorkspaceAgent && ws
+    ? {
+        slug:         ws.workspace.slug ?? "",
+        name:         ws.workspace.name,
+        logoUrl:      ws.workspace.logoUrl,
+        primaryColor: ws.workspace.brandPrimaryColor ?? "#1ABC9C",
+        accentColor:  ws.workspace.brandAccentColor  ?? "#27C1D6",
+      }
+    : null;
+
   return (
     <SubscriptionProvider
       initialPlan={planInfo.plan}
@@ -84,10 +95,12 @@ export default async function AgencyLayout({
       initialIsPro={planInfo.isPaid}
       initialIsWorkspaceAgent={isWorkspaceAgent}
     >
-      <DashboardShell>
-        {!isActive && <SubscriptionBanner />}
-        {children}
-      </DashboardShell>
+      <WorkspacePortalProvider initialWorkspace={agentWorkspacePortal}>
+        <DashboardShell>
+          {!isActive && <SubscriptionBanner />}
+          {children}
+        </DashboardShell>
+      </WorkspacePortalProvider>
     </SubscriptionProvider>
   );
 }

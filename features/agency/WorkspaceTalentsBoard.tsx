@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 export type WorkspaceTalentCard = {
   userId: string;
@@ -16,6 +16,9 @@ export type WorkspaceTalentCard = {
   isPortalMember: boolean;
   isCandidate: boolean;
   isContracted: boolean;
+  city?: string | null;
+  country?: string | null;
+  bio?: string | null;
 };
 
 type Props = {
@@ -131,10 +134,30 @@ function EmptyState({
   );
 }
 
+function DetailRow({ label, value }: { label: string; value: ReactNode }) {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{label}</p>
+      <p className="mt-0.5 text-[12px] text-zinc-700">{value}</p>
+    </div>
+  );
+}
+
 export default function WorkspaceTalentsBoard({ talents, workspaceSlug }: Props) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [copied, setCopied] = useState(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  function toggleExpand(userId: string) {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  }
 
   const summary = useMemo(() => {
     const nowMonthKey = formatMonthKey(new Date().toISOString());
@@ -356,14 +379,70 @@ export default function WorkspaceTalentsBoard({ talents, workspaceSlug }: Props)
                     </div>
                   ) : null}
 
-                  <div className="mt-6 flex flex-wrap gap-2">
-                    <span className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#0E7C86] to-[#1ABC9C] px-4 py-2.5 text-[12px] font-semibold text-white shadow-[0_12px_24px_rgba(14,124,134,0.16)] opacity-70">
-                      Perfil em breve
-                    </span>
-                    <span className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 px-4 py-2.5 text-[12px] font-semibold text-zinc-500">
-                      Historico em breve
-                    </span>
+                  <div className="mt-5">
+                    <button
+                      type="button"
+                      onClick={() => toggleExpand(talent.userId)}
+                      className="inline-flex items-center gap-1.5 rounded-2xl border border-zinc-200 px-4 py-2.5 text-[12px] font-semibold text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+                    >
+                      <svg
+                        className={`h-3.5 w-3.5 transition-transform ${expandedIds.has(talent.userId) ? "rotate-180" : ""}`}
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                      {expandedIds.has(talent.userId) ? "Ocultar detalhes" : "Ver detalhes"}
+                    </button>
                   </div>
+
+                  {expandedIds.has(talent.userId) ? (
+                    <div className="mt-4 space-y-3 rounded-[20px] border border-zinc-100 bg-zinc-50 p-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <DetailRow label="Nome" value={talent.name} />
+                        <DetailRow label="E-mail" value={talent.email || "—"} />
+                        {talent.city || talent.country ? (
+                          <DetailRow
+                            label="Localização"
+                            value={[talent.city, talent.country].filter(Boolean).join(", ")}
+                          />
+                        ) : null}
+                        <DetailRow
+                          label="Entrou em"
+                          value={talent.joinedAt ? formatDate(talent.joinedAt) : "—"}
+                        />
+                        <DetailRow
+                          label="Última atividade"
+                          value={talent.lastActivity ? formatDate(talent.lastActivity) : "—"}
+                        />
+                        <DetailRow
+                          label="Origem"
+                          value={talent.isPortalMember ? "Portal privado" : "Candidatura direta"}
+                        />
+                      </div>
+                      {talent.bio ? (
+                        <div className="border-t border-zinc-200 pt-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Bio</p>
+                          <p className="mt-1 text-[12px] leading-5 text-zinc-600 line-clamp-3">{talent.bio}</p>
+                        </div>
+                      ) : null}
+                      <div className="border-t border-zinc-200 pt-3">
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="rounded-[16px] bg-white border border-zinc-200 px-3 py-2.5 text-center">
+                            <p className="text-[18px] font-bold text-zinc-900">{talent.applicationCount}</p>
+                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Candidaturas</p>
+                          </div>
+                          <div className="rounded-[16px] bg-white border border-zinc-200 px-3 py-2.5 text-center">
+                            <p className="text-[18px] font-bold text-zinc-900">{talent.contractCount}</p>
+                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Contratos</p>
+                          </div>
+                          <div className="rounded-[16px] bg-white border border-zinc-200 px-3 py-2.5 text-center">
+                            <p className="text-[18px] font-bold text-zinc-900">{talent.jobTitles.length}</p>
+                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Vagas</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
                 </article>
               );
             })}

@@ -13,6 +13,7 @@ export type AdminUser = {
   name: string;
   role: string;
   premiumRole: "owner" | "agent" | "premium_talent" | null;
+  marketplaceVisible?: boolean | null;
   plan: string | null;
   isFrozen: boolean;
   created_at: string;
@@ -726,7 +727,10 @@ export default function AdminUsers({ users: initialUsers }: { users: AdminUser[]
                         {user.premiumRole === "agent" && (
                           <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 ring-1 ring-indigo-100">Agent Premium</span>
                         )}
-                        {user.premiumRole === "premium_talent" && (
+                        {user.premiumRole === "premium_talent" && user.marketplaceVisible === false && (
+                          <span className="inline-flex rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-700 ring-1 ring-rose-100">Portal-only Talent</span>
+                        )}
+                        {user.premiumRole === "premium_talent" && user.marketplaceVisible !== false && (
                           <span className="inline-flex rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-semibold text-teal-700 ring-1 ring-teal-100">Talent Premium</span>
                         )}
                         {user.premiumRole === null && user.role === "talent" && (

@@ -719,11 +719,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
-        {/* Workspace branding strip — shown when talent is in a portal */}
-        {isInWorkspacePortal && portalWorkspace && (() => {
+        {/* Workspace branding strip — shown for talent portal or workspace agent */}
+        {(isInWorkspacePortal || isWorkspaceAgent) && portalWorkspace && (() => {
           const primary = portalWorkspace.primaryColor;
           const accent  = portalWorkspace.accentColor;
-          const initials = portalWorkspace.name
+          const wsInitials = portalWorkspace.name
             .split(" ")
             .slice(0, 2)
             .map((w) => w[0]?.toUpperCase() ?? "")
@@ -745,12 +745,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={portalWorkspace.logoUrl} alt={portalWorkspace.name} className="h-full w-full object-cover" />
                   ) : (
-                    <span className="text-[11px] font-black text-white select-none">{initials}</span>
+                    <span className="text-[11px] font-black text-white select-none">{wsInitials}</span>
                   )}
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: accent }}>
-                    Portal
+                    {isWorkspaceAgent ? "Espaço Premium" : "Portal"}
                   </p>
                   <p className="truncate text-[13px] font-bold text-white leading-tight">
                     {portalWorkspace.name}
@@ -879,6 +879,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="relative px-5 pb-1">
           <div className="h-px bg-white/[0.08]" />
         </div>
+
+        {/* Powered by BrisaHub — shown for workspace agents */}
+        {isWorkspaceAgent && (
+          <div className="relative px-5 py-1.5 text-center">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#4A7872]/70">
+              Powered by BrisaHub
+            </p>
+          </div>
+        )}
 
         {/* User + Logout */}
         <div className="relative px-3 py-3 flex-shrink-0 space-y-1">

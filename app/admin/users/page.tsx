@@ -25,7 +25,7 @@ export default async function AdminUsersPage() {
       .select("id, role, full_name, wallet_balance")
       .is("deleted_at", null)
       .or("is_frozen.is.null,is_frozen.eq.false"),
-    supabase.from("talent_profiles").select("id, user_id, full_name, avatar_url, deleted_at").is("deleted_at", null),
+    supabase.from("talent_profiles").select("id, user_id, full_name, avatar_url, marketplace_visible, deleted_at").is("deleted_at", null),
     supabase.from("agencies").select("id, user_id, company_name, avatar_url, deleted_at").is("deleted_at", null),
     supabase.from("contracts").select("talent_id, agency_id, commission_amount, payment_amount").eq("status", "paid"),
     supabase.from("profiles").select("id, is_frozen"),
@@ -60,10 +60,11 @@ export default async function AdminUsersPage() {
   const profileMap = new Map<string, string>();
   const frozenMap = new Map<string, boolean>();
   const walletMap = new Map<string, number>();
-  const talentMap  = new Map<string, string>();
-  const agencyMap  = new Map<string, string>();
-  const avatarMap  = new Map<string, string | null>();
-  const activeProfileIds = new Set<string>();
+  const talentMap              = new Map<string, string>();
+  const agencyMap              = new Map<string, string>();
+  const avatarMap              = new Map<string, string | null>();
+  const marketplaceVisibleMap  = new Map<string, boolean | null>();
+  const activeProfileIds       = new Set<string>();
 
   for (const profile of profiles ?? []) {
     activeProfileIds.add(profile.id);
@@ -76,12 +77,13 @@ export default async function AdminUsersPage() {
     frozenMap.set(profile.id, (profile as { is_frozen?: boolean }).is_frozen ?? false);
   }
 
-  for (const talent of (talentProfiles ?? []) as Array<{ id: string; user_id?: string | null; full_name?: string | null; avatar_url?: string | null; deleted_at?: string | null }>) {
+  for (const talent of (talentProfiles ?? []) as Array<{ id: string; user_id?: string | null; full_name?: string | null; avatar_url?: string | null; marketplace_visible?: boolean | null; deleted_at?: string | null }>) {
     if (talent.deleted_at) continue;
     const ownerId = talent.user_id ?? talent.id;
     if (!ownerId || !activeProfileIds.has(ownerId)) continue;
     talentMap.set(ownerId, talent.full_name ?? "");
     if (talent.avatar_url) avatarMap.set(ownerId, talent.avatar_url);
+    marketplaceVisibleMap.set(ownerId, talent.marketplace_visible ?? null);
   }
 
   for (const agency of (agencies ?? []) as Array<{ id: string; user_id?: string | null; company_name?: string | null; avatar_url?: string | null; deleted_at?: string | null }>) {
@@ -131,6 +133,7 @@ export default async function AdminUsersPage() {
       name,
       role,
       premiumRole,
+      marketplaceVisible: role === "talent" ? (marketplaceVisibleMap.get(user.id) ?? null) : null,
       isFrozen: frozenMap.get(user.id) ?? false,
       created_at: user.created_at ?? "",
       commissionGenerated: commissionMap.get(user.id) ?? 0,

@@ -41,6 +41,7 @@ type TxRow = {
   note: string | null;
   created_at: string;
   related_job_id: string | null;
+  agentName?: string;
 };
 
 function txLabel(type: string): string {
@@ -87,6 +88,7 @@ function TxList({ rows, jobTitleMap }: { rows: TxRow[]; jobTitleMap: Map<string,
                   month: "short",
                   year: "numeric",
                 })}
+                {tx.agentName ? ` · ${tx.agentName}` : null}
                 {tx.related_job_id && jobTitleMap.get(tx.related_job_id)
                   ? ` · ${jobTitleMap.get(tx.related_job_id)}`
                   : null}
@@ -179,14 +181,42 @@ export default async function WorkspaceWalletPage() {
   }
 
   // ── Owner view ───────────────────────────────────────────────────────────────
-  const [summary, members, ledgerMap] = await Promise.all([
+  const [summary, members, ledgerMap, ownerTxResult] = await Promise.all([
     getOwnerAllocationSummary(context.workspace.id, context.workspace.ownerUserId),
     getWorkspaceMembers(context.workspace.id),
     getWorkspaceAgentLedgerBalances(context.workspace.id),
+    supabase
+      .from("premium_agent_wallet_transactions")
+      .select("id, type, amount, status, note, created_at, related_job_id, agent_user_id")
+      .eq("workspace_id", context.workspace.id)
+      .order("created_at", { ascending: false })
+      .limit(200),
   ]);
 
   const agents = members.filter((m) => m.role === "agent");
   const totalCommitted = Array.from(ledgerMap.values()).reduce((s, l) => s + l.committedAmount, 0);
+  const totalSettled   = Array.from(ledgerMap.values()).reduce((s, l) => s + l.spentAmount,     0);
+
+  // Build agent name map for transaction history
+  const agentNameMap = new Map<string, string>(members.map((m) => [m.userId, m.displayName || m.email || "Agente"]));
+
+  const ownerTxRows: TxRow[] = (ownerTxResult.data ?? []).map((r) => ({
+    id:              String(r.id),
+    type:            String(r.type),
+    amount:          Number(r.amount),
+    status:          String(r.status),
+    note:            r.note ?? null,
+    created_at:      String(r.created_at),
+    related_job_id:  r.related_job_id ?? null,
+    agentName:       agentNameMap.get(String(r.agent_user_id)) ?? undefined,
+  }));
+
+  const ownerRelatedJobIds = [...new Set(ownerTxRows.map((r) => r.related_job_id).filter((id): id is string => !!id))];
+  const ownerJobTitleMap = new Map<string, string>();
+  if (ownerRelatedJobIds.length > 0) {
+    const { data: jobs } = await supabase.from("jobs").select("id, title").in("id", ownerRelatedJobIds);
+    for (const j of jobs ?? []) ownerJobTitleMap.set(j.id, j.title ?? "Vaga");
+  }
 
   return (
     <div className="space-y-6">
@@ -223,6 +253,17 @@ export default async function WorkspaceWalletPage() {
         />
       </div>
 
+      {totalSettled > 0 ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <StatCard
+            label="Total pago a talentos"
+            value={brl(totalSettled)}
+            hint="Liquidado em contratos pagos"
+            accent="rose"
+          />
+        </div>
+      ) : null}
+
       <div>
         <p className="mb-3 text-[13px] font-semibold text-zinc-700">Saldo e alocação por agente</p>
         <WorkspaceWalletAllocator
@@ -230,6 +271,11 @@ export default async function WorkspaceWalletPage() {
           initialLedgerBalances={Array.from(ledgerMap.values())}
           initialOwnerSummary={summary}
         />
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-[13px] font-semibold text-zinc-700">Histórico completo do workspace</h2>
+        <TxList rows={ownerTxRows} jobTitleMap={ownerJobTitleMap} />
       </div>
     </div>
   );
