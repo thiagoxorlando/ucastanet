@@ -23,29 +23,21 @@ type PortalNavItem = {
 
 function normalizeHexColor(color: string | null | undefined, fallback: string) {
   if (!color) return fallback;
-  const value = color.trim();
-  return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value) ? value : fallback;
+  const v = color.trim();
+  return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v) ? v : fallback;
 }
 
 function hexToRgba(hex: string, alpha: number) {
-  const value = hex.replace("#", "");
-  const full = value.length === 3
-    ? value.split("").map((char) => char + char).join("")
-    : value;
-
-  const red = Number.parseInt(full.slice(0, 2), 16);
-  const green = Number.parseInt(full.slice(2, 4), 16);
-  const blue = Number.parseInt(full.slice(4, 6), 16);
-
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+  const v = hex.replace("#", "");
+  const full = v.length === 3 ? v.split("").map((c) => c + c).join("") : v;
+  const r = Number.parseInt(full.slice(0, 2), 16);
+  const g = Number.parseInt(full.slice(2, 4), 16);
+  const b = Number.parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase() ?? "")
-    .join("") || "?";
+function agencyInitials(name: string) {
+  return name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
 }
 
 export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
@@ -58,10 +50,13 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
   if (!workspace) return null;
 
   const primary = normalizeHexColor(workspace.primaryColor, "#1ABC9C");
-  const accent = normalizeHexColor(workspace.accentColor, "#27C1D6");
-  const glow = hexToRgba(accent, 0.24);
-  const activeBg = `linear-gradient(135deg, ${hexToRgba(primary, 0.26)} 0%, ${hexToRgba(accent, 0.16)} 100%)`;
-  const cardBg = `linear-gradient(160deg, ${hexToRgba(primary, 0.20)} 0%, ${hexToRgba(accent, 0.10)} 100%)`;
+  const accent  = normalizeHexColor(workspace.accentColor,  "#27C1D6");
+
+  // Active nav item — same pattern as main sidebar's premium section
+  const activeItemStyle = {
+    background: `linear-gradient(135deg, ${hexToRgba(primary, 0.22)} 0%, ${hexToRgba(accent, 0.14)} 100%)`,
+    boxShadow: `0 0 0 1px ${hexToRgba(accent, 0.30)}, 0 4px_12px ${hexToRgba(primary, 0.12)}`,
+  };
   const hoverBg = hexToRgba(primary, 0.10);
 
   const navItems: PortalNavItem[] = [
@@ -139,73 +134,83 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
 
   return (
     <>
-      {isOpen ? (
+      {isOpen && (
         <div
           className="fixed inset-0 z-20 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
-      ) : null}
+      )}
 
       <aside
         className={[
-          "fixed left-0 top-0 z-30 flex h-screen w-72 flex-col overflow-hidden text-[#EAF4F2] transition-transform duration-300 ease-in-out",
+          "fixed left-0 top-0 z-30 flex h-screen w-64 flex-col overflow-hidden text-[#EAF4F2] transition-transform duration-300 ease-in-out",
           "lg:translate-x-0",
           isOpen ? "translate-x-0" : "-translate-x-full",
         ].join(" ")}
-        style={
-          {
-            "--workspace-primary": primary,
-            "--workspace-accent": accent,
-          } as CSSProperties
-        }
+        style={{ "--workspace-primary": primary, "--workspace-accent": accent } as CSSProperties}
       >
-        {/* Dark base gradient */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.04),transparent_28%),linear-gradient(180deg,#071416_0%,#041012_100%)]" />
-        {/* Agency-tinted grid pattern */}
+        {/* ── Background layers — mirrors main Sidebar but uses agency colors ── */}
         <div
-          className="pointer-events-none absolute inset-0 opacity-[0.055]"
+          className="absolute inset-0"
           style={{
-            backgroundImage: `linear-gradient(${hexToRgba(primary, 0.8)} 1px, transparent 1px), linear-gradient(90deg, ${hexToRgba(primary, 0.8)} 1px, transparent 1px)`,
+            background: `radial-gradient(circle at top left, ${hexToRgba(primary, 0.22)} 0%, transparent 40%), radial-gradient(circle at bottom right, ${hexToRgba(accent, 0.18)} 0%, transparent 35%), linear-gradient(180deg, #081718 0%, #041012 100%)`,
+          }}
+        />
+        {/* Grid pattern — white, same as main sidebar */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage: "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
             backgroundSize: "48px 48px",
           }}
         />
-        {/* Top accent strip */}
-        <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-[2px]"
-          style={{ background: `linear-gradient(90deg, ${primary} 0%, ${accent} 100%)` }}
-        />
-        {/* Top-left glow */}
-        <div
-          className="pointer-events-none absolute -left-12 top-12 h-36 w-36 rounded-full blur-3xl"
-          style={{ background: glow }}
-        />
-        {/* Bottom-right accent glow */}
-        <div
-          className="pointer-events-none absolute -right-10 bottom-16 h-28 w-28 rounded-full blur-3xl"
-          style={{ background: hexToRgba(accent, 0.14) }}
-        />
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-px bg-white/[0.08]" />
+        {/* Right border */}
+        <div className="absolute inset-y-0 right-0 w-px bg-white/[0.08]" />
 
-        <div className="relative flex h-16 items-center justify-between border-b border-white/[0.08] px-5">
-          <div className="flex items-center gap-2">
-            <div className="rounded-xl border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
-              Portal
+        {/* ── Header — agency logo as the main identity ─────────────────────── */}
+        <div className="relative flex h-16 flex-shrink-0 items-center justify-between border-b border-white/[0.08] px-5">
+          {/* Agency logo + name */}
+          <Link
+            href={`/talent/workspaces/${workspace.slug}`}
+            className="flex min-w-0 flex-1 items-center gap-3"
+          >
+            <div
+              className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/20"
+              style={{
+                background: workspace.logoUrl
+                  ? "rgba(255,255,255,0.08)"
+                  : `linear-gradient(135deg, ${primary} 0%, ${accent} 100%)`,
+              }}
+            >
+              {workspace.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={workspace.logoUrl}
+                  alt={workspace.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="text-[13px] font-black text-white select-none">
+                  {agencyInitials(workspace.name)}
+                </span>
+              )}
             </div>
-          </div>
-          <Link href="/" className="flex items-center gap-2 text-[11px] text-white/55 transition-colors hover:text-white/80">
-            <Image
-              src={heroBrandImage}
-              alt="BrisaHub"
-              width={heroBrandImage.width}
-              height={heroBrandImage.height}
-              className="h-auto w-12 opacity-80"
-            />
+            <div className="min-w-0">
+              <p className="truncate text-[14px] font-bold leading-tight text-white">
+                {workspace.name}
+              </p>
+              <p className="text-[10px] font-medium text-white/45 leading-none mt-0.5">
+                Portal Premium
+              </p>
+            </div>
           </Link>
+
+          {/* Mobile close */}
           <button
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-[#B8CECA] transition-colors hover:bg-white/10 hover:text-white lg:hidden"
-            aria-label="Close menu"
+            className="ml-2 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
+            aria-label="Fechar menu"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -213,136 +218,137 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
           </button>
         </div>
 
-        <div className="relative px-4 pt-4">
-          <div
-            className="overflow-hidden rounded-[22px] border border-white/10 px-4 py-4 shadow-[0_18px_36px_rgba(3,10,11,0.26)]"
-            style={{ background: cardBg, boxShadow: `0 20px 40px ${hexToRgba(primary, 0.12)}` }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-[18px] border border-white/15 bg-white/10">
-                {workspace.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={workspace.logoUrl} alt={workspace.name} className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-[15px] font-black text-white">{initials(workspace.name)}</span>
-                )}
-              </div>
-              <div className="min-w-0">
-                <p
-                  className="text-[10px] font-semibold uppercase tracking-[0.24em]"
-                  style={{ color: accent }}
-                >
-                  Portal
-                </p>
-                <p className="mt-1 truncate text-[16px] font-bold leading-tight text-white">
-                  {workspace.name}
-                </p>
-                <p className="mt-1 text-[11px] text-white/62">
-                  Powered by BrisaHub
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* ── Navigation ────────────────────────────────────────────────────── */}
+        <div className="relative flex-1 min-h-0">
+          {/* Top fade */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-5 z-10 bg-gradient-to-b from-[#081718] to-transparent" />
+          {/* Bottom fade */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 z-10 bg-gradient-to-t from-[#041012] to-transparent" />
 
-        <div className="relative flex-1 min-h-0 px-4 py-5">
-          <div className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">
-            Navegação
-          </div>
-          <nav className="h-full overflow-y-auto pr-1 sidebar-scroll">
-            <ul className="space-y-1.5">
-              {navItems.map((item) => {
-                const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href);
-                return (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      onClick={onClose}
-                      className={[
-                        "group flex items-center gap-3 rounded-2xl border px-3.5 py-3 text-[13px] font-medium transition-all duration-150",
-                        isActive
-                          ? "text-white shadow-[0_14px_26px_rgba(7,20,22,0.22)]"
-                          : "border-transparent text-white/78 hover:text-white",
-                      ].join(" ")}
-                      style={
-                        isActive
-                          ? {
-                              background: activeBg,
-                              borderColor: hexToRgba(accent, 0.34),
-                              boxShadow: `0 0 0 1px ${hexToRgba(accent, 0.20)}, 0 16px 28px ${hexToRgba(primary, 0.14)}`,
-                            }
-                          : { backgroundColor: "transparent" }
-                      }
-                      onMouseEnter={(event) => {
-                        if (!isActive) event.currentTarget.style.backgroundColor = hoverBg;
-                      }}
-                      onMouseLeave={(event) => {
-                        if (!isActive) event.currentTarget.style.backgroundColor = "transparent";
-                      }}
-                    >
-                      <span
+          <nav className="h-full px-3 py-4 overflow-y-auto sidebar-scroll">
+            {/* Nav section card — mirrors premium section card in main sidebar */}
+            <div
+              className="rounded-[14px] p-1.5 pb-2"
+              style={{
+                background: hexToRgba(primary, 0.045),
+                boxShadow: `inset 0 0 0 1px ${hexToRgba(primary, 0.13)}`,
+              }}
+            >
+              {/* Section label */}
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-2.5 py-1.5 mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] select-none cursor-default"
+                style={{ color: accent }}
+              >
+                <span
+                  className="inline-block h-1.5 w-1.5 rounded-full flex-shrink-0"
+                  style={{ background: primary, boxShadow: `0 0 5px ${hexToRgba(primary, 0.65)}` }}
+                />
+                Portal Exclusivo
+              </button>
+
+              <ul className="flex flex-col gap-px">
+                {navItems.map((item) => {
+                  const isActive = item.exact
+                    ? pathname === item.href
+                    : pathname.startsWith(item.href);
+
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={onClose}
                         className={[
-                          "flex-shrink-0 transition-colors duration-150",
-                          isActive ? "text-white" : "text-white/55 group-hover:text-white/80",
+                          "flex items-center gap-2.5 px-3 py-[7px] rounded-xl text-[13px] font-medium transition-all duration-150",
+                          isActive
+                            ? "text-white font-semibold"
+                            : "text-[#AACCC7] hover:text-white",
                         ].join(" ")}
-                        style={!isActive ? { color: accent } : undefined}
+                        style={
+                          isActive
+                            ? activeItemStyle
+                            : { backgroundColor: "transparent" }
+                        }
+                        onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = hoverBg; }}
+                        onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.backgroundColor = "transparent"; }}
                       >
-                        {item.icon}
-                      </span>
-                      <span className="truncate">{item.label}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+                        <span
+                          className="flex-shrink-0 transition-colors duration-150"
+                          style={{ color: isActive ? "#fff" : accent }}
+                        >
+                          {item.icon}
+                        </span>
+                        <span className="truncate">{item.label}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           </nav>
         </div>
 
-        <div className="relative px-4 pb-2">
+        {/* ── Footer divider ────────────────────────────────────────────────── */}
+        <div className="relative px-5 pb-1">
           <div className="h-px bg-white/[0.08]" />
         </div>
 
-        <div className="relative space-y-2 px-4 py-4">
-          <div className="rounded-[20px] border border-white/8 bg-white/[0.05] px-3.5 py-3">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-full border border-white/10">
-                {!loading && avatarUrl && !imgError ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={avatarUrl}
-                    alt={userInitials}
-                    className="h-full w-full object-cover"
-                    onError={() => setImgError(true)}
-                  />
-                ) : (
-                  <div
-                    className="flex h-full w-full items-center justify-center text-[12px] font-bold text-white"
-                    style={{ background: `linear-gradient(135deg, ${primary} 0%, ${accent} 100%)` }}
-                  >
-                    {loading ? "..." : userInitials}
-                  </div>
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-[13px] font-semibold text-white">
-                  {loading ? "..." : (displayName || email)}
-                </p>
-                <p className="mt-0.5 truncate text-[11px] text-white/55">
-                  {loading ? "" : email}
-                </p>
-              </div>
+        {/* ── User + Logout + Powered by ────────────────────────────────────── */}
+        <div className="relative px-3 py-3 flex-shrink-0 space-y-1">
+          {/* User card */}
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/[0.05]">
+            <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full border border-white/10">
+              {!loading && avatarUrl && !imgError ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={avatarUrl}
+                  alt={userInitials}
+                  className="h-full w-full object-cover"
+                  onError={() => setImgError(true)}
+                />
+              ) : (
+                <div
+                  className="flex h-full w-full items-center justify-center text-[11px] font-bold text-white"
+                  style={{ background: `linear-gradient(135deg, ${primary} 0%, ${accent} 100%)` }}
+                >
+                  {loading ? "…" : userInitials}
+                </div>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-medium leading-none text-[#F3FBF9]">
+                {loading ? "…" : (displayName || email)}
+              </p>
+              <p className="mt-0.5 truncate text-[11px] text-[#9DB8B3]">
+                {loading ? "" : email}
+              </p>
             </div>
           </div>
 
+          {/* Logout */}
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-[13px] font-medium text-white/72 transition-colors hover:bg-white/[0.06] hover:text-[#FFB3B3]"
+            className="flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium text-[#C7D9D5] hover:bg-white/[0.07] hover:text-[#FFB3B3] transition-all duration-150 cursor-pointer"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             Sair
           </button>
+
+          {/* Powered by BrisaHub */}
+          <Link
+            href="/"
+            className="flex items-center justify-center gap-2 py-1.5 opacity-40 hover:opacity-70 transition-opacity"
+          >
+            <Image
+              src={heroBrandImage}
+              alt="BrisaHub"
+              width={heroBrandImage.width}
+              height={heroBrandImage.height}
+              className="h-auto w-16"
+            />
+          </Link>
         </div>
       </aside>
     </>
