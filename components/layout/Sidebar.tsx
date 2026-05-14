@@ -224,9 +224,10 @@ const AGENCY_NON_PREMIUM_OPEN_NAV: NavItem[] = [
 ];
 
 // Invited workspace agents see only the Premium section — no open platform.
-// Branding is owner-only; support routes to /agency/support which works for all.
+// Branding (index 7) and Agentes (index 3) are owner-only.
 const AGENCY_AGENT_PREMIUM_NAV: NavItem[] = [
-  ...AGENCY_PREMIUM_NAV.slice(0, 7), // overview → bookings (no branding)
+  ...AGENCY_PREMIUM_NAV.slice(0, 3),  // overview, jobs, talents
+  ...AGENCY_PREMIUM_NAV.slice(4, 7),  // wallet, contracts, bookings (skip agents at index 3)
   {
     labelKey: "nav_support",
     href: "/agency/support",
@@ -705,7 +706,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Logo */}
         <div className="relative flex items-center justify-between px-5 h-16 border-b border-white/[0.08] flex-shrink-0">
-          <Link href="/" className="flex flex-1 items-center justify-center">
+          <Link href={isWorkspaceAgent ? "/agency/workspace" : "/"} className="flex flex-1 items-center justify-center">
             <Image
               src={heroBrandImage}
               alt="BrisaHub"

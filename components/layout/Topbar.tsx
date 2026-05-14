@@ -100,7 +100,8 @@ export default function Topbar({ onMenuClick, homeHref }: TopbarProps) {
 
   const dashboardHref =
     homeHref ??
-    (pathname.startsWith("/talent") ? "/talent/dashboard" :
+    (isWorkspaceAgent ? "/agency/workspace" :
+    pathname.startsWith("/talent") ? "/talent/dashboard" :
     pathname.startsWith("/admin") ? "/admin/dashboard" :
     "/agency/dashboard");
 
