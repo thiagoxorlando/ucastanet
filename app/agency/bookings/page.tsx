@@ -37,7 +37,18 @@ export default async function BookingsPage({
   const { data, error } = await bookingQuery;
   if (error) console.error("[BookingsPage]", error.message);
 
-  const talentIds = [...new Set((data ?? []).map((r) => r.talent_user_id).filter((id): id is string => !!id))];
+  const jobIds = [...new Set((data ?? []).map((row) => row.job_id).filter((id): id is string => !!id))];
+  const { data: jobs } = jobIds.length
+    ? await supabase.from("jobs").select("id, workspace_id").in("id", jobIds)
+    : { data: [] };
+  const openJobIds = new Set(
+    (jobs ?? [])
+      .filter((job) => !(job as { workspace_id?: string | null }).workspace_id)
+      .map((job) => job.id),
+  );
+  const visibleRows = (data ?? []).filter((row) => !row.job_id || openJobIds.has(String(row.job_id)));
+
+  const talentIds = [...new Set(visibleRows.map((r) => r.talent_user_id).filter((id): id is string => !!id))];
 
   const { data: profilesData } = talentIds.length
     ? await supabase.from("talent_profiles").select("id, full_name, avatar_url").in("id", talentIds)
@@ -50,7 +61,7 @@ export default async function BookingsPage({
     avatarMap.set(p.id, (p as { avatar_url?: string | null }).avatar_url ?? null);
   }
 
-  const bookings = (data ?? []).map((row) => {
+  const bookings = visibleRows.map((row) => {
     // contracts is an array (reverse FK); in practice there is exactly one per booking
     const contractArr = Array.isArray((row as any).contracts) ? (row as any).contracts : [];
     const contract = contractArr[0] ?? null;

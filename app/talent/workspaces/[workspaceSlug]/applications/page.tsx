@@ -6,7 +6,7 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { brl } from "@/lib/brl";
 import { submissionStatusLabel, submissionStatusTone } from "@/lib/submissionStatus";
 
-export const metadata: Metadata = { title: "Candidaturas — BrisaHub" };
+export const metadata: Metadata = { title: "Candidaturas Premium — BrisaHub" };
 
 type Props = { params: Promise<{ workspaceSlug: string }> };
 
@@ -52,9 +52,9 @@ export default async function WorkspaceApplicationsPage({ params }: Props) {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-[1.3rem] font-bold text-zinc-950">Candidaturas</h1>
+        <h1 className="text-[1.3rem] font-bold text-zinc-950">Candidaturas Premium</h1>
         <p className="mt-0.5 text-[13px] text-zinc-500">
-          Suas candidaturas às vagas desta agência.
+          Suas candidaturas às vagas privadas deste portal.
         </p>
       </div>
 

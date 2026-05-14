@@ -15,6 +15,7 @@ export default async function TalentJobsPage() {
       .from("jobs")
       .select("id, title, category, budget, deadline, job_date, description, status, location, visibility")
       .eq("status", "open")
+      .is("workspace_id", null)
       .not("visibility", "in", '("private","private_invite")')
       .order("created_at", { ascending: false }),
     user

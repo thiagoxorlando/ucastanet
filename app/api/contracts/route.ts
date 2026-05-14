@@ -6,6 +6,7 @@ import { requireHireLimit } from "@/lib/requireActiveSubscription";
 import { resolvePlanInfo, type Plan } from "@/lib/plans";
 import { getLivePlanSetting } from "@/lib/planSettings.server";
 import { isJobFull, JOB_FULL_MESSAGE, JOB_UNAVAILABLE_MESSAGE } from "@/lib/jobAvailability";
+import { resolveWorkspaceLifecycleByJobId, talentWorkspaceContractsHref } from "@/lib/workspaceLifecycle";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -110,10 +111,10 @@ export async function POST(req: NextRequest) {
     .single();
   const planInfo = resolvePlanInfo(profile);
 
-  const amount            = Number(payment_amount);
-  const liveSetting       = await getLivePlanSetting(planInfo.plan);
+  const amount = Number(payment_amount);
+  const liveSetting = await getLivePlanSetting(planInfo.plan);
   const commission_amount = Math.round(amount * liveSetting.commission_rate * 100) / 100;
-  const net_amount        = amount - commission_amount;
+  const net_amount = amount - commission_amount;
 
   console.log("[plan] create_contract", {
     agencyId: agency_id,
@@ -124,7 +125,6 @@ export async function POST(req: NextRequest) {
     netAmount: net_amount,
   });
 
-  // Resolve job title before creating records
   let jobTitle = job_description?.slice(0, 100) ?? "Contract Job";
   if (job_id) {
     const { data: jobRow } = await supabase
@@ -135,16 +135,15 @@ export async function POST(req: NextRequest) {
     if (jobRow?.title) jobTitle = jobRow.title;
   }
 
-  // Create booking first so we can link it to the contract via booking_id
   const { data: booking, error: bookingErr } = await supabase
     .from("bookings")
     .insert({
-      job_id:         job_id    ?? null,
-      agency_id:      agency_id ?? null,
+      job_id: job_id ?? null,
+      agency_id: agency_id ?? null,
       talent_user_id: talent_id,
-      job_title:      jobTitle,
-      price:          amount,
-      status:         "pending",
+      job_title: jobTitle,
+      price: amount,
+      status: "pending",
     })
     .select("id")
     .single();
@@ -154,47 +153,47 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: bookingErr.message }, { status: 400 });
   }
 
-  // Insert the contract, linked to the booking
   const { data: contract, error } = await supabase
     .from("contracts")
     .insert({
-      booking_id:       booking.id,
-      job_id:           job_id          ?? null,
+      booking_id: booking.id,
+      job_id: job_id ?? null,
       talent_id,
       agency_id,
-      job_date:         job_date        ?? null,
-      job_time:         job_time        ?? null,
-      location:         location        ?? null,
-      job_description:  job_description ?? null,
-      payment_amount:   amount,
+      job_date: job_date ?? null,
+      job_time: job_time ?? null,
+      location: location ?? null,
+      job_description: job_description ?? null,
+      payment_amount: amount,
       commission_amount,
       net_amount,
-      payment_method:   payment_method  ?? null,
+      payment_method: payment_method ?? null,
       additional_notes: additional_notes ?? null,
       contract_file_url: contract_file_url ?? null,
-      status:           "sent",
+      status: "sent",
     })
     .select()
     .single();
 
   if (error) {
     console.error("[POST /api/contracts]", error);
-    // Clean up the booking we just created — no contract means no booking
     await supabase.from("bookings").delete().eq("id", booking.id);
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  // Notify talent — contract received (or rehire)
+  const workspaceLifecycle = await resolveWorkspaceLifecycleByJobId(supabase, job_id ?? null);
+  const talentContractsHref = talentWorkspaceContractsHref(workspaceLifecycle?.workspaceSlug);
+
   if (is_rehire) {
     const { data: agencyProfile } = await supabase
       .from("profiles")
       .select("full_name")
       .eq("id", agency_id)
       .single();
-    const agencyName = agencyProfile?.full_name ?? "a agência";
-    await notify(talent_id, "rehire", `Você foi contratado novamente por ${agencyName}`, "/talent/contracts");
+    const agencyName = agencyProfile?.full_name ?? "a agencia";
+    await notify(talent_id, "rehire", `Voce foi contratado novamente por ${agencyName}`, talentContractsHref);
   } else {
-    await notify(talent_id, "contract", "Você recebeu um novo contrato", "/talent/contracts");
+    await notify(talent_id, "contract", "Voce recebeu um novo contrato", talentContractsHref);
   }
 
   await notifyAdmins(

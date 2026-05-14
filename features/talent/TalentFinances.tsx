@@ -473,18 +473,23 @@ export default function TalentFinances() {
     // Fetch job requirements (gender, age)
     const jobIds = [...new Set((bookingsData ?? []).map((b) => b.job_id).filter(Boolean))];
     const jobReqMap = new Map<string, { gender: string | null; age_min: number | null; age_max: number | null }>();
+    const openJobIds = new Set<string>();
     if (jobIds.length) {
       const { data: jobsData } = await supabase
         .from("jobs")
-        .select("id, gender, age_min, age_max")
+        .select("id, gender, age_min, age_max, workspace_id")
         .in("id", jobIds);
       for (const j of jobsData ?? []) {
-        jobReqMap.set(j.id, { gender: j.gender ?? null, age_min: j.age_min ?? null, age_max: j.age_max ?? null });
+        if (!(j as { workspace_id?: string | null }).workspace_id) {
+          openJobIds.add(j.id);
+          jobReqMap.set(j.id, { gender: j.gender ?? null, age_min: j.age_min ?? null, age_max: j.age_max ?? null });
+        }
       }
     }
+    const visibleBookings = (bookingsData ?? []).filter((booking) => !booking.job_id || openJobIds.has(booking.job_id));
 
     // Fetch net_amount from contracts for each booking (reflects actual plan commission)
-    const bookingIds = (bookingsData ?? []).map((b) => b.id).filter(Boolean);
+    const bookingIds = visibleBookings.map((b) => b.id).filter(Boolean);
     const netAmountMap = new Map<string, number>();
     if (bookingIds.length) {
       const { data: bookingContracts } = await supabase
@@ -499,7 +504,7 @@ export default function TalentFinances() {
     }
 
     setPayments(
-      (bookingsData ?? []).map((b) => {
+      visibleBookings.map((b) => {
         const req = b.job_id ? jobReqMap.get(b.job_id) : null;
         const price = b.price ?? 0;
         const earnings = netAmountMap.has(b.id)
@@ -520,12 +525,25 @@ export default function TalentFinances() {
     );
 
     // Paid contracts — the source of truth for earnings
-    const { data: contractsData } = await supabase
+    const { data: contractsDataRaw } = await supabase
       .from("contracts")
       .select("id, job_id, payment_amount, net_amount, commission_amount, paid_at")
       .eq("talent_id", user.id)
       .eq("status", "paid")
       .order("paid_at", { ascending: false });
+
+    const contractJobIdsForFilter = [...new Set((contractsDataRaw ?? []).map((c) => c.job_id).filter(Boolean))];
+    const openContractJobIds = new Set<string>();
+    if (contractJobIdsForFilter.length) {
+      const { data: contractJobs } = await supabase
+        .from("jobs")
+        .select("id, workspace_id")
+        .in("id", contractJobIdsForFilter);
+      for (const job of contractJobs ?? []) {
+        if (!(job as { workspace_id?: string | null }).workspace_id) openContractJobIds.add(job.id);
+      }
+    }
+    const contractsData = (contractsDataRaw ?? []).filter((contract) => !contract.job_id || openContractJobIds.has(contract.job_id));
 
     const contractIds    = (contractsData ?? []).map((c) => c.id);
     const contractJobIds = [...new Set((contractsData ?? []).map((c) => c.job_id).filter(Boolean))];
@@ -591,6 +609,7 @@ export default function TalentFinances() {
       const refTalentNameMap = new Map<string, string>();
       const refJobTitleMap   = new Map<string, string>();
       const refGrossMap      = new Map<string, number>();
+      const premiumRefContractIds = new Set<string>();
 
       if (refContractIds.length) {
         const { data: refContracts } = await supabase
@@ -606,16 +625,23 @@ export default function TalentFinances() {
             ? supabase.from("talent_profiles").select("id, full_name").in("id", refTalentIds)
             : null,
           refJobIds.length
-            ? supabase.from("jobs").select("id, title").in("id", refJobIds)
+            ? supabase.from("jobs").select("id, title, workspace_id").in("id", refJobIds)
             : null,
         ]);
 
         const talentNameMap = new Map<string, string>();
         for (const t of talentRes?.data ?? []) talentNameMap.set(t.id, t.full_name ?? "Sem nome");
         const jobTitleMap = new Map<string, string>();
-        for (const j of jobRes?.data ?? []) jobTitleMap.set(j.id, j.title ?? "Untitled");
+        for (const j of jobRes?.data ?? []) {
+          if ((j as { workspace_id?: string | null }).workspace_id) continue;
+          jobTitleMap.set(j.id, j.title ?? "Untitled");
+        }
 
         for (const c of refContracts ?? []) {
+          if (c.job_id && !jobTitleMap.has(c.job_id)) {
+            premiumRefContractIds.add(c.id);
+            continue;
+          }
           refTalentNameMap.set(c.id, c.talent_id ? (talentNameMap.get(c.talent_id) ?? "Sem nome") : "Sem nome");
           refJobTitleMap.set(c.id, c.job_id ? (jobTitleMap.get(c.job_id) ?? "—") : "—");
           refGrossMap.set(c.id, Number(c.payment_amount ?? 0));
@@ -623,7 +649,9 @@ export default function TalentFinances() {
       }
 
       setReferrals(
-        uniqueRefCommTxs.map((tx) => ({
+        uniqueRefCommTxs
+          .filter((tx) => !tx.reference_id || !premiumRefContractIds.has(tx.reference_id))
+          .map((tx) => ({
           id:         tx.id,
           talentName: tx.reference_id ? (refTalentNameMap.get(tx.reference_id) ?? "Sem nome") : "Sem nome",
           job:        tx.reference_id ? (refJobTitleMap.get(tx.reference_id) ?? "—") : "—",

@@ -177,7 +177,18 @@ export default function TalentBookings() {
       .eq("talent_user_id", user.id)
       .order("created_at", { ascending: false });
 
-    const agencyIds = [...new Set((bookingsData ?? []).map((b: any) => b.agency_id).filter(Boolean))] as string[];
+    const jobIds = [...new Set((bookingsData ?? []).map((booking: any) => booking.job_id).filter(Boolean))] as string[];
+    const { data: jobsData } = jobIds.length
+      ? await supabase.from("jobs").select("id, workspace_id").in("id", jobIds)
+      : { data: [] };
+    const openJobIds = new Set(
+      (jobsData ?? [])
+        .filter((job: any) => !job.workspace_id)
+        .map((job: any) => job.id),
+    );
+    const visibleBookings = (bookingsData ?? []).filter((booking: any) => !booking.job_id || openJobIds.has(booking.job_id));
+
+    const agencyIds = [...new Set(visibleBookings.map((b: any) => b.agency_id).filter(Boolean))] as string[];
     const { data: agenciesData } = agencyIds.length
       ? await supabase.from("agencies").select("id, company_name").in("id", agencyIds)
       : { data: [] };
@@ -185,7 +196,7 @@ export default function TalentBookings() {
     const agencyMap = new Map<string, string>((agenciesData ?? []).map((a: any) => [a.id, a.company_name ?? ""]));
 
     setBookings(
-      (bookingsData ?? []).map((b: any) => {
+      visibleBookings.map((b: any) => {
         const contractArr = Array.isArray(b.contracts) ? b.contracts : [];
         const contract = contractArr[0] ?? null;
 
@@ -291,5 +302,3 @@ export default function TalentBookings() {
     </div>
   );
 }
-
-

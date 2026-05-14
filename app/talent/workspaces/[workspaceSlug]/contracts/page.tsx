@@ -10,7 +10,7 @@ import {
   resolveContractAmounts,
 } from "@/lib/contractStatus";
 
-export const metadata: Metadata = { title: "Contratos — BrisaHub" };
+export const metadata: Metadata = { title: "Contratos Premium — BrisaHub" };
 
 type Props = { params: Promise<{ workspaceSlug: string }> };
 
@@ -55,9 +55,9 @@ export default async function WorkspaceContractsPage({ params }: Props) {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-[1.3rem] font-bold text-zinc-950">Contratos</h1>
+        <h1 className="text-[1.3rem] font-bold text-zinc-950">Contratos Premium</h1>
         <p className="mt-0.5 text-[13px] text-zinc-500">
-          Seus contratos com esta agência.
+          Seus contratos no Portal da agência.
         </p>
       </div>
 

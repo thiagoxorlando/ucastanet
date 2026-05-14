@@ -79,10 +79,12 @@ function BookingRow({
   booking,
   onStatusChange,
   focusBookingId,
+  financesHref,
 }: {
   booking: Booking;
   onStatusChange: (id: string, derivedStatus: string) => void;
   focusBookingId?: string;
+  financesHref: string;
 }) {
   const { t } = useT();
   const [acting, setActing]             = useState<"confirm" | "pay" | "cancel" | null>(null);
@@ -302,7 +304,7 @@ function BookingRow({
             </p>
           </div>
           <Link
-            href="/agency/finances"
+            href={financesHref}
             onClick={(e) => e.stopPropagation()}
             className="flex-shrink-0 text-[12px] font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3 py-1.5 rounded-lg transition-colors"
           >
@@ -414,7 +416,15 @@ function Section({ title, count, total, children, empty }: {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-export default function BookingList({ bookings: initial, focusBookingId }: { bookings: Booking[]; focusBookingId?: string }) {
+export default function BookingList({
+  bookings: initial,
+  focusBookingId,
+  financesHref = "/agency/finances",
+}: {
+  bookings: Booking[];
+  focusBookingId?: string;
+  financesHref?: string;
+}) {
   const [bookings, setBookings] = useState(initial);
   const { t } = useT();
   const router = useRouter();
@@ -466,27 +476,26 @@ export default function BookingList({ bookings: initial, focusBookingId }: { boo
       </div>
 
       <Section title="Aguardando Assinatura" count={signature.length} empty={t("bookings_no_bookings")}>
-        {signature.map((b) => <BookingRow key={b.id} booking={b} focusBookingId={focusBookingId} onStatusChange={handleStatusChange} />)}
+        {signature.map((b) => <BookingRow key={b.id} booking={b} focusBookingId={focusBookingId} onStatusChange={handleStatusChange} financesHref={financesHref} />)}
       </Section>
 
       <Section title="Aguardando Depósito" count={deposit.length}
         total={deposit.reduce((s, b) => s + b.totalValue, 0)} empty={t("bookings_no_bookings")}>
-        {deposit.map((b) => <BookingRow key={b.id} booking={b} focusBookingId={focusBookingId} onStatusChange={handleStatusChange} />)}
+        {deposit.map((b) => <BookingRow key={b.id} booking={b} focusBookingId={focusBookingId} onStatusChange={handleStatusChange} financesHref={financesHref} />)}
       </Section>
 
       <Section title="Aguardando Pagamento" count={payment.length}
         total={payment.reduce((s, b) => s + b.totalValue, 0)} empty={t("bookings_no_bookings")}>
-        {payment.map((b) => <BookingRow key={b.id} booking={b} focusBookingId={focusBookingId} onStatusChange={handleStatusChange} />)}
+        {payment.map((b) => <BookingRow key={b.id} booking={b} focusBookingId={focusBookingId} onStatusChange={handleStatusChange} financesHref={financesHref} />)}
       </Section>
 
       <Section title={t("status_paid")} count={paid.length} total={paidTotal} empty={t("bookings_no_bookings")}>
-        {paid.map((b) => <BookingRow key={b.id} booking={b} focusBookingId={focusBookingId} onStatusChange={handleStatusChange} />)}
+        {paid.map((b) => <BookingRow key={b.id} booking={b} focusBookingId={focusBookingId} onStatusChange={handleStatusChange} financesHref={financesHref} />)}
       </Section>
 
       <Section title={t("status_cancelled")} count={cancelled.length} empty={t("bookings_no_bookings")}>
-        {cancelled.map((b) => <BookingRow key={b.id} booking={b} focusBookingId={focusBookingId} onStatusChange={handleStatusChange} />)}
+        {cancelled.map((b) => <BookingRow key={b.id} booking={b} focusBookingId={focusBookingId} onStatusChange={handleStatusChange} financesHref={financesHref} />)}
       </Section>
     </div>
   );
 }
-

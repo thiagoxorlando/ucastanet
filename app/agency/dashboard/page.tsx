@@ -3,109 +3,63 @@ import AgencyDashboardOverview from "@/features/agency/AgencyDashboardOverview";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 
-export const metadata: Metadata = { title: "Painel — BrisaHub" };
+export const metadata: Metadata = { title: "Painel - BrisaHub" };
 
 export default async function AgencyDashboardPage() {
-  const session  = await createSessionClient();
+  const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
   const agencyId = user?.id ?? "";
 
   const supabase = createServerClient({ useServiceRole: true });
 
   const [
-    { count: totalJobs },
-    { count: activeJobs },
-    { count: submissionsCount },
-    { count: pendingPayment },
-    { data: paidContracts },
-    { data: recentBookingsData },
-    { data: recentSubmissionsData },
-    { data: pendingContractsData },
-    { data: activeJobsData },
-    { data: confirmedContractsData },
+    { data: openJobsData },
+    { data: submissionsData },
+    { data: confirmedContractsDataRaw },
+    { data: paidContractsRaw },
+    { data: recentBookingsDataRaw },
+    { data: recentSubmissionsDataRaw },
     { data: profile },
   ] = await Promise.all([
-    // Open jobs only. Closed/draft jobs should not inflate the dashboard jobs metric.
     supabase
       .from("jobs")
-      .select("id", { count: "exact", head: true })
+      .select("id, title, job_date, talents_needed, number_of_talents_required")
       .eq("agency_id", agencyId)
       .eq("status", "open")
-      .is("deleted_at", null),
-
-    // Open jobs count (stat card)
-    supabase
-      .from("jobs")
-      .select("id", { count: "exact", head: true })
-      .eq("agency_id", agencyId)
-      .eq("status", "open")
-      .is("deleted_at", null),
-
-    supabase
-      .from("submissions")
-      .select("id", { count: "exact", head: true })
-      .eq("agency_id", agencyId),
-
-    // Contracts in escrow (confirmed) — awaiting payout to talent
-    supabase
-      .from("contracts")
-      .select("id", { count: "exact", head: true })
-      .eq("agency_id", agencyId)
-      .eq("status", "confirmed")
-      .is("deleted_at", null),
-
-    // Paid contracts — amounts for totalSpent
-    supabase
-      .from("contracts")
-      .select("id, payment_amount")
-      .eq("agency_id", agencyId)
-      .eq("status", "paid")
-      .is("deleted_at", null),
-
-    supabase
-      .from("bookings")
-      .select("id, job_title, job_id, talent_user_id, status, created_at")
-      .eq("agency_id", agencyId)
-      .order("created_at", { ascending: false })
-      .limit(4),
-
+      .is("workspace_id", null)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
     supabase
       .from("submissions")
       .select("id, job_id, talent_user_id, created_at")
       .eq("agency_id", agencyId)
-      .order("created_at", { ascending: false })
-      .limit(4),
-
-    // Confirmed contracts list (escrow locked, awaiting payout)
+      .order("created_at", { ascending: false }),
     supabase
       .from("contracts")
       .select("id, payment_amount, job_description, talent_id, job_id, job_date")
       .eq("agency_id", agencyId)
       .eq("status", "confirmed")
       .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(6),
-
-    // Active jobs list
-    supabase
-      .from("jobs")
-      .select("id, title, job_date, talents_needed, number_of_talents_required")
-      .eq("agency_id", agencyId)
-      .eq("status", "open")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(5),
-
-    // Paid contracts list
+      .order("created_at", { ascending: false }),
     supabase
       .from("contracts")
       .select("id, payment_amount, job_description, talent_id, job_id, paid_at")
       .eq("agency_id", agencyId)
       .eq("status", "paid")
       .is("deleted_at", null)
-      .order("paid_at", { ascending: false })
-      .limit(5),
-
+      .order("paid_at", { ascending: false }),
+    supabase
+      .from("bookings")
+      .select("id, job_title, job_id, talent_user_id, status, created_at")
+      .eq("agency_id", agencyId)
+      .order("created_at", { ascending: false })
+      .limit(4),
+    supabase
+      .from("submissions")
+      .select("id, job_id, talent_user_id, created_at")
+      .eq("agency_id", agencyId)
+      .order("created_at", { ascending: false })
+      .limit(4),
     supabase
       .from("profiles")
       .select("wallet_balance")
@@ -113,28 +67,49 @@ export default async function AgencyDashboardPage() {
       .single(),
   ]);
 
-  const paidCount  = paidContracts?.length ?? 0;
-  const totalSpent = (paidContracts ?? []).reduce(
-    (sum, c) => sum + Number(c.payment_amount ?? 0),
-    0
-  );
-  const activeEscrowTotal = (pendingContractsData ?? []).reduce(
-    (sum, c) => sum + Number(c.payment_amount ?? 0),
-    0
+  const openJobs = openJobsData ?? [];
+  const openJobIds = new Set(openJobs.map((job) => job.id));
+  const lifecycleJobIds = [
+    ...new Set([
+      ...(submissionsData ?? []).map((row) => row.job_id),
+      ...(confirmedContractsDataRaw ?? []).map((row) => row.job_id),
+      ...(paidContractsRaw ?? []).map((row) => row.job_id),
+      ...(recentBookingsDataRaw ?? []).map((row) => row.job_id),
+      ...(recentSubmissionsDataRaw ?? []).map((row) => row.job_id),
+    ].filter((id): id is string => !!id)),
+  ];
+
+  const { data: lifecycleJobs } = lifecycleJobIds.length
+    ? await supabase.from("jobs").select("id, title, job_date, workspace_id").in("id", lifecycleJobIds)
+    : { data: [] };
+
+  const lifecycleJobMap = new Map(
+    (lifecycleJobs ?? [])
+      .filter((job) => !(job as { workspace_id?: string | null }).workspace_id)
+      .map((job) => [job.id, { title: job.title ?? "Vaga", jobDate: job.job_date ?? null }]),
   );
 
-  // ── Talent profiles for activity feed ────────────────────────────────────
+  const submissionsFiltered = (submissionsData ?? []).filter((row) => row.job_id && lifecycleJobMap.has(row.job_id));
+  const confirmedContractsData = (confirmedContractsDataRaw ?? []).filter((row) => !row.job_id || lifecycleJobMap.has(row.job_id));
+  const paidContracts = (paidContractsRaw ?? []).filter((row) => !row.job_id || lifecycleJobMap.has(row.job_id));
+  const recentBookingsData = (recentBookingsDataRaw ?? []).filter((row) => !row.job_id || lifecycleJobMap.has(row.job_id));
+  const recentSubmissionsData = (recentSubmissionsDataRaw ?? []).filter((row) => row.job_id && lifecycleJobMap.has(row.job_id));
+
+  const paidCount = paidContracts.length;
+  const totalSpent = paidContracts.reduce((sum, contract) => sum + Number(contract.payment_amount ?? 0), 0);
+  const activeEscrowTotal = confirmedContractsData.reduce((sum, contract) => sum + Number(contract.payment_amount ?? 0), 0);
+
   const talentIds = [
     ...new Set([
-      ...(recentBookingsData    ?? []).map((b) => b.talent_user_id),
-      ...(recentSubmissionsData ?? []).map((s) => s.talent_user_id),
-      ...(pendingContractsData  ?? []).map((c) => c.talent_id),
-      ...(confirmedContractsData ?? []).map((c) => c.talent_id),
+      ...recentBookingsData.map((booking) => booking.talent_user_id),
+      ...recentSubmissionsData.map((submission) => submission.talent_user_id),
+      ...confirmedContractsData.map((contract) => contract.talent_id),
+      ...paidContracts.map((contract) => contract.talent_id),
     ].filter((id): id is string => !!id)),
   ];
 
   const profileMap = new Map<string, string>();
-  const avatarMap  = new Map<string, string | null>();
+  const avatarMap = new Map<string, string | null>();
 
   if (talentIds.length) {
     const { data: profiles } = await supabase
@@ -142,44 +117,23 @@ export default async function AgencyDashboardPage() {
       .select("id, full_name, avatar_url, categories, city, country")
       .in("id", talentIds)
       .limit(20);
-    for (const p of profiles ?? []) {
-      profileMap.set(p.id, p.full_name ?? "Talent");
-      avatarMap.set(p.id, p.avatar_url ?? null);
+    for (const profileRow of profiles ?? []) {
+      profileMap.set(profileRow.id, profileRow.full_name ?? "Talent");
+      avatarMap.set(profileRow.id, profileRow.avatar_url ?? null);
     }
   }
 
-  // ── Job titles / dates ────────────────────────────────────────────────────
-  const jobIds = [
-    ...new Set([
-      ...(recentSubmissionsData  ?? []).map((s) => s.job_id),
-      ...(recentBookingsData     ?? []).map((b) => b.job_id),
-      ...(pendingContractsData   ?? []).map((c) => c.job_id),
-      ...(confirmedContractsData ?? []).map((c) => c.job_id),
-    ].filter(Boolean)),
-  ];
-
-  const jobMap     = new Map<string, string>();
-  const jobDateMap = new Map<string, string | null>();
-
-  if (jobIds.length) {
-    const { data: jobs } = await supabase
-      .from("jobs")
-      .select("id, title, job_date")
-      .in("id", jobIds);
-    for (const j of jobs ?? []) {
-      jobMap.set(j.id, j.title ?? "Vaga");
-      jobDateMap.set(j.id, j.job_date ?? null);
-    }
-  }
-
-  // ── Recent talent panel ───────────────────────────────────────────────────
-  const bookingTalentIds = (recentBookingsData ?? [])
-    .map((b) => b.talent_user_id)
+  const bookingTalentIds = recentBookingsData
+    .map((booking) => booking.talent_user_id)
     .filter((id): id is string => !!id);
 
   let recentTalentData: {
-    id: string; full_name: string | null; avatar_url: string | null;
-    categories: string[] | null; city: string | null; country: string | null;
+    id: string;
+    full_name: string | null;
+    avatar_url: string | null;
+    categories: string[] | null;
+    city: string | null;
+    country: string | null;
   }[] = [];
 
   if (bookingTalentIds.length) {
@@ -191,68 +145,64 @@ export default async function AgencyDashboardPage() {
     recentTalentData = data ?? [];
   }
 
-  // ── Activity feed ─────────────────────────────────────────────────────────
   const recentActivity = [
-    ...(recentBookingsData ?? []).map((b) => ({
-      id:        b.id,
-      type:      "booking" as const,
-      title:     "Booking confirmado",
-      sub:       `${profileMap.get(b.talent_user_id) ?? "Talent"} × ${b.job_title ?? "uma vaga"}`,
-      time:      b.created_at,
-      link:      "/agency/bookings",
-      avatarUrl: avatarMap.get(b.talent_user_id) ?? null,
-      jobDate:   b.job_id ? (jobDateMap.get(b.job_id) ?? null) : null,
+    ...recentBookingsData.map((booking) => ({
+      id: booking.id,
+      type: "booking" as const,
+      title: "Booking confirmado",
+      sub: `${profileMap.get(booking.talent_user_id) ?? "Talent"} x ${booking.job_title ?? "uma vaga"}`,
+      time: booking.created_at,
+      link: "/agency/bookings",
+      avatarUrl: avatarMap.get(booking.talent_user_id) ?? null,
+      jobDate: booking.job_id ? (lifecycleJobMap.get(booking.job_id)?.jobDate ?? null) : null,
     })),
-    ...(recentSubmissionsData ?? []).map((s) => ({
-      id:        s.id,
-      type:      "submission" as const,
-      title:     "Nova candidatura",
-      sub:       `${profileMap.get(s.talent_user_id) ?? "Talent"} se candidatou a "${jobMap.get(s.job_id) ?? "uma vaga"}"`,
-      time:      s.created_at,
-      link:      s.job_id ? `/agency/jobs/${s.job_id}` : "/agency/submissions",
-      avatarUrl: avatarMap.get(s.talent_user_id) ?? null,
-      jobDate:   s.job_id ? (jobDateMap.get(s.job_id) ?? null) : null,
+    ...recentSubmissionsData.map((submission) => ({
+      id: submission.id,
+      type: "submission" as const,
+      title: "Nova candidatura",
+      sub: `${profileMap.get(submission.talent_user_id) ?? "Talent"} se candidatou a "${lifecycleJobMap.get(submission.job_id)?.title ?? "uma vaga"}"`,
+      time: submission.created_at,
+      link: submission.job_id ? `/agency/jobs/${submission.job_id}` : "/agency/submissions",
+      avatarUrl: avatarMap.get(submission.talent_user_id) ?? null,
+      jobDate: submission.job_id ? (lifecycleJobMap.get(submission.job_id)?.jobDate ?? null) : null,
     })),
   ]
-    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+    .sort((left, right) => new Date(right.time).getTime() - new Date(left.time).getTime())
     .slice(0, 6);
 
-  // ── Pending contracts list ────────────────────────────────────────────────
-  const pendingContracts = (pendingContractsData ?? []).map((c) => ({
-    id:         c.id,
-    amount:     Number(c.payment_amount ?? 0),
-    talentName: c.talent_id ? (profileMap.get(c.talent_id) ?? "Talent") : "Talent",
-    jobTitle:   c.job_id ? (jobMap.get(c.job_id) ?? c.job_description ?? "Vaga") : (c.job_description ?? "Vaga"),
-    jobDate:    (c as any).job_date ?? (c.job_id ? (jobDateMap.get(c.job_id) ?? null) : null),
+  const pendingContracts = confirmedContractsData.map((contract) => ({
+    id: contract.id,
+    amount: Number(contract.payment_amount ?? 0),
+    talentName: contract.talent_id ? (profileMap.get(contract.talent_id) ?? "Talent") : "Talent",
+    jobTitle: contract.job_id ? (lifecycleJobMap.get(contract.job_id)?.title ?? contract.job_description ?? "Vaga") : (contract.job_description ?? "Vaga"),
+    jobDate: (contract as { job_date?: string | null }).job_date ?? (contract.job_id ? (lifecycleJobMap.get(contract.job_id)?.jobDate ?? null) : null),
   }));
 
-  // ── Active jobs list ──────────────────────────────────────────────────────
-  const activeJobsList = (activeJobsData ?? []).map((j) => ({
-    id:           j.id,
-    title:        j.title ?? "Vaga",
-    jobDate:      j.job_date ?? null,
-    talentsNeeded: j.talents_needed ?? j.number_of_talents_required ?? 1,
+  const activeJobsList = openJobs.slice(0, 5).map((job) => ({
+    id: job.id,
+    title: job.title ?? "Vaga",
+    jobDate: job.job_date ?? null,
+    talentsNeeded: job.talents_needed ?? job.number_of_talents_required ?? 1,
   }));
 
-  // ── Confirmed contracts list ──────────────────────────────────────────────
-  const confirmedContracts = (confirmedContractsData ?? []).map((c) => ({
-    id:         c.id,
-    amount:     Number(c.payment_amount ?? 0),
-    talentName: c.talent_id ? (profileMap.get(c.talent_id) ?? "Talent") : "Talent",
-    jobTitle:   c.job_id ? (jobMap.get(c.job_id) ?? c.job_description ?? "Vaga") : (c.job_description ?? "Vaga"),
-    paidAt:     c.paid_at ?? null,
+  const confirmedContracts = paidContracts.slice(0, 5).map((contract) => ({
+    id: contract.id,
+    amount: Number(contract.payment_amount ?? 0),
+    talentName: contract.talent_id ? (profileMap.get(contract.talent_id) ?? "Talent") : "Talent",
+    jobTitle: contract.job_id ? (lifecycleJobMap.get(contract.job_id)?.title ?? contract.job_description ?? "Vaga") : (contract.job_description ?? "Vaga"),
+    paidAt: contract.paid_at ?? null,
   }));
 
   return (
     <AgencyDashboardOverview
       stats={{
-        totalJobs:      totalJobs       ?? 0,
-        activeJobs:     activeJobs      ?? 0,
-        submissions:    submissionsCount ?? 0,
-        pendingPayment: pendingPayment   ?? 0,
-        paidContracts:  paidCount,
+        totalJobs: openJobs.length,
+        activeJobs: openJobs.length,
+        submissions: submissionsFiltered.length,
+        pendingPayment: confirmedContractsData.length,
+        paidContracts: paidCount,
         totalSpent,
-        walletBalance:  Number(profile?.wallet_balance ?? 0),
+        walletBalance: Number(profile?.wallet_balance ?? 0),
         activeEscrowTotal,
       }}
       recentTalent={recentTalentData}

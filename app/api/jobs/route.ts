@@ -10,6 +10,7 @@ import {
   getAgentLedgerBalance,
   getUserPremiumWorkspace,
 } from "@/lib/premiumWorkspace.server";
+import { resolveWorkspaceLifecycleByJobId, talentWorkspaceJobDetailHref } from "@/lib/workspaceLifecycle";
 
 function mapJobCreationError(message: string) {
   const normalized = message.toLowerCase();
@@ -227,6 +228,9 @@ export async function POST(req: NextRequest) {
     );
     const toInvite = suggestions.filter((suggestion) => !suggestion.is_unavailable);
 
+    const workspaceLifecycle = await resolveWorkspaceLifecycleByJobId(supabase, data.id);
+    const jobLink = talentWorkspaceJobDetailHref(workspaceLifecycle?.workspaceSlug, data.id);
+
     if (toInvite.length > 0) {
       await supabase.from("job_invites").insert(
         toInvite.map((talent) => ({
@@ -251,7 +255,7 @@ export async function POST(req: NextRequest) {
         toInvite.map((talent) => talent.id),
         "job_invite",
         message,
-        `/talent/jobs/${data.id}`
+        jobLink
       );
     }
   }

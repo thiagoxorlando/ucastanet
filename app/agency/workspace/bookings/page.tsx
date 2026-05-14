@@ -79,7 +79,7 @@ export default async function WorkspaceBookingsPage() {
   });
 
   if (context.isOwner) {
-    return <BookingList bookings={bookings} />;
+    return <BookingList bookings={bookings} financesHref="/agency/workspace/wallet" />;
   }
 
   return (

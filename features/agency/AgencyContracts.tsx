@@ -334,11 +334,13 @@ function JobGroup({
   jobId,
   contracts,
   onUpdate,
+  bookingsHref,
 }: {
   jobTitle: string;
   jobId: string | null;
   contracts: AgencyContract[];
   onUpdate: (id: string, updates: Partial<AgencyContract>) => void;
+  bookingsHref: string;
 }) {
   const pendingDeposit = contracts.filter((c) => c.status === "signed").length;
   const confirmed      = contracts.filter((c) => c.status === "confirmed" || c.status === "paid").length;
@@ -359,7 +361,7 @@ function JobGroup({
             </Link>
             {pendingDeposit > 0 && (
               <Link
-                href="/agency/bookings"
+                href={bookingsHref}
                 className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 hover:bg-violet-200 transition-colors"
               >
                 {pendingDeposit} depósito{pendingDeposit !== 1 ? "s" : ""} pendente{pendingDeposit !== 1 ? "s" : ""}
@@ -407,7 +409,13 @@ function JobGroup({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function AgencyContracts({ contracts: initialContracts }: { contracts: AgencyContract[] }) {
+export default function AgencyContracts({
+  contracts: initialContracts,
+  bookingsHref = "/agency/bookings",
+}: {
+  contracts: AgencyContract[];
+  bookingsHref?: string;
+}) {
   const [contracts,    setContracts]    = useState<AgencyContract[]>(initialContracts);
   const [filter,       setFilter]       = useState<FilterStatus>("all");
   const [stripeBanner, setStripeBanner] = useState<"success" | "cancel" | null>(null);
@@ -494,7 +502,7 @@ export default function AgencyContracts({ contracts: initialContracts }: { contr
 
       {pendingDeposit > 0 && (
         <Link
-          href="/agency/bookings"
+          href={bookingsHref}
           className="flex items-center gap-3 bg-violet-50 border border-violet-100 hover:border-violet-200 hover:bg-violet-100 rounded-xl px-4 py-3 transition-colors"
         >
           <div className="w-2 h-2 rounded-full bg-violet-400 flex-shrink-0" />
@@ -565,6 +573,7 @@ export default function AgencyContracts({ contracts: initialContracts }: { contr
                 jobId={group[0].jobId}
                 contracts={group}
                 onUpdate={handleUpdate}
+                bookingsHref={bookingsHref}
               />
             );
           })}

@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { syncBooking } from "@/lib/syncBooking";
 import { notify } from "@/lib/notify";
+import { agencyWorkspaceBookingsHref, resolveWorkspaceLifecycleByJobId } from "@/lib/workspaceLifecycle";
 
 export async function POST(
   req: NextRequest,
@@ -27,6 +28,9 @@ export async function POST(
   if (fetchErr || !contract) {
     return NextResponse.json({ error: "Contract not found" }, { status: 404 });
   }
+
+  const workspaceLifecycle = await resolveWorkspaceLifecycleByJobId(supabase, contract.job_id ?? null);
+  const agencyBookingsHref = agencyWorkspaceBookingsHref(workspaceLifecycle?.workspaceSlug);
 
   const { data: caller } = await supabase
     .from("profiles")
@@ -61,7 +65,7 @@ export async function POST(
 
   // Notify agency only — talent already received "Você recebeu um novo contrato"
   // when the contract was created; a second notification here would be a duplicate.
-  await notify(contract.agency_id, "contract", "Talento assinou o contrato", "/agency/bookings");
+  await notify(contract.agency_id, "contract", "Talento assinou o contrato", agencyBookingsHref);
 
   return NextResponse.json({ ok: true, status: "signed" });
 }

@@ -159,6 +159,7 @@ export default async function InviteJobPage({ params }: Props) {
   }
 
   let workspaceName: string | null = null;
+  let workspaceSlug: string | null = null;
   let workspaceWelcome: string | null = null;
   let workspaceLogoUrl: string | null = null;
   let workspacePrimaryColor: string | null = null;
@@ -167,10 +168,11 @@ export default async function InviteJobPage({ params }: Props) {
   if (link.workspace_id) {
     const { data: workspace } = await supabase
       .from("premium_workspaces")
-      .select("name, welcome_message, logo_url, brand_primary_color, brand_accent_color")
+      .select("slug, name, welcome_message, logo_url, brand_primary_color, brand_accent_color")
       .eq("id", link.workspace_id)
       .maybeSingle();
 
+    workspaceSlug = (workspace?.slug as string | null) ?? null;
     workspaceName = workspace?.name ?? null;
     workspaceWelcome = (workspace?.welcome_message as string | null) ?? null;
     workspaceLogoUrl = (workspace?.logo_url as string | null) ?? null;
@@ -208,6 +210,7 @@ export default async function InviteJobPage({ params }: Props) {
         jobTime: job.job_time ? String(job.job_time).slice(0, 5) : null,
         location: job.location ?? null,
       }}
+      workspaceSlug={workspaceSlug}
       workspaceName={workspaceName}
       workspaceWelcome={workspaceWelcome}
       workspaceLogoUrl={workspaceLogoUrl}

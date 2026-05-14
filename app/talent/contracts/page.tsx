@@ -34,10 +34,25 @@ export default async function TalentContractsPage() {
   const rows    = contractsResult.data ?? [];
   const subRows = subsResult.data      ?? [];
 
-  const contractJobIds = new Set(rows.map((c) => c.job_id).filter(Boolean));
+  const allJobIds = [...new Set([
+    ...rows.map((c) => c.job_id),
+    ...subRows.map((s) => s.job_id),
+  ].filter((id): id is string => !!id))];
+  const { data: jobs } = allJobIds.length
+    ? await supabase.from("jobs").select("id, title, agency_id, workspace_id").in("id", allJobIds)
+    : { data: [] };
+  const openJobMap = new Map(
+    (jobs ?? [])
+      .filter((job) => !(job as { workspace_id?: string | null }).workspace_id)
+      .map((job) => [job.id, { title: job.title ?? "Vaga sem titulo", agencyId: job.agency_id ?? "" }]),
+  );
+
+  const filteredRows = rows.filter((contract) => !contract.job_id || openJobMap.has(contract.job_id));
+  const filteredSubRows = subRows.filter((submission) => submission.job_id && openJobMap.has(submission.job_id));
+  const contractJobIds = new Set(filteredRows.map((c) => c.job_id).filter(Boolean));
 
   // Resolve agency names
-  const agencyIds = [...new Set(rows.map((c) => c.agency_id).filter((id): id is string => !!id))];
+  const agencyIds = [...new Set(filteredRows.map((c) => c.agency_id).filter((id): id is string => !!id))];
   const agencyMap = new Map<string, string>();
   if (agencyIds.length) {
     const { data: agencies } = await supabase
@@ -48,16 +63,15 @@ export default async function TalentContractsPage() {
   }
 
   // Approved submissions without a contract
-  const pendingSubJobIds = (subRows ?? [])
+  const pendingSubJobIds = (filteredSubRows ?? [])
     .filter((s) => s.job_id && !contractJobIds.has(s.job_id))
     .map((s) => s.job_id as string);
 
   let approvedSubmissions: ApprovedSubmission[] = [];
   if (pendingSubJobIds.length) {
-    const { data: jobRows } = await supabase
-      .from("jobs")
-      .select("id, title, agency_id")
-      .in("id", pendingSubJobIds);
+    const jobRows = pendingSubJobIds
+      .map((jobId) => openJobMap.get(jobId) ? { id: jobId, title: openJobMap.get(jobId)!.title, agency_id: openJobMap.get(jobId)!.agencyId } : null)
+      .filter((row): row is { id: string; title: string; agency_id: string } => !!row);
 
     const jobAgencyIds = [...new Set((jobRows ?? []).map((j) => j.agency_id).filter(Boolean))];
     const jobAgencyMap = new Map<string, string>();
@@ -70,7 +84,7 @@ export default async function TalentContractsPage() {
     }
 
     approvedSubmissions = (jobRows ?? []).map((j) => {
-      const sub = (subRows ?? []).find((s) => s.job_id === j.id)!;
+      const sub = (filteredSubRows ?? []).find((s) => s.job_id === j.id)!;
       return {
         submissionId: sub.id,
         jobId:        j.id,
@@ -81,7 +95,7 @@ export default async function TalentContractsPage() {
     });
   }
 
-  const contracts: TalentContract[] = rows.map((c) => ({
+  const contracts: TalentContract[] = filteredRows.map((c) => ({
     id:              c.id,
     jobId:           c.job_id ?? null,
     agencyName:      c.agency_id ? (agencyMap.get(c.agency_id) ?? "Agência sem nome")  : "Agência sem nome",

@@ -34,12 +34,20 @@ export default async function AgencyContractsPage() {
           .then(({ data }) => { for (const p of data ?? []) talentMap.set(p.id, p.full_name ?? "Sem nome"); })
       : Promise.resolve(),
     jobIds.length
-      ? supabase.from("jobs").select("id, title").in("id", jobIds)
-          .then(({ data }) => { for (const j of data ?? []) jobMap.set(j.id, j.title ?? "Untitled Job"); })
+      ? supabase.from("jobs").select("id, title, workspace_id").in("id", jobIds)
+          .then(({ data }) => {
+            for (const j of data ?? []) {
+              if (!(j as { workspace_id?: string | null }).workspace_id) {
+                jobMap.set(j.id, j.title ?? "Untitled Job");
+              }
+            }
+          })
       : Promise.resolve(),
   ]);
 
-  const contracts: AgencyContract[] = contracts_data.map((c) => ({
+  const contracts: AgencyContract[] = contracts_data
+    .filter((c) => !c.job_id || jobMap.has(c.job_id))
+    .map((c) => ({
     id:              c.id,
     jobId:           c.job_id          ?? null,
     jobTitle:        c.job_id ? (jobMap.get(c.job_id) ?? "Untitled Job") : "Untitled Job",

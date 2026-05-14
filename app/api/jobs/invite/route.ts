@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { resolveWorkspaceLifecycleByJobId, talentWorkspaceJobDetailHref } from "@/lib/workspaceLifecycle";
 
 export async function POST(req: NextRequest) {
   const { job_id, talent_ids, agency_id } = await req.json();
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const { data: job, error: jobError } = await supabase
     .from("jobs")
-    .select("agency_id")
+    .select("agency_id, workspace_id")
     .eq("id", job_id)
     .single();
 
@@ -50,12 +51,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "No valid talent_ids provided" }, { status: 400 });
   }
 
+  const workspaceLifecycle = await resolveWorkspaceLifecycleByJobId(supabase, job_id);
+  const jobLink = talentWorkspaceJobDetailHref(workspaceLifecycle?.workspaceSlug, job_id);
+
   for (const talent_id of safeTalentIds) {
     const { error } = await supabase.from("notifications").insert({
       user_id: talent_id,
       type: "job_invite",
       message: "You were invited to apply for a job",
-      link: `/talent/jobs/${job_id}`,
+      link: jobLink,
     });
 
     if (error) console.error("[invite] Insert failed:", error.message, { talent_id, job_id });

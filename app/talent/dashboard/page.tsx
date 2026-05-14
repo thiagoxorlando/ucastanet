@@ -3,65 +3,30 @@ import TalentDashboard from "@/features/talent/TalentDashboard";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 
-export const metadata: Metadata = { title: "Painel — BrisaHub" };
+export const metadata: Metadata = { title: "Painel - BrisaHub" };
 
 export default async function TalentDashboardPage() {
-  const session  = await createSessionClient();
+  const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
   const talentId = user?.id ?? "";
 
   const supabase = createServerClient({ useServiceRole: true });
 
   const [
-    { count: appliedCount },
-    { count: acceptedCount },
-    { data: upcomingData },
-    { data: pendingContractsData },
-    { data: paidContractsData },
+    { data: submissionsData },
+    { data: contractsData },
     { data: profileData },
   ] = await Promise.all([
-    // Jobs applied
     supabase
       .from("submissions")
-      .select("id", { count: "exact", head: true })
+      .select("id, job_id")
       .eq("talent_user_id", talentId),
-
-    // Jobs accepted (contract signed or beyond)
     supabase
       .from("contracts")
-      .select("id", { count: "exact", head: true })
+      .select("id, agency_id, job_id, job_description, job_date, job_time, location, payment_amount, net_amount, payment_status, status, paid_at")
       .eq("talent_id", talentId)
-      .in("status", ["signed", "confirmed", "paid"])
-      .is("deleted_at", null),
-
-    // Upcoming jobs — confirmed contracts with a future job date
-    supabase
-      .from("contracts")
-      .select("id, job_description, job_date, job_time, location, payment_amount, net_amount, status, agency_id")
-      .eq("talent_id", talentId)
-      .in("status", ["signed", "confirmed"])
       .is("deleted_at", null)
-      .gte("job_date", new Date().toISOString().slice(0, 10))
-      .order("job_date", { ascending: true })
-      .limit(5),
-
-    // Awaiting payment — agency confirmed but hasn't paid yet
-    supabase
-      .from("contracts")
-      .select("id, job_description, payment_amount, net_amount, payment_status, status")
-      .eq("talent_id", talentId)
-      .eq("status", "confirmed")
-      .eq("payment_status", "pending")
-      .is("deleted_at", null),
-
-    // Paid contracts — to compute earnings and withdrawable balance
-    supabase
-      .from("contracts")
-      .select("id, payment_amount, net_amount, paid_at")
-      .eq("talent_id", talentId)
-      .eq("payment_status", "paid")
-      .is("deleted_at", null),
-
+      .order("created_at", { ascending: false }),
     supabase
       .from("profiles")
       .select("wallet_balance")
@@ -69,12 +34,31 @@ export default async function TalentDashboardPage() {
       .maybeSingle(),
   ]);
 
-  // Resolve agency names for upcoming jobs
+  const jobIds = [
+    ...new Set([
+      ...(submissionsData ?? []).map((submission) => submission.job_id),
+      ...(contractsData ?? []).map((contract) => contract.job_id),
+    ].filter((id): id is string => !!id)),
+  ];
+
+  const { data: jobs } = jobIds.length
+    ? await supabase.from("jobs").select("id, title, workspace_id").in("id", jobIds)
+    : { data: [] };
+
+  const openJobMap = new Map(
+    (jobs ?? [])
+      .filter((job) => !(job as { workspace_id?: string | null }).workspace_id)
+      .map((job) => [job.id, job.title ?? "Vaga"]),
+  );
+
+  const filteredSubmissions = (submissionsData ?? []).filter((submission) => submission.job_id && openJobMap.has(submission.job_id));
+  const filteredContracts = (contractsData ?? []).filter((contract) => !contract.job_id || openJobMap.has(contract.job_id));
+
   const agencyIds = [
     ...new Set(
-      (upcomingData ?? [])
-        .map((c) => c.agency_id)
-        .filter((id): id is string => !!id)
+      filteredContracts
+        .map((contract) => contract.agency_id)
+        .filter((id): id is string => !!id),
     ),
   ];
   const agencyMap = new Map<string, string>();
@@ -83,31 +67,37 @@ export default async function TalentDashboardPage() {
       .from("agencies")
       .select("id, company_name")
       .in("id", agencyIds);
-    for (const a of agencies ?? []) agencyMap.set(a.id, a.company_name ?? "Agency");
+    for (const agency of agencies ?? []) agencyMap.set(agency.id, agency.company_name ?? "Agency");
   }
 
-  const upcomingBookings = (upcomingData ?? []).map((c) => ({
-    id:         c.id,
-    title:      c.job_description?.slice(0, 60) ?? "Upcoming Job",
-    agencyName: agencyMap.get(c.agency_id) ?? "Agency",
-    jobDate:    c.job_date   as string | null,
-    jobTime:    c.job_time   as string | null,
-    location:   c.location   as string | null,
-    amount:     Number(c.net_amount ?? c.payment_amount ?? 0),
-    status:     c.status     as string,
+  const acceptedContracts = filteredContracts.filter((contract) => ["signed", "confirmed", "paid"].includes(contract.status ?? ""));
+  const upcomingContracts = filteredContracts
+    .filter((contract) => ["signed", "confirmed"].includes(contract.status ?? ""))
+    .filter((contract) => contract.job_date && contract.job_date >= new Date().toISOString().slice(0, 10))
+    .slice(0, 5);
+  const pendingContracts = filteredContracts.filter((contract) => contract.status === "confirmed" && contract.payment_status === "pending");
+  const paidContracts = filteredContracts.filter((contract) => contract.payment_status === "paid" || contract.status === "paid");
+
+  const upcomingBookings = upcomingContracts.map((contract) => ({
+    id: contract.id,
+    title: contract.job_id ? (openJobMap.get(contract.job_id) ?? contract.job_description?.slice(0, 60) ?? "Upcoming Job") : (contract.job_description?.slice(0, 60) ?? "Upcoming Job"),
+    agencyName: contract.agency_id ? (agencyMap.get(contract.agency_id) ?? "Agency") : "Agency",
+    jobDate: contract.job_date as string | null,
+    jobTime: contract.job_time as string | null,
+    location: contract.location as string | null,
+    amount: Number(contract.net_amount ?? contract.payment_amount ?? 0),
+    status: contract.status as string,
   }));
 
-  const pendingPayments = (pendingContractsData ?? []).map((c) => ({
-    id:     c.id,
-    title:  c.job_description?.slice(0, 60) ?? "Contract",
-    amount: Number(c.net_amount ?? c.payment_amount ?? 0),
+  const pendingPayments = pendingContracts.map((contract) => ({
+    id: contract.id,
+    title: contract.job_id ? (openJobMap.get(contract.job_id) ?? contract.job_description?.slice(0, 60) ?? "Contract") : (contract.job_description?.slice(0, 60) ?? "Contract"),
+    amount: Number(contract.net_amount ?? contract.payment_amount ?? 0),
   }));
 
-  const totalEarned = (paidContractsData ?? [])
-    .reduce((sum, c) => sum + Number(c.net_amount ?? c.payment_amount ?? 0), 0);
+  const totalEarned = paidContracts.reduce((sum, contract) => sum + Number(contract.net_amount ?? contract.payment_amount ?? 0), 0);
   const pendingWithdraw = Math.max(0, Number(profileData?.wallet_balance ?? 0));
 
-  // Today's availability
   const today = new Date().toISOString().slice(0, 10);
   const { data: todayAvailRow } = await supabase
     .from("talent_availability")
@@ -119,17 +109,17 @@ export default async function TalentDashboardPage() {
   const todayAvailability = todayAvailRow
     ? {
         is_available: todayAvailRow.is_available as boolean,
-        start_time:   todayAvailRow.start_time   as string | null,
-        end_time:     todayAvailRow.end_time      as string | null,
+        start_time: todayAvailRow.start_time as string | null,
+        end_time: todayAvailRow.end_time as string | null,
       }
     : null;
 
   return (
     <TalentDashboard
       stats={{
-        applied:        appliedCount  ?? 0,
-        accepted:       acceptedCount ?? 0,
-        upcoming:       upcomingBookings.length,
+        applied: filteredSubmissions.length,
+        accepted: acceptedContracts.length,
+        upcoming: upcomingBookings.length,
         pendingWithdraw,
         totalEarned,
       }}

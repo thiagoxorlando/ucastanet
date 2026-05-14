@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { notify, notifyAdmins } from "@/lib/notify";
 import { getUnifiedBookingStatus, validateBookingStatus } from "@/lib/bookingStatus";
+import { resolveWorkspaceLifecycleByJobId, talentWorkspaceContractsHref } from "@/lib/workspaceLifecycle";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
   }
 
   const safeStatus = "pending";
-  const statusErr  = validateBookingStatus(safeStatus);
+  const statusErr = validateBookingStatus(safeStatus);
   if (statusErr) return NextResponse.json({ error: statusErr }, { status: 422 });
 
   const { data: job } = await supabase
@@ -73,11 +74,11 @@ export async function POST(req: NextRequest) {
     .from("bookings")
     .insert({
       job_id,
-      agency_id:      job.agency_id,
+      agency_id: job.agency_id,
       talent_user_id: user.id,
-      job_title:      job.title ?? job_title ?? null,
-      price:          job.budget ?? price ?? 0,
-      status:         safeStatus,
+      job_title: job.title ?? job_title ?? null,
+      price: job.budget ?? price ?? 0,
+      status: safeStatus,
     })
     .select()
     .single();
@@ -87,7 +88,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  await notify(user.id, "booking", "Você foi reservado!", "/talent/bookings");
+  const workspaceLifecycle = await resolveWorkspaceLifecycleByJobId(supabase, job_id);
+
+  await notify(
+    user.id,
+    "booking",
+    "Voce foi reservado!",
+    talentWorkspaceContractsHref(workspaceLifecycle?.workspaceSlug),
+  );
   await notifyAdmins(
     "booking",
     `Nova reserva criada: ${data.job_title ?? "sem titulo"}`,
@@ -95,7 +103,6 @@ export async function POST(req: NextRequest) {
     `admin-booking-created:${data.id}`,
   );
 
-  // No contract exists yet at creation time — always aguardando_assinatura
   return NextResponse.json({
     booking: {
       ...data,

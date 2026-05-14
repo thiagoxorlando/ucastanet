@@ -19,6 +19,7 @@ type JobData = {
 type Props = {
   token: string;
   job: JobData;
+  workspaceSlug: string | null;
   workspaceName: string | null;
   workspaceWelcome: string | null;
   workspaceLogoUrl: string | null;
@@ -47,6 +48,7 @@ function InfoCard({
 export default function InviteJobClient({
   token,
   job,
+  workspaceSlug,
   workspaceName,
   workspaceWelcome,
   workspaceLogoUrl,
@@ -73,7 +75,11 @@ export default function InviteJobClient({
   async function handleApply() {
     setError(null);
     setApplying(true);
-    router.push(`/talent/jobs/${job.id}?invite=${encodeURIComponent(token)}`);
+    const invite = encodeURIComponent(token);
+    const href = workspaceSlug
+      ? `/talent/workspaces/${workspaceSlug}/jobs/${job.id}?invite=${invite}`
+      : `/talent/jobs/${job.id}?invite=${invite}`;
+    router.push(href);
   }
 
   return (

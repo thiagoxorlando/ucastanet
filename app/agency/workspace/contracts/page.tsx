@@ -76,7 +76,7 @@ export default async function WorkspaceContractsPage() {
   }));
 
   if (context.isOwner) {
-    return <AgencyContracts contracts={contracts} />;
+    return <AgencyContracts contracts={contracts} bookingsHref="/agency/workspace/bookings" />;
   }
 
   return (

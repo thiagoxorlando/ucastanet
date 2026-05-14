@@ -2,28 +2,22 @@ import type { Metadata } from "next";
 import JobList from "@/features/agency/JobList";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
-import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
 
 export const metadata: Metadata = { title: "Vagas — BrisaHub" };
 
 export default async function JobsPage() {
-  const session  = await createSessionClient();
+  const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
 
   const supabase = createServerClient({ useServiceRole: true });
 
-  // Workspace members see their own jobs + all workspace jobs
-  const ws = user ? await getUserPremiumWorkspace(user.id) : null;
-
   let query = supabase
     .from("jobs")
     .select("id, title, category, budget, deadline, job_date, description, status, created_at, number_of_talents_required, visibility")
+    .is("workspace_id", null)
     .order("created_at", { ascending: false });
 
-  if (user && ws) {
-    // Show personal jobs + all workspace jobs (includes teammates' private jobs)
-    query = query.or(`agency_id.eq.${user.id},workspace_id.eq.${ws.workspace.id}`);
-  } else if (user) {
+  if (user) {
     query = query.eq("agency_id", user.id);
   }
 
@@ -33,9 +27,7 @@ export default async function JobsPage() {
   const rows = data ?? [];
   const jobIds = rows.map((r) => r.id);
 
-  // Submission count per job
   const submissionsCountMap = new Map<string, number>();
-  // Selected talent count per job (bookings that are not cancelled)
   const selectedCountMap = new Map<string, number>();
 
   if (jobIds.length) {
@@ -57,19 +49,19 @@ export default async function JobsPage() {
   }
 
   const jobs = rows.map((row) => ({
-    id:              String(row.id),
-    title:           row.title       ?? "",
-    category:        row.category    ?? "",
-    budget:          row.budget      ?? 0,
-    deadline:        row.deadline    ?? "",
-    jobDate:         row.job_date    ?? null,
-    description:     row.description ?? "",
-    status:          (row.status     ?? "open") as "open" | "closed" | "draft" | "inactive",
-    visibility:      (row.visibility ?? "public") as "public" | "private" | "private_invite",
-    applicants:      submissionsCountMap.get(row.id) ?? 0,
-    talentsNeeded:   row.number_of_talents_required ?? 1,
+    id: String(row.id),
+    title: row.title ?? "",
+    category: row.category ?? "",
+    budget: row.budget ?? 0,
+    deadline: row.deadline ?? "",
+    jobDate: row.job_date ?? null,
+    description: row.description ?? "",
+    status: (row.status ?? "open") as "open" | "closed" | "draft" | "inactive",
+    visibility: (row.visibility ?? "public") as "public" | "private" | "private_invite",
+    applicants: submissionsCountMap.get(row.id) ?? 0,
+    talentsNeeded: row.number_of_talents_required ?? 1,
     talentsSelected: selectedCountMap.get(row.id) ?? 0,
-    postedAt:        row.created_at  ?? "",
+    postedAt: row.created_at ?? "",
   }));
 
   return <JobList jobs={jobs} />;

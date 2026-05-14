@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { notify } from "@/lib/notify";
+import { resolveWorkspaceLifecycleByJobId, talentWorkspaceJobDetailHref } from "@/lib/workspaceLifecycle";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest, { params }: Props) {
 
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, title, job_date, agency_id, status, deleted_at")
+    .select("id, title, job_date, agency_id, status, deleted_at, workspace_id")
     .eq("id", jobId)
     .single();
 
@@ -69,7 +70,8 @@ export async function POST(req: NextRequest, { params }: Props) {
     ? `Você recebeu um convite para se candidatar à vaga "${job.title}" (${dateStr}).`
     : `Você recebeu um convite para se candidatar à vaga "${job.title}".`;
 
-  await notify(talent_id, "job_invite", msg, `/talent/jobs/${jobId}`);
+  const workspaceLifecycle = await resolveWorkspaceLifecycleByJobId(supabase, jobId);
+  await notify(talent_id, "job_invite", msg, talentWorkspaceJobDetailHref(workspaceLifecycle?.workspaceSlug, jobId));
 
   return NextResponse.json({ invite }, { status: 201 });
 }

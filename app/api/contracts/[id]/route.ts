@@ -4,6 +4,13 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { syncBooking } from "@/lib/syncBooking";
 import { notify, notifyAdmins } from "@/lib/notify";
 import { getUnifiedBookingStatus } from "@/lib/bookingStatus";
+import {
+  agencyWorkspaceBookingsHref,
+  agencyWorkspaceContractsHref,
+  agencyWorkspaceWalletHref,
+  resolveWorkspaceLifecycleByJobId,
+  talentWorkspaceContractsHref,
+} from "@/lib/workspaceLifecycle";
 
 const ALLOWED_ACTIONS = [
   "reject", "agency_sign", "pay",
@@ -42,6 +49,12 @@ export async function PATCH(
   if (fetchErr || !contract) {
     return NextResponse.json({ error: "Contract not found" }, { status: 404 });
   }
+
+  const workspaceLifecycle = await resolveWorkspaceLifecycleByJobId(supabase, contract.job_id ?? null);
+  const agencyBookingsHref = agencyWorkspaceBookingsHref(workspaceLifecycle?.workspaceSlug);
+  const agencyContractsHref = agencyWorkspaceContractsHref(workspaceLifecycle?.workspaceSlug);
+  const agencyWalletHref = agencyWorkspaceWalletHref(workspaceLifecycle?.workspaceSlug);
+  const talentContractsHref = talentWorkspaceContractsHref(workspaceLifecycle?.workspaceSlug);
 
   const { data: caller } = await supabase
     .from("profiles")
@@ -88,7 +101,7 @@ export async function PATCH(
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
     await syncBooking(supabase, contract, "cancelled");
-    await notify(contract.agency_id, "contract", "Talento recusou o seu contrato", "/agency/contracts");
+    await notify(contract.agency_id, "contract", "Talento recusou o seu contrato", agencyContractsHref);
     return NextResponse.json({ ok: true, status: "rejected", derived_status: getUnifiedBookingStatus("cancelled", "rejected") });
   }
 
@@ -129,7 +142,7 @@ export async function PATCH(
         .eq("talent_user_id", contract.talent_id);
     }
 
-    await notify(contract.agency_id, "contract", "Talento cancelou a reserva", "/agency/bookings");
+    await notify(contract.agency_id, "contract", "Talento cancelou a reserva", agencyBookingsHref);
     return NextResponse.json({ ok: true, status: "cancelled", derived_status: getUnifiedBookingStatus("cancelled", "cancelled") });
   }
 
@@ -199,7 +212,7 @@ export async function PATCH(
         contract.talent_id,
         "contract",
         "Agência confirmou o contrato e realizou o depósito",
-        "/talent/contracts",
+        talentContractsHref,
         `notif_escrow_talent_${id}`,
       );
     }
@@ -211,7 +224,7 @@ export async function PATCH(
         contract.agency_id,
         "payment",
         `Escrow realizado: ${brl} movidos para garantia`,
-        "/agency/finances",
+        agencyWalletHref,
         `notif_escrow_agency_${id}`,
       );
     }
@@ -458,7 +471,7 @@ export async function PATCH(
         .eq("talent_user_id", contract.talent_id);
     }
 
-    await notify(contract.talent_id, "contract", "Agência cancelou o contrato", "/talent/contracts");
+    await notify(contract.talent_id, "contract", "Agência cancelou o contrato", talentContractsHref);
     return NextResponse.json({ ok: true, status: "cancelled", derived_status: getUnifiedBookingStatus("cancelled", "cancelled") });
   }
 

@@ -18,7 +18,7 @@ export default async function AgencyFinancesPage() {
   const [{ data: bookings }, { data: walletTxs }, { data: profile }, { data: contracts }, { data: agencyRow }] = await Promise.all([
     supabase
       .from("bookings")
-      .select("id, talent_user_id, job_title, price, status, created_at")
+      .select("id, talent_user_id, job_id, job_title, price, status, created_at")
       .eq("agency_id", user?.id ?? "")
       .order("created_at", { ascending: false }),
     supabase
@@ -34,7 +34,7 @@ export default async function AgencyFinancesPage() {
       .single(),
     supabase
       .from("contracts")
-      .select("id, booking_id, status, payment_amount, confirmed_at, agency_signed_at, deposit_paid_at")
+      .select("id, booking_id, job_id, status, payment_amount, confirmed_at, agency_signed_at, deposit_paid_at")
       .eq("agency_id", user?.id ?? "")
       .in("status", ["confirmed", "paid", "cancelled"])
       .order("created_at", { ascending: false })
@@ -47,9 +47,27 @@ export default async function AgencyFinancesPage() {
   ]);
 
   const rows = bookings ?? [];
+  const jobIds = [...new Set(rows.map((booking) => booking.job_id).filter((id): id is string => !!id))];
+  const contractJobIds = [...new Set((contracts ?? []).map((contract) => contract.job_id).filter((id): id is string => !!id))];
+  const allJobIds = [...new Set([...jobIds, ...contractJobIds])];
+  const { data: jobs } = allJobIds.length
+    ? await supabase.from("jobs").select("id, workspace_id").in("id", allJobIds)
+    : { data: [] };
+  const openJobIds = new Set(
+    (jobs ?? [])
+      .filter((job) => !(job as { workspace_id?: string | null }).workspace_id)
+      .map((job) => job.id),
+  );
+  const openBookings = rows.filter((booking) => !booking.job_id || openJobIds.has(String(booking.job_id)));
+  const openContracts = (contracts ?? []).filter((contract) => !contract.job_id || openJobIds.has(String(contract.job_id)));
+  const premiumContractIds = new Set(
+    (contracts ?? [])
+      .filter((contract) => contract.job_id && !openJobIds.has(String(contract.job_id)))
+      .map((contract) => String(contract.id)),
+  );
 
   // Resolve talent names
-  const talentIds = [...new Set(rows.map((b) => b.talent_user_id).filter((id): id is string => !!id))];
+  const talentIds = [...new Set(openBookings.map((b) => b.talent_user_id).filter((id): id is string => !!id))];
   const nameMap = new Map<string, string>();
   if (talentIds.length) {
     const { data: profiles } = await supabase
@@ -59,7 +77,7 @@ export default async function AgencyFinancesPage() {
     for (const p of profiles ?? []) nameMap.set(p.id, p.full_name ?? "Sem nome");
   }
 
-  const bookingTxs: AgencyTransaction[] = rows.map((b) => ({
+  const bookingTxs: AgencyTransaction[] = openBookings.map((b) => ({
     id:     b.id,
     kind:   "booking" as const,
     talent: nameMap.get(b.talent_user_id) ?? "Sem nome",
@@ -69,7 +87,7 @@ export default async function AgencyFinancesPage() {
     date:   b.created_at,
   }));
 
-  const contractRows = contracts ?? [];
+  const contractRows = openContracts;
   const contractByEscrowKey = new Map(contractRows.map((c) => [`escrow_${c.id}`, c]));
   const fallbackMatchedContracts = new Set<string>();
 
@@ -93,7 +111,14 @@ export default async function AgencyFinancesPage() {
     return matches[0];
   }
 
-  const walletRows: AgencyTransaction[] = (walletTxs ?? []).map((w) => {
+  const walletRows: AgencyTransaction[] = (walletTxs ?? [])
+    .filter((w) => {
+      const escrowContractId = typeof w.idempotency_key === "string" && w.idempotency_key.startsWith("escrow_")
+        ? w.idempotency_key.slice("escrow_".length)
+        : null;
+      return !escrowContractId || !premiumContractIds.has(escrowContractId);
+    })
+    .map((w) => {
     let status = w.type ?? "payment";
     let description = (w.description ?? "").replace(/ \(pendente\)/gi, "").trim() || undefined;
     let bookingId: string | null = null;

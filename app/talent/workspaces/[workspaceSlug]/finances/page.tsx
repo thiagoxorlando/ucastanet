@@ -5,7 +5,7 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { brl } from "@/lib/brl";
 import { resolveContractAmounts } from "@/lib/contractStatus";
 
-export const metadata: Metadata = { title: "Financeiro — BrisaHub" };
+export const metadata: Metadata = { title: "Financeiro Premium — BrisaHub" };
 
 type Props = { params: Promise<{ workspaceSlug: string }> };
 
@@ -73,9 +73,9 @@ export default async function WorkspaceFinancesPage({ params }: Props) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[1.3rem] font-bold text-zinc-950">Financeiro</h1>
+        <h1 className="text-[1.3rem] font-bold text-zinc-950">Financeiro Premium</h1>
         <p className="mt-0.5 text-[13px] text-zinc-500">
-          Seus ganhos com esta agência.
+          Seus ganhos no Portal da agência.
         </p>
       </div>
 
