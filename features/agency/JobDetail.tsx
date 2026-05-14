@@ -1022,11 +1022,13 @@ export default function JobDetail({
   submissions,
   bookings: initialBookings,
   agencyId,
+  readOnly,
 }: {
   job: Job | null;
   submissions?: Submission[];
   bookings?: JobBooking[];
   agencyId?: string;
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const { role } = useRole();
@@ -1303,7 +1305,7 @@ export default function JobDetail({
                 </button>
                 ) : null}
 
-                {currentStatus !== "closed" && (
+                {currentStatus !== "closed" && !readOnly && (
                   <Link
                     href={editHref}
                     className="inline-flex items-center gap-2 bg-white/10 border border-white/10 hover:bg-white/15 text-white text-[13px] font-bold px-5 py-2.5 rounded-xl transition-all duration-150"
@@ -1397,7 +1399,7 @@ export default function JobDetail({
       </div>
 
       {/* ── Status management — agency only ── */}
-      {(role === "agency" || !!agencyId) && currentStatus !== "inactive" && (
+      {(role === "agency" || !!agencyId) && currentStatus !== "inactive" && !readOnly && (
         <div className="bg-white rounded-[1.5rem] border border-zinc-100 shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)] p-5">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-4">
             Status da vaga
@@ -1465,6 +1467,16 @@ export default function JobDetail({
         </div>
       )}
 
+      {/* ── Read-only notice ── */}
+      {readOnly && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+          <p className="text-[13px] font-semibold text-amber-800">Acesso somente leitura</p>
+          <p className="mt-1 text-[12px] text-amber-700">
+            Esta vaga pertence a outro agente. Somente o responsável ou o proprietário pode editar ou enviar contratos.
+          </p>
+        </div>
+      )}
+
       {/* ── Submissions ── */}
       <div className="space-y-5">
         <div className="flex items-center justify-between flex-wrap gap-3">
@@ -1481,7 +1493,7 @@ export default function JobDetail({
                 <span className="text-[13px] font-medium text-emerald-700">{sentContracts.size}/{numberOfTalentsRequired} contrato{sentContracts.size !== 1 ? "s" : ""} enviado{sentContracts.size !== 1 ? "s" : ""}</span>
               </div>
             )}
-            {role === "agency" && selected.size > 0 && (
+            {role === "agency" && selected.size > 0 && !readOnly && (
               <button
                 onClick={() => openBulkContractModal()}
                 disabled={!canShareJob}
@@ -1515,9 +1527,9 @@ export default function JobDetail({
                 isAgency={!!agencyId || role === "agency"}
                 isSelected={selected.has(s.id)}
                 bookingStatus={s.talentId ? (bookingStatusByTalentId.get(s.talentId) ?? null) : null}
-                onSelect={() => openContractModal(s)}
-                onToggleSelect={() => toggleSelect(s.id)}
-                onDelete={(!!agencyId || role === "agency") ? () => handleDeleteSubmission(s.id) : undefined}
+                onSelect={!readOnly ? () => openContractModal(s) : () => {}}
+                onToggleSelect={!readOnly ? () => toggleSelect(s.id) : () => {}}
+                onDelete={(!readOnly && (!!agencyId || role === "agency")) ? () => handleDeleteSubmission(s.id) : undefined}
               />
             ))}
           </div>

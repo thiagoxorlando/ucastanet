@@ -80,6 +80,10 @@ export default async function WorkspaceJobsPage() {
                         <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
                           Minha vaga
                         </span>
+                      ) : !context.isOwner ? (
+                        <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold text-zinc-500">
+                          Equipe
+                        </span>
                       ) : null}
                     </div>
                     <div className="mt-3 grid gap-3 text-[13px] text-zinc-600 sm:grid-cols-2 xl:grid-cols-5">
@@ -115,7 +119,16 @@ export default async function WorkspaceJobsPage() {
                     >
                       Ver detalhe
                     </Link>
-                    {job.visibility === "private_invite" ? <WorkspacePrivateInviteButton jobId={job.id} /> : null}
+                    {job.visibility === "private_invite" && (context.isOwner || isOwnJob) ? (
+                      <WorkspacePrivateInviteButton jobId={job.id} />
+                    ) : job.visibility === "private_invite" && !context.isOwner && !isOwnJob ? (
+                      <span
+                        title="Somente o responsável pela vaga ou o proprietário pode realizar esta ação."
+                        className="inline-flex cursor-not-allowed items-center rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-2 text-[12px] font-semibold text-zinc-400"
+                      >
+                        Convite privado
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               </div>

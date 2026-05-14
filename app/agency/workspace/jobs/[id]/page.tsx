@@ -25,6 +25,8 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
   const workspaceAccess = await getUserPremiumWorkspace(user.id);
   if (!workspaceAccess || workspaceAccess.membership.status !== "active") notFound();
 
+  const isWorkspaceOwner = workspaceAccess.membership.role === "owner";
+
   const { data: jobData } = await supabase
     .from("jobs")
     .select(
@@ -132,5 +134,9 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
     };
   });
 
-  return <JobDetail job={job} submissions={submissions} bookings={bookings} agencyId={String(jobData.agency_id ?? user.id)} />;
+  const createdByUserId = (jobData as { created_by_user_id?: string | null }).created_by_user_id ?? null;
+  const isJobCreator = createdByUserId === user.id;
+  const readOnly = !isWorkspaceOwner && !isJobCreator;
+
+  return <JobDetail job={job} submissions={submissions} bookings={bookings} agencyId={String(jobData.agency_id ?? user.id)} readOnly={readOnly} />;
 }

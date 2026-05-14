@@ -2,14 +2,11 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { brl } from "@/lib/brl";
 import type {
   PremiumMembership,
   WorkspaceSeatUsage,
   PremiumAgentInvite,
   WorkspaceMemberDetail,
-  AgentLedgerBalance,
-  OwnerAllocationSummary,
 } from "@/lib/premiumWorkspace.server";
 
 interface Props {
@@ -17,8 +14,6 @@ interface Props {
   initialSeatUsage: WorkspaceSeatUsage;
   initialMembers: WorkspaceMemberDetail[];
   initialInvites: PremiumAgentInvite[];
-  initialLedgerBalances?: AgentLedgerBalance[];
-  initialOwnerSummary?: OwnerAllocationSummary;
 }
 
 function fmtDate(iso: string) {
@@ -210,43 +205,18 @@ function PendingInviteRow({ invite, origin, onCancel }: {
   );
 }
 
-type AllocationFormMode = "allocation" | "allocation_reversal" | null;
-
 function AgentRow({
   member,
-  ledger,
-  ownerUnallocated,
   onRemove,
-  onAllocate,
 }: {
   member: WorkspaceMemberDetail;
-  ledger: AgentLedgerBalance | null;
-  ownerUnallocated: number;
   onRemove: (id: string) => Promise<void>;
-  onAllocate: (memberId: string, type: "allocation" | "allocation_reversal", amount: number, note: string) => Promise<void>;
 }) {
-  const [allocMode, setAllocMode] = useState<AllocationFormMode>(null);
-  const [allocAmount, setAllocAmount] = useState("");
-  const [allocNote, setAllocNote] = useState("");
-  const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
 
   const initials = (member.displayName || member.email || "?")
     .split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
   const isSuspended = member.status === "suspended";
-
-  async function submitAlloc(e: React.FormEvent) {
-    e.preventDefault();
-    if (!allocMode) return;
-    const amt = Number(allocAmount);
-    if (!amt || amt <= 0) return;
-    setSaving(true);
-    await onAllocate(member.id, allocMode, amt, allocNote.trim());
-    setSaving(false);
-    setAllocMode(null);
-    setAllocAmount("");
-    setAllocNote("");
-  }
 
   async function remove() {
     if (!confirm(`Remover ${member.displayName || member.email} do Espaço Premium?`)) return;
@@ -256,148 +226,45 @@ function AgentRow({
   }
 
   return (
-    <div className={`flex flex-col gap-3 rounded-2xl border border-zinc-100 bg-white px-4 py-4 ${isSuspended ? "opacity-70" : ""}`}>
-      <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-[12px] font-bold text-indigo-600">
-          {initials}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-[13px] font-semibold text-zinc-800">{member.displayName || member.email || member.userId}</p>
-            <span className="inline-flex items-center rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-600">Agente</span>
-            {isSuspended ? (
-              <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500">Suspenso</span>
-            ) : null}
-          </div>
-          {member.email ? <p className="mt-1 text-[11px] text-zinc-500">{member.email}</p> : null}
-          <p className="mt-1 text-[11px] text-zinc-400">Desde {fmtDate(member.createdAt)}</p>
-        </div>
-        <button type="button" onClick={remove} disabled={removing}
-          className="rounded-xl border border-red-100 px-3 py-2 text-[11px] font-semibold text-red-500 transition-colors hover:bg-red-50 disabled:opacity-40">
-          {removing ? "..." : "Remover"}
-        </button>
+    <div className={`flex items-center gap-3 rounded-2xl border border-zinc-100 bg-white px-4 py-4 ${isSuspended ? "opacity-70" : ""}`}>
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-[12px] font-bold text-indigo-600">
+        {initials}
       </div>
-
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Saldo alocado</p>
-          <p className="mt-1 text-[13px] font-semibold text-zinc-800">{brl(ledger?.allocatedAmount ?? 0)}</p>
-        </div>
-        <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Comprometido</p>
-          <p className="mt-1 text-[13px] font-semibold text-amber-700">{brl(ledger?.committedAmount ?? 0)}</p>
-        </div>
-        <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Pago/Gasto</p>
-          <p className="mt-1 text-[13px] font-semibold text-rose-600">{brl(ledger?.spentAmount ?? 0)}</p>
-        </div>
-        <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Disponível</p>
-          <p className={`mt-1 text-[13px] font-semibold ${(ledger?.availableAmount ?? 0) === 0 ? "text-rose-600" : "text-emerald-700"}`}>
-            {brl(ledger?.availableAmount ?? 0)}
-          </p>
-        </div>
-      </div>
-
-      {allocMode ? (
-        <form onSubmit={submitAlloc} className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-          <p className="text-[12px] font-semibold text-zinc-700">
-            {allocMode === "allocation" ? "Adicionar saldo ao agente" : "Recolher saldo do agente"}
-          </p>
-          {allocMode === "allocation" && (
-            <p className="text-[11px] text-zinc-500">
-              Seu saldo disponível para alocar: <strong className="text-zinc-700">{brl(ownerUnallocated)}</strong>
-            </p>
-          )}
-          {allocMode === "allocation_reversal" && (
-            <p className="text-[11px] text-zinc-500">
-              Saldo disponível do agente: <strong className="text-zinc-700">{brl(ledger?.availableAmount ?? 0)}</strong>
-            </p>
-          )}
-          <input
-            type="number" min={0.01} step={0.01} required
-            value={allocAmount}
-            onChange={(e) => setAllocAmount(e.target.value)}
-            placeholder="R$ 0,00"
-            className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[13px] text-zinc-700 focus:outline-none focus:ring-2 focus:ring-amber-300"
-            autoFocus
-          />
-          <input
-            type="text"
-            value={allocNote}
-            onChange={(e) => setAllocNote(e.target.value)}
-            placeholder="Motivo (opcional)"
-            className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[12px] text-zinc-700 focus:outline-none"
-          />
-          <div className="flex gap-2">
-            <button type="button" onClick={() => { setAllocMode(null); setAllocAmount(""); setAllocNote(""); }}
-              className="flex-1 rounded-lg border border-zinc-200 bg-white py-2 text-[11px] font-semibold text-zinc-600">
-              Cancelar
-            </button>
-            <button type="submit" disabled={saving || !allocAmount}
-              className={`flex-1 rounded-lg py-2 text-[11px] font-semibold text-white disabled:opacity-40 ${allocMode === "allocation" ? "bg-emerald-500 hover:bg-emerald-600" : "bg-rose-500 hover:bg-rose-600"}`}>
-              {saving ? "Salvando..." : allocMode === "allocation" ? "Adicionar saldo" : "Recolher saldo"}
-            </button>
-          </div>
-        </form>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setAllocMode("allocation")} disabled={isSuspended}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-40">
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Adicionar saldo
-          </button>
-          {(ledger?.availableAmount ?? 0) > 0 ? (
-            <button type="button" onClick={() => setAllocMode("allocation_reversal")} disabled={isSuspended}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-600 transition-colors hover:bg-rose-100 disabled:opacity-40">
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-              </svg>
-              Recolher saldo
-            </button>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="truncate text-[13px] font-semibold text-zinc-800">{member.displayName || member.email || member.userId}</p>
+          <span className="inline-flex items-center rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-600">Agente</span>
+          {isSuspended ? (
+            <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500">Suspenso</span>
           ) : null}
         </div>
-      )}
+        {member.email ? <p className="mt-1 text-[11px] text-zinc-500">{member.email}</p> : null}
+        <p className="mt-1 text-[11px] text-zinc-400">Desde {fmtDate(member.createdAt)}</p>
+      </div>
+      <button type="button" onClick={remove} disabled={removing}
+        className="rounded-xl border border-red-100 px-3 py-2 text-[11px] font-semibold text-red-500 transition-colors hover:bg-red-50 disabled:opacity-40">
+        {removing ? "..." : "Remover"}
+      </button>
     </div>
   );
 }
 
-function OwnerRow({ member, summary }: { member: WorkspaceMemberDetail; summary: OwnerAllocationSummary | null }) {
+function OwnerRow({ member }: { member: WorkspaceMemberDetail }) {
   const initials = (member.displayName || member.email || "P")
     .split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
 
   return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-[12px] font-bold text-amber-600">
-          {initials}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-[13px] font-semibold text-zinc-800">{member.displayName || member.email || "Proprietário"}</p>
-            <span className="inline-flex items-center rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-600">Proprietário</span>
-          </div>
-          {member.email ? <p className="mt-1 text-[11px] text-zinc-500">{member.email}</p> : null}
-        </div>
+    <div className="flex items-center gap-3 rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-[12px] font-bold text-amber-600">
+        {initials}
       </div>
-      {summary ? (
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-zinc-100 bg-white px-3 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Saldo total da agência</p>
-            <p className="mt-1 text-[13px] font-semibold text-zinc-800">{brl(summary.ownerWalletBalance)}</p>
-          </div>
-          <div className="rounded-xl border border-zinc-100 bg-white px-3 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Alocado a agentes</p>
-            <p className="mt-1 text-[13px] font-semibold text-amber-700">{brl(summary.totalAllocatedToAgents)}</p>
-          </div>
-          <div className="rounded-xl border border-zinc-100 bg-white px-3 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Disponível para alocar</p>
-            <p className="mt-1 text-[13px] font-semibold text-emerald-700">{brl(summary.ownerUnallocatedAvailable)}</p>
-          </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="truncate text-[13px] font-semibold text-zinc-800">{member.displayName || member.email || "Proprietário"}</p>
+          <span className="inline-flex items-center rounded-full border border-amber-100 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-600">Proprietário</span>
         </div>
-      ) : null}
+        {member.email ? <p className="mt-1 text-[11px] text-zinc-500">{member.email}</p> : null}
+      </div>
     </div>
   );
 }
@@ -407,16 +274,10 @@ export default function WorkspaceAgentManager({
   initialSeatUsage,
   initialMembers,
   initialInvites,
-  initialLedgerBalances,
-  initialOwnerSummary,
 }: Props) {
   const [members, setMembers] = useState<WorkspaceMemberDetail[]>(initialMembers);
   const [invites, setInvites] = useState<PremiumAgentInvite[]>(initialInvites);
   const [seatUsage, setSeatUsage] = useState<WorkspaceSeatUsage>(initialSeatUsage);
-  const [ledgerMap, setLedgerMap] = useState<Map<string, AgentLedgerBalance>>(
-    new Map((initialLedgerBalances ?? []).map((b) => [b.agentUserId, b]))
-  );
-  const [ownerSummary, setOwnerSummary] = useState<OwnerAllocationSummary | null>(initialOwnerSummary ?? null);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [newLink, setNewLink] = useState<{ email: string; url: string } | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -465,34 +326,6 @@ export default function WorkspaceAgentManager({
     }
   }
 
-  async function handleAllocate(memberId: string, type: "allocation" | "allocation_reversal", amount: number, note: string) {
-    const res = await fetch(`/api/agency/workspace/agents/${memberId}/allocate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type, amount, note }),
-    });
-    const data = (await res.json().catch(() => ({}))) as {
-      ok?: boolean;
-      error?: string;
-      agentBalance?: AgentLedgerBalance;
-      ownerSummary?: OwnerAllocationSummary;
-    };
-    if (res.ok && data.ok) {
-      if (data.agentBalance) {
-        const agentUserId = data.agentBalance.agentUserId;
-        setLedgerMap((prev) => {
-          const next = new Map(prev);
-          next.set(agentUserId, data.agentBalance!);
-          return next;
-        });
-      }
-      if (data.ownerSummary) setOwnerSummary(data.ownerSummary);
-      showToast(type === "allocation" ? "Saldo adicionado ao agente." : "Saldo recolhido do agente.", true);
-    } else {
-      showToast(data.error ?? "Erro ao processar alocação.", false);
-    }
-  }
-
   const isOwner = membership.role === "owner";
   const ownerMember = members.find((m) => m.role === "owner");
   const agentMembers = members.filter((m) => m.role === "agent");
@@ -500,33 +333,12 @@ export default function WorkspaceAgentManager({
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   if (!isOwner) {
-    const selfLedger = ledgerMap.get(membership.userId) ?? null;
     return (
-      <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Saldo alocado</p>
-            <p className="mt-2 text-[13px] font-semibold text-zinc-800">{brl(selfLedger?.allocatedAmount ?? 0)}</p>
-          </div>
-          <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Comprometido</p>
-            <p className="mt-2 text-[13px] font-semibold text-amber-700">{brl(selfLedger?.committedAmount ?? 0)}</p>
-          </div>
-          <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Pago/Gasto</p>
-            <p className="mt-2 text-[13px] font-semibold text-rose-600">{brl(selfLedger?.spentAmount ?? 0)}</p>
-          </div>
-          <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Disponível</p>
-            <p className={`mt-2 text-[13px] font-semibold ${(selfLedger?.availableAmount ?? 0) === 0 ? "text-rose-600" : "text-emerald-700"}`}>
-              {brl(selfLedger?.availableAmount ?? 0)}
-            </p>
-          </div>
-        </div>
-        <p className="text-[12px] text-zinc-500">
-          Somente o proprietário pode convidar agentes, remover membros ou gerenciar saldo alocado.
-        </p>
-      </div>
+      <p className="text-[13px] text-zinc-500">
+        Somente o proprietário pode convidar e gerenciar agentes.{" "}
+        Para visualizar seu saldo, acesse a{" "}
+        <a href="/agency/workspace/wallet" className="text-[#1ABC9C] underline underline-offset-2">Carteira</a>.
+      </p>
     );
   }
 
@@ -562,22 +374,19 @@ export default function WorkspaceAgentManager({
       ) : null}
 
       <div className="space-y-3">
-        {ownerMember ? <OwnerRow member={ownerMember} summary={ownerSummary} /> : null}
+        {ownerMember ? <OwnerRow member={ownerMember} /> : null}
         {agentMembers.length > 0 ? (
           agentMembers.map((member) => (
             <AgentRow
               key={member.id}
               member={member}
-              ledger={ledgerMap.get(member.userId) ?? null}
-              ownerUnallocated={ownerSummary?.ownerUnallocatedAvailable ?? 0}
               onRemove={removeMember}
-              onAllocate={handleAllocate}
             />
           ))
         ) : (
           <EmptyBlock
             title="Nenhum agente ainda. Convide sua equipe para começar."
-            description="Os agentes convidados aparecem aqui com saldo alocado, comprometido e disponível."
+            description="Os agentes convidados aparecem aqui. Gerencie saldo alocado na página de Carteira."
           />
         )}
       </div>

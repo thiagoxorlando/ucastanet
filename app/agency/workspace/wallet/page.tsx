@@ -8,6 +8,7 @@ import {
   getAgentLedgerBalance,
 } from "@/lib/premiumWorkspace.server";
 import { requirePremiumWorkspacePageContext } from "@/lib/premiumWorkspaceApp.server";
+import WorkspaceWalletAllocator from "@/features/agency/WorkspaceWalletAllocator";
 
 export const metadata: Metadata = { title: "Carteira Premium — BrisaHub" };
 
@@ -222,61 +223,14 @@ export default async function WorkspaceWalletPage() {
         />
       </div>
 
-      {agents.length > 0 ? (
-        <div className="space-y-3">
-          <p className="text-[13px] font-semibold text-zinc-700">Saldo por agente</p>
-          {agents.map((agent) => {
-            const ledger = ledgerMap.get(agent.userId) ?? {
-              allocatedAmount: 0,
-              committedAmount: 0,
-              availableAmount: 0,
-              agentUserId: agent.userId,
-            };
-            return (
-              <div
-                key={agent.id}
-                className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-[0_12px_34px_rgba(15,23,42,0.05)]"
-              >
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <h2 className="text-[16px] font-semibold text-zinc-950">
-                      {agent.displayName || agent.email}
-                    </h2>
-                    <p className="mt-1 text-[12px] text-zinc-500">{agent.email}</p>
-                  </div>
-                  <div className="grid gap-3 text-[13px] text-zinc-600 sm:grid-cols-3">
-                    <p>
-                      <span className="font-semibold text-zinc-800">Alocado:</span>{" "}
-                      {brl(ledger.allocatedAmount)}
-                    </p>
-                    <p>
-                      <span className="font-semibold text-zinc-800">Comprometido:</span>{" "}
-                      {brl(ledger.committedAmount)}
-                    </p>
-                    <p
-                      className={`font-semibold ${
-                        ledger.availableAmount === 0 ? "text-rose-600" : "text-emerald-700"
-                      }`}
-                    >
-                      Disponível: {brl(ledger.availableAmount)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          <p className="text-[12px] text-zinc-400">
-            Total comprometido em vagas ativas:{" "}
-            <strong className="text-zinc-600">{brl(totalCommitted)}</strong>
-          </p>
-        </div>
-      ) : (
-        <div className="rounded-[28px] border border-zinc-200 bg-white px-6 py-8 text-center shadow-[0_12px_34px_rgba(15,23,42,0.05)]">
-          <p className="text-[14px] text-zinc-500">
-            Nenhum agente ativo. Convide agentes na página de Agentes.
-          </p>
-        </div>
-      )}
+      <div>
+        <p className="mb-3 text-[13px] font-semibold text-zinc-700">Saldo e alocação por agente</p>
+        <WorkspaceWalletAllocator
+          agents={agents}
+          initialLedgerBalances={Array.from(ledgerMap.values())}
+          initialOwnerSummary={summary}
+        />
+      </div>
     </div>
   );
 }

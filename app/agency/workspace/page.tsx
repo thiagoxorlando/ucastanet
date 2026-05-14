@@ -7,19 +7,14 @@ import { createServerClient } from "@/lib/supabase";
 import {
   ensurePremiumWorkspaceForAgency,
   getUserPremiumWorkspace,
-  getWorkspaceAgentLedgerBalances,
-  getOwnerAllocationSummary,
   getAgentLedgerBalance,
   getWorkspaceMembers,
   getWorkspacePendingInvites,
   getWorkspaceSeatUsage,
-  type AgentLedgerBalance,
-  type OwnerAllocationSummary,
   type PremiumMembership,
   type PremiumWorkspace,
 } from "@/lib/premiumWorkspace.server";
 import WorkspaceAgentManager from "@/features/agency/WorkspaceAgentManager";
-import WorkspaceBrandingForm from "@/features/agency/WorkspaceBrandingForm";
 import { jobStatusLabel, jobStatusTone } from "@/lib/jobStatus";
 import { brl } from "@/lib/brl";
 import { getLivePlanSetting } from "@/lib/planSettings.server";
@@ -331,7 +326,7 @@ export default async function WorkspacePage() {
   const { workspace, membership } = workspaceAccess;
   const isOwner = membership.role === "owner";
 
-  const [seatUsage, members, invites, jobsResult, ledgerMap, ownerSummary, selfLedger, ownerProfile] = await Promise.all([
+  const [seatUsage, members, invites, jobsResult, selfLedger, ownerProfile] = await Promise.all([
     getWorkspaceSeatUsage(workspace.id),
     getWorkspaceMembers(workspace.id),
     isOwner ? getWorkspacePendingInvites(workspace.id) : Promise.resolve([]),
@@ -340,8 +335,6 @@ export default async function WorkspacePage() {
       .select("id, title, status, visibility, budget, created_at, created_by_user_id")
       .eq("workspace_id", workspace.id)
       .order("created_at", { ascending: false }),
-    isOwner ? getWorkspaceAgentLedgerBalances(workspace.id) : Promise.resolve(new Map<string, AgentLedgerBalance>()),
-    isOwner ? getOwnerAllocationSummary(workspace.id, workspace.ownerUserId) : Promise.resolve(null as OwnerAllocationSummary | null),
     !isOwner ? getAgentLedgerBalance(workspace.id, user.id) : Promise.resolve(null),
     supabase.from("profiles").select("wallet_balance").eq("id", workspace.ownerUserId).maybeSingle(),
   ]);
@@ -390,7 +383,6 @@ export default async function WorkspacePage() {
   const myJobs = workspaceJobs.filter((job) => job.createdByUserId === user.id);
   const privateJobs = workspaceJobs.filter((job) => job.visibility === "private_invite");
   const walletBalance = Number(ownerProfile.data?.wallet_balance ?? 0);
-  const ledgerBalances: AgentLedgerBalance[] = Array.from(ledgerMap.values());
   const seatLimitReached = isOwner && seatUsage.remaining === 0;
   const activeAgents = members.filter((member) => member.role === "agent" && member.status === "active");
 
@@ -435,15 +427,45 @@ export default async function WorkspacePage() {
         </div>
       ) : null}
 
+      {/* Branding summary — edit via /agency/workspace/branding */}
       <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
-        <div className="border-b border-zinc-100 px-5 py-5">
-          <p className="text-[15px] font-semibold text-zinc-900">Identidade do Espaço Premium</p>
-          <p className="mt-1 text-[12px] text-zinc-500">
-            {isOwner ? "Logo, cores e mensagem do espaço para sua equipe e seus convites privados." : "Branding do espaço em modo somente leitura."}
-          </p>
+        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-5">
+          <div>
+            <p className="text-[15px] font-semibold text-zinc-900">Identidade do Espaço Premium</p>
+            <p className="mt-1 text-[12px] text-zinc-500">Logo, nome e URL do portal privado.</p>
+          </div>
+          {isOwner && (
+            <Link
+              href="/agency/workspace/branding"
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
+            >
+              Editar personalização
+            </Link>
+          )}
         </div>
-        <div className="p-5">
-          <WorkspaceBrandingForm workspace={workspace} membership={membership} />
+        <div className="flex items-center gap-4 p-5">
+          {workspace.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={workspace.logoUrl} alt="Logo" className="h-14 w-14 rounded-xl border border-zinc-100 object-cover flex-shrink-0" />
+          ) : (
+            <div
+              className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl text-[18px] font-bold text-white"
+              style={{ backgroundColor: workspace.brandPrimaryColor ?? "#1ABC9C" }}
+            >
+              {workspace.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "P"}
+            </div>
+          )}
+          <div>
+            <p className="text-[15px] font-semibold text-zinc-900">{workspace.name}</p>
+            {workspace.slug ? (
+              <p className="mt-1 text-[12px] text-zinc-500">
+                URL do portal:{" "}
+                <span className="font-mono text-zinc-700">/{workspace.slug}</span>
+              </p>
+            ) : (
+              <p className="mt-1 text-[12px] text-zinc-400">URL do portal não configurada</p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -455,7 +477,7 @@ export default async function WorkspacePage() {
           <p className="mt-1 text-[12px] text-zinc-500">
             {isOwner
               ? `${activeAgents.length} agente${activeAgents.length === 1 ? "" : "s"} ativo${activeAgents.length === 1 ? "" : "s"} • ${seatUsage.totalAllowed} assentos`
-              : "Limite de uso, status atual e acesso operacional no Espaço Premium"}
+              : "Acesso operacional no Espaço Premium"}
           </p>
         </div>
         <div className="p-5">
@@ -464,29 +486,38 @@ export default async function WorkspacePage() {
             initialSeatUsage={seatUsage}
             initialMembers={members}
             initialInvites={invites}
-            initialLedgerBalances={ledgerBalances}
-            initialOwnerSummary={ownerSummary ?? undefined}
           />
         </div>
       </div>
 
-      {!isOwner ? (
+      {isOwner ? (
         <JobSection
-          title="Minhas vagas"
-          subtitle={`${myJobs.length} vaga${myJobs.length === 1 ? "" : "s"} criada${myJobs.length === 1 ? "" : "s"} por você`}
-          jobs={myJobs}
-          emptyTitle="Nenhuma vaga criada por você ainda."
-          emptyDescription="Crie sua primeira vaga dentro do Espaço Premium para começar a operar com a equipe."
+          title="Vagas da equipe"
+          subtitle={`${workspaceJobs.length} vaga${workspaceJobs.length === 1 ? "" : "s"} no Espaço Premium`}
+          jobs={workspaceJobs}
+          emptyTitle="Nenhuma vaga criada ainda."
+          emptyDescription="Crie a primeira vaga da equipe para começar a usar o fluxo privado do Espaço Premium."
         />
-      ) : null}
-
-      <JobSection
-        title={isOwner ? "Vagas da equipe" : "Vagas da equipe"}
-        subtitle={`${workspaceJobs.length} vaga${workspaceJobs.length === 1 ? "" : "s"} no Espaço Premium`}
-        jobs={workspaceJobs}
-        emptyTitle={isOwner ? "Nenhuma vaga privada criada ainda." : "Nenhuma vaga da equipe ainda."}
-        emptyDescription={isOwner ? "Crie a primeira vaga da equipe para começar a usar o fluxo privado do Espaço Premium." : "As vagas da equipe aparecem aqui assim que forem criadas."}
-      />
+      ) : (
+        <>
+          <JobSection
+            title="Minhas vagas"
+            subtitle={`${myJobs.length} vaga${myJobs.length === 1 ? "" : "s"} criada${myJobs.length === 1 ? "" : "s"} por você`}
+            jobs={myJobs}
+            emptyTitle="Nenhuma vaga criada por você ainda."
+            emptyDescription="Crie sua primeira vaga dentro do Espaço Premium para começar a operar."
+          />
+          {workspaceJobs.filter((j) => j.createdByUserId !== user.id).length > 0 && (
+            <JobSection
+              title="Vagas da equipe"
+              subtitle="Vagas criadas por outros membros"
+              jobs={workspaceJobs.filter((j) => j.createdByUserId !== user.id)}
+              emptyTitle="Nenhuma outra vaga da equipe."
+              emptyDescription="As vagas dos outros agentes aparecem aqui."
+            />
+          )}
+        </>
+      )}
     </div>
   );
 }
