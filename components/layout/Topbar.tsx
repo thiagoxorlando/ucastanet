@@ -106,7 +106,9 @@ export default function Topbar({ onMenuClick, homeHref }: TopbarProps) {
     "/agency/dashboard");
 
   return (
-    <header className="sticky top-0 z-20 flex flex-shrink-0 items-center justify-between border-b border-[#DDE6E6] bg-white px-6 py-4">
+    <header className="sticky top-0 z-20 flex flex-shrink-0 flex-col bg-white/[0.97] backdrop-blur-sm shadow-[0_1px_0_0_#DDE6E6,0_2px_0_0_rgba(26,188,156,0.06)]">
+      <div className="h-[2px] bg-gradient-to-r from-[#1ABC9C]/40 via-[#27C1D6]/50 to-transparent" />
+      <div className="flex items-center justify-between px-6 py-4">
       <div className="flex min-w-0 items-center gap-4">
         <Link href={dashboardHref} className="hidden flex-shrink-0 items-center lg:flex">
           <Logo size="md" />
@@ -178,6 +180,7 @@ export default function Topbar({ onMenuClick, homeHref }: TopbarProps) {
             </p>
           </div>
         </div>
+      </div>
       </div>
     </header>
   );

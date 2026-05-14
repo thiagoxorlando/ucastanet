@@ -91,6 +91,42 @@ body {
   @apply text-sm text-[#647B7B];
 }
 
+/* ── BrisaHub extended design-system utilities ── */
+
+/* Subtle grid pattern for dark panels (opacity set on the element itself) */
+.brisahub-grid-bg {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Standard Premium workspace card shell */
+.brisahub-card {
+  @apply bg-white border border-zinc-200 rounded-[28px] shadow-[0_12px_34px_rgba(15,23,42,0.05)];
+}
+
+/* Teal→cyan gradient background */
+.brisahub-gradient {
+  background: linear-gradient(to right, #1ABC9C, #27C1D6);
+}
+
+/* Gradient text — wrap in a span with this class */
+.brisahub-gradient-text {
+  @apply bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] bg-clip-text text-transparent;
+}
+
+/* Dark card wrapper for Premium sidebar sections */
+.brisahub-premium-shell {
+  background: rgba(26,188,156,0.045);
+  @apply rounded-[14px] p-1.5 pb-2 ring-1 ring-[#1ABC9C]/[0.13];
+}
+
+/* Focus ring consistent with brand */
+.brisahub-focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-[#1ABC9C]/30 focus:border-[#1ABC9C];
+}
+
 /* ── Sidebar polished scrollbar ── */
 .sidebar-scroll {
   scrollbar-width: thin;

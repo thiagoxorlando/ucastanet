@@ -14,7 +14,6 @@ import {
   type PremiumMembership,
   type PremiumWorkspace,
 } from "@/lib/premiumWorkspace.server";
-import WorkspaceAgentManager from "@/features/agency/WorkspaceAgentManager";
 import { jobStatusLabel, jobStatusTone } from "@/lib/jobStatus";
 import { brl } from "@/lib/brl";
 import { getLivePlanSetting } from "@/lib/planSettings.server";
@@ -469,54 +468,150 @@ export default async function WorkspacePage() {
         </div>
       </div>
 
+      {/*
+        Team summary — read-only overview.
+        Full team management (invite/remove/seat controls) lives at /agency/workspace/agents.
+        Full allocation/wallet controls live at /agency/workspace/wallet.
+      */}
       <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
-        <div className="border-b border-zinc-100 px-5 py-5">
-          <p className="text-[15px] font-semibold text-zinc-900">
-            {isOwner ? "Equipe e convites privados" : "Seu uso dentro da equipe"}
-          </p>
-          <p className="mt-1 text-[12px] text-zinc-500">
-            {isOwner
-              ? `${activeAgents.length} agente${activeAgents.length === 1 ? "" : "s"} ativo${activeAgents.length === 1 ? "" : "s"} • ${seatUsage.totalAllowed} assentos`
-              : "Acesso operacional no Espaço Premium"}
-          </p>
+        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-5">
+          <div>
+            <p className="text-[15px] font-semibold text-zinc-900">
+              {isOwner ? "Equipe do Espaço Premium" : "Sua posição na equipe"}
+            </p>
+            <p className="mt-1 text-[12px] text-zinc-500">
+              {isOwner
+                ? `${activeAgents.length} agente${activeAgents.length === 1 ? "" : "s"} ativo${activeAgents.length === 1 ? "" : "s"} • ${seatUsage.usedSeats}/${seatUsage.totalAllowed} assentos`
+                : "Acesso operacional no Espaço Premium"}
+            </p>
+          </div>
+          {isOwner && (
+            <Link
+              href="/agency/workspace/agents"
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
+            >
+              Gerenciar equipe
+            </Link>
+          )}
         </div>
         <div className="p-5">
-          <WorkspaceAgentManager
-            membership={membership}
-            initialSeatUsage={seatUsage}
-            initialMembers={members}
-            initialInvites={invites}
-          />
+          {isOwner ? (
+            /* Owner: show agent avatars/names at a glance, no management controls */
+            <div className="space-y-3">
+              {activeAgents.length === 0 ? (
+                <p className="text-[13px] text-zinc-500">
+                  Nenhum agente ainda.{" "}
+                  <Link href="/agency/workspace/agents" className="text-[#1ABC9C] underline underline-offset-2">
+                    Convide sua equipe.
+                  </Link>
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-3">
+                  {activeAgents.slice(0, 6).map((m) => {
+                    const ini = (m.displayName || m.email || "?").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+                    return (
+                      <div key={m.id} className="flex items-center gap-2 rounded-2xl border border-zinc-100 bg-zinc-50 px-3 py-2">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-indigo-50 text-[11px] font-bold text-indigo-600">
+                          {ini}
+                        </div>
+                        <span className="text-[12px] font-medium text-zinc-700">{m.displayName || m.email}</span>
+                        {m.status === "suspended" && (
+                          <span className="rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-500">Suspenso</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {activeAgents.length > 6 && (
+                    <span className="flex items-center rounded-2xl border border-zinc-100 bg-zinc-50 px-3 py-2 text-[12px] text-zinc-500">
+                      +{activeAgents.length - 6} mais
+                    </span>
+                  )}
+                </div>
+              )}
+              {invites.length > 0 && (
+                <p className="text-[12px] text-zinc-500">
+                  {invites.length} convite{invites.length === 1 ? "" : "s"} pendente{invites.length === 1 ? "" : "s"} — gerencie em{" "}
+                  <Link href="/agency/workspace/agents" className="text-[#1ABC9C] underline underline-offset-2">Agentes</Link>.
+                </p>
+              )}
+            </div>
+          ) : (
+            /* Agent: show own membership status and wallet shortcut */
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[13px] text-zinc-700">
+                  Agente ativo desde{" "}
+                  <span className="font-semibold">
+                    {new Date(membership.createdAt).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
+                </p>
+                <p className="mt-1 text-[12px] text-zinc-500">Para ver seu saldo alocado, acesse a Carteira.</p>
+              </div>
+              <Link
+                href="/agency/workspace/wallet"
+                className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
+              >
+                Ver carteira
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
+      {/*
+        Job preview — shows the 5 most recent jobs only.
+        Full job list and management live at /agency/workspace/jobs.
+      */}
       {isOwner ? (
-        <JobSection
-          title="Vagas da equipe"
-          subtitle={`${workspaceJobs.length} vaga${workspaceJobs.length === 1 ? "" : "s"} no Espaço Premium`}
-          jobs={workspaceJobs}
-          emptyTitle="Nenhuma vaga criada ainda."
-          emptyDescription="Crie a primeira vaga da equipe para começar a usar o fluxo privado do Espaço Premium."
-        />
-      ) : (
-        <>
-          <JobSection
-            title="Minhas vagas"
-            subtitle={`${myJobs.length} vaga${myJobs.length === 1 ? "" : "s"} criada${myJobs.length === 1 ? "" : "s"} por você`}
-            jobs={myJobs}
-            emptyTitle="Nenhuma vaga criada por você ainda."
-            emptyDescription="Crie sua primeira vaga dentro do Espaço Premium para começar a operar."
-          />
-          {workspaceJobs.filter((j) => j.createdByUserId !== user.id).length > 0 && (
-            <JobSection
-              title="Vagas da equipe"
-              subtitle="Vagas criadas por outros membros"
-              jobs={workspaceJobs.filter((j) => j.createdByUserId !== user.id)}
-              emptyTitle="Nenhuma outra vaga da equipe."
-              emptyDescription="As vagas dos outros agentes aparecem aqui."
+        <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
+          <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-5">
+            <div>
+              <p className="text-[15px] font-semibold text-zinc-900">Vagas da equipe</p>
+              <p className="mt-1 text-[12px] text-zinc-500">
+                {workspaceJobs.length} vaga{workspaceJobs.length === 1 ? "" : "s"} no Espaço Premium
+              </p>
+            </div>
+            <Link
+              href="/agency/workspace/jobs"
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
+            >
+              Ver todas
+            </Link>
+          </div>
+          {workspaceJobs.length === 0 ? (
+            <EmptyState
+              title="Nenhuma vaga criada ainda."
+              description="Crie a primeira vaga da equipe para começar a usar o fluxo privado do Espaço Premium."
             />
+          ) : (
+            <div>{workspaceJobs.slice(0, 5).map((job) => <JobRow key={job.id} job={job} />)}</div>
           )}
-        </>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
+          <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-5">
+            <div>
+              <p className="text-[15px] font-semibold text-zinc-900">Minhas vagas</p>
+              <p className="mt-1 text-[12px] text-zinc-500">
+                {myJobs.length} vaga{myJobs.length === 1 ? "" : "s"} criada{myJobs.length === 1 ? "" : "s"} por você
+              </p>
+            </div>
+            <Link
+              href="/agency/workspace/jobs"
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
+            >
+              Ver todas
+            </Link>
+          </div>
+          {myJobs.length === 0 ? (
+            <EmptyState
+              title="Nenhuma vaga criada por você ainda."
+              description="Crie sua primeira vaga dentro do Espaço Premium para começar a operar."
+            />
+          ) : (
+            <div>{myJobs.slice(0, 5).map((job) => <JobRow key={job.id} job={job} />)}</div>
+          )}
+        </div>
       )}
     </div>
   );

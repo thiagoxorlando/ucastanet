@@ -40,15 +40,19 @@ export default async function WorkspaceJobsPage() {
         <div>
           <h1 className="text-[1.8rem] font-bold tracking-tight text-zinc-950">Vagas privadas</h1>
           <p className="mt-1 text-[14px] text-zinc-500">
-            Somente vagas com `workspace_id = {context.workspace.id}` aparecem aqui.
+            Vagas do Espaço Premium — visíveis apenas para membros convidados.
           </p>
         </div>
-        <Link
-          href="/agency/post-job"
-          className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-5 py-3 text-[14px] font-semibold text-white shadow-[0_14px_28px_rgba(26,188,156,0.24)]"
-        >
-          Criar vaga privada
-        </Link>
+        {/* Only owners can create workspace jobs.
+            Agents have read access to all jobs in this list and manage rights over their own. */}
+        {context.isOwner && (
+          <Link
+            href="/agency/post-job"
+            className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-5 py-3 text-[14px] font-semibold text-white shadow-[0_14px_28px_rgba(26,188,156,0.24)]"
+          >
+            Criar vaga privada
+          </Link>
+        )}
       </div>
 
       {jobs.length === 0 ? (

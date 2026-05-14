@@ -838,11 +838,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                                   href={item.href}
                                   onClick={onClose}
                                   className={[
-                                    "flex items-center gap-2.5 px-3 py-[7px] rounded-xl text-[13px] font-medium transition-all duration-150",
+                                    "relative flex items-center gap-2.5 px-3 py-[7px] rounded-xl text-[13px] font-medium transition-all duration-150",
                                     isActive
                                       ? isPremiumSection
-                                        ? "bg-[#1ABC9C]/[0.18] text-white ring-1 ring-[#49D5C3]/35 font-semibold shadow-[0_1px_3px_rgba(26,188,156,0.12)]"
-                                        : "bg-[#1ABC9C]/[0.15] text-white ring-1 ring-[#49D5C3]/30 font-semibold"
+                                        ? "bg-[#1ABC9C]/[0.18] text-white ring-1 ring-[#49D5C3]/35 font-semibold shadow-[0_1px_3px_rgba(26,188,156,0.12)] before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-[#1ABC9C] before:shadow-[0_0_6px_rgba(26,188,156,0.7)]"
+                                        : "bg-[#1ABC9C]/[0.15] text-white ring-1 ring-[#49D5C3]/30 font-semibold before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-[#1ABC9C]/70"
                                       : isPremiumSection
                                         ? "text-[#AACCC7] hover:bg-[#1ABC9C]/[0.10] hover:text-white"
                                         : "text-[#C7D9D5] hover:bg-white/[0.065] hover:text-white",

@@ -383,7 +383,11 @@ export async function PATCH(
                 .maybeSingle();
 
               if (wsRow && memberRow?.role === "agent") {
-                await supabase.from("premium_agent_wallet_transactions").insert({
+                // job_settlement: converts committed→spent in the agent ledger.
+                // available = allocated − committed − spent
+                // Owner's activelyAllocated = totalAllocated − totalSettled decreases here,
+                // removing the phantom "Reservado a agentes" balance after payment.
+                const { error: settlementErr } = await supabase.from("premium_agent_wallet_transactions").insert({
                   workspace_id:        jobWorkspaceId,
                   agent_user_id:       jobCreatorId,
                   owner_user_id:       wsRow.owner_user_id,
@@ -395,6 +399,22 @@ export async function PATCH(
                   created_by:          contract.agency_id,
                   note:                "Pagamento liberado ao talento.",
                 });
+                if (settlementErr) {
+                  console.error("[premium agent settlement] failed to insert job_settlement", {
+                    contractId: id,
+                    agentUserId: jobCreatorId,
+                    workspaceId: jobWorkspaceId,
+                    amount: settlementAmount,
+                    error: settlementErr,
+                  });
+                } else {
+                  console.log("[premium agent settlement] job_settlement recorded", {
+                    contractId: id,
+                    agentUserId: jobCreatorId,
+                    workspaceId: jobWorkspaceId,
+                    amount: settlementAmount,
+                  });
+                }
               }
             }
           }

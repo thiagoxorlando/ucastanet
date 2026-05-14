@@ -2,7 +2,7 @@
 
 import { ButtonHTMLAttributes } from "react";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "amber";
 type Size = "sm" | "md" | "lg";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -20,6 +20,8 @@ const variantClasses: Record<Variant, string> = {
     "bg-transparent text-[#647B7B] hover:bg-[#E6F0F0] hover:text-[#1F2D2E] border border-transparent",
   danger:
     "bg-red-600 text-white hover:bg-red-700 active:scale-[0.98] border border-transparent shadow-sm",
+  amber:
+    "bg-gradient-to-r from-[#F5A623] to-[#FFD166] text-[#1F2D2E] hover:brightness-105 active:scale-[0.98] border border-transparent shadow-[0_8px_20px_rgba(245,166,35,0.22)]",
 };
 
 const sizeClasses: Record<Size, string> = {

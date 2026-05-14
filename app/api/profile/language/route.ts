@@ -3,6 +3,21 @@ import type { NextRequest } from "next/server";
 import { createSessionClient } from "@/lib/supabase.server";
 import { createServerClient } from "@/lib/supabase";
 
+export async function GET() {
+  const session = await createSessionClient();
+  const { data: { user } } = await session.auth.getUser();
+  if (!user) return NextResponse.json({ language_preference: null });
+
+  const supabase = createServerClient({ useServiceRole: true });
+  const { data } = await supabase
+    .from("profiles")
+    .select("language_preference")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  return NextResponse.json({ language_preference: data?.language_preference ?? null });
+}
+
 export async function PATCH(request: NextRequest) {
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();

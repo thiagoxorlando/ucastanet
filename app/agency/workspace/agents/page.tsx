@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import WorkspaceAgentManager from "@/features/agency/WorkspaceAgentManager";
 import {
   getWorkspaceMembers,
@@ -11,10 +12,17 @@ export const metadata: Metadata = { title: "Agentes — BrisaHub" };
 
 export default async function WorkspaceAgentsPage() {
   const context = await requirePremiumWorkspacePageContext();
+
+  // Agents page is owner-only: seat management, invites, and member removal
+  // are owner responsibilities. Non-owners are redirected to the workspace hub.
+  if (!context.isOwner) {
+    redirect("/agency/workspace");
+  }
+
   const [seatUsage, members, invites] = await Promise.all([
     getWorkspaceSeatUsage(context.workspace.id),
     getWorkspaceMembers(context.workspace.id),
-    context.isOwner ? getWorkspacePendingInvites(context.workspace.id) : Promise.resolve([]),
+    getWorkspacePendingInvites(context.workspace.id),
   ]);
 
   return (
@@ -22,7 +30,8 @@ export default async function WorkspaceAgentsPage() {
       <div>
         <h1 className="text-[1.8rem] font-bold tracking-tight text-zinc-950">Agentes</h1>
         <p className="mt-1 text-[14px] text-zinc-500">
-          Convide, remova e gerencie os membros do Espaço Premium. Para alocações de saldo, acesse a Carteira.
+          Convide, remova e gerencie os membros do Espaço Premium.
+          Para alocações de saldo, acesse a <a href="/agency/workspace/wallet" className="text-[#1ABC9C] underline underline-offset-2">Carteira</a>.
         </p>
       </div>
 

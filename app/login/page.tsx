@@ -6,6 +6,7 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getAgencyLanding } from "@/lib/getAgencyLanding";
+import { getTalentLanding } from "@/lib/getTalentLanding";
 import { useT } from "@/lib/LanguageContext";
 import LanguageSelector from "@/components/LanguageSelector";
 import heroBrandImage from "@/public/landing/brisahub-hero-brand.png";
@@ -87,9 +88,11 @@ function LoginPageContent() {
       }
     } else if (profile?.role === "talent") {
       await linkReferral(data.user.id);
+      // Portal-only talents (marketplace_visible=false) land directly on their
+      // workspace portal, avoiding the double redirect via /talent/dashboard.
       destination = profile.onboarding_completed === false
         ? onboardingHref(nextPath)
-        : (nextPath ?? ROLE_HOME.talent);
+        : (nextPath ?? await getTalentLanding(data.user.id));
     } else {
       destination = "/onboarding/role";
     }
