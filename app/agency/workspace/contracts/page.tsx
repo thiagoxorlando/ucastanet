@@ -109,7 +109,7 @@ export default async function WorkspaceContractsPage() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Link href={`/agency/jobs/${contract.jobId}`} className="rounded-xl border border-zinc-200 px-3 py-2 text-[12px] font-semibold text-zinc-700 hover:bg-zinc-50">
+                <Link href={`/agency/workspace/jobs/${contract.jobId}`} className="rounded-xl border border-zinc-200 px-3 py-2 text-[12px] font-semibold text-zinc-700 hover:bg-zinc-50">
                   Ver vaga
                 </Link>
                 {contract.contractFileUrl ? (

@@ -110,7 +110,7 @@ export default async function WorkspaceJobsPage() {
 
                   <div className="flex flex-wrap gap-2">
                     <Link
-                      href={`/agency/jobs/${job.id}`}
+                      href={`/agency/workspace/jobs/${job.id}`}
                       className="inline-flex items-center rounded-xl border border-zinc-200 px-3 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
                     >
                       Ver detalhe

@@ -280,6 +280,7 @@ function ContractModal({
   const [sent, setSent]             = useState(false);
   const [error, setError]           = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
+  const contractsHref = job.workspaceId ? "/agency/workspace/contracts" : "/agency/contracts";
 
   function resolveApiError(
     payload: { error?: string; message?: string; details?: string } | null | undefined,
@@ -437,7 +438,7 @@ function ContractModal({
                     Voltar para Vaga
                   </button>
                   <Link
-                    href="/agency/contracts"
+                    href={contractsHref}
                     className="flex-1 py-2.5 text-[13px] font-semibold bg-[#1F2D2E] text-white rounded-xl hover:bg-[#2D4142] transition-colors text-center"
                   >
                     Ver Contratos
@@ -856,11 +857,12 @@ function SubmissionCard({
 
 // ─── Booking row ──────────────────────────────────────────────────────────────
 
-function BookingRow({ booking, onCancel, onConfirm, onMarkPaid }: {
+function BookingRow({ booking, onCancel, onConfirm, onMarkPaid, financesHref = "/agency/finances" }: {
   booking: JobBooking;
   onCancel: (id: string) => void;
   onConfirm: (id: string) => void;
   onMarkPaid: (id: string) => void;
+  financesHref?: string;
 }) {
   const [busy, setBusy] = useState<"cancel" | "confirm" | "paid" | null>(null);
   const [balanceError, setBalanceError] = useState<{ required: number; available: number } | null>(null);
@@ -869,8 +871,6 @@ function BookingRow({ booking, onCancel, onConfirm, onMarkPaid }: {
   const canCancel   = booking.status !== "cancelled" && booking.status !== "paid" && booking.status !== "confirmed";
   const canConfirm  = booking.status === "pending_payment";
   const canMarkPaid = booking.status === "confirmed";
-
-
   function contractFetch(action: string) {
     if (!booking.contractId) return Promise.resolve(null);
     return fetch(`/api/contracts/${booking.contractId}`, {
@@ -978,7 +978,7 @@ function BookingRow({ booking, onCancel, onConfirm, onMarkPaid }: {
             </p>
           </div>
           <Link
-            href="/agency/finances"
+            href={financesHref}
             className="flex-shrink-0 text-[12px] font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-3 py-1.5 rounded-lg transition-colors"
           >
             Depositar fundos
@@ -1074,10 +1074,14 @@ export default function JobDetail({
   const activeBookingsCount = bookings.filter((booking) => booking.status !== "cancelled").length;
   const isJobFull = activeBookingsCount >= numberOfTalentsRequired;
   const hasPaidBookings = bookings.some((b) => b.status === "paid");
+  const isWorkspaceJob = Boolean(job.workspaceId);
+  const jobsHref = isWorkspaceJob ? "/agency/workspace/jobs" : "/agency/jobs";
+  const editHref = isWorkspaceJob ? `/agency/workspace/jobs/${job.id}/edit` : `/agency/jobs/${job.id}/edit`;
+  const financesHref = isWorkspaceJob ? "/agency/workspace/wallet" : "/agency/finances";
   // canReopenJob is false when the job has paid contracts or is already full.
   // Plan-limit checks (Free: 1 active job) are enforced only server-side.
   const canReopenJob = !hasPaidBookings && !isJobFull;
-  const canShareJob = currentStatus === "open" && !isJobFull;
+  const canShareJob = !isWorkspaceJob && currentStatus === "open" && !isJobFull;
   const days   = daysUntil(job.deadline);
   const urgent = days <= 7 && days > 0 && currentStatus === "open";
 
@@ -1218,7 +1222,7 @@ export default function JobDetail({
       {/* ── Header ── */}
       <div className="rounded-[1.75rem] bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-6 py-5 text-white shadow-[0_8px_28px_rgba(26,188,156,0.28)]">
         <Link
-          href="/agency/jobs"
+          href={jobsHref}
           className="inline-flex items-center gap-1.5 text-[13px] text-white/70 hover:text-white transition-colors mb-4"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1285,7 +1289,7 @@ export default function JobDetail({
                     )}
                     Copiar convite privado
                   </button>
-                ) : (
+                ) : !isWorkspaceJob ? (
                 <button
                   type="button"
                   onClick={handleCopyJobLink}
@@ -1297,11 +1301,11 @@ export default function JobDetail({
                   </svg>
                   Compartilhar Vaga
                 </button>
-                )}
+                ) : null}
 
                 {currentStatus !== "closed" && (
                   <Link
-                    href={`/agency/jobs/${job.id}/edit`}
+                    href={editHref}
                     className="inline-flex items-center gap-2 bg-white/10 border border-white/10 hover:bg-white/15 text-white text-[13px] font-bold px-5 py-2.5 rounded-xl transition-all duration-150"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1330,7 +1334,7 @@ export default function JobDetail({
                 />
               )}
 
-              {!canShareJob && job.visibility !== "private_invite" && (
+              {!canShareJob && !isWorkspaceJob && job.visibility !== "private_invite" && (
                 <p className="text-[12px] font-medium text-white/80">
                   Esta vaga não está aberta para novas candidaturas.
                 </p>
@@ -1454,6 +1458,7 @@ export default function JobDetail({
                 onCancel={handleCancelBooking}
                 onConfirm={handleConfirmBooking}
                 onMarkPaid={handleMarkPaid}
+                financesHref={financesHref}
               />
             ))}
           </div>

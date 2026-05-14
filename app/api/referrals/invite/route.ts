@@ -11,6 +11,7 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { buildReferralEmail, buildReferralJobUrl, getAppUrl } from "@/lib/referralEmail";
 import { sendEmail, validateEmailConfig } from "@/lib/resend";
 import { notify } from "@/lib/notify";
+import { agencyWorkspaceJobDetailHref, resolveWorkspaceLifecycleByJobId } from "@/lib/workspaceLifecycle";
 
 type ExistingReferralInvite = {
   id: string;
@@ -62,11 +63,18 @@ export async function POST(req: NextRequest) {
 
   const { data: job, error: jobErr } = await supabase
     .from("jobs")
-    .select("title, agency_id, visibility, location")
+    .select("title, agency_id, visibility, location, workspace_id")
     .eq("id", job_id)
     .single();
 
   if (jobErr || !job) return NextResponse.json({ error: "Job not found" }, { status: 404 });
+
+  if ((job as { workspace_id?: string | null }).workspace_id) {
+    return NextResponse.json(
+      { error: "Indicações não estão disponíveis para vagas do Espaço Premium." },
+      { status: 403 },
+    );
+  }
 
   if (job.visibility === "private") {
     const { data: invite } = await supabase
@@ -211,7 +219,10 @@ export async function POST(req: NextRequest) {
       job.agency_id,
       "referral",
       `Nova indicação: ${referred_name ?? normalizedEmail} para "${jobTitle}"`,
-      "/agency/submissions"
+      agencyWorkspaceJobDetailHref(
+        (await resolveWorkspaceLifecycleByJobId(supabase, job_id))?.workspaceSlug,
+        job_id,
+      )
     );
   }
 

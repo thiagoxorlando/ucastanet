@@ -6,6 +6,7 @@ import { getLivePlanSetting } from "@/lib/planSettings.server";
 import { isJobOpenForApplications, JOB_UNAVAILABLE_MESSAGE } from "@/lib/jobAvailability";
 import type { Plan } from "@/lib/plans";
 import { hasActivePremiumWorkspaceTalentMembership, isWorkspacePortalJobVisibility } from "@/lib/workspacePortalJobs";
+import { agencyWorkspaceJobDetailHref, resolveWorkspaceLifecycleByJobId } from "@/lib/workspaceLifecycle";
 
 type LinkedReferral = {
   id: string;
@@ -307,7 +308,10 @@ export async function POST(req: NextRequest) {
       job.agency_id,
       "job_application",
       `${displayName} se candidatou à "${job.title ?? "sua vaga"}"`,
-      "/agency/submissions"
+      agencyWorkspaceJobDetailHref(
+        (await resolveWorkspaceLifecycleByJobId(supabase, job_id))?.workspaceSlug,
+        job_id,
+      )
     );
   }
 

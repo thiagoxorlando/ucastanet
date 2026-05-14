@@ -11,20 +11,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const supabase = createServerClient({ useServiceRole: true });
   const { data } = await supabase.from("jobs").select("title").eq("id", id).single();
-  return { title: data ? `${data.title} — BrisaHub` : "Vaga não encontrada — BrisaHub" };
+  return { title: data ? `${data.title} — BrisaHub Premium` : "Vaga privada — BrisaHub" };
 }
 
-export default async function JobDetailPage({ params }: Props) {
+export default async function WorkspaceJobDetailPage({ params }: Props) {
   const { id } = await params;
   const supabase = createServerClient({ useServiceRole: true });
   const session = await createSessionClient();
-  const {
-    data: { user },
-  } = await session.auth.getUser();
+  const { data: { user } } = await session.auth.getUser();
 
   if (!user) redirect("/login");
 
   const workspaceAccess = await getUserPremiumWorkspace(user.id);
+  if (!workspaceAccess || workspaceAccess.membership.status !== "active") notFound();
 
   const { data: jobData } = await supabase
     .from("jobs")
@@ -37,19 +36,7 @@ export default async function JobDetailPage({ params }: Props) {
   if (!jobData) notFound();
 
   const workspaceId = (jobData as { workspace_id?: string | null }).workspace_id ?? null;
-  const canAccessWorkspaceJob =
-    !!workspaceId &&
-    workspaceAccess?.workspace.id === workspaceId &&
-    workspaceAccess.membership.status === "active";
-  const canAccessStandaloneJob = !workspaceId && jobData.agency_id === user.id;
-
-  if (!canAccessWorkspaceJob && !canAccessStandaloneJob) {
-    notFound();
-  }
-
-  if (canAccessWorkspaceJob) {
-    redirect(`/agency/workspace/jobs/${id}`);
-  }
+  if (!workspaceId || workspaceAccess.workspace.id !== workspaceId) notFound();
 
   const [{ data: submissionsData }, { data: bookingsData }] = await Promise.all([
     supabase
@@ -72,7 +59,7 @@ export default async function JobDetailPage({ params }: Props) {
       [
         ...(submissionsData ?? []).map((submission) => submission.talent_user_id),
         ...(bookingsData ?? []).map((booking) => booking.talent_user_id),
-      ].filter((talentId): talentId is string => !!talentId)
+      ].filter((talentId): talentId is string => !!talentId),
     ),
   ];
 
@@ -101,7 +88,7 @@ export default async function JobDetailPage({ params }: Props) {
     jobTime: jobData.job_time ?? null,
     visibility: (jobData.visibility ?? "public") as "public" | "private" | "private_invite",
     inviteOnly: (jobData as { invite_only?: boolean }).invite_only ?? false,
-    workspaceId: workspaceId,
+    workspaceId,
     status: (jobData.status ?? "open") as "open" | "closed" | "draft" | "inactive",
     postedAt: jobData.created_at ?? "",
     agencyId: String(jobData.agency_id ?? user.id),

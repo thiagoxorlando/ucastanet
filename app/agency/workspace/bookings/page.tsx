@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { createServerClient } from "@/lib/supabase";
 import BookingList, { type Booking } from "@/features/agency/BookingList";
 import { brl } from "@/lib/brl";
@@ -110,7 +109,6 @@ export default async function WorkspaceBookingsPage() {
                   <p><span className="font-semibold text-zinc-800">Criada em:</span> {new Date(booking.createdAt).toLocaleDateString("pt-BR")}</p>
                 </div>
               </div>
-              <Link href={`/agency/jobs/${booking.contractId ? "" : ""}${booking.id ? "" : ""}`} className="hidden" />
             </div>
           </div>
         );

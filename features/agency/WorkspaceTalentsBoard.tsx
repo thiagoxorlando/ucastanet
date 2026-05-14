@@ -357,18 +357,12 @@ export default function WorkspaceTalentsBoard({ talents, workspaceSlug }: Props)
                   ) : null}
 
                   <div className="mt-6 flex flex-wrap gap-2">
-                    <Link
-                      href={`/agency/talent/${talent.userId}`}
-                      className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#0E7C86] to-[#1ABC9C] px-4 py-2.5 text-[12px] font-semibold text-white shadow-[0_12px_24px_rgba(14,124,134,0.16)]"
-                    >
-                      Ver perfil
-                    </Link>
-                    <Link
-                      href="/agency/talent-history"
-                      className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 px-4 py-2.5 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
-                    >
-                      Ver historico
-                    </Link>
+                    <span className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#0E7C86] to-[#1ABC9C] px-4 py-2.5 text-[12px] font-semibold text-white shadow-[0_12px_24px_rgba(14,124,134,0.16)] opacity-70">
+                      Perfil em breve
+                    </span>
+                    <span className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 px-4 py-2.5 text-[12px] font-semibold text-zinc-500">
+                      Historico em breve
+                    </span>
                   </div>
                 </article>
               );

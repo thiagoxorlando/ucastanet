@@ -6,6 +6,7 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { isJobOpenForApplications, JOB_UNAVAILABLE_MESSAGE } from "@/lib/jobAvailability";
 import { PLAN_DEFINITIONS, type Plan } from "@/lib/plans";
 import { hasPortalJobAccess, isWorkspacePortalJobVisibility } from "@/lib/workspacePortalJobs";
+import { resolveWorkspaceLifecycleByJobId } from "@/lib/workspaceLifecycle";
 import TalentJobDetail from "@/features/talent/TalentJobDetail";
 
 type Props = {
@@ -93,6 +94,14 @@ export default async function TalentJobDetailPage({ params, searchParams }: Prop
     });
 
     if (!hasAccess) return notFound();
+  }
+
+  if ((data as { workspace_id?: string | null }).workspace_id) {
+    const workspaceLifecycle = await resolveWorkspaceLifecycleByJobId(supabase, id);
+    if (workspaceLifecycle?.workspaceSlug) {
+      const inviteSuffix = inviteToken ? `?invite=${encodeURIComponent(inviteToken)}` : "";
+      redirect(`/talent/workspaces/${workspaceLifecycle.workspaceSlug}/jobs/${id}${inviteSuffix}`);
+    }
   }
 
   let agencyName = "";

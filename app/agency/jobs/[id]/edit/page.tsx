@@ -3,6 +3,7 @@ import EditJobForm from "@/features/agency/EditJobForm";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { redirect } from "next/navigation";
+import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -24,11 +25,23 @@ export default async function EditJobPage({ params }: Props) {
 
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, title, description, category, budget, deadline, status, location, gender, age_min, age_max, number_of_talents_required, agency_id")
+    .select("id, title, description, category, budget, deadline, status, location, gender, age_min, age_max, number_of_talents_required, agency_id, workspace_id")
     .eq("id", id)
     .single();
 
   if (!job) redirect("/agency/jobs");
+
+  const workspaceId = (job as { workspace_id?: string | null }).workspace_id ?? null;
+  if (workspaceId) {
+    const workspaceAccess = await getUserPremiumWorkspace(user.id);
+    const canAccessWorkspaceJob =
+      workspaceAccess?.workspace.id === workspaceId &&
+      workspaceAccess.membership.status === "active";
+
+    if (canAccessWorkspaceJob) {
+      redirect(`/agency/workspace/jobs/${id}/edit`);
+    }
+  }
 
   // Only the owning agency can edit
   if (job.agency_id !== user.id) redirect(`/agency/jobs/${id}`);

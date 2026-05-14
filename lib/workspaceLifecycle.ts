@@ -62,6 +62,26 @@ export function agencyWorkspaceWalletHref(workspaceSlug: string | null | undefin
   return workspaceSlug ? "/agency/workspace/wallet" : "/agency/finances";
 }
 
+export function agencyWorkspaceJobsHref(workspaceSlug: string | null | undefined) {
+  return workspaceSlug ? "/agency/workspace/jobs" : "/agency/jobs";
+}
+
+export function agencyWorkspaceJobDetailHref(
+  workspaceSlug: string | null | undefined,
+  jobId: string | null | undefined,
+) {
+  if (!jobId) return agencyWorkspaceJobsHref(workspaceSlug);
+  return workspaceSlug ? `/agency/workspace/jobs/${jobId}` : `/agency/jobs/${jobId}`;
+}
+
+export function agencyWorkspaceJobEditHref(
+  workspaceSlug: string | null | undefined,
+  jobId: string | null | undefined,
+) {
+  if (!jobId) return agencyWorkspaceJobsHref(workspaceSlug);
+  return workspaceSlug ? `/agency/workspace/jobs/${jobId}/edit` : `/agency/jobs/${jobId}/edit`;
+}
+
 export function talentWorkspaceContractsHref(workspaceSlug: string | null | undefined) {
   return workspaceSlug ? `/talent/workspaces/${workspaceSlug}/contracts` : "/talent/contracts";
 }

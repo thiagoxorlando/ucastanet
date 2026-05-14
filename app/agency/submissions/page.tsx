@@ -14,12 +14,13 @@ export default async function SubmissionsPage() {
   // Fetch agency's jobs
   const { data: jobs } = await supabase
     .from("jobs")
-    .select("id, title")
+    .select("id, title, workspace_id")
     .eq("agency_id", user?.id ?? "");
 
-  const jobIds = (jobs ?? []).map((j) => j.id);
+  const openJobs = (jobs ?? []).filter((job) => !(job as { workspace_id?: string | null }).workspace_id);
+  const jobIds = openJobs.map((j) => j.id);
   const jobTitleMap = new Map<string, string>();
-  for (const j of jobs ?? []) jobTitleMap.set(j.id, j.title ?? "Untitled Job");
+  for (const j of openJobs) jobTitleMap.set(j.id, j.title ?? "Untitled Job");
 
   if (!jobIds.length) {
     return <AgencySubmissions submissions={[]} />;

@@ -242,7 +242,7 @@ function EmptyState({
 function JobRow({ job }: { job: WorkspaceJob }) {
   return (
     <Link
-      href={`/agency/jobs/${job.id}`}
+      href={`/agency/workspace/jobs/${job.id}`}
       className="flex flex-col gap-3 border-b border-zinc-100 px-5 py-4 transition-colors hover:bg-zinc-50 last:border-0 sm:flex-row sm:items-center"
     >
       <div className="min-w-0 flex-1">
