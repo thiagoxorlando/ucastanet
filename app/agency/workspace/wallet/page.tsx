@@ -47,7 +47,8 @@ function txLabel(type: string): string {
     allocation:          "Saldo adicionado pelo proprietário",
     allocation_reversal: "Saldo recolhido pelo proprietário",
     job_commitment:      "Valor reservado em vaga",
-    job_release:         "Valor liberado",
+    job_release:         "Valor liberado (vaga encerrada)",
+    job_settlement:      "Pagamento ao talento liquidado",
     refund:              "Reembolso",
     adjustment:          "Ajuste",
   };
@@ -142,17 +143,23 @@ export default async function WorkspaceWalletPage() {
           <p className="mt-1 text-[14px] text-zinc-500">Seu saldo alocado dentro do Espaço Premium.</p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
           <StatCard
             label="Saldo alocado"
             value={brl(ledger.allocatedAmount)}
             hint="Total adicionado pelo proprietário"
           />
           <StatCard
-            label="Saldo comprometido"
+            label="Comprometido"
             value={brl(ledger.committedAmount)}
-            hint="Reservado em vagas ativas"
+            hint="Reservado em vagas abertas"
             accent="amber"
+          />
+          <StatCard
+            label="Pago/Gasto"
+            value={brl(ledger.spentAmount)}
+            hint="Liquidado em contratos pagos"
+            accent="rose"
           />
           <StatCard
             label="Saldo disponível"
@@ -189,16 +196,22 @@ export default async function WorkspaceWalletPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
         <StatCard
-          label="Saldo total da agência"
+          label="Saldo real da agência"
           value={brl(summary.ownerWalletBalance)}
-          hint="Saldo disponível na sua conta BrisaHub"
+          hint="Saldo total na conta BrisaHub"
         />
         <StatCard
-          label="Alocado a agentes"
+          label="Reservado a agentes"
           value={brl(summary.totalAllocatedToAgents)}
-          hint="Total distribuído para a equipe"
+          hint="Alocado e ainda não liquidado"
+          accent="amber"
+        />
+        <StatCard
+          label="Comprometido em vagas"
+          value={brl(totalCommitted)}
+          hint="Preso em vagas abertas dos agentes"
           accent="amber"
         />
         <StatCard

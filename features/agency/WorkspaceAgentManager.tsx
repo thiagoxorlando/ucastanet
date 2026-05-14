@@ -278,17 +278,21 @@ function AgentRow({
         </button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Saldo alocado</p>
           <p className="mt-1 text-[13px] font-semibold text-zinc-800">{brl(ledger?.allocatedAmount ?? 0)}</p>
         </div>
         <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Saldo comprometido</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Comprometido</p>
           <p className="mt-1 text-[13px] font-semibold text-amber-700">{brl(ledger?.committedAmount ?? 0)}</p>
         </div>
         <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Saldo disponível</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Pago/Gasto</p>
+          <p className="mt-1 text-[13px] font-semibold text-rose-600">{brl(ledger?.spentAmount ?? 0)}</p>
+        </div>
+        <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Disponível</p>
           <p className={`mt-1 text-[13px] font-semibold ${(ledger?.availableAmount ?? 0) === 0 ? "text-rose-600" : "text-emerald-700"}`}>
             {brl(ledger?.availableAmount ?? 0)}
           </p>
@@ -499,17 +503,21 @@ export default function WorkspaceAgentManager({
     const selfLedger = ledgerMap.get(membership.userId) ?? null;
     return (
       <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Saldo alocado</p>
             <p className="mt-2 text-[13px] font-semibold text-zinc-800">{brl(selfLedger?.allocatedAmount ?? 0)}</p>
           </div>
           <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Saldo comprometido</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Comprometido</p>
             <p className="mt-2 text-[13px] font-semibold text-amber-700">{brl(selfLedger?.committedAmount ?? 0)}</p>
           </div>
           <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Saldo disponível</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Pago/Gasto</p>
+            <p className="mt-2 text-[13px] font-semibold text-rose-600">{brl(selfLedger?.spentAmount ?? 0)}</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Disponível</p>
             <p className={`mt-2 text-[13px] font-semibold ${(selfLedger?.availableAmount ?? 0) === 0 ? "text-rose-600" : "text-emerald-700"}`}>
               {brl(selfLedger?.availableAmount ?? 0)}
             </p>

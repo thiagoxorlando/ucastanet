@@ -258,19 +258,20 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
   }
 
   // Ledger balances per agent from premium_agent_wallet_transactions
-  type LedgerEntry = { allocated: number; committed: number };
+  type LedgerEntry = { allocated: number; committed: number; spent: number };
   const ledgerByAgent = new Map<string, LedgerEntry>();
   for (const tx of allLedgerTxs ?? []) {
     const uid = String(tx.agent_user_id);
-    if (!ledgerByAgent.has(uid)) ledgerByAgent.set(uid, { allocated: 0, committed: 0 });
+    if (!ledgerByAgent.has(uid)) ledgerByAgent.set(uid, { allocated: 0, committed: 0, spent: 0 });
     const entry = ledgerByAgent.get(uid)!;
     const amt = Number(tx.amount);
     switch (tx.type) {
-      case "allocation":           entry.allocated  += amt; break;
-      case "allocation_reversal":  entry.allocated  -= amt; break;
-      case "job_commitment":       entry.committed  += amt; break;
-      case "job_release":          entry.committed  -= amt; break;
-      case "refund":               entry.committed  -= amt; break;
+      case "allocation":           entry.allocated += amt;  break;
+      case "allocation_reversal":  entry.allocated -= amt;  break;
+      case "job_commitment":       entry.committed += amt;  break;
+      case "job_release":          entry.committed -= amt;  break;
+      case "refund":               entry.committed -= amt;  break;
+      case "job_settlement":       entry.committed -= amt; entry.spent += amt; break;
     }
   }
 
@@ -304,7 +305,7 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
     // Build agent rows
     const agents: AdminPremiumAgentRow[] = wsMembers.map((m) => {
       const uid = String(m.user_id);
-      const ledger = ledgerByAgent.get(uid) ?? { allocated: 0, committed: 0 };
+      const ledger = ledgerByAgent.get(uid) ?? { allocated: 0, committed: 0, spent: 0 };
       return {
         memberId: String(m.id),
         userId: uid,
@@ -312,7 +313,7 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
         status: String(m.status),
         allocatedAmount:  Math.max(0, ledger.allocated),
         committedAmount:  Math.max(0, ledger.committed),
-        availableAmount:  Math.max(0, ledger.allocated - ledger.committed),
+        availableAmount:  Math.max(0, ledger.allocated - ledger.committed - ledger.spent),
         displayName: resolveDisplayName(uid),
         email: authEmailMap.get(uid) ?? "",
         createdAt: String(m.created_at),

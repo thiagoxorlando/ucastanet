@@ -340,6 +340,66 @@ export async function PATCH(
         `admin-payment-released:${id}`,
       );
       // Talent payment notification is inserted inside the RPC atomically.
+
+      // ── 3c. Settle Premium agent allocation if job was agent-created ────────
+      // Inserts job_settlement so the committed ledger entry is permanently
+      // consumed and cannot be restored as phantom "available" when the job closes.
+      // Idempotent via related_contract_id uniqueness check.
+      if (contract.job_id) {
+        const { data: jobRow } = await supabase
+          .from("jobs")
+          .select("workspace_id, created_by_user_id, agency_id")
+          .eq("id", contract.job_id)
+          .maybeSingle();
+
+        const jobWorkspaceId = (jobRow as { workspace_id?: string | null } | null)?.workspace_id ?? null;
+        const jobCreatorId   = (jobRow as { created_by_user_id?: string | null } | null)?.created_by_user_id ?? null;
+
+        // Only settle when a workspace agent (not the owner) created the job
+        if (jobWorkspaceId && jobCreatorId && jobCreatorId !== (jobRow as { agency_id?: string | null } | null)?.agency_id) {
+          const settlementAmount = Number(contract.payment_amount ?? 0);
+          if (settlementAmount > 0) {
+            // Idempotency: skip if already settled for this contract
+            const { data: existingSettlement } = await supabase
+              .from("premium_agent_wallet_transactions")
+              .select("id")
+              .eq("related_contract_id", id)
+              .eq("type", "job_settlement")
+              .maybeSingle();
+
+            if (!existingSettlement) {
+              const { data: wsRow } = await supabase
+                .from("premium_workspaces")
+                .select("owner_user_id")
+                .eq("id", jobWorkspaceId)
+                .maybeSingle();
+
+              const { data: memberRow } = await supabase
+                .from("premium_workspace_members")
+                .select("role")
+                .eq("workspace_id", jobWorkspaceId)
+                .eq("user_id", jobCreatorId)
+                .eq("status", "active")
+                .maybeSingle();
+
+              if (wsRow && memberRow?.role === "agent") {
+                await supabase.from("premium_agent_wallet_transactions").insert({
+                  workspace_id:        jobWorkspaceId,
+                  agent_user_id:       jobCreatorId,
+                  owner_user_id:       wsRow.owner_user_id,
+                  type:                "job_settlement",
+                  amount:              settlementAmount,
+                  status:              "completed",
+                  related_job_id:      contract.job_id,
+                  related_contract_id: id,
+                  created_by:          contract.agency_id,
+                  note:                "Pagamento liberado ao talento.",
+                });
+              }
+            }
+          }
+        }
+      }
     }
 
     // ── 4. Referral commission (always attempt — RPC is idempotent) ─────────

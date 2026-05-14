@@ -181,33 +181,58 @@ export async function PATCH(
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  // Release agent allocation commitment when job is deactivated/closed
+  // Release agent allocation commitment when job is deactivated/closed.
+  // Only release the portion NOT already settled by paid contracts, so that
+  // paid jobs do not restore phantom available balance to the agent.
   const isDeactivating = update.status === "inactive" || update.status === "closed";
   const agentCreatorId = (existingJob as { created_by_user_id?: string | null }).created_by_user_id ?? null;
   if (isDeactivating && workspaceId && agentCreatorId && isWorkspaceCreator && !isWorkspaceOwner) {
     const { data: wsRow } = await supabase
       .from("premium_workspaces").select("owner_user_id").eq("id", workspaceId).maybeSingle();
     if (wsRow) {
-      const { data: commitTx } = await supabase
-        .from("premium_agent_wallet_transactions")
-        .select("id, amount")
-        .eq("related_job_id", id)
-        .eq("type", "job_commitment")
-        .eq("status", "completed")
-        .is("reversed_at", null)
-        .maybeSingle();
-      if (commitTx) {
-        await supabase.from("premium_agent_wallet_transactions").insert({
-          workspace_id:  workspaceId,
-          agent_user_id: agentCreatorId,
-          owner_user_id: wsRow.owner_user_id,
-          type:          "job_release",
-          amount:        Number(commitTx.amount),
-          status:        "completed",
-          related_job_id: id,
-          created_by:    user.id,
-          note:          "Alocação liberada ao fechar/inativar a vaga.",
-        });
+      const [commitRes, settledRes, existingReleaseRes] = await Promise.all([
+        supabase
+          .from("premium_agent_wallet_transactions")
+          .select("id, amount")
+          .eq("related_job_id", id)
+          .eq("type", "job_commitment")
+          .eq("status", "completed")
+          .is("reversed_at", null)
+          .maybeSingle(),
+        supabase
+          .from("premium_agent_wallet_transactions")
+          .select("amount")
+          .eq("related_job_id", id)
+          .eq("type", "job_settlement")
+          .eq("status", "completed")
+          .is("reversed_at", null),
+        supabase
+          .from("premium_agent_wallet_transactions")
+          .select("id")
+          .eq("related_job_id", id)
+          .eq("type", "job_release")
+          .eq("status", "completed")
+          .maybeSingle(),
+      ]);
+
+      const commitTx = commitRes.data;
+      // Skip if no commitment exists or release already recorded
+      if (commitTx && !existingReleaseRes.data) {
+        const alreadySettled = (settledRes.data ?? []).reduce((s, tx) => s + Number(tx.amount), 0);
+        const releaseAmount = Number(commitTx.amount) - alreadySettled;
+        if (releaseAmount > 0) {
+          await supabase.from("premium_agent_wallet_transactions").insert({
+            workspace_id:   workspaceId,
+            agent_user_id:  agentCreatorId,
+            owner_user_id:  wsRow.owner_user_id,
+            type:           "job_release",
+            amount:         releaseAmount,
+            status:         "completed",
+            related_job_id: id,
+            created_by:     user.id,
+            note:           "Alocação liberada ao fechar/inativar a vaga.",
+          });
+        }
       }
     }
   }
@@ -274,33 +299,56 @@ export async function DELETE(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
-    // Release agent allocation commitment on soft-delete
+    // Release agent allocation commitment on soft-delete.
+    // Only release the portion NOT already settled by paid contracts.
     const softDeleteWorkspaceId = (job as { workspace_id?: string | null }).workspace_id ?? null;
     const softDeleteCreatorId = (job as { created_by_user_id?: string | null }).created_by_user_id ?? null;
     if (softDeleteWorkspaceId && softDeleteCreatorId) {
       const { data: wsRow } = await supabase
         .from("premium_workspaces").select("owner_user_id").eq("id", softDeleteWorkspaceId).maybeSingle();
       if (wsRow) {
-        const { data: commitTx } = await supabase
-          .from("premium_agent_wallet_transactions")
-          .select("id, amount")
-          .eq("related_job_id", id)
-          .eq("type", "job_commitment")
-          .eq("status", "completed")
-          .is("reversed_at", null)
-          .maybeSingle();
-        if (commitTx) {
-          await supabase.from("premium_agent_wallet_transactions").insert({
-            workspace_id:  softDeleteWorkspaceId,
-            agent_user_id: softDeleteCreatorId,
-            owner_user_id: wsRow.owner_user_id,
-            type:          "job_release",
-            amount:        Number(commitTx.amount),
-            status:        "completed",
-            related_job_id: id,
-            created_by:    user.id,
-            note:          "Alocação liberada ao excluir a vaga.",
-          });
+        const [commitRes, settledRes, existingReleaseRes] = await Promise.all([
+          supabase
+            .from("premium_agent_wallet_transactions")
+            .select("id, amount")
+            .eq("related_job_id", id)
+            .eq("type", "job_commitment")
+            .eq("status", "completed")
+            .is("reversed_at", null)
+            .maybeSingle(),
+          supabase
+            .from("premium_agent_wallet_transactions")
+            .select("amount")
+            .eq("related_job_id", id)
+            .eq("type", "job_settlement")
+            .eq("status", "completed")
+            .is("reversed_at", null),
+          supabase
+            .from("premium_agent_wallet_transactions")
+            .select("id")
+            .eq("related_job_id", id)
+            .eq("type", "job_release")
+            .eq("status", "completed")
+            .maybeSingle(),
+        ]);
+
+        const commitTx = commitRes.data;
+        if (commitTx && !existingReleaseRes.data) {
+          const alreadySettled = (settledRes.data ?? []).reduce((s, tx) => s + Number(tx.amount), 0);
+          const releaseAmount = Number(commitTx.amount) - alreadySettled;
+          if (releaseAmount > 0) {
+            await supabase.from("premium_agent_wallet_transactions").insert({
+              workspace_id:   softDeleteWorkspaceId,
+              agent_user_id:  softDeleteCreatorId,
+              owner_user_id:  wsRow.owner_user_id,
+              type:           "job_release",
+              amount:         releaseAmount,
+              status:         "completed",
+              related_job_id: id,
+              created_by:     user.id,
+              note:           "Alocação liberada ao excluir a vaga.",
+            });
+          }
         }
       }
     }

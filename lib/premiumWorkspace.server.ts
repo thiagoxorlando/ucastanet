@@ -89,8 +89,9 @@ export type AgentBudgetUsage = {
 export type AgentLedgerBalance = {
   agentUserId: string;
   allocatedAmount: number;   // net: allocation - allocation_reversal
-  committedAmount: number;   // net: job_commitment - job_release - refund
-  availableAmount: number;   // allocatedAmount - committedAmount
+  committedAmount: number;   // active only: job_commitment - job_release - job_settlement - refund
+  spentAmount: number;       // permanently consumed: job_settlement
+  availableAmount: number;   // allocatedAmount - committedAmount - spentAmount
 };
 
 export type OwnerAllocationSummary = {
@@ -618,15 +619,18 @@ export async function getAgentLedgerBalance(
 
   let allocated = 0;
   let committed = 0;
+  let spent     = 0;
 
   for (const tx of txs ?? []) {
     const amt = Number(tx.amount);
     switch (tx.type) {
-      case "allocation":           allocated  += amt; break;
-      case "allocation_reversal":  allocated  -= amt; break;
-      case "job_commitment":       committed  += amt; break;
-      case "job_release":          committed  -= amt; break;
-      case "refund":               committed  -= amt; break;
+      case "allocation":           allocated += amt;  break;
+      case "allocation_reversal":  allocated -= amt;  break;
+      case "job_commitment":       committed += amt;  break;
+      case "job_release":          committed -= amt;  break;
+      case "refund":               committed -= amt;  break;
+      // job_settlement: moves committed → spent (permanently consumed)
+      case "job_settlement":       committed -= amt; spent += amt; break;
       // adjustment: intentionally no-op in automatic computation
     }
   }
@@ -635,7 +639,8 @@ export async function getAgentLedgerBalance(
     agentUserId,
     allocatedAmount:  Math.max(0, allocated),
     committedAmount:  Math.max(0, committed),
-    availableAmount:  Math.max(0, allocated - committed),
+    spentAmount:      Math.max(0, spent),
+    availableAmount:  Math.max(0, allocated - committed - spent),
   };
 }
 
@@ -663,21 +668,22 @@ export async function getWorkspaceAgentLedgerBalances(
       .is("reversed_at", null),
   ]);
 
-  const ledger = new Map<string, { allocated: number; committed: number }>();
+  const ledger = new Map<string, { allocated: number; committed: number; spent: number }>();
   for (const agent of agents ?? []) {
-    ledger.set(String(agent.user_id), { allocated: 0, committed: 0 });
+    ledger.set(String(agent.user_id), { allocated: 0, committed: 0, spent: 0 });
   }
   for (const tx of txs ?? []) {
     const uid = String(tx.agent_user_id);
-    if (!ledger.has(uid)) ledger.set(uid, { allocated: 0, committed: 0 });
+    if (!ledger.has(uid)) ledger.set(uid, { allocated: 0, committed: 0, spent: 0 });
     const entry = ledger.get(uid)!;
     const amt = Number(tx.amount);
     switch (tx.type) {
-      case "allocation":           entry.allocated  += amt; break;
-      case "allocation_reversal":  entry.allocated  -= amt; break;
-      case "job_commitment":       entry.committed  += amt; break;
-      case "job_release":          entry.committed  -= amt; break;
-      case "refund":               entry.committed  -= amt; break;
+      case "allocation":           entry.allocated += amt;  break;
+      case "allocation_reversal":  entry.allocated -= amt;  break;
+      case "job_commitment":       entry.committed += amt;  break;
+      case "job_release":          entry.committed -= amt;  break;
+      case "refund":               entry.committed -= amt;  break;
+      case "job_settlement":       entry.committed -= amt; entry.spent += amt; break;
     }
   }
 
@@ -687,7 +693,8 @@ export async function getWorkspaceAgentLedgerBalances(
       agentUserId:     uid,
       allocatedAmount: Math.max(0, entry.allocated),
       committedAmount: Math.max(0, entry.committed),
-      availableAmount: Math.max(0, entry.allocated - entry.committed),
+      spentAmount:     Math.max(0, entry.spent),
+      availableAmount: Math.max(0, entry.allocated - entry.committed - entry.spent),
     });
   }
   return result;
@@ -711,23 +718,26 @@ export async function getOwnerAllocationSummary(
       .eq("workspace_id", workspaceId)
       .eq("status", "completed")
       .is("reversed_at", null)
-      .in("type", ["allocation", "allocation_reversal"]),
+      .in("type", ["allocation", "allocation_reversal", "job_settlement"]),
   ]);
 
   let totalAllocated = 0;
+  let totalSettled   = 0;
   for (const tx of txs ?? []) {
     const amt = Number(tx.amount);
-    if (tx.type === "allocation")          totalAllocated += amt;
+    if (tx.type === "allocation")               totalAllocated += amt;
     else if (tx.type === "allocation_reversal") totalAllocated -= amt;
+    else if (tx.type === "job_settlement")      totalSettled   += amt;
   }
 
+  // Active virtual reservation = what's allocated but not yet spent from owner wallet
+  const activelyAllocated = Math.max(0, totalAllocated - totalSettled);
   const ownerWalletBalance = Number(profileResult.data?.wallet_balance ?? 0);
-  const total = Math.max(0, totalAllocated);
 
   return {
     ownerWalletBalance,
-    totalAllocatedToAgents: total,
-    ownerUnallocatedAvailable: Math.max(0, ownerWalletBalance - total),
+    totalAllocatedToAgents: activelyAllocated,
+    ownerUnallocatedAvailable: Math.max(0, ownerWalletBalance - activelyAllocated),
   };
 }
 
