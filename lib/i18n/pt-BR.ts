@@ -1,11 +1,11 @@
-﻿// Public and auth page translations â€” Portuguese (pt-BR)
+﻿// Public and auth page translations — Portuguese (pt-BR)
 // These extend lib/translations/pt.ts for pages that need i18n switching.
 
 export const ptBR: Record<string, string> = {
   // â”€â”€ Language selector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   lang_selector: "Idioma",
 
-  // â”€â”€ Landing â€” nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_nav_signin: "Entrar",
   landing_nav_register: "Criar conta",
   landing_nav_agency: "Agência",
@@ -13,19 +13,19 @@ export const ptBR: Record<string, string> = {
   landing_nav_talent: "Talento",
   landing_nav_talent_sub: "Candidate-se a vagas",
 
-  // â”€â”€ Landing â€” hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_hero_badge: "Plataforma de talentos",
   landing_hero_title_line1: "O lugar onde",
   landing_hero_title_gradient: "talentos e agências",
   landing_hero_title_line3: "se encontram.",
-  landing_hero_subtitle: "Gerencie contratações, contratos e pagamentos em um só lugar â€” rápido, seguro e sem burocracia.",
+  landing_hero_subtitle: "Gerencie contratações, contratos e pagamentos em um só lugar — rápido, seguro e sem burocracia.",
   landing_hero_cta_agency: "Começar como agência",
   landing_hero_cta_talent: "Entrar como talento",
   landing_stat_secure: "Seguro",
   landing_stat_payments: "Pagamentos",
   landing_stat_support: "Suporte",
 
-  // â”€â”€ Landing â€” how it works â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — how it works â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_hiw_pill1: "Sem WhatsApp. Sem planilhas.",
   landing_hiw_title1: "Um fluxo único para sair do briefing e chegar à contratação",
   landing_hiw_desc1: "A Brisa substitui mensagens soltas, planilhas e comprovantes dispersos por um processo estruturado para a agência publicar, selecionar, contratar e pagar com mais previsibilidade.",
@@ -40,7 +40,7 @@ export const ptBR: Record<string, string> = {
   landing_hiw_step4_title: "Recontrate com histórico",
   landing_hiw_step4_desc: "Consulte trabalhos anteriores, pagamentos e talentos aprovados para acelerar novas campanhas.",
 
-  // â”€â”€ Landing â€” features â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — features â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_feat_pill: "Recursos principais",
   landing_feat_title: "Tudo o que a agência precisa para contratar com mais segurança",
   landing_feat_desc: "Da publicação da vaga ao pagamento final, a plataforma mantém contexto, documentos e status no mesmo fluxo para a agência não perder tempo em controles paralelos.",
@@ -57,7 +57,7 @@ export const ptBR: Record<string, string> = {
   landing_feat6_title: "Vagas privadas no Premium",
   landing_feat6_desc: "Convide talentos para oportunidades fechadas e opere um fluxo privado quando a campanha exigir.",
 
-  // â”€â”€ Landing â€” use cases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — use cases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_use_pill: "Uso profissional",
   landing_use_title: "Contratação segura para diferentes tipos de negócio",
   landing_use_desc: "A BrisaHub substitui processos informais em WhatsApp, planilhas e comprovantes soltos por um fluxo estruturado: da criação da vaga à contratação, contrato e pagamento.",
@@ -75,7 +75,7 @@ export const ptBR: Record<string, string> = {
   landing_trust3_title: "Transparência e controle",
   landing_trust3_desc: "Histórico completo, status visível e menos retrabalho para acompanhar cada contratação com contexto.",
 
-  // â”€â”€ Landing â€” screenshots â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — screenshots â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_ss_pill: "Veja a plataforma em ação",
   landing_ss_title: "Uma visão rápida do que a agência acompanha",
   landing_ss_desc: "Screenshots do produto organizados para mostrar, sem ruído, como a agência acompanha vagas, financeiro e talentos no dia a dia.",
@@ -89,7 +89,7 @@ export const ptBR: Record<string, string> = {
   landing_showcase_tal_title: "Perfis prontos para avaliar",
   landing_showcase_tal_desc: "Compare profissionais com fotos, tags e contexto para decidir com mais confiança.",
 
-  // â”€â”€ Landing â€” plans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — plans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_plans_pill: "Planos",
   landing_plans_title: "Escolha o plano pelo ritmo da sua operação",
   landing_plans_desc: "Comece sem mensalidade para validar a primeira vaga, evolua para o Pro quando a agência precisar contratar com frequência e use o Premium para processos privados e seleções mais reservadas.",
@@ -98,7 +98,7 @@ export const ptBR: Record<string, string> = {
   landing_plan_pro_audience: "Para contratar com recorrência",
   landing_plan_pro_summary: "O plano principal para agências que publicam vagas com frequência e querem operar com menos atrito e comissão menor.",
   landing_plan_premium_audience: "Plataforma privada completa",
-  landing_plan_premium_summary: "Um ambiente fechado exclusivo para a sua agência â€” vagas, talentos, contratos e pagamentos operando dentro do seu próprio espaço, sem mistura com o marketplace público.",
+  landing_plan_premium_summary: "Um ambiente fechado exclusivo para a sua agência — vagas, talentos, contratos e pagamentos operando dentro do seu próprio espaço, sem mistura com o marketplace público.",
 
   // â”€â”€ Plan card universal labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   plan_popular_badge: "Mais popular",
@@ -111,7 +111,7 @@ export const ptBR: Record<string, string> = {
   plan_cta_prefix: "Começar com",
   plan_everything_in_pro: "Tudo do Pro",
 
-  // â”€â”€ Landing â€” trust â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — trust â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_ctrust_pill: "Confiança",
   landing_ctrust_title: "Segurança jurídica e financeira para contratar com mais tranquilidade",
   landing_ctrust_desc: "Contrato, pagamento e histórico ficam registrados para a agência ter previsibilidade operacional e o talento saber exatamente em que etapa está.",
@@ -119,7 +119,7 @@ export const ptBR: Record<string, string> = {
   landing_ctrust_item2: "Pagamento com status rastreável",
   landing_ctrust_item3: "Histórico para decisão e recontratação",
 
-  // â”€â”€ Landing â€” CTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — CTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_cta_pill: "Estruture a próxima contratação",
   landing_cta_title: "Abra sua conta de agência e conduza a próxima vaga com contrato, pagamento seguro e menos retrabalho.",
   landing_cta_desc: "Se você contrata com frequência, o Pro já deixa claro o ganho operacional. Se você é talento, também pode criar seu perfil para receber convites e acompanhar oportunidades.",
@@ -132,7 +132,7 @@ export const ptBR: Record<string, string> = {
   login_hero_line1: "O lugar onde",
   login_hero_gradient: "talentos e agências",
   login_hero_line3: "se encontram.",
-  login_hero_subtitle: "Gerencie contratações, contratos e pagamentos em um só lugar â€” rápido, seguro e sem burocracia.",
+  login_hero_subtitle: "Gerencie contratações, contratos e pagamentos em um só lugar — rápido, seguro e sem burocracia.",
   login_stat_secure: "Seguro",
   login_stat_payments: "Pagamentos",
   login_stat_support: "Suporte",
@@ -143,7 +143,7 @@ export const ptBR: Record<string, string> = {
   login_email_placeholder: "voce@exemplo.com",
   login_password_placeholder: "••••••••",
   login_submit: "Entrar",
-  login_loading: "Entrandoâ€¦",
+  login_loading: "Entrando…",
   login_no_account: "Não tem uma conta?",
   login_create_account: "Criar conta",
   login_role_agency: "Agência",
@@ -180,7 +180,7 @@ export const ptBR: Record<string, string> = {
   signup_photo_hint: "Clique para enviar · JPG, PNG, WebP",
   signup_full_name_label: "Nome completo",
   signup_cpf_label: "CPF",
-  signup_cpf_hint: "Somente números â€” 11 dígitos",
+  signup_cpf_hint: "Somente números — 11 dígitos",
   signup_phone_label: "Telefone",
   signup_country_label: "País",
   signup_city_label: "Cidade",
@@ -227,7 +227,7 @@ export const ptBR: Record<string, string> = {
   signup_already_account: "Já tem uma conta?",
   signup_signin_link: "Entrar",
 
-  // Signup â€” payment waiting screen
+  // Signup — payment waiting screen
   signup_payment_title_prefix: "Aguardando confirmação do plano",
   signup_payment_desc: "Finalize o pagamento na aba do Asaas. Assim que a assinatura for confirmada, você seguirá automaticamente para a página de onboarding.",
   signup_payment_popup_blocked: "Não foi possível abrir a aba de pagamento. Use o botão abaixo para abrir novamente.",
@@ -282,7 +282,7 @@ export const ptBR: Record<string, string> = {
   workspace_jobs_tbd: "A definir",
   workspace_jobs_negotiable: "A combinar",
 
-  // Signup â€” validation errors
+  // Signup — validation errors
   signup_val_email: "Informe seu email.",
   signup_val_password: "Crie uma senha.",
   signup_val_password_len: "A senha deve ter pelo menos 6 caracteres.",
@@ -328,7 +328,7 @@ export const ptBR: Record<string, string> = {
   onboarding_talent_enter: "Entrar como talento",
   onboarding_loading: "Entrando...",
 
-  // Onboarding â€” agency cards
+  // Onboarding — agency cards
   onboarding_agency_step1_title: "Publique sua vaga",
   onboarding_agency_step1_body: "Abra oportunidades com briefing claro, categoria definida e valor bem comunicado desde o início.",
   onboarding_agency_step2_title: "Receba candidaturas",
@@ -340,7 +340,7 @@ export const ptBR: Record<string, string> = {
   onboarding_agency_step5_title: "Libere o pagamento com segurança",
   onboarding_agency_step5_body: "Depois da entrega, a liberação segue o fluxo interno até a carteira do talento, sem atalhos por fora.",
 
-  // Onboarding â€” talent cards
+  // Onboarding — talent cards
   onboarding_talent_step1_title: "Seu perfil já entra pronto",
   onboarding_talent_step1_body: "Os dados principais já foram salvos no cadastro para você começar sem retrabalho.",
   onboarding_talent_step2_title: "Candidate-se a vagas",

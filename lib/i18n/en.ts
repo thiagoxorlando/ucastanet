@@ -1,4 +1,4 @@
-﻿// Public and auth page translations â€” English (en)
+﻿// Public and auth page translations — English (en)
 // Keys not present here fall back to pt-BR in LanguageContext.
 
 export const en: Record<string, string> = {
@@ -89,11 +89,11 @@ export const en: Record<string, string> = {
   action_back:       "Back",
   action_restore:    "Restore",
   action_create:     "Create",
-  action_loading:    "Loadingâ€¦",
+  action_loading:    "Loading…",
 
   // â”€â”€ General â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   general_no_results: "No results found.",
-  general_loading:    "Loadingâ€¦",
+  general_loading:    "Loading…",
   general_error:      "Something went wrong.",
   general_retry:      "Try again",
   general_optional:   "optional",
@@ -102,7 +102,7 @@ export const en: Record<string, string> = {
   general_no:         "No",
   general_tbd:        "TBD",
   general_unknown:    "Unknown",
-  general_na:         "â€”",
+  general_na:         "—",
   general_for:        "for",
   general_contracts:  "contracts",
 
@@ -127,7 +127,7 @@ export const en: Record<string, string> = {
 
   // â”€â”€ Jobs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   jobs_open_positions:   "open positions",
-  jobs_search:           "Search jobsâ€¦",
+  jobs_search:           "Search jobs…",
   jobs_apply_by:         "Apply by",
   jobs_days_left:        "d left",
   jobs_selected:         "selected",
@@ -257,7 +257,7 @@ export const en: Record<string, string> = {
   finances_pending_value:       "Pending",
   finances_available:           "Available for Withdrawal",
   finances_withdraw_btn:        "Withdraw All Funds",
-  finances_withdrawing:         "Processingâ€¦",
+  finances_withdrawing:         "Processing…",
   finances_withdraw_success:    "Withdrawal confirmed!",
   finances_on_the_way:          "on the way.",
   finances_no_funds:            "No funds available for withdrawal.",
@@ -276,7 +276,7 @@ export const en: Record<string, string> = {
   finances_paid_to_referrers:   "Paid to referrers",
 
   // â”€â”€ Talent list / grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  talent_search:       "Search talentsâ€¦",
+  talent_search:       "Search talents…",
   talent_no_talent:    "No talent found",
   talent_view_profile: "View Profile",
   talent_invite:       "Invite to Job",
@@ -336,7 +336,7 @@ export const en: Record<string, string> = {
   post_job_age_max:        "Max Age",
   post_job_talents_needed: "Talents Needed",
   post_job_submit:         "Post Job",
-  post_job_submitting:     "Postingâ€¦",
+  post_job_submitting:     "Posting…",
   post_job_success:        "Job posted successfully!",
   post_job_error:          "Failed to post job.",
 
@@ -353,7 +353,7 @@ export const en: Record<string, string> = {
   profile_company_name:   "Company Name",
   profile_avatar:         "Profile Photo",
   profile_save:           "Save Profile",
-  profile_saving:         "Savingâ€¦",
+  profile_saving:         "Saving…",
   profile_saved:          "Profile saved",
   profile_save_error:     "Failed to save profile",
   profile_gender:         "Gender",
@@ -373,7 +373,7 @@ export const en: Record<string, string> = {
   workspace_private_job:  "Private job",
   workspace_private_invite: "Private invite",
 
-  // â”€â”€ Landing â€” nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_nav_signin: "Sign in",
   landing_nav_register: "Sign up",
   landing_nav_agency: "Agency",
@@ -381,19 +381,19 @@ export const en: Record<string, string> = {
   landing_nav_talent: "Talent",
   landing_nav_talent_sub: "Apply for jobs",
 
-  // â”€â”€ Landing â€” hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_hero_badge: "Talent platform",
   landing_hero_title_line1: "The place where",
   landing_hero_title_gradient: "talents and agencies",
   landing_hero_title_line3: "meet.",
-  landing_hero_subtitle: "Manage hirings, contracts and payments in one place â€” fast, secure and hassle-free.",
+  landing_hero_subtitle: "Manage hirings, contracts and payments in one place — fast, secure and hassle-free.",
   landing_hero_cta_agency: "Get started as agency",
   landing_hero_cta_talent: "Join as talent",
   landing_stat_secure: "Secure",
   landing_stat_payments: "Payments",
   landing_stat_support: "Support",
 
-  // â”€â”€ Landing â€” how it works â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — how it works â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_hiw_pill1: "No WhatsApp. No spreadsheets.",
   landing_hiw_title1: "One unified flow from briefing to hiring",
   landing_hiw_desc1: "Brisa replaces loose messages, spreadsheets and scattered receipts with a structured process for agencies to post, select, hire and pay with more predictability.",
@@ -408,7 +408,7 @@ export const en: Record<string, string> = {
   landing_hiw_step4_title: "Rehire with full history",
   landing_hiw_step4_desc: "Review past work, payments and approved talents to speed up new campaigns.",
 
-  // â”€â”€ Landing â€” features â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — features â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_feat_pill: "Key features",
   landing_feat_title: "Everything agencies need to hire with confidence",
   landing_feat_desc: "From job posting to final payment, the platform keeps context, documents and status in the same flow so agencies don't waste time on parallel controls.",
@@ -425,7 +425,7 @@ export const en: Record<string, string> = {
   landing_feat6_title: "Private jobs in Premium",
   landing_feat6_desc: "Invite talents to closed opportunities and run a private flow when the campaign requires it.",
 
-  // â”€â”€ Landing â€” use cases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — use cases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_use_pill: "Professional use",
   landing_use_title: "Safe hiring for different types of business",
   landing_use_desc: "BrisaHub replaces informal WhatsApp processes, spreadsheets and loose receipts with a structured flow: from job creation to hiring, contract and payment.",
@@ -443,7 +443,7 @@ export const en: Record<string, string> = {
   landing_trust3_title: "Transparency and control",
   landing_trust3_desc: "Complete history, visible status and less rework to track each hire with full context.",
 
-  // â”€â”€ Landing â€” screenshots â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — screenshots â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_ss_pill: "See the platform in action",
   landing_ss_title: "A quick overview of what agencies track",
   landing_ss_desc: "Product screenshots organized to show, without noise, how agencies track jobs, finances and talents day-to-day.",
@@ -457,7 +457,7 @@ export const en: Record<string, string> = {
   landing_showcase_tal_title: "Profiles ready to evaluate",
   landing_showcase_tal_desc: "Compare professionals with photos, tags and context to decide with more confidence.",
 
-  // â”€â”€ Landing â€” plans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — plans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_plans_pill: "Plans",
   landing_plans_title: "Choose the plan for your operation's pace",
   landing_plans_desc: "Start without a monthly fee to validate your first job, upgrade to Pro when you hire frequently, and use Premium for private processes and more reserved selections.",
@@ -479,7 +479,7 @@ export const en: Record<string, string> = {
   plan_cta_prefix: "Get started with",
   plan_everything_in_pro: "Everything in Pro",
 
-  // â”€â”€ Landing â€” trust â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — trust â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_ctrust_pill: "Trust",
   landing_ctrust_title: "Legal and financial security for hiring with peace of mind",
   landing_ctrust_desc: "Contract, payment and history are recorded so the agency has operational predictability and the talent knows exactly which stage they're at.",
@@ -487,7 +487,7 @@ export const en: Record<string, string> = {
   landing_ctrust_item2: "Payment with traceable status",
   landing_ctrust_item3: "History for decisions and rehiring",
 
-  // â”€â”€ Landing â€” CTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â”€â”€ Landing — CTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_cta_pill: "Structure your next hire",
   landing_cta_title: "Open your agency account and manage your next job with a contract, secure payment and less rework.",
   landing_cta_desc: "If you hire frequently, Pro makes the operational gain clear. If you're a talent, you can also create your profile to receive invites and track opportunities.",
@@ -500,7 +500,7 @@ export const en: Record<string, string> = {
   login_hero_line1: "The place where",
   login_hero_gradient: "talents and agencies",
   login_hero_line3: "meet.",
-  login_hero_subtitle: "Manage hirings, contracts and payments in one place â€” fast, secure and hassle-free.",
+  login_hero_subtitle: "Manage hirings, contracts and payments in one place — fast, secure and hassle-free.",
   login_stat_secure: "Secure",
   login_stat_payments: "Payments",
   login_stat_support: "Support",
@@ -509,7 +509,7 @@ export const en: Record<string, string> = {
   login_email_label: "Email",
   login_password_label: "Password",
   login_submit: "Sign in",
-  login_loading: "Signing inâ€¦",
+  login_loading: "Signing in…",
   login_no_account: "Don't have an account?",
   login_create_account: "Create account",
   login_role_agency: "Agency",
@@ -546,7 +546,7 @@ export const en: Record<string, string> = {
   signup_photo_hint: "Click to upload · JPG, PNG, WebP",
   signup_full_name_label: "Full name",
   signup_cpf_label: "CPF",
-  signup_cpf_hint: "Numbers only â€” 11 digits",
+  signup_cpf_hint: "Numbers only — 11 digits",
   signup_phone_label: "Phone",
   signup_country_label: "Country",
   signup_city_label: "City",
@@ -593,7 +593,7 @@ export const en: Record<string, string> = {
   signup_already_account: "Already have an account?",
   signup_signin_link: "Sign in",
 
-  // Signup â€” payment waiting screen
+  // Signup — payment waiting screen
   signup_payment_title_prefix: "Waiting for plan confirmation:",
   signup_payment_desc: "Complete the payment in the Asaas tab. Once the subscription is confirmed, you will be automatically directed to the onboarding page.",
   signup_payment_popup_blocked: "Could not open the payment tab. Use the button below to open it again.",
@@ -602,7 +602,7 @@ export const en: Record<string, string> = {
   signup_payment_not_confirmed: "Payment not yet confirmed. Please wait a moment.",
   signup_payment_check_error: "Error checking payment. Please try again.",
 
-  // Signup â€” validation errors
+  // Signup — validation errors
   signup_val_email: "Please enter your email.",
   signup_val_password: "Please create a password.",
   signup_val_password_len: "Password must be at least 6 characters.",
@@ -648,7 +648,7 @@ export const en: Record<string, string> = {
   onboarding_talent_enter: "Enter as talent",
   onboarding_loading: "Entering...",
 
-  // Onboarding â€” agency cards
+  // Onboarding — agency cards
   onboarding_agency_step1_title: "Post your job",
   onboarding_agency_step1_body: "Open opportunities with a clear brief, defined category and well-communicated rate from the start.",
   onboarding_agency_step2_title: "Receive applications",
@@ -660,7 +660,7 @@ export const en: Record<string, string> = {
   onboarding_agency_step5_title: "Release payment securely",
   onboarding_agency_step5_body: "After delivery, the release follows the internal flow to the talent's wallet, with no shortcuts outside it.",
 
-  // Onboarding â€” talent cards
+  // Onboarding — talent cards
   onboarding_talent_step1_title: "Your profile is ready",
   onboarding_talent_step1_body: "The main data was already saved during registration so you can start without rework.",
   onboarding_talent_step2_title: "Apply for jobs",
@@ -789,8 +789,8 @@ export const en: Record<string, string> = {
   // â”€â”€ Common actions / feedback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   common_cancel:             "Cancel",
   common_confirm:            "Confirm",
-  common_sending:            "Sendingâ€¦",
-  common_updating:           "Updatingâ€¦",
+  common_sending:            "Sending…",
+  common_updating:           "Updating…",
   common_unexpected_error:   "Something went wrong.",
 
   // â”€â”€ Period filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -800,13 +800,13 @@ export const en: Record<string, string> = {
   // â”€â”€ TalentBookings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bookings_activity:         "Activity",
   bookings_my_bookings:      "My Bookings",
-  bookings_updating:         "Updatingâ€¦",
+  bookings_updating:         "Updating…",
   bookings_empty_hint:       "Apply for jobs to get booked.",
   bookings_agreed_value:     "Agreed Value",
   bookings_you_receive:      "You receive",
   bookings_booked_at:        "Booked on",
   bookings_sign_contract:    "Sign Contract",
-  bookings_cancelling:       "Cancellingâ€¦",
+  bookings_cancelling:       "Cancelling…",
   bookings_cancel_booking:   "Cancel Booking",
   bookings_cancel_confirm:   "Cancel this booking?",
   bookings_cancelled_toast:  "Booking cancelled.",
@@ -826,7 +826,7 @@ export const en: Record<string, string> = {
   contracts_signed_version:        "Signed version",
   contracts_docusign_instructions: "Contract sent by agency. Download the PDF, sign via DocuSign or another tool, and upload the signed version below.",
   contracts_download_contract:     "Download contract",
-  contracts_select_signed:         "Select signed contractâ€¦",
+  contracts_select_signed:         "Select signed contract…",
   contracts_invalid_pdf:           "Please upload a valid PDF file up to 20MB.",
   contracts_file_too_large:        "File too large. Please upload a PDF up to 20MB.",
   contracts_reject:                "Reject",
@@ -834,15 +834,15 @@ export const en: Record<string, string> = {
   contracts_signed_uploaded_title: "Signed contract submitted",
   contracts_awaiting_agency_confirm: "Waiting for the agency to confirm receipt.",
   contracts_no_contract_info:      "This job has no contract. You can accept without signing.",
-  contracts_accepting:             "Acceptingâ€¦",
+  contracts_accepting:             "Accepting…",
   contracts_accept_job:            "Accept Job",
   contracts_completed_no_file:     "This job was completed without an attached contract.",
   contracts_confirm_reject:        "Confirm rejection?",
-  contracts_rejecting:             "Rejectingâ€¦",
+  contracts_rejecting:             "Rejecting…",
   contracts_upload_init_failed:    "Failed to start signed contract upload.",
   contracts_upload_storage_failed: "Failed to upload file to Storage. Please try again.",
   contracts_signed_toast:          "Signed contract submitted successfully.",
-  contracts_signed_toast_pending:  "Contract signed â€” booking is waiting for agency confirmation.",
+  contracts_signed_toast_pending:  "Contract signed — booking is waiting for agency confirmation.",
   contracts_sign_error:            "Error signing contract.",
   contracts_rejected_toast:        "Contract rejected.",
   contracts_booking_created_toast: "Accepted! Booking created successfully.",
@@ -910,7 +910,7 @@ export const en: Record<string, string> = {
   admin_platform_revenue:"Platform Revenue",
   admin_pending_actions: "Pending actions",
   admin_no_pending:      "No pending actions.",
-  admin_search_bookings: "Search bookingsâ€¦",
+  admin_search_bookings: "Search bookings…",
   admin_booking_id:      "Booking ID",
   admin_total_value:     "Total Value",
   admin_commission:      "Platform Commission",
@@ -963,7 +963,7 @@ export const en: Record<string, string> = {
   admin_wallet_current:  "current balance",
   admin_confirmed_spending:"confirmed spending",
   admin_platform_commission:"platform commission",
-  admin_search_jobs:     "Search jobsâ€¦",
+  admin_search_jobs:     "Search jobs…",
   admin_category:        "Category",
   admin_budget:          "Budget",
   admin_posted_by:       "Posted by",
@@ -985,7 +985,7 @@ export const en: Record<string, string> = {
   admin_contract_status: "Contract Status",
   admin_booking_date:    "Booking Date",
   admin_all_status:      "All",
-  admin_search_contracts:"Search contractsâ€¦",
+  admin_search_contracts:"Search contracts…",
   admin_no_contracts:    "No contracts found.",
   admin_contract_id:     "Contract ID",
   admin_contracts_count: "contracts",
@@ -1024,7 +1024,7 @@ export const en: Record<string, string> = {
   admin_notifications_audience: "Audience",
   admin_notifications_message:  "Message",
   admin_notifications_send:     "Send",
-  admin_notifications_sending:  "Sendingâ€¦",
+  admin_notifications_sending:  "Sending…",
   admin_notifications_sent:     "Notification sent.",
   admin_notifications_error:    "Error sending notification.",
   admin_audience_all:    "All users",
