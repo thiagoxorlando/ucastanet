@@ -493,7 +493,7 @@ export const en: Record<string, string> = {
   landing_cta_desc: "If you hire frequently, Pro makes the operational gain clear. If you're a talent, you can also create your profile to receive invites and track opportunities.",
   landing_cta_btn_agency: "Get started as agency",
   landing_cta_btn_talent: "Join as talent",
-  landing_footer_rights: "Â© 2026 BrisaHub. All rights reserved.",
+  landing_footer_rights: "© 2026 BrisaHub. All rights reserved.",
 
   // â”€â”€ Login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   login_tagline: "Talent platform",
@@ -543,7 +543,7 @@ export const en: Record<string, string> = {
   signup_talent_info_eyebrow: "Main information",
   signup_talent_info_title: "Your base talent profile",
   signup_photo_label: "Profile photo",
-  signup_photo_hint: "Click to upload Â· JPG, PNG, WebP",
+  signup_photo_hint: "Click to upload · JPG, PNG, WebP",
   signup_full_name_label: "Full name",
   signup_cpf_label: "CPF",
   signup_cpf_hint: "Numbers only â€” 11 digits",
@@ -751,6 +751,7 @@ export const en: Record<string, string> = {
   workspace_support_cta: "Talk to support",
   workspace_view_plans: "View plans",
   workspace_locked_ready: "Ready to activate a private environment for your team.",
+  workspace_summary_private_jobs_hint: "Private jobs for invited members",
   workspace_branding_saved: "Branding saved successfully.",
   workspace_branding_save_failed: "Could not save branding.",
   workspace_branding_logo_uploaded: "Logo uploaded successfully.",

@@ -166,6 +166,7 @@
   workspace_support_cta: "Falar com suporte",
   workspace_view_plans: "Ver planos",
   workspace_locked_ready: "Pronto para ativar um ambiente privado para sua equipe.",
+  workspace_summary_private_jobs_hint: "Vagas privadas para membros convidados",
   workspace_branding_saved: "Personalização salva com sucesso.",
   workspace_branding_save_failed: "Não foi possível salvar a personalização.",
   workspace_branding_logo_uploaded: "Logo enviado com sucesso.",
