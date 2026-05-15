@@ -39,7 +39,7 @@ function DashboardShellFrame({ children }: { children: React.ReactNode }) {
           onMenuClick={() => setSidebarOpen(true)}
           homeHref={workspace ? `/talent/workspaces/${workspace.slug}` : undefined}
         />
-        <main className="flex-1 overflow-y-auto bg-[#F8FAFC] p-6">
+        <main className="flex-1 overflow-y-auto bg-[#F8FAFC] p-4 sm:p-6">
           {children}
         </main>
       </div>

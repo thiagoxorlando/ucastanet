@@ -388,7 +388,7 @@ export default async function WorkspaceWalletPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-[1.8rem] font-bold tracking-tight text-zinc-950">{t("workspace_wallet_page_title")}</h1>
+          <h1 className="text-[1.5rem] font-bold tracking-tight text-zinc-950 sm:text-[1.8rem]">{t("workspace_wallet_page_title")}</h1>
           <p className="mt-1 text-[14px] text-zinc-500">{t("workspace_wallet_agent_page_description")}</p>
         </div>
 
@@ -432,7 +432,7 @@ export default async function WorkspaceWalletPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[1.8rem] font-bold tracking-tight text-zinc-950">{t("workspace_wallet_page_title")}</h1>
+        <h1 className="text-[1.5rem] font-bold tracking-tight text-zinc-950 sm:text-[1.8rem]">{t("workspace_wallet_page_title")}</h1>
         <p className="mt-1 text-[14px] text-zinc-500">{t("workspace_wallet_owner_page_description")}</p>
       </div>
 

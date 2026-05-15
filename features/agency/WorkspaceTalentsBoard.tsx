@@ -230,7 +230,7 @@ export default function WorkspaceTalentsBoard({ talents, workspaceSlug }: Props)
   return (
     <div className="space-y-8">
       <section className="overflow-hidden rounded-[32px] border border-zinc-200 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
-        <div className="bg-[radial-gradient(circle_at_top_left,rgba(26,188,156,0.24),transparent_35%),linear-gradient(135deg,#082326_0%,#0D3035_48%,#14444A_100%)] px-6 py-8 text-white sm:px-8">
+        <div className="bg-[radial-gradient(circle_at_top_left,rgba(26,188,156,0.24),transparent_35%),linear-gradient(135deg,#082326_0%,#0D3035_48%,#14444A_100%)] px-6 py-6 text-white sm:px-8 sm:py-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-2xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
@@ -383,7 +383,7 @@ export default function WorkspaceTalentsBoard({ talents, workspaceSlug }: Props)
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-3 xl:min-w-[320px]">
+                    <div className="flex flex-col gap-3 xl:w-[320px] xl:flex-shrink-0">
                       <div className="grid grid-cols-3 gap-3">
                         <div className="rounded-[20px] border border-zinc-100 bg-zinc-50 px-4 py-3">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Candidaturas</p>

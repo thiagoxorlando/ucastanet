@@ -25,9 +25,9 @@ const FEATURE_ICON_PATHS = [
 ] as const;
 
 const SHOWCASE_IMAGES = [
-  { image: jobsScreenshot,     alt: "Tela de lista de vagas da BrisaHub",         width: jobsScreenshot.width,     height: jobsScreenshot.height,     sizes: "(min-width: 1024px) 58vw, 92vw" },
-  { image: financesScreenshot, alt: "Tela financeira da agência na BrisaHub",     width: financesScreenshot.width, height: financesScreenshot.height, sizes: "(min-width: 1024px) 34vw, 92vw" },
-  { image: talentScreenshot,   alt: "Tela de talentos da BrisaHub",               width: talentScreenshot.width,   height: talentScreenshot.height,   sizes: "(min-width: 1024px) 34vw, 92vw" },
+  { image: jobsScreenshot,     altKey: "landing_alt_jobs",      width: jobsScreenshot.width,     height: jobsScreenshot.height,     sizes: "(min-width: 1024px) 58vw, 92vw" },
+  { image: financesScreenshot, altKey: "landing_alt_finances",  width: financesScreenshot.width, height: financesScreenshot.height, sizes: "(min-width: 1024px) 34vw, 92vw" },
+  { image: talentScreenshot,   altKey: "landing_alt_talents",   width: talentScreenshot.width,   height: talentScreenshot.height,   sizes: "(min-width: 1024px) 34vw, 92vw" },
 ] as const;
 
 // ── Reusable primitives ───────────────────────────────────────────────────────
@@ -96,7 +96,7 @@ function ScreenshotFrame({
   );
 }
 
-function ProductPreview() {
+function ProductPreview({ alt }: { alt: string }) {
   return (
     <div className="relative mx-auto w-full max-w-xl lg:mx-0 lg:max-w-2xl lg:justify-self-end">
       <div className="absolute -left-6 top-10 h-40 w-40 rounded-full bg-[#1ABC9C]/20 blur-3xl lg:-left-10 lg:h-48 lg:w-48" />
@@ -104,7 +104,7 @@ function ProductPreview() {
       <div className="relative rounded-[2.1rem] bg-[linear-gradient(135deg,rgba(26,188,156,0.20),rgba(255,255,255,0.06)_42%,rgba(255,255,255,0.02))] p-px shadow-[0_22px_54px_rgba(0,0,0,0.32)]">
         <ScreenshotFrame
           src={dashboardScreenshot}
-          alt="Dashboard da agência na BrisaHub"
+          alt={alt}
           width={dashboardScreenshot.width}
           height={dashboardScreenshot.height}
           priority
@@ -180,9 +180,9 @@ export default function Home() {
   ];
 
   const showcase = [
-    { ...SHOWCASE_IMAGES[0], eyebrow: t("landing_showcase_jobs_eyebrow"), title: t("landing_showcase_jobs_title"), description: t("landing_showcase_jobs_desc") },
-    { ...SHOWCASE_IMAGES[1], eyebrow: t("landing_showcase_fin_eyebrow"),  title: t("landing_showcase_fin_title"),  description: t("landing_showcase_fin_desc")  },
-    { ...SHOWCASE_IMAGES[2], eyebrow: t("landing_showcase_tal_eyebrow"),  title: t("landing_showcase_tal_title"),  description: t("landing_showcase_tal_desc")  },
+    { ...SHOWCASE_IMAGES[0], alt: t(SHOWCASE_IMAGES[0].altKey), eyebrow: t("landing_showcase_jobs_eyebrow"), title: t("landing_showcase_jobs_title"), description: t("landing_showcase_jobs_desc") },
+    { ...SHOWCASE_IMAGES[1], alt: t(SHOWCASE_IMAGES[1].altKey), eyebrow: t("landing_showcase_fin_eyebrow"),  title: t("landing_showcase_fin_title"),  description: t("landing_showcase_fin_desc")  },
+    { ...SHOWCASE_IMAGES[2], alt: t(SHOWCASE_IMAGES[2].altKey), eyebrow: t("landing_showcase_tal_eyebrow"),  title: t("landing_showcase_tal_title"),  description: t("landing_showcase_tal_desc")  },
   ];
 
   const plans = [
@@ -359,7 +359,7 @@ export default function Home() {
           </div>
 
           <div className="hidden lg:flex items-center justify-center px-6 py-12 lg:px-10">
-            <ProductPreview />
+            <ProductPreview alt={t("landing_alt_dashboard")} />
           </div>
         </div>
       </section>

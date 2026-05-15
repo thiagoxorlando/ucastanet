@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -103,7 +103,7 @@ function LoginPageContent() {
   return (
     <div className="min-h-screen bg-[#061214] flex">
 
-      {/* ── Left panel (decorative, hidden on mobile) ── */}
+      {/* â”€â”€ Left panel (decorative, hidden on mobile) â”€â”€ */}
       <div className="hidden lg:flex lg:w-[52%] relative overflow-hidden flex-col justify-between px-12 py-12">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(39,193,214,0.22),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(26,188,156,0.18),transparent_35%),linear-gradient(180deg,#081718_0%,#041012_100%)]" />
         <div className="absolute inset-0 opacity-[0.04]" style={{backgroundImage:"linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)",backgroundSize:"48px 48px"}} />
@@ -150,7 +150,7 @@ function LoginPageContent() {
         </div>
       </div>
 
-      {/* ── Right panel (form) ── */}
+      {/* â”€â”€ Right panel (form) â”€â”€ */}
       <div className="flex flex-1 flex-col px-5 pt-6 pb-10 lg:px-12">
         <div className="flex justify-end">
           <LanguageSelector variant="dark" />
@@ -190,7 +190,7 @@ function LoginPageContent() {
                     required
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
-                    placeholder="you@example.com"
+                    placeholder={t("login_email_placeholder")}
                     className="w-full bg-white/6 border border-white/10 rounded-xl px-4 py-3 text-[14px] text-white placeholder-white/20 focus:border-[#1ABC9C]/60 focus:ring-2 focus:ring-[#1ABC9C]/15 focus:outline-none transition-all"
                   />
                 </div>
@@ -204,7 +204,7 @@ function LoginPageContent() {
                     required
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    placeholder="••••••••"
+                    placeholder={t("login_password_placeholder")}
                     className="w-full bg-white/6 border border-white/10 rounded-xl px-4 py-3 text-[14px] text-white placeholder-white/20 focus:border-[#1ABC9C]/60 focus:ring-2 focus:ring-[#1ABC9C]/15 focus:outline-none transition-all"
                   />
                 </div>
@@ -280,3 +280,4 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+

@@ -41,7 +41,7 @@ export default async function WorkspaceJobsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-[1.8rem] font-bold tracking-tight text-zinc-950">{t("nav_workspace_jobs")}</h1>
+          <h1 className="text-[1.5rem] font-bold tracking-tight text-zinc-950 sm:text-[1.8rem]">{t("nav_workspace_jobs")}</h1>
           <p className="mt-1 text-[14px] text-zinc-500">
             {t("workspace_jobs_page_subtitle")}
           </p>

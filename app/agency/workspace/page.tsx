@@ -59,7 +59,7 @@ function LockedScreen({ premiumAvailable, t }: { premiumAvailable: boolean; t: T
             {t("workspace_premium_space")}
           </div>
           <div className="space-y-3">
-            <h1 className="text-[2rem] font-bold tracking-tight sm:text-[2.6rem]">
+            <h1 className="text-[1.6rem] font-bold tracking-tight sm:text-[2.6rem]">
               {t("workspace_premium_space")}
             </h1>
             <p className="max-w-2xl text-[15px] leading-7 text-white/72">
@@ -116,8 +116,10 @@ function LockedScreen({ premiumAvailable, t }: { premiumAvailable: boolean; t: T
         )}
       </div>
 
-      <div className="border-t border-zinc-100 px-6 py-4 text-[12px] text-zinc-400 sm:px-10">
-        {premiumHighlights.slice(0, 5).join(" • ")}
+      <div className="flex flex-wrap gap-x-3 gap-y-1.5 border-t border-zinc-100 px-6 py-4 sm:px-10">
+        {premiumHighlights.slice(0, 5).map((item) => (
+          <span key={item} className="text-[12px] text-zinc-400">{item}</span>
+        ))}
       </div>
     </div>
   );
@@ -179,7 +181,7 @@ function WorkspaceHeader({
                   {isOwner ? t("workspace_role_owner") : t("workspace_role_agent")}
                 </span>
               </div>
-              <h1 className="mt-3 truncate text-[2rem] font-bold tracking-tight">{workspace.name}</h1>
+              <h1 className="mt-3 truncate text-[1.6rem] font-bold tracking-tight sm:text-[2rem]">{workspace.name}</h1>
               <p className="mt-2 max-w-2xl text-[14px] leading-6 text-white/78">
                 {workspace.welcomeMessage || t("workspace_header_default_welcome")}
               </p>
@@ -583,15 +585,15 @@ export default async function WorkspacePage() {
       ) : null}
 
       <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-5">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-5 py-5">
+          <div className="min-w-0">
             <p className="text-[15px] font-semibold text-zinc-900">{t("workspace_identity_title")}</p>
             <p className="mt-1 text-[12px] text-zinc-500">{t("workspace_identity_summary")}</p>
           </div>
           {isOwner ? (
             <Link
               href="/agency/workspace/branding"
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
+              className="inline-flex flex-shrink-0 items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
             >
               {t("workspace_identity_edit")}
             </Link>
@@ -628,8 +630,8 @@ export default async function WorkspacePage() {
       </div>
 
       <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-5">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-5 py-5">
+          <div className="min-w-0">
             <p className="text-[15px] font-semibold text-zinc-900">
               {isOwner ? t("workspace_team_title") : t("workspace_team_agent_title")}
             </p>
@@ -642,7 +644,7 @@ export default async function WorkspacePage() {
           {isOwner ? (
             <Link
               href="/agency/workspace/agents"
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
+              className="inline-flex flex-shrink-0 items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
             >
               {t("workspace_team_manage")}
             </Link>
@@ -662,8 +664,8 @@ export default async function WorkspacePage() {
       </div>
 
       <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
-        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-5">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 px-5 py-5">
+          <div className="min-w-0">
             <p className="text-[15px] font-semibold text-zinc-900">
               {isOwner ? t("workspace_jobs_team_title") : t("workspace_my_jobs_title")}
             </p>
@@ -675,7 +677,7 @@ export default async function WorkspacePage() {
           </div>
           <Link
             href="/agency/workspace/jobs"
-            className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
+            className="inline-flex flex-shrink-0 items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
           >
             {t("workspace_view_all")}
           </Link>
