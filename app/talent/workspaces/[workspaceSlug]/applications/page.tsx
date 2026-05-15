@@ -5,6 +5,7 @@ import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { brl } from "@/lib/brl";
 import { submissionStatusLabel, submissionStatusTone } from "@/lib/submissionStatus";
+import { getServerLang } from "@/lib/i18n/server";
 
 export const metadata: Metadata = { title: "Reservas — BrisaHub" };
 
@@ -18,6 +19,9 @@ const STATUS_ORDER: Record<string, number> = {
 
 export default async function WorkspaceApplicationsPage({ params }: Props) {
   const { workspaceSlug } = await params;
+  const lang = await getServerLang();
+  const locale = lang === "en" ? "en-US" : "pt-BR";
+  const statusLang = lang === "en" ? "en" : "pt-BR";
 
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
@@ -27,7 +31,7 @@ export default async function WorkspaceApplicationsPage({ params }: Props) {
 
   const { data: workspace } = await supabase
     .from("premium_workspaces")
-    .select("id, name, brand_primary_color, brand_accent_color")
+    .select("id, name, logo_url, brand_primary_color, brand_accent_color")
     .eq("slug", workspaceSlug)
     .is("deleted_at", null)
     .eq("status", "active")
@@ -68,12 +72,29 @@ export default async function WorkspaceApplicationsPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-[1.3rem] font-bold text-zinc-950">Reservas</h1>
-        <p className="mt-0.5 text-[13px] text-zinc-500">
-          Suas candidaturas às vagas privadas de{" "}
-          <span className="font-medium">{workspace.name as string}</span>.
-        </p>
+      {/* Branded page header */}
+      <div className="flex items-center gap-3.5">
+        {workspace.logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={workspace.logo_url as string}
+            alt={workspace.name as string}
+            className="h-10 w-10 flex-shrink-0 rounded-xl border border-zinc-200 object-cover shadow-sm"
+          />
+        ) : (
+          <div
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm"
+            style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}
+          >
+            {(workspace.name as string).slice(0, 1).toUpperCase()}
+          </div>
+        )}
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-zinc-400">
+            {workspace.name as string}
+          </p>
+          <h1 className="text-[1.3rem] font-bold leading-tight text-zinc-950">Reservas</h1>
+        </div>
       </div>
 
       {/* Summary badges */}
@@ -102,7 +123,7 @@ export default async function WorkspaceApplicationsPage({ params }: Props) {
 
       {/* Empty state */}
       {submissions.length === 0 && (
-        <div className="rounded-[22px] border border-zinc-200 bg-white px-6 py-12 text-center">
+        <div className="rounded-[22px] border border-zinc-200 bg-white px-6 py-14 text-center">
           <div
             className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl"
             style={{ background: `linear-gradient(135deg, ${primary}20, ${accent}10)` }}
@@ -114,10 +135,10 @@ export default async function WorkspaceApplicationsPage({ params }: Props) {
           <p className="text-[14px] font-semibold text-zinc-600">Nenhuma reserva ainda.</p>
           <p className="mt-1 text-[13px] text-zinc-400">
             Candidate-se às{" "}
-            <Link href={`/talent/workspaces/${workspaceSlug}/jobs`} className="font-medium text-zinc-700 hover:underline">
+            <Link href={`/talent/workspaces/${workspaceSlug}/jobs`} className="font-medium text-zinc-700 underline-offset-2 hover:underline">
               vagas privadas
             </Link>{" "}
-            desta agência.
+            desta agência para aparecer aqui.
           </p>
         </div>
       )}
@@ -126,9 +147,9 @@ export default async function WorkspaceApplicationsPage({ params }: Props) {
       {submissions.length > 0 && (
         <ul className="flex flex-col gap-3">
           {submissions.map((sub) => {
-            const job   = jobMap.get(String(sub.job_id));
-            const label = submissionStatusLabel(String(sub.status));
-            const tone  = submissionStatusTone(String(sub.status));
+            const job      = jobMap.get(String(sub.job_id));
+            const label    = submissionStatusLabel(String(sub.status), statusLang);
+            const tone     = submissionStatusTone(String(sub.status));
             const isApproved = sub.status === "approved";
             const isPending  = sub.status === "pending";
 
@@ -137,7 +158,6 @@ export default async function WorkspaceApplicationsPage({ params }: Props) {
                 <div className={`overflow-hidden rounded-[20px] border bg-white shadow-[0_4px_16px_rgba(15,23,42,0.04)] ${
                   isApproved ? "border-emerald-200" : "border-zinc-200"
                 }`}>
-                  {/* Top accent stripe for approved */}
                   {isApproved && (
                     <div className="h-[3px]" style={{ background: `linear-gradient(to right, ${primary}, ${accent})` }} />
                   )}
@@ -145,13 +165,12 @@ export default async function WorkspaceApplicationsPage({ params }: Props) {
                     {/* Header */}
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-[15px] font-semibold text-zinc-900 truncate">
+                        <p className="truncate text-[15px] font-semibold text-zinc-900">
                           {job?.title ?? "Vaga"}
                         </p>
                         {job?.job_date && (
                           <p className="mt-0.5 text-[12px] text-zinc-500">
-                            Data:{" "}
-                            {new Date(`${job.job_date}T00:00:00`).toLocaleDateString("pt-BR", {
+                            {new Date(`${job.job_date}T00:00:00`).toLocaleDateString(locale, {
                               weekday: "short", day: "numeric", month: "short",
                             })}
                           </p>
@@ -167,7 +186,7 @@ export default async function WorkspaceApplicationsPage({ params }: Props) {
                       {job?.budget != null && (
                         <span>
                           <span className="font-medium text-zinc-700">Cachê:</span>{" "}
-                          {brl(job.budget)}
+                          <span className="font-semibold text-emerald-600">{brl(job.budget)}</span>
                         </span>
                       )}
                       {job?.location && (
@@ -178,7 +197,7 @@ export default async function WorkspaceApplicationsPage({ params }: Props) {
                       )}
                       <span className="text-zinc-400">
                         Candidatou-se em{" "}
-                        {new Date(sub.created_at).toLocaleDateString("pt-BR", {
+                        {new Date(sub.created_at).toLocaleDateString(locale, {
                           day: "numeric", month: "short", year: "numeric",
                         })}
                       </span>
@@ -186,28 +205,31 @@ export default async function WorkspaceApplicationsPage({ params }: Props) {
 
                     {/* Status context */}
                     {isPending && (
-                      <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2">
-                        <p className="text-[12px] text-amber-700">
+                      <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5">
+                        <p className="text-[12px] leading-relaxed text-amber-700">
                           Sua candidatura está em análise. A agência entrará em contato se selecionada.
                         </p>
                       </div>
                     )}
                     {isApproved && (
-                      <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2">
-                        <p className="text-[12px] text-emerald-700">
+                      <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2.5">
+                        <p className="text-[12px] leading-relaxed text-emerald-700">
                           Candidatura aprovada. Aguarde o envio do contrato pela agência.
                         </p>
                       </div>
                     )}
 
-                    {/* Footer actions */}
+                    {/* Footer */}
                     {job?.id && (
                       <div className="mt-4 flex justify-end">
                         <Link
                           href={`/talent/workspaces/${workspaceSlug}/jobs/${job.id}`}
-                          className="text-[12px] font-medium text-zinc-500 transition-colors hover:text-zinc-800"
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-100"
                         >
-                          Ver vaga →
+                          Ver vaga
+                          <svg className="h-3.5 w-3.5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
                         </Link>
                       </div>
                     )}

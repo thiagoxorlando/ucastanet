@@ -19,19 +19,24 @@ function StatCard({
   value,
   sub,
   stripe,
+  stripeStyle,
   icon,
   href,
 }: {
   label: string;
   value: string;
   sub?: string;
-  stripe: string;
+  stripe?: string;
+  stripeStyle?: React.CSSProperties;
   icon: React.ReactNode;
   href?: string;
 }) {
   const inner = (
     <>
-      <div className={`h-[3px] bg-gradient-to-r ${stripe}`} />
+      <div
+        className={`h-[3px] ${stripe ? `bg-gradient-to-r ${stripe}` : ""}`}
+        style={stripeStyle}
+      />
       <div className="flex items-start gap-3.5 p-4">
         <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-zinc-100 bg-zinc-50">
           {icon}
@@ -225,9 +230,9 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
           value={String(availableJobs.length)}
           sub={t("portal_open_now")}
           href={`/talent/workspaces/${workspaceSlug}/jobs`}
-          stripe="from-sky-400 to-blue-500"
+          stripeStyle={{ background: `linear-gradient(to right, ${primary}, ${accent})` }}
           icon={
-            <svg className="h-4 w-4 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-4 w-4" style={{ color: primary }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           }

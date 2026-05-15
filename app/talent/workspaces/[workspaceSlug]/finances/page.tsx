@@ -43,13 +43,16 @@ export default async function WorkspaceFinancesPage({ params }: Props) {
 
   const workspace = (await supabase
     .from("premium_workspaces")
-    .select("id, name, brand_primary_color, brand_accent_color")
+    .select("id, name, logo_url, brand_primary_color, brand_accent_color")
     .eq("slug", workspaceSlug)
     .is("deleted_at", null)
     .eq("status", "active")
     .maybeSingle()).data;
 
   if (!workspace) notFound();
+
+  const primary = (workspace.brand_primary_color as string | null) ?? "#1ABC9C";
+  const accent  = (workspace.brand_accent_color  as string | null) ?? "#27C1D6";
 
   const { data: allJobs } = await supabase
     .from("jobs")
@@ -91,17 +94,31 @@ export default async function WorkspaceFinancesPage({ params }: Props) {
     .maybeSingle();
   const walletBalance = Number(profileData?.wallet_balance ?? 0);
 
-  const primary = (workspace.brand_primary_color as string | null) ?? "#1ABC9C";
-  const accent  = (workspace.brand_accent_color  as string | null) ?? "#27C1D6";
-
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-[1.3rem] font-bold text-zinc-950">Financeiro</h1>
-        <p className="mt-0.5 text-[13px] text-zinc-500">
-          Pagamentos através do portal de{" "}
-          <span className="font-medium">{workspace.name as string}</span>.
-        </p>
+      {/* Branded page header */}
+      <div className="flex items-center gap-3.5">
+        {workspace.logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={workspace.logo_url as string}
+            alt={workspace.name as string}
+            className="h-10 w-10 flex-shrink-0 rounded-xl border border-zinc-200 object-cover shadow-sm"
+          />
+        ) : (
+          <div
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm"
+            style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}
+          >
+            {(workspace.name as string).slice(0, 1).toUpperCase()}
+          </div>
+        )}
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-zinc-400">
+            {workspace.name as string}
+          </p>
+          <h1 className="text-[1.3rem] font-bold leading-tight text-zinc-950">Financeiro</h1>
+        </div>
       </div>
 
       {/* Summary cards — workspace-scoped */}
@@ -116,7 +133,7 @@ export default async function WorkspaceFinancesPage({ params }: Props) {
           label="A receber"
           value={brl(totalPending)}
           sub={`${pendingContracts.length} contrato${pendingContracts.length !== 1 ? "s" : ""} em andamento`}
-          accent="amber"
+          accent={totalPending > 0 ? "amber" : undefined}
         />
         <StatCard
           label="Saldo disponível para saque"
@@ -172,12 +189,20 @@ export default async function WorkspaceFinancesPage({ params }: Props) {
       )}
 
       {contracts.length === 0 && (
-        <div className="rounded-[22px] border border-zinc-200 bg-white px-6 py-12 text-center">
+        <div className="rounded-[22px] border border-zinc-200 bg-white px-6 py-14 text-center">
+          <div
+            className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl"
+            style={{ background: `linear-gradient(135deg, ${primary}20, ${accent}10)` }}
+          >
+            <svg className="h-5 w-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
           <p className="text-[14px] font-semibold text-zinc-600">
             Você ainda não possui pagamentos neste portal.
           </p>
           <p className="mt-1 text-[13px] text-zinc-400">
-            Os valores aparecerão aqui quando a agência enviar contratos.
+            Os valores aparecerão aqui quando a agência enviar e pagar seus contratos.
           </p>
         </div>
       )}

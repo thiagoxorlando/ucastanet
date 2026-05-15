@@ -138,6 +138,13 @@ function txStatusTone(status: string): string {
   return "border-zinc-200 bg-zinc-100 text-zinc-700";
 }
 
+function txStatusLabel(status: string, t: TFn): string {
+  const normalized = status.toLowerCase();
+  if (normalized === "completed") return t("status_completed");
+  if (normalized === "pending") return t("status_pending");
+  return status;
+}
+
 function formatDateTime(value: string | null, locale: string): string {
   if (!value) return "-";
   return new Date(value).toLocaleString(locale, {
@@ -189,11 +196,8 @@ function TimelineCard({
               <div className="min-w-0 flex-1 space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-[15px] font-semibold text-zinc-900">{txLabel(tx.type, t)}</p>
-                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold ${txTypeTone(tx.type)}`}>
-                    {tx.type}
-                  </span>
                   <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold ${txStatusTone(tx.status)}`}>
-                    {tx.status}
+                    {txStatusLabel(tx.status, t)}
                   </span>
                 </div>
 

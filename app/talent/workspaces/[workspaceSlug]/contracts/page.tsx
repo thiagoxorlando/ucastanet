@@ -9,6 +9,7 @@ import {
   contractStatusTone,
   resolveContractAmounts,
 } from "@/lib/contractStatus";
+import { getServerLang } from "@/lib/i18n/server";
 
 export const metadata: Metadata = { title: "Contratos — BrisaHub" };
 
@@ -16,6 +17,9 @@ type Props = { params: Promise<{ workspaceSlug: string }> };
 
 export default async function WorkspaceContractsPage({ params }: Props) {
   const { workspaceSlug } = await params;
+  const lang = await getServerLang();
+  const locale = lang === "en" ? "en-US" : "pt-BR";
+  const statusLang = lang === "en" ? "en" : "pt-BR";
 
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
@@ -25,7 +29,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
 
   const { data: workspace } = await supabase
     .from("premium_workspaces")
-    .select("id, name, brand_primary_color, brand_accent_color")
+    .select("id, name, logo_url, brand_primary_color, brand_accent_color")
     .eq("slug", workspaceSlug)
     .is("deleted_at", null)
     .eq("status", "active")
@@ -66,11 +70,29 @@ export default async function WorkspaceContractsPage({ params }: Props) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-[1.3rem] font-bold text-zinc-950">Contratos</h1>
-        <p className="mt-0.5 text-[13px] text-zinc-500">
-          Seus contratos com <span className="font-medium">{workspace.name as string}</span>.
-        </p>
+      {/* Branded page header */}
+      <div className="flex items-center gap-3.5">
+        {workspace.logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={workspace.logo_url as string}
+            alt={workspace.name as string}
+            className="h-10 w-10 flex-shrink-0 rounded-xl border border-zinc-200 object-cover shadow-sm"
+          />
+        ) : (
+          <div
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm"
+            style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}
+          >
+            {(workspace.name as string).slice(0, 1).toUpperCase()}
+          </div>
+        )}
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-zinc-400">
+            {workspace.name as string}
+          </p>
+          <h1 className="text-[1.3rem] font-bold leading-tight text-zinc-950">Contratos</h1>
+        </div>
       </div>
 
       {/* Summary bar */}
@@ -94,7 +116,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
 
       {/* Empty state */}
       {contracts.length === 0 && (
-        <div className="rounded-[22px] border border-zinc-200 bg-white px-6 py-12 text-center">
+        <div className="rounded-[22px] border border-zinc-200 bg-white px-6 py-14 text-center">
           <div
             className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl"
             style={{ background: `linear-gradient(135deg, ${primary}20, ${accent}10)` }}
@@ -104,7 +126,9 @@ export default async function WorkspaceContractsPage({ params }: Props) {
             </svg>
           </div>
           <p className="text-[14px] font-semibold text-zinc-600">Nenhum contrato com esta agência ainda.</p>
-          <p className="mt-1 text-[13px] text-zinc-400">Os contratos enviados pela agência aparecerão aqui.</p>
+          <p className="mt-1 text-[13px] text-zinc-400">
+            Os contratos enviados pela agência aparecerão aqui assim que forem criados.
+          </p>
         </div>
       )}
 
@@ -115,7 +139,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
           <ul className="flex flex-col gap-3">
             {active.map((contract) => {
               const ps    = getContractPaymentStatus(contract as Parameters<typeof getContractPaymentStatus>[0]);
-              const label = contractStatusLabel(ps);
+              const label = contractStatusLabel(ps, statusLang);
               const tone  = contractStatusTone(ps);
               const { net, gross } = resolveContractAmounts(contract as Parameters<typeof resolveContractAmounts>[0]);
               return (
@@ -125,12 +149,12 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                     <div className="p-5">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-[15px] font-semibold text-zinc-900 truncate">
+                          <p className="truncate text-[15px] font-semibold text-zinc-900">
                             {jobMap.get(String(contract.job_id)) ?? "Vaga"}
                           </p>
                           {contract.job_date && (
                             <p className="mt-0.5 text-[12px] text-zinc-500">
-                              {new Date(`${contract.job_date}T00:00:00`).toLocaleDateString("pt-BR", {
+                              {new Date(`${contract.job_date}T00:00:00`).toLocaleDateString(locale, {
                                 weekday: "short", day: "numeric", month: "short",
                               })}
                             </p>
@@ -167,6 +191,9 @@ export default async function WorkspaceContractsPage({ params }: Props) {
           <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Pagos</p>
           <ul className="flex flex-col gap-3">
             {paid.map((contract) => {
+              const ps    = getContractPaymentStatus(contract as Parameters<typeof getContractPaymentStatus>[0]);
+              const label = contractStatusLabel(ps, statusLang);
+              const tone  = contractStatusTone(ps);
               const { net, gross, commissionPct } = resolveContractAmounts(contract as Parameters<typeof resolveContractAmounts>[0]);
               return (
                 <li key={contract.id}>
@@ -178,19 +205,19 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                     <div className="p-5">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="text-[15px] font-semibold text-zinc-900 truncate">
+                          <p className="truncate text-[15px] font-semibold text-zinc-900">
                             {jobMap.get(String(contract.job_id)) ?? "Vaga"}
                           </p>
                           {contract.job_date && (
                             <p className="mt-0.5 text-[12px] text-zinc-500">
-                              {new Date(`${contract.job_date}T00:00:00`).toLocaleDateString("pt-BR", {
+                              {new Date(`${contract.job_date}T00:00:00`).toLocaleDateString(locale, {
                                 weekday: "short", day: "numeric", month: "short",
                               })}
                             </p>
                           )}
                         </div>
-                        <span className="flex-shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                          Pago ao talento
+                        <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>
+                          {label}
                         </span>
                       </div>
                       <div className="mt-3 flex flex-wrap gap-4 text-[12px] text-zinc-500">
@@ -211,8 +238,11 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                         )}
                       </div>
                       {contract.paid_at && (
-                        <p className="mt-2 text-[11px] text-emerald-600">
-                          Pago em {new Date(contract.paid_at).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}
+                        <p className="mt-2.5 flex items-center gap-1.5 text-[11px] text-emerald-600">
+                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Pago em {new Date(contract.paid_at).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })}
                         </p>
                       )}
                     </div>
@@ -231,14 +261,14 @@ export default async function WorkspaceContractsPage({ params }: Props) {
           <ul className="flex flex-col gap-2.5">
             {other.map((contract) => {
               const ps    = getContractPaymentStatus(contract as Parameters<typeof getContractPaymentStatus>[0]);
-              const label = contractStatusLabel(ps);
+              const label = contractStatusLabel(ps, statusLang);
               const tone  = contractStatusTone(ps);
               const { gross } = resolveContractAmounts(contract as Parameters<typeof resolveContractAmounts>[0]);
               return (
                 <li key={contract.id}>
                   <div className="rounded-[20px] border border-zinc-200 bg-zinc-50 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-[13px] font-semibold text-zinc-500 truncate">
+                      <p className="truncate text-[13px] font-semibold text-zinc-500">
                         {jobMap.get(String(contract.job_id)) ?? "Vaga"}
                       </p>
                       <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{label}</span>
@@ -246,7 +276,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                     <div className="mt-1.5 flex flex-wrap gap-3 text-[12px] text-zinc-400">
                       <span>{brl(gross)}</span>
                       <span>
-                        {new Date(contract.created_at).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" })}
+                        {new Date(contract.created_at).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })}
                       </span>
                     </div>
                   </div>
