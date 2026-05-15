@@ -861,11 +861,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                           </svg>
                         </button>
-                      ) : (
-                        <p className="mb-2 px-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#88A6A1]">
-                          {t(section.titleKey as any)}
-                        </p>
-                      )}
+                      ) : null}
 
                       {/* Nav items */}
                       {!isCollapsed && (
