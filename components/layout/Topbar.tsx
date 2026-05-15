@@ -39,6 +39,7 @@ const pageMeta: Record<string, MetaEntry> = {
   "/agency/workspace/contracts": { titleKey: "nav_workspace_contracts", descKey: "topbar_workspace_contracts_desc" },
   "/agency/workspace/bookings": { titleKey: "nav_workspace_bookings", descKey: "topbar_workspace_bookings_desc" },
   "/agency/workspace/branding": { titleKey: "nav_workspace_branding", descKey: "topbar_workspace_branding_desc" },
+  "/agency/workspace/profile": { titleKey: "nav_profile", descKey: "topbar_workspace_profile_desc" },
   "/agency/referrals": { titleKey: "page_referrals", descKey: "topbar_agency_referrals_desc" },
   "/agency/support": { titleKey: "nav_support", descKey: "topbar_agency_support_desc" },
   "/agency/profile": { titleKey: "page_profile", descKey: "topbar_agency_profile_desc" },

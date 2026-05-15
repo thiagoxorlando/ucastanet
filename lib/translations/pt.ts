@@ -132,6 +132,7 @@
   topbar_workspace_contracts_desc: "Veja somente contratos ligados às vagas do workspace",
   topbar_workspace_bookings_desc: "Veja somente reservas ligadas às vagas do workspace",
   topbar_workspace_branding_desc: "Personalize nome, logo, cores e mensagem do workspace",
+  topbar_workspace_profile_desc: "Atualize seu nome, foto e informações de contato",
   topbar_agency_referrals_desc: "Acompanhe convites, indicações e comissões",
   topbar_agency_support_desc: "Envie mensagens e acompanhe suas solicitações de suporte",
   topbar_agency_profile_desc: "Gerencie o perfil da sua agência",

@@ -720,6 +720,7 @@ export const en: Record<string, string> = {
   topbar_workspace_contracts_desc: "See only contracts linked to workspace jobs",
   topbar_workspace_bookings_desc: "See only bookings linked to workspace jobs",
   topbar_workspace_branding_desc: "Customize workspace name, logo, colors and welcome message",
+  topbar_workspace_profile_desc: "Update your name, photo and contact information",
   topbar_agency_referrals_desc: "Track invites, referrals and commissions",
   topbar_agency_support_desc: "Send messages and track your support requests",
   topbar_agency_profile_desc: "Manage your agency profile",
