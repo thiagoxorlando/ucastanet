@@ -117,14 +117,31 @@ export default async function WorkspaceTalentsPage() {
   const jobIds = visibleJobs.map((job) => String(job.id));
   const jobTitleMap = new Map(visibleJobs.map((job) => [String(job.id), job.title ?? "Vaga privada"]));
 
-  const { data: portalMemberRows } = await supabase
-    .from("premium_workspace_talents")
-    .select("talent_user_id, status, joined_at, created_at")
-    .eq("workspace_id", workspaceId)
-    .is("removed_at", null)
-    .order("created_at", { ascending: false });
+  const [portalMemberResult, workspaceMemberResult] = await Promise.all([
+    supabase
+      .from("premium_workspace_talents")
+      .select("talent_user_id, status, joined_at, created_at")
+      .eq("workspace_id", workspaceId)
+      .is("removed_at", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("premium_workspace_members")
+      .select("user_id")
+      .eq("workspace_id", workspaceId)
+      .eq("status", "active"),
+  ]);
 
-  const portalMemberIds = [...new Set((portalMemberRows ?? []).map((member) => String(member.talent_user_id)))];
+  const portalMemberRows = portalMemberResult.data ?? [];
+  // Exclude workspace agents/owners who may have ended up in premium_workspace_talents
+  const workspaceMemberIds = new Set(
+    (workspaceMemberResult.data ?? []).map((m) => String(m.user_id)),
+  );
+
+  const portalMemberIds = [...new Set(
+    portalMemberRows
+      .map((member) => String(member.talent_user_id))
+      .filter((id) => !workspaceMemberIds.has(id)),
+  )];
 
   const [submissionsResult, bookingsResult, contractsResult, authResult] = await Promise.all([
     jobIds.length > 0

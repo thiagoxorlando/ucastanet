@@ -247,6 +247,15 @@ console.log("\n[7/9] Upserting workspace talents…");
 
 const portalTalents = [talentPortalId, talentMktId];
 
+// Remove any workspace agents/owners who ended up in premium_workspace_talents
+const agentAndOwnerIds = [ownerId, agentId];
+await sb
+  .from("premium_workspace_talents")
+  .delete()
+  .eq("workspace_id", workspaceId)
+  .in("talent_user_id", agentAndOwnerIds);
+console.log("  ✓ cleaned up non-talent rows from premium_workspace_talents");
+
 for (const tid of portalTalents) {
   const { data: existing } = await sb
     .from("premium_workspace_talents")
