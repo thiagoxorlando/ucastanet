@@ -14,6 +14,7 @@ import {
   getWorkspaceMembers,
 } from "@/lib/premiumWorkspace.server";
 import { requirePremiumWorkspacePageContext } from "@/lib/premiumWorkspaceApp.server";
+import { getServerLang, getServerT } from "@/lib/i18n/server";
 import WorkspaceWalletAllocator from "@/features/agency/WorkspaceWalletAllocator";
 
 export const metadata: Metadata = { title: "Carteira Premium - BrisaHub" };
@@ -57,6 +58,8 @@ type LedgerRow = LedgerTxBase & {
   contract: ContractLedgerRow | null;
 };
 
+type TFn = (key: string) => string;
+
 function StatCard({
   label,
   value,
@@ -85,15 +88,15 @@ function StatCard({
   );
 }
 
-function txLabel(type: string): string {
+function txLabel(type: string, t: TFn): string {
   const map: Record<string, string> = {
-    allocation: "Alocacao enviada ao agente",
-    allocation_reversal: "Saldo puxado de volta",
-    job_commitment: "Compromisso de vaga / escrow",
-    job_release: "Compromisso liberado",
-    job_settlement: "Pagamento ao talento liquidado",
-    refund: "Reembolso / estorno de compromisso",
-    adjustment: "Ajuste manual",
+    allocation: t("workspace_wallet_tx_allocation"),
+    allocation_reversal: t("workspace_wallet_tx_allocation_reversal"),
+    job_commitment: t("workspace_wallet_tx_job_commitment"),
+    job_release: t("workspace_wallet_tx_job_release"),
+    job_settlement: t("workspace_wallet_tx_job_settlement"),
+    refund: t("workspace_wallet_tx_refund"),
+    adjustment: t("workspace_wallet_tx_adjustment"),
   };
 
   return map[type] ?? type;
@@ -135,9 +138,9 @@ function txStatusTone(status: string): string {
   return "border-zinc-200 bg-zinc-100 text-zinc-700";
 }
 
-function formatDateTime(value: string | null): string {
+function formatDateTime(value: string | null, locale: string): string {
   if (!value) return "-";
-  return new Date(value).toLocaleString("pt-BR", {
+  return new Date(value).toLocaleString(locale, {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -154,17 +157,21 @@ function TimelineCard({
   title,
   description,
   rows,
+  t,
+  locale,
 }: {
   title: string;
   description: string;
   rows: LedgerRow[];
+  t: TFn;
+  locale: string;
 }) {
   if (rows.length === 0) {
     return (
       <section className="rounded-[28px] border border-zinc-200 bg-white px-6 py-10 text-center shadow-[0_12px_34px_rgba(15,23,42,0.05)]">
         <h2 className="text-[16px] font-semibold text-zinc-900">{title}</h2>
         <p className="mt-2 text-[13px] text-zinc-500">{description}</p>
-        <p className="mt-5 text-[14px] text-zinc-500">Nenhuma movimentacao ainda.</p>
+        <p className="mt-5 text-[14px] text-zinc-500">{t("workspace_wallet_no_transactions")}</p>
       </section>
     );
   }
@@ -181,7 +188,7 @@ function TimelineCard({
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0 flex-1 space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-[15px] font-semibold text-zinc-900">{txLabel(tx.type)}</p>
+                  <p className="text-[15px] font-semibold text-zinc-900">{txLabel(tx.type, t)}</p>
                   <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold ${txTypeTone(tx.type)}`}>
                     {tx.type}
                   </span>
@@ -192,21 +199,21 @@ function TimelineCard({
 
                 <div className="flex flex-wrap gap-2 text-[11px] text-zinc-500">
                   <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1">
-                    Data: {formatDateTime(tx.created_at)}
+                    {t("workspace_wallet_date_label")}: {formatDateTime(tx.created_at, locale)}
                   </span>
                   {tx.agentName ? (
                     <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1">
-                      Agente: {tx.agentName}
+                      {t("workspace_wallet_agent_label")}: {tx.agentName}
                     </span>
                   ) : null}
                   {tx.jobTitle ? (
                     <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1">
-                      Vaga: {tx.jobTitle}
+                      {t("workspace_wallet_job_label")}: {tx.jobTitle}
                     </span>
                   ) : null}
                   {tx.note ? (
                     <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1">
-                      Obs: {tx.note}
+                      {t("workspace_wallet_note_label")}: {tx.note}
                     </span>
                   ) : null}
                 </div>
@@ -215,7 +222,7 @@ function TimelineCard({
                   <div className="rounded-[22px] border border-zinc-200 bg-zinc-50 p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-[12px] font-semibold text-zinc-800">
-                        Contrato #{shortId(tx.contract.id)}
+                        {t("workspace_wallet_contract_label")} #{shortId(tx.contract.id)}
                       </p>
                       <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${tx.contract.tone}`}>
                         {tx.contract.label}
@@ -223,20 +230,20 @@ function TimelineCard({
                     </div>
                     <div className="mt-3 grid gap-3 text-[12px] text-zinc-600 sm:grid-cols-4">
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Bruto</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{t("workspace_wallet_gross")}</p>
                         <p className="mt-1 font-semibold text-zinc-900">{brl(tx.contract.gross)}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Comissao</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{t("workspace_wallet_commission")}</p>
                         <p className="mt-1 font-semibold text-zinc-900">{brl(tx.contract.commission)}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Pago ao talento</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{t("workspace_wallet_paid_to_talent")}</p>
                         <p className="mt-1 font-semibold text-zinc-900">{brl(tx.contract.net)}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Pago em</p>
-                        <p className="mt-1 font-semibold text-zinc-900">{formatDateTime(tx.contract.paidAt)}</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{t("workspace_wallet_paid_at")}</p>
+                        <p className="mt-1 font-semibold text-zinc-900">{formatDateTime(tx.contract.paidAt, locale)}</p>
                       </div>
                     </div>
                   </div>
@@ -259,6 +266,9 @@ function TimelineCard({
 async function buildLedgerRows(
   workspaceId: string,
   limit: number,
+  statusLang: "pt-BR" | "en",
+  privateJobLabel: string,
+  unknownAgentLabel: string,
   agentUserId?: string,
 ): Promise<LedgerRow[]> {
   const supabase = createServerClient({ useServiceRole: true });
@@ -313,7 +323,7 @@ async function buildLedgerRows(
 
   const jobTitleMap = new Map<string, string>();
   for (const job of jobsResult.data ?? []) {
-    jobTitleMap.set(String(job.id), job.title ?? "Vaga privada");
+    jobTitleMap.set(String(job.id), job.title ?? privateJobLabel);
   }
 
   const payoutMap = new Map<string, number>();
@@ -324,7 +334,7 @@ async function buildLedgerRows(
 
   const memberNameMap = new Map<string, string>();
   for (const member of membersResult) {
-    memberNameMap.set(member.userId, member.displayName || member.email || "Agente");
+    memberNameMap.set(member.userId, member.displayName || member.email || unknownAgentLabel);
   }
 
   const contractMap = new Map<string, ContractLedgerRow>();
@@ -338,7 +348,7 @@ async function buildLedgerRows(
 
     contractMap.set(String(contract.id), {
       id: String(contract.id),
-      label: contractStatusLabel(paymentStatus),
+      label: contractStatusLabel(paymentStatus, statusLang),
       tone: contractStatusTone(paymentStatus),
       gross,
       commission,
@@ -347,7 +357,7 @@ async function buildLedgerRows(
     });
 
     if (contract.job_id && !jobTitleMap.has(String(contract.job_id))) {
-      jobTitleMap.set(String(contract.job_id), "Vaga privada");
+      jobTitleMap.set(String(contract.job_id), privateJobLabel);
     }
   }
 
@@ -360,37 +370,42 @@ async function buildLedgerRows(
 }
 
 export default async function WorkspaceWalletPage() {
+  const [t, lang] = await Promise.all([getServerT(), getServerLang()]);
+  const locale = lang === "en" ? "en-US" : "pt-BR";
+  const statusLang = lang === "en" ? "en" : "pt-BR";
   const context = await requirePremiumWorkspacePageContext();
 
   if (!context.isOwner) {
     const [ledger, rows] = await Promise.all([
       getAgentLedgerBalance(context.workspace.id, context.userId),
-      buildLedgerRows(context.workspace.id, 120, context.userId),
+      buildLedgerRows(context.workspace.id, 120, statusLang, t("workspace_private_job"), t("workspace_role_agent"), context.userId),
     ]);
 
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-[1.8rem] font-bold tracking-tight text-zinc-950">Carteira Premium</h1>
-          <p className="mt-1 text-[14px] text-zinc-500">Seu historico completo de alocacoes, compromissos, liberacoes e pagamentos no Espaco Premium.</p>
+          <h1 className="text-[1.8rem] font-bold tracking-tight text-zinc-950">{t("workspace_wallet_page_title")}</h1>
+          <p className="mt-1 text-[14px] text-zinc-500">{t("workspace_wallet_agent_page_description")}</p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Saldo alocado" value={brl(ledger.allocatedAmount)} hint="Total enviado pelo proprietario" />
-          <StatCard label="Comprometido" value={brl(ledger.committedAmount)} hint="Reservado em vagas abertas" accent="amber" />
-          <StatCard label="Pago a talentos" value={brl(ledger.spentAmount)} hint="Liquidado em contratos pagos" accent="rose" />
+          <StatCard label={t("workspace_wallet_allocated")} value={brl(ledger.allocatedAmount)} hint={t("workspace_wallet_total_sent_by_owner")} />
+          <StatCard label={t("workspace_wallet_committed")} value={brl(ledger.committedAmount)} hint={t("workspace_wallet_reserved_in_open_jobs")} accent="amber" />
+          <StatCard label={t("workspace_wallet_paid_talents")} value={brl(ledger.spentAmount)} hint={t("workspace_wallet_settled_paid_contracts")} accent="rose" />
           <StatCard
-            label="Disponivel"
+            label={t("workspace_wallet_available")}
             value={brl(ledger.availableAmount)}
-            hint="Pode ser usado em novas vagas"
+            hint={t("workspace_wallet_available_new_jobs")}
             accent={ledger.availableAmount > 0 ? "emerald" : "indigo"}
           />
         </div>
 
         <TimelineCard
-          title="Linha do tempo da sua carteira"
-          description="Cada linha mostra tipo, data, status, vaga, contrato e quanto desse saldo entrou, saiu ou ficou comprometido."
+          title={t("workspace_wallet_timeline_title_agent")}
+          description={t("workspace_wallet_timeline_description_agent")}
           rows={rows}
+          t={t}
+          locale={locale}
         />
       </div>
     );
@@ -400,7 +415,7 @@ export default async function WorkspaceWalletPage() {
     getOwnerAllocationSummary(context.workspace.id, context.workspace.ownerUserId),
     getWorkspaceMembers(context.workspace.id),
     getWorkspaceAgentLedgerBalances(context.workspace.id),
-    buildLedgerRows(context.workspace.id, 250),
+    buildLedgerRows(context.workspace.id, 250, statusLang, t("workspace_private_job"), t("workspace_role_agent")),
   ]);
 
   const agents = members.filter((member) => member.role === "agent");
@@ -413,50 +428,46 @@ export default async function WorkspaceWalletPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[1.8rem] font-bold tracking-tight text-zinc-950">Carteira Premium</h1>
-        <p className="mt-1 text-[14px] text-zinc-500">
-          Visao completa do dinheiro do workspace: saldo real da agencia, alocacoes virtuais por agente, compromissos, liberacoes e pagamentos aos talentos.
-        </p>
+        <h1 className="text-[1.8rem] font-bold tracking-tight text-zinc-950">{t("workspace_wallet_page_title")}</h1>
+        <p className="mt-1 text-[14px] text-zinc-500">{t("workspace_wallet_owner_page_description")}</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <StatCard
-          label="Saldo da carteira da agencia"
+          label={t("workspace_wallet_owner_balance_label")}
           value={brl(summary.ownerWalletBalance)}
-          hint="Saldo real atual em BrisaHub"
+          hint={t("workspace_wallet_owner_balance_hint")}
         />
         <StatCard
-          label="Alocado aos agentes"
+          label={t("workspace_wallet_allocated_to_agents")}
           value={brl(summary.totalAllocatedToAgents)}
-          hint="Ainda reservado na operacao dos agentes"
+          hint={t("workspace_wallet_allocated_to_agents_hint")}
           accent="indigo"
         />
         <StatCard
-          label="Comprometido / escrow"
+          label={t("workspace_wallet_committed_escrow")}
           value={brl(totalCommitted)}
-          hint="Travado em vagas ainda abertas"
+          hint={t("workspace_wallet_committed_escrow_hint")}
           accent="amber"
         />
         <StatCard
-          label="Pago a talentos"
+          label={t("workspace_wallet_paid_talents")}
           value={brl(totalSettled)}
-          hint="Ja liquidado em contratos pagos"
+          hint={t("workspace_wallet_settled_paid_contracts")}
           accent="rose"
         />
         <StatCard
-          label="Disponivel para alocar / puxar"
+          label={t("workspace_wallet_available_allocate_reclaim")}
           value={brl(availableToAllocateOrReclaim)}
-          hint="Carteira livre da agencia + saldo livre dos agentes"
+          hint={t("workspace_wallet_available_allocate_reclaim_hint")}
           accent="emerald"
         />
       </div>
 
       <section className="space-y-3">
         <div>
-          <h2 className="text-[16px] font-semibold text-zinc-900">Alocacoes e reclaim por agente</h2>
-          <p className="mt-1 text-[13px] text-zinc-500">
-            Selecione um agente, confira o saldo disponivel dele e use "Puxar saldo de volta" para criar uma linha `allocation_reversal` sem tocar em `profiles.wallet_balance`.
-          </p>
+          <h2 className="text-[16px] font-semibold text-zinc-900">{t("workspace_wallet_allocator_title")}</h2>
+          <p className="mt-1 text-[13px] text-zinc-500">{t("workspace_wallet_allocator_description")}</p>
         </div>
         <WorkspaceWalletAllocator
           agents={agents}
@@ -466,9 +477,11 @@ export default async function WorkspaceWalletPage() {
       </section>
 
       <TimelineCard
-        title="Ledger completo do workspace"
-        description="Mostra alocacoes enviadas aos agentes, dinheiro puxado de volta, compromissos de vaga, liberacoes, settlements e pagamentos relacionados a contratos."
+        title={t("workspace_wallet_timeline_title_owner")}
+        description={t("workspace_wallet_timeline_description_owner")}
         rows={rows}
+        t={t}
+        locale={locale}
       />
     </div>
   );

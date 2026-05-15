@@ -77,6 +77,8 @@ export type AdminPremiumWorkspaceRow = {
   hasWelcomeMessage: boolean;
   slug: string | null;
   portalTalentCount: number;
+  isOrphan: boolean;
+  orphanReason: string | null;
   // Expanded
   agents: AdminPremiumAgentRow[];
   pendingInvites: AdminPremiumInviteRow[];
@@ -201,6 +203,7 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
   const authEmailMap = new Map<string, string>(
     (authUsers ?? []).map((u) => [u.id, u.email ?? ""])
   );
+  const authUserIdSet = new Set((authUsers ?? []).map((u) => u.id));
 
   // Profile map (userId → { plan, wallet_balance })
   const profileMap = new Map<string, { plan: string; walletBalance: number }>(
@@ -288,8 +291,20 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
       || "—";
     const ownerEmail = authEmailMap.get(ownerUserId) ?? "";
     const ownerProfile = profileMap.get(ownerUserId);
+    const ownerAgencyName = (agencyId ? agencyByIdMap.get(agencyId) : undefined) || agencyByUserIdMap.get(ownerUserId) || null;
     const ownerPlan = ownerProfile?.plan ?? "—";
     const ownerWalletBalance = ownerProfile?.walletBalance ?? 0;
+    const missingAuthUser = !authUserIdSet.has(ownerUserId);
+    const missingProfile = !ownerProfile;
+    const missingAgency = !ownerAgencyName;
+    const isOrphan = missingAuthUser || missingProfile || missingAgency;
+    const orphanReason = missingAuthUser
+      ? "Usuário deletado"
+      : missingProfile
+        ? "Perfil deletado"
+        : missingAgency
+          ? "Agência deletada"
+          : null;
 
     const wsMembers = membersByWorkspace.get(wsId) ?? [];
     const activeAgents = wsMembers.filter((m) => m.role === "agent" && m.status === "active");
@@ -371,6 +386,8 @@ export async function loadAdminPremiumData(): Promise<AdminPremiumData> {
       hasWelcomeMessage: !!(ws.welcome_message),
       slug: (ws.slug as string | null) ?? null,
       portalTalentCount: portalTalentCountMap.get(wsId) ?? 0,
+      isOrphan,
+      orphanReason,
       agents,
       pendingInvites,
       recentJobs,

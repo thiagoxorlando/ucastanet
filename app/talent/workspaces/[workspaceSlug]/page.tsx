@@ -1,22 +1,26 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createServerClient } from "@/lib/supabase";
-import { createSessionClient } from "@/lib/supabase.server";
 import { brl } from "@/lib/brl";
 import {
-  getContractPaymentStatus,
   contractStatusLabel,
   contractStatusTone,
+  getContractPaymentStatus,
   resolveContractAmounts,
 } from "@/lib/contractStatus";
+import { getServerLang, getServerT } from "@/lib/i18n/server";
 import { submissionStatusLabel, submissionStatusTone } from "@/lib/submissionStatus";
+import { createServerClient } from "@/lib/supabase";
+import { createSessionClient } from "@/lib/supabase.server";
 
 type Props = { params: Promise<{ workspaceSlug: string }> };
 
-// ── Stat card ──────────────────────────────────────────────────────────────────
-
 function StatCard({
-  label, value, sub, stripe, icon, href,
+  label,
+  value,
+  sub,
+  stripe,
+  icon,
+  href,
 }: {
   label: string;
   value: string;
@@ -35,11 +39,12 @@ function StatCard({
         <div className="min-w-0">
           <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">{label}</p>
           <p className="text-[1.5rem] font-semibold leading-none tracking-tight text-zinc-900">{value}</p>
-          {sub && <p className="mt-1 text-[11px] text-zinc-400">{sub}</p>}
+          {sub ? <p className="mt-1 text-[11px] text-zinc-400">{sub}</p> : null}
         </div>
       </div>
     </>
   );
+
   if (href) {
     return (
       <Link
@@ -50,6 +55,7 @@ function StatCard({
       </Link>
     );
   }
+
   return (
     <div className="overflow-hidden rounded-2xl border border-zinc-100 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.04),0_4px_16px_rgba(0,0,0,0.03)]">
       {inner}
@@ -57,10 +63,10 @@ function StatCard({
   );
 }
 
-// ── Section header ─────────────────────────────────────────────────────────────
-
 function SectionHeader({
-  title, href, hrefLabel,
+  title,
+  href,
+  hrefLabel,
 }: {
   title: string;
   href?: string;
@@ -69,25 +75,31 @@ function SectionHeader({
   return (
     <div className="mb-3 flex items-center justify-between">
       <h2 className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">{title}</h2>
-      {href && hrefLabel && (
-        <Link href={href} className="flex items-center gap-1 text-[12px] font-medium text-zinc-400 transition-colors hover:text-zinc-900">
+      {href && hrefLabel ? (
+        <Link
+          href={href}
+          className="flex items-center gap-1 text-[12px] font-medium text-zinc-400 transition-colors hover:text-zinc-900"
+        >
           {hrefLabel}
           <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </Link>
-      )}
+      ) : null}
     </div>
   );
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────────
-
 export default async function TalentWorkspaceDashboard({ params }: Props) {
+  const [t, lang] = await Promise.all([getServerT(), getServerLang()]);
+  const locale = lang === "en" ? "en-US" : "pt-BR";
+  const statusLang = lang === "en" ? "en" : "pt-BR";
   const { workspaceSlug } = await params;
 
   const session = await createSessionClient();
-  const { data: { user } } = await session.auth.getUser();
+  const {
+    data: { user },
+  } = await session.auth.getUser();
   if (!user) notFound();
 
   const supabase = createServerClient({ useServiceRole: true });
@@ -102,26 +114,31 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
 
   if (!workspace) notFound();
 
-  // All workspace jobs (needed for scoping + recent display)
   const { data: allJobRows } = await supabase
     .from("jobs")
     .select("id, title, budget, description, job_date, deadline, location, created_at, visibility, status")
     .eq("workspace_id", workspace.id)
     .order("created_at", { ascending: false });
 
-  const allJobIds = (allJobRows ?? []).map((j) => j.id);
-  const jobMap    = new Map((allJobRows ?? []).map((j) => [j.id, j.title ?? "Vaga"]));
+  const allJobIds = (allJobRows ?? []).map((job) => job.id);
+  const jobMap = new Map((allJobRows ?? []).map((job) => [job.id, job.title ?? t("portal_job_fallback")]));
 
   const availableJobs = (allJobRows ?? []).filter(
-    (j) => j.status === "open" && (j.visibility === "private_invite" || j.visibility === "private_portal"),
+    (job) => job.status === "open" && (job.visibility === "private_invite" || job.visibility === "private_portal"),
   );
 
   let submissions: Array<{ id: string; job_id: string; status: string; created_at: string }> = [];
   let contracts: Array<{
-    id: string; job_id: string | null; status: string | null;
-    payment_amount: number | null; net_amount: number | null;
-    commission_amount: number | null; commission_percent: number | null;
-    paid_at: string | null; job_date: string | null; created_at: string;
+    id: string;
+    job_id: string | null;
+    status: string | null;
+    payment_amount: number | null;
+    net_amount: number | null;
+    commission_amount: number | null;
+    commission_percent: number | null;
+    paid_at: string | null;
+    job_date: string | null;
+    created_at: string;
   }> = [];
 
   if (allJobIds.length) {
@@ -140,24 +157,22 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
         .order("created_at", { ascending: false }),
     ]);
     submissions = (subsRes.data ?? []) as typeof submissions;
-    contracts   = (contractsRes.data ?? []) as typeof contracts;
+    contracts = (contractsRes.data ?? []) as typeof contracts;
   }
 
-  const activeContracts = contracts.filter((c) => ["sent", "signed", "confirmed"].includes(c.status ?? ""));
-  const paidContracts   = contracts.filter((c) => c.status === "paid");
+  const activeContracts = contracts.filter((contract) => ["sent", "signed", "confirmed"].includes(contract.status ?? ""));
+  const paidContracts = contracts.filter((contract) => contract.status === "paid");
 
-  const totalEarned = paidContracts.reduce((s, c) => {
-    const { net } = resolveContractAmounts(c as Parameters<typeof resolveContractAmounts>[0]);
-    return s + net;
+  const totalEarned = paidContracts.reduce((sum, contract) => {
+    const { net } = resolveContractAmounts(contract as Parameters<typeof resolveContractAmounts>[0]);
+    return sum + net;
   }, 0);
 
   const primary = (workspace.brand_primary_color as string | null) ?? "#1ABC9C";
-  const accent  = (workspace.brand_accent_color  as string | null) ?? "#27C1D6";
+  const accent = (workspace.brand_accent_color as string | null) ?? "#27C1D6";
 
   return (
     <div className="max-w-5xl space-y-8">
-
-      {/* ── Agency welcome card ── */}
       <div
         className="relative overflow-hidden rounded-[28px] border border-zinc-200 p-6 shadow-[0_12px_34px_rgba(15,23,42,0.06)]"
         style={{ background: `linear-gradient(135deg, ${primary}1a, ${accent}0d)` }}
@@ -168,7 +183,7 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={workspace.logo_url as string}
-                alt={workspace.name as string}
+                alt={`${workspace.name as string} ${t("workspace_portal_premium")}`}
                 className="h-16 w-16 flex-shrink-0 rounded-2xl border border-white/60 object-cover shadow"
               />
             ) : (
@@ -180,32 +195,35 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
               </div>
             )}
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Portal Premium</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                {t("workspace_portal_premium")}
+              </p>
               <h1 className="text-[1.3rem] font-bold text-zinc-950">{workspace.name as string}</h1>
             </div>
           </div>
 
-          {workspace.welcome_message && (
+          {workspace.welcome_message ? (
             <p className="text-[13px] leading-relaxed text-zinc-600 sm:border-l sm:border-zinc-200 sm:pl-4">
               {workspace.welcome_message as string}
             </p>
-          )}
+          ) : null}
 
-          {totalEarned > 0 && (
+          {totalEarned > 0 ? (
             <div className="flex-shrink-0 sm:ml-auto sm:text-right">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Ganhos neste portal</p>
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+                {t("portal_earnings_in_portal")}
+              </p>
               <p className="mt-0.5 text-[1.2rem] font-bold text-emerald-700">{brl(totalEarned)}</p>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
-      {/* ── Stat cards ── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
-          label="Vagas disponíveis"
+          label={t("portal_available_jobs")}
           value={String(availableJobs.length)}
-          sub="abertas agora"
+          sub={t("portal_open_now")}
           href={`/talent/workspaces/${workspaceSlug}/jobs`}
           stripe="from-sky-400 to-blue-500"
           icon={
@@ -215,9 +233,9 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
           }
         />
         <StatCard
-          label="Reservas"
+          label={t("portal_reservations")}
           value={String(submissions.length)}
-          sub={submissions.length === 1 ? "candidatura" : "candidaturas"}
+          sub={t(submissions.length === 1 ? "portal_application_singular" : "portal_application_plural")}
           href={`/talent/workspaces/${workspaceSlug}/applications`}
           stripe="from-violet-400 to-purple-500"
           icon={
@@ -227,9 +245,9 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
           }
         />
         <StatCard
-          label="Contratos ativos"
+          label={t("portal_active_contracts")}
           value={String(activeContracts.length)}
-          sub="em andamento"
+          sub={t("portal_in_progress")}
           href={`/talent/workspaces/${workspaceSlug}/contracts`}
           stripe="from-amber-400 to-orange-500"
           icon={
@@ -239,9 +257,9 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
           }
         />
         <StatCard
-          label="Ganhos neste portal"
+          label={t("portal_earnings_in_portal")}
           value={brl(totalEarned)}
-          sub={`${paidContracts.length} pago${paidContracts.length !== 1 ? "s" : ""}`}
+          sub={`${paidContracts.length} ${t(paidContracts.length === 1 ? "portal_paid_singular" : "portal_paid_plural")}`}
           href={`/talent/workspaces/${workspaceSlug}/finances`}
           stripe="from-emerald-400 to-teal-500"
           icon={
@@ -252,16 +270,15 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
         />
       </div>
 
-      {/* ── Recent jobs ── */}
       <section>
         <SectionHeader
-          title="Vagas recentes"
+          title={t("portal_recent_jobs")}
           href={`/talent/workspaces/${workspaceSlug}/jobs`}
-          hrefLabel="Ver todas"
+          hrefLabel={t("workspace_view_all")}
         />
         {availableJobs.length === 0 ? (
           <div className="rounded-[22px] border border-zinc-200 bg-white px-6 py-10 text-center">
-            <p className="text-[13px] text-zinc-400">Nenhuma vaga disponível no momento.</p>
+            <p className="text-[13px] text-zinc-400">{t("portal_no_jobs_available")}</p>
           </div>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -274,19 +291,17 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
                 <div className="h-[3px]" style={{ background: `linear-gradient(to right, ${primary}, ${accent})` }} />
                 <div className="p-4">
                   <p className="truncate text-[14px] font-semibold text-zinc-900">{job.title}</p>
-                  {job.description && (
+                  {job.description ? (
                     <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-zinc-500">{job.description}</p>
-                  )}
+                  ) : null}
                   <div className="mt-2.5 flex flex-wrap gap-3 text-[12px]">
-                    {job.budget != null && (
-                      <span className="font-semibold text-emerald-600">{brl(job.budget)}</span>
-                    )}
-                    {job.job_date && (
+                    {job.budget != null ? <span className="font-semibold text-emerald-600">{brl(job.budget)}</span> : null}
+                    {job.job_date ? (
                       <span className="text-zinc-400">
-                        {new Date(`${job.job_date}T00:00:00`).toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}
+                        {new Date(`${job.job_date}T00:00:00`).toLocaleDateString(locale, { day: "numeric", month: "short" })}
                       </span>
-                    )}
-                    {job.location && <span className="text-zinc-400">{job.location}</span>}
+                    ) : null}
+                    {job.location ? <span className="text-zinc-400">{job.location}</span> : null}
                   </div>
                 </div>
               </Link>
@@ -295,26 +310,30 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
         )}
       </section>
 
-      {/* ── Recent reservations ── */}
-      {submissions.length > 0 && (
+      {submissions.length > 0 ? (
         <section>
           <SectionHeader
-            title="Reservas recentes"
+            title={t("portal_recent_reservations")}
             href={`/talent/workspaces/${workspaceSlug}/applications`}
-            hrefLabel="Ver todas"
+            hrefLabel={t("workspace_view_all")}
           />
           <div className="divide-y divide-zinc-50 overflow-hidden rounded-[22px] border border-zinc-200 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
-            {submissions.slice(0, 4).map((sub) => {
-              const label = submissionStatusLabel(String(sub.status));
-              const tone  = submissionStatusTone(String(sub.status));
+            {submissions.slice(0, 4).map((submission) => {
+              const label = submissionStatusLabel(String(submission.status), statusLang);
+              const tone = submissionStatusTone(String(submission.status));
+
               return (
-                <div key={sub.id} className="flex items-center justify-between gap-3 px-5 py-3.5">
+                <div key={submission.id} className="flex items-center justify-between gap-3 px-5 py-3.5">
                   <div className="min-w-0">
                     <p className="truncate text-[13px] font-semibold text-zinc-900">
-                      {jobMap.get(String(sub.job_id)) ?? "Vaga"}
+                      {jobMap.get(String(submission.job_id)) ?? t("portal_job_fallback")}
                     </p>
                     <p className="mt-0.5 text-[11px] text-zinc-400">
-                      {new Date(sub.created_at).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" })}
+                      {new Date(submission.created_at).toLocaleDateString(locale, {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
                     </p>
                   </div>
                   <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>
@@ -325,33 +344,37 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
             })}
           </div>
         </section>
-      )}
+      ) : null}
 
-      {/* ── Recent contracts ── */}
-      {contracts.length > 0 && (
+      {contracts.length > 0 ? (
         <section>
           <SectionHeader
-            title="Contratos recentes"
+            title={t("portal_recent_contracts")}
             href={`/talent/workspaces/${workspaceSlug}/contracts`}
-            hrefLabel="Ver todos"
+            hrefLabel={t("workspace_view_all")}
           />
           <div className="divide-y divide-zinc-50 overflow-hidden rounded-[22px] border border-zinc-200 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
             {contracts.slice(0, 4).map((contract) => {
-              const ps    = getContractPaymentStatus(contract as Parameters<typeof getContractPaymentStatus>[0]);
-              const label = contractStatusLabel(ps);
-              const tone  = contractStatusTone(ps);
+              const paymentStatus = getContractPaymentStatus(contract as Parameters<typeof getContractPaymentStatus>[0]);
+              const label = contractStatusLabel(paymentStatus, statusLang);
+              const tone = contractStatusTone(paymentStatus);
               const { net } = resolveContractAmounts(contract as Parameters<typeof resolveContractAmounts>[0]);
+
               return (
                 <div key={contract.id} className="flex items-center justify-between gap-3 px-5 py-3.5">
                   <div className="min-w-0">
                     <p className="truncate text-[13px] font-semibold text-zinc-900">
-                      {jobMap.get(String(contract.job_id)) ?? "Vaga"}
+                      {jobMap.get(String(contract.job_id)) ?? t("portal_job_fallback")}
                     </p>
                     <p className="mt-0.5 text-[11px] text-zinc-400">
                       {brl(net)} ·{" "}
                       {contract.job_date
-                        ? new Date(`${contract.job_date}T00:00:00`).toLocaleDateString("pt-BR", { day: "numeric", month: "short" })
-                        : new Date(contract.created_at).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" })}
+                        ? new Date(`${contract.job_date}T00:00:00`).toLocaleDateString(locale, { day: "numeric", month: "short" })
+                        : new Date(contract.created_at).toLocaleDateString(locale, {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
                     </p>
                   </div>
                   <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>
@@ -362,7 +385,7 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
             })}
           </div>
         </section>
-      )}
+      ) : null}
     </div>
   );
 }

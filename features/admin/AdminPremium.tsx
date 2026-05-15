@@ -117,6 +117,7 @@ type Filters = {
   branding: "all" | "with_logo" | "without_logo";
   seats: "all" | "under" | "full";
   privateJobs: "all" | "has" | "none";
+  orphan: "active_only" | "orphan" | "all";
 };
 
 function FilterBar({ filters, onChange }: { filters: Filters; onChange: (f: Filters) => void }) {
@@ -155,6 +156,11 @@ function FilterBar({ filters, onChange }: { filters: Filters; onChange: (f: Filt
         <option value="all">Todas as vagas</option>
         <option value="has">Com vagas privadas</option>
         <option value="none">Sem vagas privadas</option>
+      </select>
+      <select value={filters.orphan} onChange={(e) => set("orphan", e.target.value as Filters["orphan"])} className={selectCls}>
+        <option value="active_only">Ativos</option>
+        <option value="orphan">Órfãos</option>
+        <option value="all">Todos</option>
       </select>
     </div>
   );
@@ -652,6 +658,11 @@ function WorkspaceRow({
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-[13px] font-semibold text-zinc-900 truncate">{workspace.name}</p>
             {statusBadge(workspace.status)}
+            {workspace.isOrphan && (
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-100">
+                Workspace órfão
+              </span>
+            )}
             {workspace.hasLogo && (
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-600">Logo</span>
             )}
@@ -717,10 +728,11 @@ export default function AdminPremium({ data }: { data: AdminPremiumData }) {
     branding: "all",
     seats: "all",
     privateJobs: "all",
+    orphan: "active_only",
   });
 
   const summary = useMemo<AdminPremiumSummary>(() => {
-    const activeRows = workspaces.filter((row) => row.status === "active" && !row.deletedAt);
+    const activeRows = workspaces.filter((row) => row.status === "active" && !row.deletedAt && !row.isOrphan);
     return {
       activeWorkspaceCount: activeRows.length,
       activeAgentCount: activeRows.reduce((sum, row) => sum + row.activeAgentCount, 0),
@@ -750,6 +762,9 @@ export default function AdminPremium({ data }: { data: AdminPremiumData }) {
           ws.agents.some((a) => a.email.toLowerCase().includes(q) || a.displayName.toLowerCase().includes(q));
         if (!match) return false;
       }
+
+      if (filters.orphan === "active_only" && ws.isOrphan) return false;
+      if (filters.orphan === "orphan" && !ws.isOrphan) return false;
 
       // Branding filter
       if (filters.branding === "with_logo" && !ws.hasLogo) return false;

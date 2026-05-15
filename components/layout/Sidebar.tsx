@@ -727,7 +727,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   {portalWorkspace.name}
                 </p>
                 <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.16em] text-[#7BF0DE]">
-                  Espaco Premium
+                  {t("workspace_premium_space")}
                 </p>
               </div>
             </Link>
@@ -745,7 +745,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <button
             onClick={onClose}
             className="lg:hidden w-7 h-7 flex items-center justify-center rounded-lg text-[#B8CECA] hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
-            aria-label="Close menu"
+            aria-label={t("sidebar_close_menu")}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -784,7 +784,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: accent }}>
-                    {isWorkspaceAgent ? "Espaço Premium" : "Portal"}
+                    {isWorkspaceAgent ? t("workspace_premium_space") : t("workspace_portal_label")}
                   </p>
                   <p className="truncate text-[13px] font-bold text-white leading-tight">
                     {portalWorkspace.name}
@@ -918,7 +918,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         {isWorkspaceAgent && (
           <div className="relative px-5 py-1.5 text-center">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#4A7872]/70">
-              Powered by BrisaHub
+              {t("workspace_powered_by")}
             </p>
           </div>
         )}
@@ -946,7 +946,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               </p>
               {inferredRole === "agency" && !loading && agentName ? (
                 <p className="text-[10px] text-[#9DB8B3] truncate mt-0.5">
-                  <span className="text-[#7BF0DE] font-semibold uppercase tracking-wide">Agente</span>
+                  <span className="text-[#7BF0DE] font-semibold uppercase tracking-wide">{t("workspace_role_agent")}</span>
                   {" · "}{agentName}
                 </p>
               ) : (
@@ -972,3 +972,4 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     </>
   );
 }
+

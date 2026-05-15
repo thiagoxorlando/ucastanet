@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, type CSSProperties } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { useT } from "@/lib/LanguageContext";
 import { useUserProfile } from "@/lib/useUserProfile";
 import { useWorkspacePortal } from "@/lib/WorkspacePortalContext";
 import heroBrandImage from "@/public/landing/brisahub-hero-brand.png";
@@ -43,6 +44,7 @@ function agencyInitials(name: string) {
 export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
   const pathname = usePathname();
   const router = useRouter();
+  const { t } = useT();
   const { workspace } = useWorkspacePortal();
   const { displayName, email, initials: userInitials, avatarUrl, loading } = useUserProfile();
   const [imgError, setImgError] = useState(false);
@@ -61,7 +63,7 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
 
   const navItems: PortalNavItem[] = [
     {
-      label: "Painel",
+      label: t("nav_dashboard"),
       href: `/talent/workspaces/${workspace.slug}`,
       exact: true,
       icon: (
@@ -72,7 +74,7 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
       ),
     },
     {
-      label: "Vagas",
+      label: t("nav_jobs"),
       href: `/talent/workspaces/${workspace.slug}/jobs`,
       icon: (
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,7 +83,7 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
       ),
     },
     {
-      label: "Candidaturas",
+      label: t("workspace_portal_applications"),
       href: `/talent/workspaces/${workspace.slug}/applications`,
       icon: (
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,7 +92,7 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
       ),
     },
     {
-      label: "Contratos",
+      label: t("nav_contracts"),
       href: `/talent/workspaces/${workspace.slug}/contracts`,
       icon: (
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,7 +101,7 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
       ),
     },
     {
-      label: "Financeiro",
+      label: t("nav_finances"),
       href: `/talent/workspaces/${workspace.slug}/finances`,
       icon: (
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,7 +110,7 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
       ),
     },
     {
-      label: "Perfil",
+      label: t("nav_profile"),
       href: `/talent/workspaces/${workspace.slug}/profile`,
       icon: (
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,7 +119,7 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
       ),
     },
     {
-      label: "Suporte",
+      label: t("nav_support"),
       href: `/talent/workspaces/${workspace.slug}/support`,
       icon: (
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -201,7 +203,7 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
                 {workspace.name}
               </p>
               <p className="text-[10px] font-medium text-white/45 leading-none mt-0.5">
-                Portal Premium
+                {t("workspace_portal_premium")}
               </p>
             </div>
           </Link>
@@ -210,7 +212,7 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
           <button
             onClick={onClose}
             className="ml-2 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
-            aria-label="Fechar menu"
+            aria-label={t("sidebar_close_menu")}
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -244,7 +246,7 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
                   className="inline-block h-1.5 w-1.5 rounded-full flex-shrink-0"
                   style={{ background: primary, boxShadow: `0 0 5px ${hexToRgba(primary, 0.65)}` }}
                 />
-                Portal Exclusivo
+                {t("workspace_portal_exclusive")}
               </button>
 
               <ul className="flex flex-col gap-px">
@@ -333,7 +335,7 @@ export default function WorkspaceTalentSidebar({ isOpen, onClose }: Props) {
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            Sair
+            {t("nav_logout")}
           </button>
 
           {/* Powered by BrisaHub */}

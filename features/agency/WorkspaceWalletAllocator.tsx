@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { brl } from "@/lib/brl";
+import { useT } from "@/lib/LanguageContext";
 import type {
   WorkspaceMemberDetail,
   AgentLedgerBalance,
@@ -40,6 +41,7 @@ function AgentAllocRow({
   const [allocAmount, setAllocAmount] = useState("");
   const [allocNote, setAllocNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const { t } = useT();
 
   const initials = (member.displayName || member.email || "?")
     .split(" ")
@@ -73,9 +75,9 @@ function AgentAllocRow({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate text-[13px] font-semibold text-zinc-800">{member.displayName || member.email || member.userId}</p>
-            <span className="inline-flex items-center rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-600">Agente</span>
+            <span className="inline-flex items-center rounded-full border border-indigo-100 bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-600">{t("workspace_role_agent")}</span>
             {isSuspended ? (
-              <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500">Suspenso</span>
+              <span className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500">{t("workspace_wallet_agent_suspended")}</span>
             ) : null}
           </div>
           {member.email ? <p className="mt-0.5 text-[11px] text-zinc-500">{member.email}</p> : null}
@@ -84,19 +86,19 @@ function AgentAllocRow({
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Saldo alocado</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{t("workspace_wallet_allocated")}</p>
           <p className="mt-1 text-[13px] font-semibold text-zinc-800">{brl(ledger?.allocatedAmount ?? 0)}</p>
         </div>
         <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Comprometido</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{t("workspace_wallet_committed")}</p>
           <p className="mt-1 text-[13px] font-semibold text-amber-700">{brl(committedAmount)}</p>
         </div>
         <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Pago/Gasto</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{t("workspace_wallet_paid_spent")}</p>
           <p className="mt-1 text-[13px] font-semibold text-rose-600">{brl(ledger?.spentAmount ?? 0)}</p>
         </div>
         <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Disponivel</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{t("workspace_wallet_available")}</p>
           <p className={`mt-1 text-[13px] font-semibold ${availableAmount === 0 ? "text-rose-600" : "text-emerald-700"}`}>
             {brl(availableAmount)}
           </p>
@@ -106,16 +108,16 @@ function AgentAllocRow({
       {allocMode ? (
         <form onSubmit={submitAlloc} className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
           <p className="text-[12px] font-semibold text-zinc-700">
-            {allocMode === "allocation" ? "Adicionar saldo ao agente" : "Puxar saldo"}
+            {allocMode === "allocation" ? t("workspace_wallet_add_to_agent") : t("workspace_wallet_pull_balance")}
           </p>
           {allocMode === "allocation" && (
             <p className="text-[11px] text-zinc-500">
-              Seu saldo disponivel para alocar: <strong className="text-zinc-700">{brl(ownerUnallocated)}</strong>
+              {t("workspace_wallet_owner_available_to_allocate")} <strong className="text-zinc-700">{brl(ownerUnallocated)}</strong>
             </p>
           )}
           {allocMode === "allocation_reversal" && (
             <p className="text-[11px] text-zinc-500">
-              Saldo disponivel do agente: <strong className="text-zinc-700">{brl(availableAmount)}</strong>
+              {t("workspace_wallet_agent_available")} <strong className="text-zinc-700">{brl(availableAmount)}</strong>
             </p>
           )}
           <input
@@ -133,7 +135,7 @@ function AgentAllocRow({
             type="text"
             value={allocNote}
             onChange={(e) => setAllocNote(e.target.value)}
-            placeholder="Motivo (opcional)"
+            placeholder={t("workspace_wallet_reason_optional")}
             className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[12px] text-zinc-700 focus:outline-none"
           />
           <div className="flex gap-2">
@@ -146,14 +148,14 @@ function AgentAllocRow({
               }}
               className="flex-1 rounded-lg border border-zinc-200 bg-white py-2 text-[11px] font-semibold text-zinc-600"
             >
-              Cancelar
+              {t("action_cancel")}
             </button>
             <button
               type="submit"
               disabled={saving || !allocAmount}
               className={`flex-1 rounded-lg py-2 text-[11px] font-semibold text-white disabled:opacity-40 ${allocMode === "allocation" ? "bg-emerald-500 hover:bg-emerald-600" : "bg-rose-500 hover:bg-rose-600"}`}
             >
-              {saving ? "Salvando..." : allocMode === "allocation" ? "Adicionar saldo" : "Puxar saldo"}
+              {saving ? t("workspace_wallet_saving") : allocMode === "allocation" ? t("workspace_wallet_add_balance") : t("workspace_wallet_pull_balance")}
             </button>
           </div>
         </form>
@@ -169,7 +171,7 @@ function AgentAllocRow({
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Adicionar saldo
+              {t("workspace_wallet_add_balance")}
             </button>
             <button
               type="button"
@@ -188,12 +190,12 @@ function AgentAllocRow({
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
               </svg>
-              Puxar saldo
+              {t("workspace_wallet_pull_balance")}
             </button>
           </div>
           {!canReclaim ? (
             <p className="text-[11px] text-zinc-500">
-              Sem saldo disponivel para puxar. Este agente tem {brl(committedAmount)} comprometido em vagas.
+              {t("workspace_wallet_no_balance_to_pull_prefix")} {brl(committedAmount)} {t("workspace_wallet_no_balance_to_pull_suffix")}
             </p>
           ) : null}
         </div>
@@ -204,6 +206,7 @@ function AgentAllocRow({
 
 export default function WorkspaceWalletAllocator({ agents, initialLedgerBalances, initialOwnerSummary }: Props) {
   const router = useRouter();
+  const { t } = useT();
   const [ledgerMap, setLedgerMap] = useState<Map<string, AgentLedgerBalance>>(
     new Map(initialLedgerBalances.map((balance) => [balance.agentUserId, balance])),
   );
@@ -238,17 +241,17 @@ export default function WorkspaceWalletAllocator({ agents, initialLedgerBalances
         });
       }
       if (data.ownerSummary) setOwnerSummary(data.ownerSummary);
-      showToast(type === "allocation" ? "Saldo adicionado ao agente." : "Saldo puxado de volta para o proprietario.", true);
+      showToast(type === "allocation" ? t("workspace_wallet_added_success") : t("workspace_wallet_reclaimed_success"), true);
       router.refresh();
     } else {
-      showToast(data.error ?? "Erro ao processar alocacao.", false);
+      showToast(data.error ?? t("workspace_wallet_allocation_error"), false);
     }
   }
 
   if (agents.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-5 py-6 text-center">
-        <p className="text-[14px] text-zinc-500">Nenhum agente ativo. Convide agentes na pagina de Agentes.</p>
+        <p className="text-[14px] text-zinc-500">{t("workspace_wallet_no_agents")}</p>
       </div>
     );
   }
@@ -268,7 +271,7 @@ export default function WorkspaceWalletAllocator({ agents, initialLedgerBalances
         />
       ))}
       <p className="text-[12px] text-zinc-400">
-        Total comprometido em vagas ativas: <strong className="text-zinc-600">{brl(totalCommitted)}</strong>
+        {t("workspace_wallet_total_committed")} <strong className="text-zinc-600">{brl(totalCommitted)}</strong>
       </p>
     </div>
   );

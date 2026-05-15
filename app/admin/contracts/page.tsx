@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { createServerClient } from "@/lib/supabase";
-import { buildContractFileAccessUrl } from "@/lib/contractFiles";
 import AdminContracts from "@/features/admin/AdminContracts";
 import type { AdminContractRow } from "@/features/admin/AdminContracts";
+import { buildContractFileAccessUrl } from "@/lib/contractFiles";
+import { createServerClient } from "@/lib/supabase";
 
-export const metadata: Metadata = { title: "Administração — Contratos — BrisaHub" };
+export const metadata: Metadata = { title: "Administracao - Contratos - BrisaHub" };
 
 export default async function AdminContractsPage() {
   const supabase = createServerClient({ useServiceRole: true });
@@ -15,76 +15,72 @@ export default async function AdminContractsPage() {
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
-  const contracts_data = rows ?? [];
+  const contractRows = rows ?? [];
+  const talentIds = [...new Set(contractRows.map((contract) => contract.talent_id).filter(Boolean))] as string[];
+  const agencyIds = [...new Set(contractRows.map((contract) => contract.agency_id).filter(Boolean))] as string[];
+  const jobIds = [...new Set(contractRows.map((contract) => contract.job_id).filter(Boolean))] as string[];
 
-  const talentIds = [...new Set(contracts_data.map((c) => c.talent_id).filter(Boolean))] as string[];
-  const agencyIds = [...new Set(contracts_data.map((c) => c.agency_id).filter(Boolean))] as string[];
-
-  const [talentRes, agencyRes] = await Promise.all([
-    talentIds.length
-      ? supabase.from("talent_profiles").select("id, full_name").in("id", talentIds)
-      : Promise.resolve({ data: [] }),
-    agencyIds.length
-      ? supabase.from("agencies").select("id, company_name").in("id", agencyIds)
-      : Promise.resolve({ data: [] }),
+  const [talentRes, agencyRes, jobsRes, authUsersRes, profilesRes] = await Promise.all([
+    talentIds.length ? supabase.from("talent_profiles").select("id, full_name").in("id", talentIds) : Promise.resolve({ data: [] }),
+    agencyIds.length ? supabase.from("agencies").select("id, user_id, company_name").in("id", agencyIds) : Promise.resolve({ data: [] }),
+    jobIds.length ? supabase.from("jobs").select("id, title, workspace_id").in("id", jobIds) : Promise.resolve({ data: [] }),
+    supabase.auth.admin.listUsers({ perPage: 1000 }),
+    supabase.from("profiles").select("id").is("deleted_at", null),
   ]);
 
+  const validUserIds = new Set((authUsersRes.data?.users ?? []).map((user) => user.id));
+  const validProfileIds = new Set((profilesRes.data ?? []).map((profile) => profile.id));
   const talentMap = new Map<string, string>();
   const agencyMap = new Map<string, string>();
-  for (const t of talentRes.data ?? []) talentMap.set(t.id, t.full_name ?? "Sem nome");
-  for (const a of agencyRes.data ?? []) agencyMap.set(a.id, a.company_name ?? "Sem nome");
-
-  // Resolve job titles + workspace info
-  const jobIds = [...new Set(contracts_data.map((c) => c.job_id).filter(Boolean))] as string[];
   const jobMap = new Map<string, string>();
   const contractJobWorkspaceIdMap = new Map<string, string | null>();
-  if (jobIds.length) {
-    const { data: jobs } = await supabase.from("jobs").select("id, title, workspace_id").in("id", jobIds);
-    for (const j of jobs ?? []) {
-      jobMap.set(j.id, j.title ?? "Untitled Job");
-      contractJobWorkspaceIdMap.set(j.id, (j as { workspace_id?: string | null }).workspace_id ?? null);
-    }
+
+  for (const talent of talentRes.data ?? []) talentMap.set(talent.id, talent.full_name ?? "Talento órfão / usuário deletado");
+  for (const agency of agencyRes.data ?? []) {
+    const ownerId = (agency as { user_id?: string | null }).user_id ?? agency.id;
+    const isOrphan = !ownerId || !validUserIds.has(ownerId) || !validProfileIds.has(ownerId);
+    agencyMap.set(agency.id, isOrphan ? "Agência órfã / usuário deletado" : agency.company_name ?? "Agência sem nome");
+  }
+  for (const job of jobsRes.data ?? []) {
+    jobMap.set(job.id, job.title ?? "Untitled Job");
+    contractJobWorkspaceIdMap.set(job.id, (job as { workspace_id?: string | null }).workspace_id ?? null);
   }
 
-  // Workspace names for premium contracts
-  const contractWorkspaceIds = [...new Set([...contractJobWorkspaceIdMap.values()].filter((id): id is string => !!id))];
+  const contractWorkspaceIds = [...new Set([...contractJobWorkspaceIdMap.values()].filter((id): id is string => Boolean(id)))];
   const contractWorkspaceNameMap = new Map<string, string>();
   if (contractWorkspaceIds.length) {
-    const { data: wsData } = await supabase
-      .from("premium_workspaces")
-      .select("id, name")
-      .in("id", contractWorkspaceIds);
-    for (const ws of wsData ?? []) contractWorkspaceNameMap.set(ws.id, ws.name ?? "Premium");
+    const { data: workspaces } = await supabase.from("premium_workspaces").select("id, name").in("id", contractWorkspaceIds);
+    for (const workspace of workspaces ?? []) contractWorkspaceNameMap.set(workspace.id, workspace.name ?? "Workspace órfão");
   }
 
-  const contracts: AdminContractRow[] = contracts_data.map((c) => {
-    const wsId = c.job_id ? (contractJobWorkspaceIdMap.get(c.job_id) ?? null) : null;
+  const contracts: AdminContractRow[] = contractRows.map((contract) => {
+    const workspaceId = contract.job_id ? (contractJobWorkspaceIdMap.get(contract.job_id) ?? null) : null;
     return {
-    id:              c.id,
-    jobId:           c.job_id          ?? null,
-    jobTitle:        c.job_id ? (jobMap.get(c.job_id) ?? "Untitled Job") : "Untitled Job",
-    talentId:        c.talent_id       ?? null,
-    talentName:      c.talent_id ? (talentMap.get(c.talent_id) ?? "Sem nome")  : "Sem nome",
-    agencyName:      c.agency_id ? (agencyMap.get(c.agency_id) ?? "Sem nome") : "—",
-    workspaceId:     wsId,
-    workspaceName:   wsId ? (contractWorkspaceNameMap.get(wsId) ?? "Premium") : null,
-    jobDate:         c.job_date        ?? null,
-    jobTime:         c.job_time        ?? null,
-    location:        c.location        ?? null,
-    jobDescription:  c.job_description ?? null,
-    paymentAmount:   c.payment_amount  ?? 0,
-    paymentMethod:   c.payment_method  ?? null,
-    additionalNotes: c.additional_notes ?? null,
-    status:          c.status          ?? "sent",
-    paymentStatus:   c.payment_status  ?? "pending",
-    createdAt:       c.created_at      ?? "",
-    signedAt:        c.signed_at       ?? null,
-    agencySignedAt:  c.agency_signed_at ?? null,
-    depositPaidAt:     c.deposit_paid_at    ?? null,
-    paidAt:            c.paid_at            ?? null,
-    contractFileUrl:   c.contract_file_url ? buildContractFileAccessUrl(c.id, "original") : null,
-    signedContractUrl: c.signed_contract_url ? buildContractFileAccessUrl(c.id, "signed") : null,
-  };
+      id: contract.id,
+      jobId: contract.job_id ?? null,
+      jobTitle: contract.job_id ? (jobMap.get(contract.job_id) ?? "Job órfão") : "Job órfão",
+      talentId: contract.talent_id ?? null,
+      talentName: contract.talent_id ? (talentMap.get(contract.talent_id) ?? "Talento órfão / usuário deletado") : "Talento órfão / usuário deletado",
+      agencyName: contract.agency_id ? (agencyMap.get(contract.agency_id) ?? "Agência órfã / usuário deletado") : "—",
+      workspaceId,
+      workspaceName: workspaceId ? (contractWorkspaceNameMap.get(workspaceId) ?? "Workspace órfão") : null,
+      jobDate: contract.job_date ?? null,
+      jobTime: contract.job_time ?? null,
+      location: contract.location ?? null,
+      jobDescription: contract.job_description ?? null,
+      paymentAmount: contract.payment_amount ?? 0,
+      paymentMethod: contract.payment_method ?? null,
+      additionalNotes: contract.additional_notes ?? null,
+      status: contract.status ?? "sent",
+      paymentStatus: contract.payment_status ?? "pending",
+      createdAt: contract.created_at ?? "",
+      signedAt: contract.signed_at ?? null,
+      agencySignedAt: contract.agency_signed_at ?? null,
+      depositPaidAt: contract.deposit_paid_at ?? null,
+      paidAt: contract.paid_at ?? null,
+      contractFileUrl: contract.contract_file_url ? buildContractFileAccessUrl(contract.id, "original") : null,
+      signedContractUrl: contract.signed_contract_url ? buildContractFileAccessUrl(contract.id, "signed") : null,
+    };
   });
 
   return <AdminContracts contracts={contracts} />;

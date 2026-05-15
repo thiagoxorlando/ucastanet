@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useT } from "@/lib/LanguageContext";
 
 export default function WorkspacePrivateInviteButton({ jobId }: { jobId: string }) {
+  const { t } = useT();
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -27,7 +29,7 @@ export default function WorkspacePrivateInviteButton({ jobId }: { jobId: string 
       disabled={loading}
       className="inline-flex items-center rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-[12px] font-semibold text-violet-700 transition-colors hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-50"
     >
-      {loading ? "..." : copied ? "Copiado!" : "Copiar convite privado"}
+      {loading ? "..." : copied ? t("workspace_private_invite_copied") : t("workspace_private_invite_copy")}
     </button>
   );
 }

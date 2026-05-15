@@ -14,7 +14,7 @@ export default async function AdminNotificationsPage() {
     Promise.resolve(
       supabase
         .from("admin_notification_broadcasts")
-        .select("id, admin_id, title, message, audience, target_user_id, link, sent_count, created_at")
+        .select("id, admin_id, title, message, audience, target_user_id, link, sent_count, created_at, archived_at, deleted_at")
         .order("created_at", { ascending: false })
         .limit(50),
     ).then((r) => r).catch(() => ({ data: null, error: null })),
@@ -30,6 +30,7 @@ export default async function AdminNotificationsPage() {
   ]);
 
   const emailMap = new Map<string, string>(authUsersResult.map((u) => [u.id, u.email ?? ""]));
+  const authUserIdSet = new Set(authUsersResult.map((u) => u.id));
 
   const [agenciesResult] = await Promise.all([
     supabase
@@ -52,7 +53,9 @@ export default async function AdminNotificationsPage() {
     (talentsResult.data ?? []).map((t) => [t.id as string, t.full_name as string ?? ""]),
   );
 
-  const users: UserOption[] = (profilesResult.data ?? []).map((p) => {
+  const users: UserOption[] = (profilesResult.data ?? [])
+    .filter((p) => authUserIdSet.has(p.id as string))
+    .map((p) => {
     const id = p.id as string;
     const role = p.role as "agency" | "talent";
     const email = emailMap.get(id) ?? "";
@@ -71,11 +74,14 @@ export default async function AdminNotificationsPage() {
     audience:       row.audience as string,
     targetUserId:   row.target_user_id as string | null,
     targetUserName: row.target_user_id
-      ? users.find((u) => u.id === row.target_user_id)?.name ?? null
+      ? users.find((u) => u.id === row.target_user_id)?.name ?? (authUserIdSet.has(row.target_user_id as string) ? null : "Usuário deletado")
       : null,
     link:           row.link as string | null,
     sentCount:      Number(row.sent_count ?? 0),
     createdAt:      row.created_at as string,
+    archivedAt:     (row as { archived_at?: string | null }).archived_at ?? null,
+    deletedAt:      (row as { deleted_at?: string | null }).deleted_at ?? null,
+    isOrphanTarget: !!row.target_user_id && !authUserIdSet.has(row.target_user_id as string),
   }));
 
   return <AdminNotifications users={users} broadcasts={broadcasts} />;

@@ -28,6 +28,8 @@ type AgencyRow = {
   deleted_at: string | null;
 };
 
+type AuthUserRow = { id: string; email?: string };
+
 type PlanChargeRow = {
   id: string;
   user_id: string;
@@ -143,10 +145,11 @@ export default async function AdminPlansPage() {
       .catch(() => ({ data: [] as PlanHistoryRow[] })),
     Promise.resolve(supabase.auth.admin.listUsers({ perPage: 1000 }))
       .then((r) => (r.data?.users ?? []) as { id: string; email?: string }[])
-      .catch(() => [] as { id: string; email?: string }[]),
+      .catch(() => [] as AuthUserRow[]),
   ]);
 
   const emailMap = new Map<string, string>(authUsers.map((u) => [u.id, u.email ?? ""]));
+  const authUserIdSet = new Set(authUsers.map((u) => u.id));
 
   const agencyMap = new Map<string, AgencyRow>();
   for (const agency of (agencies ?? []) as AgencyRow[]) {
@@ -183,6 +186,17 @@ export default async function AdminPlansPage() {
       const agency = agencyMap.get(profile.id);
       const currentPlan = parsePlan(profile.plan);
       const agencyCharges = chargesByUser.get(profile.id) ?? [];
+      const hasValidOwnerUser = authUserIdSet.has(profile.id);
+      const hasValidProfile = !profile.deleted_at;
+      const hasAgencyRow = !!agency;
+      const isOrphan = !hasValidOwnerUser || !hasValidProfile || !hasAgencyRow;
+      const orphanReason = !hasValidOwnerUser
+        ? "Usuário deletado"
+        : !hasValidProfile
+          ? "Perfil deletado"
+          : !hasAgencyRow
+            ? "Agência deletada"
+            : null;
 
       const paidCharges = agencyCharges.filter((c) => normalizeStatus(c.status) === "paid");
       const pendingCharges = agencyCharges.filter((c) => {
@@ -209,12 +223,13 @@ export default async function AdminPlansPage() {
       const accountActive =
         !profile.deleted_at &&
         !profile.is_frozen &&
-        !!agency;
+        !!agency &&
+        hasValidOwnerUser;
 
       return {
         id: profile.id,
         email: emailMap.get(profile.id) ?? null,
-        agencyName: agency?.company_name?.trim() || "Agencia sem nome",
+        agencyName: agency?.company_name?.trim() || (isOrphan ? "Agência órfã" : "Agencia sem nome"),
         contactName: agency?.contact_name?.trim() || null,
         currentPlan,
         currentPlanLabel: getPlanLabel(currentPlan),
@@ -230,27 +245,29 @@ export default async function AdminPlansPage() {
         pendingCharges: pendingCharges.map(serializeCharge),
         failedCharges: failedCharges.map(serializeCharge),
         activeJobCount: activeJobCountMap.get(profile.id) ?? 0,
+        isOrphan,
+        orphanReason,
       };
     })
     .sort((a, b) => a.agencyName.localeCompare(b.agencyName, "pt-BR"));
 
   const activeByPlan = {
-    free: agenciesData.filter((a) => a.currentPlan === "free" && a.accountActive).length,
-    pro: agenciesData.filter((a) => a.currentPlan === "pro" && a.accountActive).length,
-    premium: agenciesData.filter((a) => a.currentPlan === "premium" && a.accountActive).length,
+    free: agenciesData.filter((a) => a.currentPlan === "free" && a.accountActive && !a.isOrphan).length,
+    pro: agenciesData.filter((a) => a.currentPlan === "pro" && a.accountActive && !a.isOrphan).length,
+    premium: agenciesData.filter((a) => a.currentPlan === "premium" && a.accountActive && !a.isOrphan).length,
   };
 
   const summary = {
-    freeCount: agenciesData.filter((a) => a.currentPlan === "free").length,
-    proCount: agenciesData.filter((a) => a.currentPlan === "pro").length,
-    premiumCount: agenciesData.filter((a) => a.currentPlan === "premium").length,
-    totalRevenuePaid: agenciesData.reduce((sum, a) => sum + a.totalPaid, 0),
-    pendingChargeCount: agenciesData.reduce((sum, a) => sum + a.pendingCharges.length, 0),
+    freeCount: agenciesData.filter((a) => a.currentPlan === "free" && !a.isOrphan).length,
+    proCount: agenciesData.filter((a) => a.currentPlan === "pro" && !a.isOrphan).length,
+    premiumCount: agenciesData.filter((a) => a.currentPlan === "premium" && !a.isOrphan).length,
+    totalRevenuePaid: agenciesData.filter((a) => !a.isOrphan).reduce((sum, a) => sum + a.totalPaid, 0),
+    pendingChargeCount: agenciesData.filter((a) => !a.isOrphan).reduce((sum, a) => sum + a.pendingCharges.length, 0),
     pendingChargeAmount: agenciesData.reduce(
-      (sum, a) => sum + a.pendingCharges.reduce((inner, c) => inner + c.amount, 0),
+      (sum, a) => sum + (!a.isOrphan ? a.pendingCharges.reduce((inner, c) => inner + c.amount, 0) : 0),
       0,
     ),
-    failedChargeCount: agenciesData.reduce((sum, a) => sum + a.failedCharges.length, 0),
+    failedChargeCount: agenciesData.filter((a) => !a.isOrphan).reduce((sum, a) => sum + a.failedCharges.length, 0),
   };
 
   const planSettings: PlanSetting[] = planSettingsResult.data.map((row) => ({

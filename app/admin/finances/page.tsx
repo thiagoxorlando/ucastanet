@@ -49,6 +49,7 @@ async function fetchContracts(supabase: ReturnType<typeof createServerClient>) {
   const withAllColumns = await supabase
     .from("contracts")
     .select("id, job_id, talent_id, agency_id, payment_amount, commission_amount, net_amount, status, created_at, paid_at")
+    .is("deleted_at", null)
     .in("status", ["confirmed", "paid"])
     .order("created_at", { ascending: false });
 
@@ -59,6 +60,7 @@ async function fetchContracts(supabase: ReturnType<typeof createServerClient>) {
   const legacyColumns = await supabase
     .from("contracts")
     .select("id, job_id, talent_id, agency_id, payment_amount, status, created_at, paid_at")
+    .is("deleted_at", null)
     .in("status", ["confirmed", "paid"])
     .order("created_at", { ascending: false });
 
@@ -84,6 +86,8 @@ export default async function AdminFinancesPage() {
     { data: talentWalletsData },
     { data: depositsData },
     liveSettings,
+    authUsersResult,
+    validProfilesResult,
   ] = await Promise.all([
     supabase
       .from("bookings")
@@ -93,6 +97,7 @@ export default async function AdminFinancesPage() {
           commission_amount
         )
       `)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false }),
     supabase
       .from("submissions")
@@ -114,7 +119,7 @@ export default async function AdminFinancesPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("agencies")
-      .select("id, company_name, pix_key_type, pix_key_value, pix_holder_name")
+      .select("id, user_id, company_name, pix_key_type, pix_key_value, pix_holder_name")
       .is("deleted_at", null),
     fetchContracts(supabase),
     supabase
@@ -134,7 +139,12 @@ export default async function AdminFinancesPage() {
       .eq("type", "deposit")
       .order("created_at", { ascending: false }),
     getLivePlanSettings(),
+    supabase.auth.admin.listUsers({ perPage: 1000 }),
+    supabase.from("profiles").select("id").is("deleted_at", null),
   ]);
+
+  const validUserIds = new Set((authUsersResult.data?.users ?? []).map((user) => user.id));
+  const validProfileIds = new Set((validProfilesResult.data ?? []).map((profile) => profile.id));
 
   const depositUserIds = [...new Set((depositsData ?? []).map((d) => d.user_id).filter(Boolean))] as string[];
   const depositNameMap = new Map<string, { name: string; role: string }>();
@@ -154,11 +164,13 @@ export default async function AdminFinancesPage() {
     depositUserIds.length
       ? supabase
           .from("agencies")
-          .select("id, company_name")
+          .select("id, user_id, company_name")
           .in("id", depositUserIds)
           .then(({ data }) => {
             for (const a of data ?? []) {
               const existing = depositNameMap.get(a.id);
+              const ownerId = (a as { user_id?: string | null }).user_id ?? a.id;
+              const isOrphan = !ownerId || !validUserIds.has(ownerId) || !validProfileIds.has(ownerId);
               depositNameMap.set(a.id, { name: a.company_name ?? "Agência", role: existing?.role ?? "agency" });
             }
           })
@@ -252,11 +264,13 @@ export default async function AdminFinancesPage() {
     contractAgencyIds.length
       ? supabase
           .from("agencies")
-          .select("id, company_name")
+          .select("id, user_id, company_name")
           .in("id", contractAgencyIds)
           .then(({ data }) => {
             for (const agency of data ?? []) {
-              contractAgencyMap.set(agency.id, agency.company_name ?? "Sem nome");
+              const ownerId = (agency as { user_id?: string | null }).user_id ?? agency.id;
+              const isOrphan = !ownerId || !validUserIds.has(ownerId) || !validProfileIds.has(ownerId);
+              contractAgencyMap.set(agency.id, isOrphan ? "Agência órfã / usuário deletado" : (agency.company_name ?? "Sem nome"));
             }
           })
       : Promise.resolve(),
@@ -354,7 +368,7 @@ export default async function AdminFinancesPage() {
     return {
       id: booking.id,
       jobTitle: booking.job_title ?? job?.title ?? "-",
-      talentName: booking.talent_user_id ? (talentMap.get(booking.talent_user_id) ?? "Sem nome") : "Sem nome",
+      talentName: booking.talent_user_id ? (talentMap.get(booking.talent_user_id) ?? "Talento órfão / usuário deletado") : "Talento órfão / usuário deletado",
       price,
       status: booking.status ?? "pending",
       created_at: booking.created_at ?? "",
@@ -364,7 +378,7 @@ export default async function AdminFinancesPage() {
       referralAmount,
       netPlatformAmount: commissionAmount - referralAmount,
       workspaceId:   bWsId,
-      workspaceName: bWsId ? (financesWorkspaceNameMap.get(bWsId) ?? "Premium") : null,
+      workspaceName: bWsId ? (financesWorkspaceNameMap.get(bWsId) ?? "Workspace órfão") : null,
     };
   });
 
@@ -383,9 +397,9 @@ export default async function AdminFinancesPage() {
     const cWsId = contract.job_id ? (contractJobWorkspaceIdMap.get(contract.job_id) ?? null) : null;
     return {
       id: contract.id,
-      jobTitle: contract.job_id ? (contractJobMap.get(contract.job_id) ?? "Untitled Job") : "Untitled Job",
-      talentName: contract.talent_id ? (contractTalentMap.get(contract.talent_id) ?? "Sem nome") : "Sem nome",
-      agencyName: contract.agency_id ? (contractAgencyMap.get(contract.agency_id) ?? "Sem nome") : "-",
+      jobTitle: contract.job_id ? (contractJobMap.get(contract.job_id) ?? "Job órfão") : "Job órfão",
+      talentName: contract.talent_id ? (contractTalentMap.get(contract.talent_id) ?? "Talento órfão / usuário deletado") : "Talento órfão / usuário deletado",
+      agencyName: contract.agency_id ? (contractAgencyMap.get(contract.agency_id) ?? "Agência órfã / usuário deletado") : "-",
       agencyPlan,
       amount,
       commissionAmount,
@@ -394,7 +408,7 @@ export default async function AdminFinancesPage() {
       created_at: contract.created_at ?? "",
       paid_at: contract.paid_at ?? null,
       workspaceId:   cWsId,
-      workspaceName: cWsId ? (financesWorkspaceNameMap.get(cWsId) ?? "Premium") : null,
+      workspaceName: cWsId ? (financesWorkspaceNameMap.get(cWsId) ?? "Workspace órfão") : null,
     };
   });
 
@@ -428,7 +442,9 @@ export default async function AdminFinancesPage() {
   const allAgencyNameMap = new Map<string, string>();
   const agencyPixMap     = new Map<string, { pix_key_type: string | null; pix_key_value: string | null; pix_holder_name: string | null }>();
   for (const agency of allAgenciesData ?? []) {
-    allAgencyNameMap.set(agency.id, agency.company_name ?? "");
+    const ownerId = (agency as { user_id?: string | null }).user_id ?? agency.id;
+    const isOrphan = !ownerId || !validUserIds.has(ownerId) || !validProfileIds.has(ownerId);
+    allAgencyNameMap.set(agency.id, isOrphan ? "Agência órfã / usuário deletado" : (agency.company_name ?? ""));
     agencyPixMap.set(agency.id, {
       pix_key_type:   (agency as Record<string, unknown>).pix_key_type   as string | null ?? null,
       pix_key_value:  (agency as Record<string, unknown>).pix_key_value  as string | null ?? null,

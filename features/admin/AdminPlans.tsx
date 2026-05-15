@@ -38,6 +38,8 @@ export type AdminPlansAgency = {
   pendingCharges: AdminPlansCharge[];
   failedCharges: AdminPlansCharge[];
   activeJobCount: number;
+  isOrphan: boolean;
+  orphanReason: string | null;
 };
 
 export type PlanSetting = {
@@ -672,6 +674,7 @@ export default function AdminPlans({ agencies, summary, planSettings, planHistor
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState<"all" | Plan>("all");
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_OPTIONS)[number]>("all");
+  const [ownerFilter, setOwnerFilter] = useState<"active_only" | "orphan" | "all">("active_only");
   const [expandedAgencyId, setExpandedAgencyId] = useState<string | null>(agencies[0]?.id ?? null);
 
   const freeJobLimit = planSettings.find((s) => s.plan_key === "free")?.job_limit ?? 1;
@@ -691,7 +694,11 @@ export default function AdminPlans({ agencies, summary, planSettings, planHistor
       (statusFilter === "canceled" && agency.planStatus === "cancelled") ||
       (statusFilter === "past_due" && agency.planStatus === "overdue") ||
       (statusFilter === "overdue" && agency.planStatus === "past_due");
-    return matchesSearch && matchesPlan && matchesStatus;
+    const matchesOwner =
+      ownerFilter === "all" ||
+      (ownerFilter === "active_only" && !agency.isOrphan) ||
+      (ownerFilter === "orphan" && agency.isOrphan);
+    return matchesSearch && matchesPlan && matchesStatus && matchesOwner;
   });
 
   return (
@@ -738,7 +745,7 @@ export default function AdminPlans({ agencies, summary, planSettings, planHistor
 
       {/* Filter bar */}
       <div className="card p-5">
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.5fr)_220px_220px]">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.5fr)_220px_220px_220px]">
           <div className="flex items-center gap-2 rounded-xl border border-[#DDE6E6] bg-white px-3 py-2.5 focus-within:border-[#1ABC9C] focus-within:ring-2 focus-within:ring-[#1ABC9C]/20 transition-colors">
             <svg className="h-4 w-4 text-[#7FA9A8] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -758,6 +765,11 @@ export default function AdminPlans({ agencies, summary, planSettings, planHistor
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>{s === "all" ? "Todos os status" : planStatusLabel(s)}</option>
             ))}
+          </select>
+          <select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value as "active_only" | "orphan" | "all")} className="input-base">
+            <option value="active_only">Apenas válidas</option>
+            <option value="orphan">Apenas órfãs</option>
+            <option value="all">Todas</option>
           </select>
         </div>
       </div>
@@ -780,6 +792,11 @@ export default function AdminPlans({ agencies, summary, planSettings, planHistor
                     <div className="flex items-center gap-2 flex-wrap">
                       <h2 className="text-[16px] font-semibold text-[#1F2D2E]">{agency.agencyName}</h2>
                       <span className={agency.accountActive ? "badge-success" : "badge-error"}>{agency.accountActive ? "Ativo" : "Inativo"}</span>
+                      {agency.isOrphan ? (
+                        <span className="inline-flex items-center rounded-full bg-rose-50 border border-rose-200 px-2.5 py-0.5 text-[11px] font-semibold text-rose-700">
+                          Agência órfã
+                        </span>
+                      ) : null}
                       <span className="badge-info">{agency.currentPlanLabel}</span>
                       {agency.currentPlan === "free" && freeJobLimit !== null && agency.activeJobCount >= freeJobLimit && (
                         <span className="inline-flex items-center rounded-full bg-orange-50 border border-orange-200 px-2.5 py-0.5 text-[11px] font-semibold text-orange-700">

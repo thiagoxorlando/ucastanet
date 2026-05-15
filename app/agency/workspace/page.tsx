@@ -2,24 +2,25 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { createSessionClient } from "@/lib/supabase.server";
-import { createServerClient } from "@/lib/supabase";
+import { brl } from "@/lib/brl";
+import { getServerLang, getServerT } from "@/lib/i18n/server";
+import { jobStatusLabel, jobStatusTone } from "@/lib/jobStatus";
+import { getLivePlanSetting } from "@/lib/planSettings.server";
+import { premiumSeatHighlights } from "@/lib/planSettings.shared";
 import {
   ensurePremiumWorkspaceForAgency,
-  getUserPremiumWorkspace,
   getAgentLedgerBalance,
+  getUserPremiumWorkspace,
   getWorkspaceMembers,
   getWorkspacePendingInvites,
   getWorkspaceSeatUsage,
   type PremiumMembership,
   type PremiumWorkspace,
 } from "@/lib/premiumWorkspace.server";
-import { jobStatusLabel, jobStatusTone } from "@/lib/jobStatus";
-import { brl } from "@/lib/brl";
-import { getLivePlanSetting } from "@/lib/planSettings.server";
-import { premiumSeatHighlights } from "@/lib/planSettings.shared";
+import { createServerClient } from "@/lib/supabase";
+import { createSessionClient } from "@/lib/supabase.server";
 
-export const metadata: Metadata = { title: "Espaço Premium — BrisaHub" };
+export const metadata: Metadata = { title: "Espaco Premium - BrisaHub" };
 
 type WorkspaceJob = {
   id: string;
@@ -33,6 +34,8 @@ type WorkspaceJob = {
   createdByUserId: string | null;
 };
 
+type TFn = (key: string) => string;
+
 function FeatureChip({ children }: { children: ReactNode }) {
   return (
     <span className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold text-white/80">
@@ -41,7 +44,7 @@ function FeatureChip({ children }: { children: ReactNode }) {
   );
 }
 
-function LockedScreen({ premiumAvailable }: { premiumAvailable: boolean }) {
+function LockedScreen({ premiumAvailable, t }: { premiumAvailable: boolean; t: TFn }) {
   const premiumHighlights = premiumSeatHighlights({
     plan_key: "premium",
     included_agent_seats: 2,
@@ -53,34 +56,34 @@ function LockedScreen({ premiumAvailable }: { premiumAvailable: boolean }) {
       <div className="bg-[radial-gradient(circle_at_top_left,rgba(26,188,156,0.30),transparent_36%),linear-gradient(135deg,#082326_0%,#0C2E33_45%,#143C43_100%)] px-6 py-10 text-white sm:px-10">
         <div className="max-w-3xl space-y-5">
           <div className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
-            Espaço Premium
+            {t("workspace_premium_space")}
           </div>
           <div className="space-y-3">
             <h1 className="text-[2rem] font-bold tracking-tight sm:text-[2.6rem]">
-              Espaço Premium
+              {t("workspace_premium_space")}
             </h1>
             <p className="max-w-2xl text-[15px] leading-7 text-white/72">
-              Crie um ambiente privado para sua agência, gerencie agentes, envie convites exclusivos e acompanhe toda a operação em um só lugar.
+              {t("workspace_locked_description")}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <FeatureChip>Proprietário</FeatureChip>
-            <FeatureChip>Agente</FeatureChip>
-            <FeatureChip>Vaga privada</FeatureChip>
-            <FeatureChip>Convite privado</FeatureChip>
-            <FeatureChip>Limite de uso</FeatureChip>
+            <FeatureChip>{t("workspace_role_owner")}</FeatureChip>
+            <FeatureChip>{t("workspace_role_agent")}</FeatureChip>
+            <FeatureChip>{t("workspace_private_job")}</FeatureChip>
+            <FeatureChip>{t("workspace_private_invite")}</FeatureChip>
+            <FeatureChip>{t("workspace_usage_limit")}</FeatureChip>
           </div>
         </div>
       </div>
 
       <div className="grid gap-4 px-6 py-6 sm:grid-cols-2 sm:px-10">
         {[
-          "Espaço privado da agência",
-          "Agentes internos",
-          "Vagas privadas por convite",
-          "Controle de limites",
-          "Personalização com logo e cores",
-          "Supervisão pelo proprietário",
+          t("workspace_locked_private_space"),
+          t("workspace_locked_internal_agents"),
+          t("workspace_summary_private_jobs_hint"),
+          t("workspace_locked_limit_control"),
+          t("workspace_locked_branding"),
+          t("workspace_locked_owner_supervision"),
         ].map((item) => (
           <div key={item} className="rounded-2xl border border-zinc-100 bg-zinc-50 px-4 py-4">
             <div className="flex items-start gap-3">
@@ -97,18 +100,18 @@ function LockedScreen({ premiumAvailable }: { premiumAvailable: boolean }) {
 
       <div className="flex flex-col gap-4 border-t border-zinc-100 px-6 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-10">
         <div className="text-[13px] text-zinc-500">
-          {premiumAvailable ? "Pronto para ativar um ambiente privado para sua equipe." : "Em breve"}
+          {premiumAvailable ? t("workspace_locked_ready") : t("plan_coming_soon")}
         </div>
         {premiumAvailable ? (
           <Link
             href="/agency/billing"
             className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-5 py-3 text-[14px] font-semibold text-white shadow-[0_14px_30px_rgba(26,188,156,0.25)] transition-all hover:translate-y-[-1px]"
           >
-            Ver planos
+            {t("workspace_view_plans")}
           </Link>
         ) : (
           <span className="inline-flex items-center justify-center rounded-2xl border border-zinc-200 bg-zinc-100 px-5 py-3 text-[14px] font-semibold text-zinc-400">
-            Em breve
+            {t("plan_coming_soon")}
           </span>
         )}
       </div>
@@ -123,9 +126,13 @@ function LockedScreen({ premiumAvailable }: { premiumAvailable: boolean }) {
 function WorkspaceHeader({
   workspace,
   membership,
+  t,
+  locale,
 }: {
   workspace: PremiumWorkspace;
   membership: PremiumMembership;
+  t: TFn;
+  locale: string;
 }) {
   const isOwner = membership.role === "owner";
   const primary = workspace.brandPrimaryColor ?? "#1ABC9C";
@@ -149,7 +156,11 @@ function WorkspaceHeader({
           <div className="flex items-start gap-4">
             {workspace.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={workspace.logoUrl} alt="Logo do workspace" className="h-16 w-16 rounded-2xl border border-white/20 object-cover shadow-lg" />
+              <img
+                src={workspace.logoUrl}
+                alt={t("workspace_header_logo_alt")}
+                className="h-16 w-16 rounded-2xl border border-white/20 object-cover shadow-lg"
+              />
             ) : (
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-white/14 text-[18px] font-bold text-white shadow-lg">
                 {initials}
@@ -158,31 +169,37 @@ function WorkspaceHeader({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center rounded-full border border-white/18 bg-white/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/80">
-                  Espaço Premium
+                  {t("workspace_premium_space")}
                 </span>
-                <span className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${
-                  isOwner ? "bg-white/18 text-white" : "bg-[#EEF4FF] text-[#3156A6]"
-                }`}>
-                  {isOwner ? "Proprietário" : "Agente"}
+                <span
+                  className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold ${
+                    isOwner ? "bg-white/18 text-white" : "bg-[#EEF4FF] text-[#3156A6]"
+                  }`}
+                >
+                  {isOwner ? t("workspace_role_owner") : t("workspace_role_agent")}
                 </span>
               </div>
               <h1 className="mt-3 truncate text-[2rem] font-bold tracking-tight">{workspace.name}</h1>
               <p className="mt-2 max-w-2xl text-[14px] leading-6 text-white/78">
-                {workspace.welcomeMessage || "Personalize o espaço com o logo e as cores da sua agência."}
+                {workspace.welcomeMessage || t("workspace_header_default_welcome")}
               </p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:min-w-[280px]">
             <div className="rounded-2xl border border-white/16 bg-white/10 px-4 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/65">Criado em</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/65">
+                {t("workspace_header_created_at")}
+              </p>
               <p className="mt-1 text-[14px] font-semibold text-white">
-                {new Date(isOwner ? workspace.createdAt : membership.createdAt).toLocaleDateString("pt-BR")}
+                {new Date(isOwner ? workspace.createdAt : membership.createdAt).toLocaleDateString(locale)}
               </p>
             </div>
             <div className="rounded-2xl border border-white/16 bg-white/10 px-4 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/65">Acesso</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/65">
+                {t("workspace_header_access")}
+              </p>
               <p className="mt-1 text-[14px] font-semibold text-white">
-                {isOwner ? "Supervisão completa" : "Operação da equipe"}
+                {isOwner ? t("workspace_header_access_owner") : t("workspace_header_access_agent")}
               </p>
             </div>
           </div>
@@ -233,7 +250,17 @@ function EmptyState({
   );
 }
 
-function JobRow({ job }: { job: WorkspaceJob }) {
+function JobRow({
+  job,
+  lang,
+  locale,
+  t,
+}: {
+  job: WorkspaceJob;
+  lang: "pt-BR" | "en";
+  locale: string;
+  t: TFn;
+}) {
   return (
     <Link
       href={`/agency/workspace/jobs/${job.id}`}
@@ -244,12 +271,21 @@ function JobRow({ job }: { job: WorkspaceJob }) {
           <p className="truncate text-[14px] font-semibold text-zinc-900">{job.title}</p>
           {job.visibility === "private_invite" ? (
             <span className="inline-flex items-center rounded-full border border-violet-100 bg-violet-50 px-2.5 py-1 text-[10px] font-semibold text-violet-700">
-              Vaga privada
+              {t("workspace_private_job")}
             </span>
           ) : null}
         </div>
         <p className="mt-1 text-[12px] text-zinc-500">
-          {job.creatorName ? `Criada por ${job.creatorName}` : "Criada dentro do Espaço Premium"}
+          {job.creatorName
+            ? `${t("workspace_jobs_created_by")} ${job.creatorName}`
+            : t("workspace_jobs_created_in_premium")}
+        </p>
+        <p className="mt-1 text-[11px] text-zinc-400">
+          {new Date(job.createdAt).toLocaleDateString(locale, {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })}
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -259,45 +295,120 @@ function JobRow({ job }: { job: WorkspaceJob }) {
           </span>
         ) : null}
         <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] text-zinc-600">
-          {job.applicants} candidatura{job.applicants !== 1 ? "s" : ""}
+          {job.applicants}{" "}
+          {job.applicants === 1
+            ? t("workspace_job_application_singular")
+            : t("workspace_job_application_plural")}
         </span>
         <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${jobStatusTone(job.status)}`}>
-          {jobStatusLabel(job.status)}
+          {jobStatusLabel(job.status, lang)}
         </span>
       </div>
     </Link>
   );
 }
 
-function JobSection({
-  title,
-  subtitle,
-  jobs,
-  emptyTitle,
-  emptyDescription,
+function TeamSummary({
+  isOwner,
+  activeAgents,
+  invites,
+  seatUsage,
+  membership,
+  locale,
+  t,
 }: {
-  title: string;
-  subtitle: string;
-  jobs: WorkspaceJob[];
-  emptyTitle: string;
-  emptyDescription: string;
+  isOwner: boolean;
+  activeAgents: Awaited<ReturnType<typeof getWorkspaceMembers>>;
+  invites: Awaited<ReturnType<typeof getWorkspacePendingInvites>>;
+  seatUsage: Awaited<ReturnType<typeof getWorkspaceSeatUsage>>;
+  membership: PremiumMembership;
+  locale: string;
+  t: TFn;
 }) {
-  return (
-    <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
-      <div className="border-b border-zinc-100 px-5 py-5">
-        <p className="text-[15px] font-semibold text-zinc-900">{title}</p>
-        <p className="mt-1 text-[12px] text-zinc-500">{subtitle}</p>
+  if (isOwner) {
+    return (
+      <div className="space-y-3">
+        {activeAgents.length === 0 ? (
+          <p className="text-[13px] text-zinc-500">
+            {t("workspace_team_empty_prefix")}{" "}
+            <Link href="/agency/workspace/agents" className="text-[#1ABC9C] underline underline-offset-2">
+              {t("workspace_team_invite_your_team")}
+            </Link>
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-3">
+            {activeAgents.slice(0, 6).map((member) => {
+              const initials = (member.displayName || member.email || "?")
+                .split(" ")
+                .slice(0, 2)
+                .map((word) => word[0]?.toUpperCase() ?? "")
+                .join("");
+
+              return (
+                <div key={member.id} className="flex items-center gap-2 rounded-2xl border border-zinc-100 bg-zinc-50 px-3 py-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-indigo-50 text-[11px] font-bold text-indigo-600">
+                    {initials}
+                  </div>
+                  <span className="text-[12px] font-medium text-zinc-700">{member.displayName || member.email}</span>
+                  {member.status === "suspended" ? (
+                    <span className="rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-500">
+                      {t("workspace_wallet_agent_suspended")}
+                    </span>
+                  ) : null}
+                </div>
+              );
+            })}
+            {activeAgents.length > 6 ? (
+              <span className="flex items-center rounded-2xl border border-zinc-100 bg-zinc-50 px-3 py-2 text-[12px] text-zinc-500">
+                +{activeAgents.length - 6} {t("workspace_team_more")}
+              </span>
+            ) : null}
+          </div>
+        )}
+        {invites.length > 0 ? (
+          <p className="text-[12px] text-zinc-500">
+            {invites.length} {t(invites.length === 1 ? "workspace_invite_singular" : "workspace_invite_plural")}{" "}
+            {t(invites.length === 1 ? "workspace_pending_singular" : "workspace_pending_plural")} •{" "}
+            {t("workspace_team_manage_in")}{" "}
+            <Link href="/agency/workspace/agents" className="text-[#1ABC9C] underline underline-offset-2">
+              {t("nav_workspace_agents")}
+            </Link>
+            .
+          </p>
+        ) : null}
       </div>
-      {jobs.length === 0 ? (
-        <EmptyState title={emptyTitle} description={emptyDescription} />
-      ) : (
-        <div>{jobs.map((job) => <JobRow key={job.id} job={job} />)}</div>
-      )}
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-[13px] text-zinc-700">
+          {t("workspace_agent_active_since")}{" "}
+          <span className="font-semibold">
+            {new Date(membership.createdAt).toLocaleDateString(locale, {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
+        </p>
+        <p className="mt-1 text-[12px] text-zinc-500">{t("workspace_agent_wallet_hint")}</p>
+      </div>
+      <Link
+        href="/agency/workspace/wallet"
+        className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
+      >
+        {t("workspace_agent_view_wallet")}
+      </Link>
     </div>
   );
 }
 
 export default async function WorkspacePage() {
+  const [t, lang] = await Promise.all([getServerT(), getServerLang()]);
+  const locale = lang === "en" ? "en-US" : "pt-BR";
+  const statusLang = lang === "en" ? "en" : "pt-BR";
   const session = await createSessionClient();
   const {
     data: { user },
@@ -314,12 +425,13 @@ export default async function WorkspacePage() {
 
   const premiumPlan = await getLivePlanSetting("premium");
   let workspaceAccess = await getUserPremiumWorkspace(user.id);
+
   if (!workspaceAccess) {
     if (profile.plan !== "premium") {
-      return <LockedScreen premiumAvailable={premiumPlan.is_available} />;
+      return <LockedScreen premiumAvailable={premiumPlan.is_available} t={t} />;
     }
     workspaceAccess = await ensurePremiumWorkspaceForAgency(user.id);
-    if (!workspaceAccess) return <LockedScreen premiumAvailable={premiumPlan.is_available} />;
+    if (!workspaceAccess) return <LockedScreen premiumAvailable={premiumPlan.is_available} t={t} />;
   }
 
   const { workspace, membership } = workspaceAccess;
@@ -340,7 +452,9 @@ export default async function WorkspacePage() {
 
   const jobRows = jobsResult.data ?? [];
   const jobIds = jobRows.map((row) => row.id);
-  const creatorIds = [...new Set(jobRows.map((row) => row.created_by_user_id).filter((id): id is string => !!id))];
+  const creatorIds = [
+    ...new Set(jobRows.map((row) => row.created_by_user_id).filter((id): id is string => Boolean(id))),
+  ];
 
   const [submissionRows, creatorAgencyRows, creatorTalentRows] = await Promise.all([
     jobIds.length ? supabase.from("submissions").select("job_id").in("job_id", jobIds) : Promise.resolve({ data: [] }),
@@ -362,9 +476,7 @@ export default async function WorkspacePage() {
     creatorNameMap.set(row.user_id, row.company_name ?? "");
   }
   for (const row of creatorTalentRows.data ?? []) {
-    if (!creatorNameMap.has(row.user_id) && row.full_name) {
-      creatorNameMap.set(row.user_id, row.full_name);
-    }
+    if (!creatorNameMap.has(row.user_id) && row.full_name) creatorNameMap.set(row.user_id, row.full_name);
   }
 
   const workspaceJobs: WorkspaceJob[] = jobRows.map((row) => ({
@@ -387,232 +499,213 @@ export default async function WorkspacePage() {
 
   return (
     <div className="space-y-6">
-      <WorkspaceHeader workspace={workspace} membership={membership} />
+      <WorkspaceHeader workspace={workspace} membership={membership} t={t} locale={locale} />
 
       {isOwner ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard label="Assentos" value={`${seatUsage.usedSeats}/${seatUsage.totalAllowed}`} hint={`${seatUsage.remaining} disponível${seatUsage.remaining === 1 ? "" : "eis"}`} />
-          <SummaryCard label="Agentes" value={String(activeAgents.length)} hint="Equipe ativa no espaço" />
-          <SummaryCard label="Convite privado" value={String(invites.length)} hint="Convites privados pendentes" />
-          <SummaryCard label="Vaga privada" value={String(privateJobs.length)} hint="Vagas privadas por convite" />
-          <SummaryCard label="Vagas da equipe" value={String(workspaceJobs.length)} hint="Todas as vagas do Espaço Premium" />
-          <SummaryCard label="Carteira" value={brl(walletBalance)} hint="Saldo da conta principal" />
-          <SummaryCard label="Branding" value={workspace.logoUrl ? "Configurado" : "Pendente"} hint={workspace.logoUrl ? "Logo e identidade do espaço" : "Adicione logo e cores da agência"} />
-          <SummaryCard label="Proprietário" value="Supervisão" hint="Controle total da operação" />
+          <SummaryCard
+            label={t("workspace_seats")}
+            value={`${seatUsage.usedSeats}/${seatUsage.totalAllowed}`}
+            hint={`${seatUsage.remaining} ${t(seatUsage.remaining === 1 ? "workspace_available" : "workspace_available_plural")}`}
+          />
+          <SummaryCard
+            label={t("workspace_agents")}
+            value={String(activeAgents.length)}
+            hint={t("workspace_summary_active_team")}
+          />
+          <SummaryCard
+            label={t("workspace_private_invite")}
+            value={String(invites.length)}
+            hint={t("workspace_summary_pending_invites")}
+          />
+          <SummaryCard
+            label={t("workspace_private_job")}
+            value={String(privateJobs.length)}
+            hint={t("workspace_summary_private_jobs_hint")}
+          />
+          <SummaryCard
+            label={t("workspace_jobs_team_title")}
+            value={String(workspaceJobs.length)}
+            hint={t("workspace_summary_all_workspace_jobs")}
+          />
+          <SummaryCard
+            label={t("nav_workspace_wallet")}
+            value={brl(walletBalance)}
+            hint={t("workspace_summary_main_account_balance")}
+          />
+          <SummaryCard
+            label={t("nav_workspace_branding")}
+            value={workspace.logoUrl ? t("workspace_summary_configured") : t("workspace_summary_pending")}
+            hint={workspace.logoUrl ? t("workspace_summary_branding_ready") : t("workspace_summary_branding_missing")}
+          />
+          <SummaryCard
+            label={t("workspace_role_owner")}
+            value={t("workspace_summary_owner_value")}
+            hint={t("workspace_summary_owner_hint")}
+          />
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard label="Agente" value="Operação" hint="Acesso ao Espaço Premium" />
-          <SummaryCard label="Saldo alocado" value={brl(selfLedger?.allocatedAmount ?? 0)} hint="Total alocado pelo proprietário" />
-          <SummaryCard label="Comprometido" value={brl(selfLedger?.committedAmount ?? 0)} hint="Reservado em vagas ativas" />
-          <SummaryCard label="Disponível" value={brl(selfLedger?.availableAmount ?? 0)} hint={(selfLedger?.availableAmount ?? 0) === 0 ? "Saldo esgotado" : "Saldo restante para operar"} />
+          <SummaryCard
+            label={t("workspace_role_agent")}
+            value={t("workspace_summary_role_operation")}
+            hint={t("workspace_summary_agent_balance_usage")}
+          />
+          <SummaryCard
+            label={t("workspace_wallet_allocated")}
+            value={brl(selfLedger?.allocatedAmount ?? 0)}
+            hint={t("workspace_wallet_total_sent_by_owner")}
+          />
+          <SummaryCard
+            label={t("workspace_wallet_committed")}
+            value={brl(selfLedger?.committedAmount ?? 0)}
+            hint={t("workspace_summary_reserved_in_jobs")}
+          />
+          <SummaryCard
+            label={t("workspace_wallet_available")}
+            value={brl(selfLedger?.availableAmount ?? 0)}
+            hint={t((selfLedger?.availableAmount ?? 0) === 0 ? "workspace_summary_balance_depleted" : "workspace_summary_remaining_balance")}
+          />
         </div>
       )}
 
       {seatLimitReached ? (
         <div className="rounded-[26px] border border-amber-200 bg-amber-50 px-5 py-4">
-          <p className="text-[14px] font-semibold text-amber-800">
-            Você atingiu o limite de agentes do Premium.
-          </p>
-          <p className="mt-1 text-[13px] leading-6 text-amber-700">
-            Precisa de mais agentes? Solicite assentos extras.
-          </p>
+          <p className="text-[14px] font-semibold text-amber-800">{t("workspace_seat_limit_title")}</p>
+          <p className="mt-1 text-[13px] leading-6 text-amber-700">{t("workspace_seat_limit_description")}</p>
           <Link
             href="/agency/support"
             className="mt-3 inline-flex items-center rounded-xl bg-amber-500 px-4 py-2.5 text-[12px] font-semibold text-white transition-colors hover:bg-amber-600"
           >
-            Falar com suporte
+            {t("workspace_support_cta")}
           </Link>
         </div>
       ) : null}
 
-      {/* Branding summary — edit via /agency/workspace/branding */}
       <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
         <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-5">
           <div>
-            <p className="text-[15px] font-semibold text-zinc-900">Identidade do Espaço Premium</p>
-            <p className="mt-1 text-[12px] text-zinc-500">Logo, nome e URL do portal privado.</p>
+            <p className="text-[15px] font-semibold text-zinc-900">{t("workspace_identity_title")}</p>
+            <p className="mt-1 text-[12px] text-zinc-500">{t("workspace_identity_summary")}</p>
           </div>
-          {isOwner && (
+          {isOwner ? (
             <Link
               href="/agency/workspace/branding"
               className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
             >
-              Editar personalização
+              {t("workspace_identity_edit")}
             </Link>
-          )}
+          ) : null}
         </div>
         <div className="flex items-center gap-4 p-5">
           {workspace.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={workspace.logoUrl} alt="Logo" className="h-14 w-14 rounded-xl border border-zinc-100 object-cover flex-shrink-0" />
+            <img src={workspace.logoUrl} alt={t("workspace_identity_logo_alt")} className="h-14 w-14 rounded-xl border border-zinc-100 object-cover flex-shrink-0" />
           ) : (
             <div
               className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl text-[18px] font-bold text-white"
               style={{ backgroundColor: workspace.brandPrimaryColor ?? "#1ABC9C" }}
             >
-              {workspace.name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "P"}
+              {workspace.name
+                .split(" ")
+                .slice(0, 2)
+                .map((word) => word[0]?.toUpperCase() ?? "")
+                .join("") || "P"}
             </div>
           )}
           <div>
             <p className="text-[15px] font-semibold text-zinc-900">{workspace.name}</p>
             {workspace.slug ? (
               <p className="mt-1 text-[12px] text-zinc-500">
-                URL do portal:{" "}
+                {t("workspace_identity_portal_url")}{" "}
                 <span className="font-mono text-zinc-700">/{workspace.slug}</span>
               </p>
             ) : (
-              <p className="mt-1 text-[12px] text-zinc-400">URL do portal não configurada</p>
+              <p className="mt-1 text-[12px] text-zinc-400">{t("workspace_identity_portal_url_missing")}</p>
             )}
           </div>
         </div>
       </div>
 
-      {/*
-        Team summary — read-only overview.
-        Full team management (invite/remove/seat controls) lives at /agency/workspace/agents.
-        Full allocation/wallet controls live at /agency/workspace/wallet.
-      */}
       <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
         <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-5">
           <div>
             <p className="text-[15px] font-semibold text-zinc-900">
-              {isOwner ? "Equipe do Espaço Premium" : "Sua posição na equipe"}
+              {isOwner ? t("workspace_team_title") : t("workspace_team_agent_title")}
             </p>
             <p className="mt-1 text-[12px] text-zinc-500">
               {isOwner
-                ? `${activeAgents.length} agente${activeAgents.length === 1 ? "" : "s"} ativo${activeAgents.length === 1 ? "" : "s"} • ${seatUsage.usedSeats}/${seatUsage.totalAllowed} assentos`
-                : "Acesso operacional no Espaço Premium"}
+                ? `${activeAgents.length} ${t(activeAgents.length === 1 ? "workspace_agent_singular" : "workspace_agent_plural")} • ${seatUsage.usedSeats}/${seatUsage.totalAllowed} ${t("workspace_seats").toLowerCase()}`
+                : t("workspace_header_access_agent")}
             </p>
           </div>
-          {isOwner && (
+          {isOwner ? (
             <Link
               href="/agency/workspace/agents"
               className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
             >
-              Gerenciar equipe
+              {t("workspace_team_manage")}
             </Link>
-          )}
+          ) : null}
         </div>
         <div className="p-5">
-          {isOwner ? (
-            /* Owner: show agent avatars/names at a glance, no management controls */
-            <div className="space-y-3">
-              {activeAgents.length === 0 ? (
-                <p className="text-[13px] text-zinc-500">
-                  Nenhum agente ainda.{" "}
-                  <Link href="/agency/workspace/agents" className="text-[#1ABC9C] underline underline-offset-2">
-                    Convide sua equipe.
-                  </Link>
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-3">
-                  {activeAgents.slice(0, 6).map((m) => {
-                    const ini = (m.displayName || m.email || "?").split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
-                    return (
-                      <div key={m.id} className="flex items-center gap-2 rounded-2xl border border-zinc-100 bg-zinc-50 px-3 py-2">
-                        <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-indigo-50 text-[11px] font-bold text-indigo-600">
-                          {ini}
-                        </div>
-                        <span className="text-[12px] font-medium text-zinc-700">{m.displayName || m.email}</span>
-                        {m.status === "suspended" && (
-                          <span className="rounded-full bg-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-500">Suspenso</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {activeAgents.length > 6 && (
-                    <span className="flex items-center rounded-2xl border border-zinc-100 bg-zinc-50 px-3 py-2 text-[12px] text-zinc-500">
-                      +{activeAgents.length - 6} mais
-                    </span>
-                  )}
-                </div>
-              )}
-              {invites.length > 0 && (
-                <p className="text-[12px] text-zinc-500">
-                  {invites.length} convite{invites.length === 1 ? "" : "s"} pendente{invites.length === 1 ? "" : "s"} — gerencie em{" "}
-                  <Link href="/agency/workspace/agents" className="text-[#1ABC9C] underline underline-offset-2">Agentes</Link>.
-                </p>
-              )}
-            </div>
-          ) : (
-            /* Agent: show own membership status and wallet shortcut */
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-[13px] text-zinc-700">
-                  Agente ativo desde{" "}
-                  <span className="font-semibold">
-                    {new Date(membership.createdAt).toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric" })}
-                  </span>
-                </p>
-                <p className="mt-1 text-[12px] text-zinc-500">Para ver seu saldo alocado, acesse a Carteira.</p>
-              </div>
-              <Link
-                href="/agency/workspace/wallet"
-                className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
-              >
-                Ver carteira
-              </Link>
-            </div>
-          )}
+          <TeamSummary
+            isOwner={isOwner}
+            activeAgents={activeAgents}
+            invites={invites}
+            seatUsage={seatUsage}
+            membership={membership}
+            locale={locale}
+            t={t}
+          />
         </div>
       </div>
 
-      {/*
-        Job preview — shows the 5 most recent jobs only.
-        Full job list and management live at /agency/workspace/jobs.
-      */}
-      {isOwner ? (
-        <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
-          <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-5">
-            <div>
-              <p className="text-[15px] font-semibold text-zinc-900">Vagas da equipe</p>
-              <p className="mt-1 text-[12px] text-zinc-500">
-                {workspaceJobs.length} vaga{workspaceJobs.length === 1 ? "" : "s"} no Espaço Premium
-              </p>
-            </div>
-            <Link
-              href="/agency/workspace/jobs"
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
-            >
-              Ver todas
-            </Link>
+      <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
+        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-5">
+          <div>
+            <p className="text-[15px] font-semibold text-zinc-900">
+              {isOwner ? t("workspace_jobs_team_title") : t("workspace_my_jobs_title")}
+            </p>
+            <p className="mt-1 text-[12px] text-zinc-500">
+              {isOwner
+                ? `${workspaceJobs.length} ${t(workspaceJobs.length === 1 ? "workspace_job_singular" : "workspace_job_plural")} ${t("workspace_jobs_count_in_space")}`
+                : `${myJobs.length} ${t(myJobs.length === 1 ? "workspace_job_singular_created" : "workspace_job_plural_created")}`}
+            </p>
           </div>
-          {workspaceJobs.length === 0 ? (
+          <Link
+            href="/agency/workspace/jobs"
+            className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
+          >
+            {t("workspace_view_all")}
+          </Link>
+        </div>
+        {isOwner ? (
+          workspaceJobs.length === 0 ? (
             <EmptyState
-              title="Nenhuma vaga criada ainda."
-              description="Crie a primeira vaga da equipe para começar a usar o fluxo privado do Espaço Premium."
+              title={t("workspace_jobs_empty_title")}
+              description={t("workspace_jobs_owner_empty_description")}
             />
           ) : (
-            <div>{workspaceJobs.slice(0, 5).map((job) => <JobRow key={job.id} job={job} />)}</div>
-          )}
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_12px_36px_rgba(15,23,42,0.05)]">
-          <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-5">
             <div>
-              <p className="text-[15px] font-semibold text-zinc-900">Minhas vagas</p>
-              <p className="mt-1 text-[12px] text-zinc-500">
-                {myJobs.length} vaga{myJobs.length === 1 ? "" : "s"} criada{myJobs.length === 1 ? "" : "s"} por você
-              </p>
+              {workspaceJobs.slice(0, 5).map((job) => (
+                <JobRow key={job.id} job={job} lang={statusLang} locale={locale} t={t} />
+              ))}
             </div>
-            <Link
-              href="/agency/workspace/jobs"
-              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-4 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
-            >
-              Ver todas
-            </Link>
+          )
+        ) : myJobs.length === 0 ? (
+          <EmptyState
+            title={t("workspace_jobs_agent_empty_title")}
+            description={t("workspace_jobs_agent_empty_description")}
+          />
+        ) : (
+          <div>
+            {myJobs.slice(0, 5).map((job) => (
+              <JobRow key={job.id} job={job} lang={statusLang} locale={locale} t={t} />
+            ))}
           </div>
-          {myJobs.length === 0 ? (
-            <EmptyState
-              title="Nenhuma vaga criada por você ainda."
-              description="Crie sua primeira vaga dentro do Espaço Premium para começar a operar."
-            />
-          ) : (
-            <div>{myJobs.slice(0, 5).map((job) => <JobRow key={job.id} job={job} />)}</div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

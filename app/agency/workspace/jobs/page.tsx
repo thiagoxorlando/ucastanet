@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase";
 import { brl } from "@/lib/brl";
+import { getServerLang, getServerT } from "@/lib/i18n/server";
 import { jobStatusLabel, jobStatusTone } from "@/lib/jobStatus";
 import { getWorkspaceMembers } from "@/lib/premiumWorkspace.server";
 import { requirePremiumWorkspacePageContext } from "@/lib/premiumWorkspaceApp.server";
@@ -11,6 +12,8 @@ export const metadata: Metadata = { title: "Vagas privadas — BrisaHub" };
 
 export default async function WorkspaceJobsPage() {
   const context = await requirePremiumWorkspacePageContext();
+  const [t, lang] = await Promise.all([getServerT(), getServerLang()]);
+  const locale = lang === "en" ? "en-US" : "pt-BR";
   const supabase = createServerClient({ useServiceRole: true });
 
   const [members, jobsResult] = await Promise.all([
@@ -38,9 +41,9 @@ export default async function WorkspaceJobsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-[1.8rem] font-bold tracking-tight text-zinc-950">Vagas privadas</h1>
+          <h1 className="text-[1.8rem] font-bold tracking-tight text-zinc-950">{t("nav_workspace_jobs")}</h1>
           <p className="mt-1 text-[14px] text-zinc-500">
-            Vagas do Espaço Premium — visíveis apenas para membros convidados.
+            {t("workspace_jobs_page_subtitle")}
           </p>
         </div>
         {/* Only owners can create workspace jobs.
@@ -50,22 +53,22 @@ export default async function WorkspaceJobsPage() {
             href="/agency/post-job"
             className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-5 py-3 text-[14px] font-semibold text-white shadow-[0_14px_28px_rgba(26,188,156,0.24)]"
           >
-            Criar vaga privada
+            {t("workspace_jobs_create_private")}
           </Link>
         )}
       </div>
 
       {jobs.length === 0 ? (
         <div className="rounded-[28px] border border-zinc-200 bg-white px-6 py-10 text-center shadow-[0_12px_34px_rgba(15,23,42,0.05)]">
-          <p className="text-[15px] font-semibold text-zinc-900">Nenhuma vaga privada criada ainda.</p>
+          <p className="text-[15px] font-semibold text-zinc-900">{t("workspace_jobs_empty_title")}</p>
           <p className="mt-2 text-[13px] leading-6 text-zinc-500">
-            Crie uma vaga privada para começar a operar o Espaço Premium com convites exclusivos.
+            {t("workspace_jobs_empty_description")}
           </p>
         </div>
       ) : (
         <div className="grid gap-4">
           {jobs.map((job) => {
-            const createdBy = creatorMap.get(job.created_by_user_id ?? "") ?? "Equipe do workspace";
+            const createdBy = creatorMap.get(job.created_by_user_id ?? "") ?? t("workspace_jobs_team_default");
             const isOwnJob = job.created_by_user_id === context.userId;
 
             return (
@@ -78,40 +81,40 @@ export default async function WorkspaceJobsPage() {
                         {jobStatusLabel(job.status ?? "open", context.lang)}
                       </span>
                       <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${job.visibility === "private_invite" ? "border border-violet-200 bg-violet-50 text-violet-700" : "border border-sky-200 bg-sky-50 text-sky-700"}`}>
-                        {job.visibility === "private_invite" ? "Privada" : "Pública"}
+                        {job.visibility === "private_invite" ? t("workspace_jobs_visibility_private") : t("workspace_jobs_visibility_public")}
                       </span>
                       {isOwnJob ? (
                         <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                          Minha vaga
+                          {t("workspace_jobs_my_job")}
                         </span>
                       ) : !context.isOwner ? (
                         <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold text-zinc-500">
-                          Equipe
+                          {t("workspace_jobs_team_badge")}
                         </span>
                       ) : null}
                     </div>
                     <div className="mt-3 grid gap-3 text-[13px] text-zinc-600 sm:grid-cols-2 xl:grid-cols-5">
                       <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Criada por</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{t("workspace_jobs_created_by")}</p>
                         <p className="mt-1 font-medium text-zinc-800">{createdBy}</p>
                       </div>
                       <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Data</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{t("workspace_jobs_date")}</p>
                         <p className="mt-1 font-medium text-zinc-800">
-                          {job.job_date ? new Date(`${job.job_date}T00:00:00`).toLocaleDateString("pt-BR") : "A definir"}
+                          {job.job_date ? new Date(`${job.job_date}T00:00:00`).toLocaleDateString(locale) : t("workspace_jobs_tbd")}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Orçamento</p>
-                        <p className="mt-1 font-medium text-zinc-800">{job.budget != null ? brl(job.budget) : "A combinar"}</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{t("workspace_jobs_budget")}</p>
+                        <p className="mt-1 font-medium text-zinc-800">{job.budget != null ? brl(job.budget) : t("workspace_jobs_negotiable")}</p>
                       </div>
                       <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Candidatos</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{t("workspace_jobs_candidates")}</p>
                         <p className="mt-1 font-medium text-zinc-800">{submissionsMap.get(job.id) ?? 0}</p>
                       </div>
                       <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Criada em</p>
-                        <p className="mt-1 font-medium text-zinc-800">{new Date(job.created_at ?? "").toLocaleDateString("pt-BR")}</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{t("workspace_jobs_created_at")}</p>
+                        <p className="mt-1 font-medium text-zinc-800">{new Date(job.created_at ?? "").toLocaleDateString(locale)}</p>
                       </div>
                     </div>
                   </div>
@@ -121,16 +124,16 @@ export default async function WorkspaceJobsPage() {
                       href={`/agency/workspace/jobs/${job.id}`}
                       className="inline-flex items-center rounded-xl border border-zinc-200 px-3 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
                     >
-                      Ver detalhe
+                      {t("workspace_jobs_view_detail")}
                     </Link>
                     {job.visibility === "private_invite" && (context.isOwner || isOwnJob) ? (
                       <WorkspacePrivateInviteButton jobId={job.id} />
                     ) : job.visibility === "private_invite" && !context.isOwner && !isOwnJob ? (
                       <span
-                        title="Somente o responsável pela vaga ou o proprietário pode realizar esta ação."
+                        title={t("workspace_jobs_invite_disabled_title")}
                         className="inline-flex cursor-not-allowed items-center rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-2 text-[12px] font-semibold text-zinc-400"
                       >
-                        Convite privado
+                        {t("workspace_private_invite")}
                       </span>
                     ) : null}
                   </div>
@@ -143,3 +146,4 @@ export default async function WorkspaceJobsPage() {
     </div>
   );
 }
+

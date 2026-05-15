@@ -1,11 +1,11 @@
-// Public and auth page translations — English (en)
+﻿// Public and auth page translations â€” English (en)
 // Keys not present here fall back to pt-BR in LanguageContext.
 
 export const en: Record<string, string> = {
-  // ── Language selector ──────────────────────────────────────────────────────
+  // â”€â”€ Language selector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   lang_selector: "Language",
 
-  // ── Navigation (sidebar + topbar) ─────────────────────────────────────────
+  // â”€â”€ Navigation (sidebar + topbar) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   nav_dashboard:      "Dashboard",
   nav_jobs:           "Jobs",
   nav_talent:         "Talent",
@@ -29,15 +29,15 @@ export const en: Record<string, string> = {
   nav_menu:           "Menu",
   nav_logout:         "Sign out",
 
-  // ── Portal labels ──────────────────────────────────────────────────────────
+  // â”€â”€ Portal labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   portal_admin: "Admin portal",
 
-  // ── Page titles ────────────────────────────────────────────────────────────
+  // â”€â”€ Page titles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   page_finances:   "Finances",
   page_trash:      "Trash",
   page_users:      "Users",
 
-  // ── Status labels ─────────────────────────────────────────────────────────
+  // â”€â”€ Status labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   status_all:          "All",
   status_open:         "Open",
   status_closed:       "Closed",
@@ -56,7 +56,7 @@ export const en: Record<string, string> = {
   status_pending_payment: "Awaiting Payment",
   status_processing:   "Processing",
 
-  // ── Contract status labels ────────────────────────────────────────────────
+  // â”€â”€ Contract status labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   contract_status_sent:      "Awaiting Talent",
   contract_status_signed:    "Awaiting Deposit",
   contract_status_confirmed: "In Escrow",
@@ -64,7 +64,7 @@ export const en: Record<string, string> = {
   contract_status_rejected:  "Rejected",
   contract_status_cancelled: "Cancelled",
 
-  // ── Common actions ─────────────────────────────────────────────────────────
+  // â”€â”€ Common actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   action_view:       "View",
   action_edit:       "Edit",
   action_delete:     "Delete",
@@ -89,11 +89,11 @@ export const en: Record<string, string> = {
   action_back:       "Back",
   action_restore:    "Restore",
   action_create:     "Create",
-  action_loading:    "Loading…",
+  action_loading:    "Loadingâ€¦",
 
-  // ── General ───────────────────────────────────────────────────────────────
+  // â”€â”€ General â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   general_no_results: "No results found.",
-  general_loading:    "Loading…",
+  general_loading:    "Loadingâ€¦",
   general_error:      "Something went wrong.",
   general_retry:      "Try again",
   general_optional:   "optional",
@@ -102,14 +102,16 @@ export const en: Record<string, string> = {
   general_no:         "No",
   general_tbd:        "TBD",
   general_unknown:    "Unknown",
-  general_na:         "—",
+  general_na:         "â€”",
   general_for:        "for",
   general_contracts:  "contracts",
 
-  // ── Login extras ──────────────────────────────────────────────────────────
+  // â”€â”€ Login extras â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   login_failed: "Sign-in failed. Please try again.",
 
-  // ── Dashboard ─────────────────────────────────────────────────────────────
+  login_email_placeholder: "you@example.com",
+  login_password_placeholder: "••••••••",
+  // â”€â”€ Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   dashboard_welcome:          "Welcome back",
   dashboard_overview:         "Here's what's happening.",
   dashboard_active_jobs:      "Active Jobs",
@@ -123,9 +125,9 @@ export const en: Record<string, string> = {
   dashboard_no_activity:      "No recent activity.",
   dashboard_view_all:         "View all",
 
-  // ── Jobs ──────────────────────────────────────────────────────────────────
+  // â”€â”€ Jobs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   jobs_open_positions:   "open positions",
-  jobs_search:           "Search jobs…",
+  jobs_search:           "Search jobsâ€¦",
   jobs_apply_by:         "Apply by",
   jobs_days_left:        "d left",
   jobs_selected:         "selected",
@@ -148,7 +150,7 @@ export const en: Record<string, string> = {
   jobs_any:              "Any",
   jobs_no_description:   "No description.",
 
-  // ── Bookings ──────────────────────────────────────────────────────────────
+  // â”€â”€ Bookings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bookings_title:           "Bookings",
   bookings_all:             "All Bookings",
   bookings_talent:          "Talent",
@@ -160,7 +162,7 @@ export const en: Record<string, string> = {
   bookings_no_bookings_hint:"Bookings will appear when a talent is selected.",
   bookings_referred:        "Referred",
 
-  // ── Contracts ─────────────────────────────────────────────────────────────
+  // â”€â”€ Contracts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   contracts_title:           "Contracts",
   contracts_talent:          "Talent",
   contracts_agency:          "Agency",
@@ -191,8 +193,54 @@ export const en: Record<string, string> = {
   contracts_cancel_job:      "Cancel Job",
   contracts_pay_talent:      "Pay Talent",
   contracts_pay_confirm:     "Release payment for this talent?",
+  workspace_private_invite_copy: "Copy private invite",
+  workspace_private_invite_copied: "Copied!",
+  workspace_premium_space: "Premium Space",
+  workspace_portal_label: "Portal",
+  workspace_powered_by: "Powered by BrisaHub",
+  workspace_portal_premium: "Premium Portal",
+  workspace_portal_exclusive: "Exclusive Portal",
+  workspace_portal_applications: "Applications",
+  sidebar_close_menu: "Close menu",
+  workspace_wallet_agent_suspended: "Suspended",
+  workspace_wallet_allocated: "Allocated balance",
+  workspace_wallet_committed: "Committed",
+  workspace_wallet_paid_spent: "Paid / spent",
+  workspace_wallet_available: "Available",
+  workspace_wallet_add_to_agent: "Add balance to agent",
+  workspace_wallet_pull_balance: "Pull balance",
+  workspace_wallet_owner_available_to_allocate: "Owner balance available to allocate:",
+  workspace_wallet_agent_available: "Agent balance available:",
+  workspace_wallet_reason_optional: "Reason (optional)",
+  workspace_wallet_saving: "Saving...",
+  workspace_wallet_add_balance: "Add balance",
+  workspace_wallet_no_balance_to_pull_prefix: "No balance available to pull back. This agent has",
+  workspace_wallet_no_balance_to_pull_suffix: "committed to jobs.",
+  workspace_wallet_added_success: "Balance added successfully.",
+  workspace_wallet_reclaimed_success: "Balance pulled back successfully.",
+  workspace_wallet_allocation_error: "Could not update the allocation.",
+  workspace_wallet_total_committed: "Total committed",
+  workspace_wallet_no_agents: "No active agents. Invite agents on the Agents page.",
+  workspace_jobs_page_subtitle: "Jobs in the Premium Space, visible only to invited members.",
+  workspace_jobs_create_private: "Create private job",
+  workspace_jobs_empty_title: "No private jobs created yet.",
+  workspace_jobs_empty_description: "Create a private job to start operating the Premium Space with exclusive invites.",
+  workspace_jobs_visibility_private: "Private",
+  workspace_jobs_visibility_public: "Public",
+  workspace_jobs_my_job: "My job",
+  workspace_jobs_team_badge: "Team",
+  workspace_jobs_team_default: "Workspace team",
+  workspace_jobs_created_by: "Created by",
+  workspace_jobs_date: "Date",
+  workspace_jobs_budget: "Budget",
+  workspace_jobs_candidates: "Candidates",
+  workspace_jobs_created_at: "Created at",
+  workspace_jobs_view_detail: "View details",
+  workspace_jobs_invite_disabled_title: "Only the job owner or the workspace owner can perform this action.",
+  workspace_jobs_tbd: "To be defined",
+  workspace_jobs_negotiable: "Negotiable",
 
-  // ── Finances ──────────────────────────────────────────────────────────────
+  // â”€â”€ Finances â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   finances_title:               "Finances",
   finances_total_gross:         "Total Gross",
   finances_confirmed_gross:     "Confirmed Gross",
@@ -209,7 +257,7 @@ export const en: Record<string, string> = {
   finances_pending_value:       "Pending",
   finances_available:           "Available for Withdrawal",
   finances_withdraw_btn:        "Withdraw All Funds",
-  finances_withdrawing:         "Processing…",
+  finances_withdrawing:         "Processingâ€¦",
   finances_withdraw_success:    "Withdrawal confirmed!",
   finances_on_the_way:          "on the way.",
   finances_no_funds:            "No funds available for withdrawal.",
@@ -227,8 +275,8 @@ export const en: Record<string, string> = {
   finances_contracts_section:   "Contracts (Escrow)",
   finances_paid_to_referrers:   "Paid to referrers",
 
-  // ── Talent list / grid ────────────────────────────────────────────────────
-  talent_search:       "Search talents…",
+  // â”€â”€ Talent list / grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  talent_search:       "Search talentsâ€¦",
   talent_no_talent:    "No talent found",
   talent_view_profile: "View Profile",
   talent_invite:       "Invite to Job",
@@ -237,7 +285,7 @@ export const en: Record<string, string> = {
   talent_grid_view:    "Grid",
   talent_list_view:    "List",
 
-  // ── Referrals ─────────────────────────────────────────────────────────────
+  // â”€â”€ Referrals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   referrals_title:        "Referrals",
   referrals_link:         "Your Referral Link",
   referrals_copy:         "Copy Link",
@@ -250,7 +298,7 @@ export const en: Record<string, string> = {
   referrals_joined:       "Joined",
   referrals_payout:       "Payout",
 
-  // ── Trash ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Trash â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   trash_title:       "Trash",
   trash_restore:     "Restore",
   trash_delete_perm: "Delete Permanently",
@@ -261,7 +309,7 @@ export const en: Record<string, string> = {
   trash_agencies:    "Agencies",
   trash_talent:      "Talent",
 
-  // ── Submissions ──────────────────────────────────────────────────────────
+  // â”€â”€ Submissions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   submissions_title:    "Applicants",
   submissions_no_apps:  "No applicants yet.",
   submissions_select:   "Select",
@@ -274,7 +322,7 @@ export const en: Record<string, string> = {
   submission_source_self:            "Own application",
   submission_source_referred:        "Referred",
 
-  // ── Post job ──────────────────────────────────────────────────────────────
+  // â”€â”€ Post job â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   post_job_title:          "Post New Job",
   post_job_title_field:    "Job Title",
   post_job_description:    "Description",
@@ -288,11 +336,11 @@ export const en: Record<string, string> = {
   post_job_age_max:        "Max Age",
   post_job_talents_needed: "Talents Needed",
   post_job_submit:         "Post Job",
-  post_job_submitting:     "Posting…",
+  post_job_submitting:     "Postingâ€¦",
   post_job_success:        "Job posted successfully!",
   post_job_error:          "Failed to post job.",
 
-  // ── Profile ───────────────────────────────────────────────────────────────
+  // â”€â”€ Profile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   profile_full_name:      "Full Name",
   profile_email:          "Email",
   profile_bio:            "Bio",
@@ -305,7 +353,7 @@ export const en: Record<string, string> = {
   profile_company_name:   "Company Name",
   profile_avatar:         "Profile Photo",
   profile_save:           "Save Profile",
-  profile_saving:         "Saving…",
+  profile_saving:         "Savingâ€¦",
   profile_saved:          "Profile saved",
   profile_save_error:     "Failed to save profile",
   profile_gender:         "Gender",
@@ -321,11 +369,11 @@ export const en: Record<string, string> = {
   profile_agent_name:     "Agent Name",
   profile_represented_by: "Represented by",
 
-  // ── Workspace ─────────────────────────────────────────────────────────────
+  // â”€â”€ Workspace â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   workspace_private_job:  "Private job",
   workspace_private_invite: "Private invite",
 
-  // ── Landing — nav ─────────────────────────────────────────────────────────
+  // â”€â”€ Landing â€” nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_nav_signin: "Sign in",
   landing_nav_register: "Sign up",
   landing_nav_agency: "Agency",
@@ -333,19 +381,19 @@ export const en: Record<string, string> = {
   landing_nav_talent: "Talent",
   landing_nav_talent_sub: "Apply for jobs",
 
-  // ── Landing — hero ────────────────────────────────────────────────────────
+  // â”€â”€ Landing â€” hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_hero_badge: "Talent platform",
   landing_hero_title_line1: "The place where",
   landing_hero_title_gradient: "talents and agencies",
   landing_hero_title_line3: "meet.",
-  landing_hero_subtitle: "Manage hirings, contracts and payments in one place — fast, secure and hassle-free.",
+  landing_hero_subtitle: "Manage hirings, contracts and payments in one place â€” fast, secure and hassle-free.",
   landing_hero_cta_agency: "Get started as agency",
   landing_hero_cta_talent: "Join as talent",
   landing_stat_secure: "Secure",
   landing_stat_payments: "Payments",
   landing_stat_support: "Support",
 
-  // ── Landing — how it works ────────────────────────────────────────────────
+  // â”€â”€ Landing â€” how it works â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_hiw_pill1: "No WhatsApp. No spreadsheets.",
   landing_hiw_title1: "One unified flow from briefing to hiring",
   landing_hiw_desc1: "Brisa replaces loose messages, spreadsheets and scattered receipts with a structured process for agencies to post, select, hire and pay with more predictability.",
@@ -360,7 +408,7 @@ export const en: Record<string, string> = {
   landing_hiw_step4_title: "Rehire with full history",
   landing_hiw_step4_desc: "Review past work, payments and approved talents to speed up new campaigns.",
 
-  // ── Landing — features ────────────────────────────────────────────────────
+  // â”€â”€ Landing â€” features â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_feat_pill: "Key features",
   landing_feat_title: "Everything agencies need to hire with confidence",
   landing_feat_desc: "From job posting to final payment, the platform keeps context, documents and status in the same flow so agencies don't waste time on parallel controls.",
@@ -377,7 +425,7 @@ export const en: Record<string, string> = {
   landing_feat6_title: "Private jobs in Premium",
   landing_feat6_desc: "Invite talents to closed opportunities and run a private flow when the campaign requires it.",
 
-  // ── Landing — use cases ───────────────────────────────────────────────────
+  // â”€â”€ Landing â€” use cases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_use_pill: "Professional use",
   landing_use_title: "Safe hiring for different types of business",
   landing_use_desc: "BrisaHub replaces informal WhatsApp processes, spreadsheets and loose receipts with a structured flow: from job creation to hiring, contract and payment.",
@@ -395,7 +443,7 @@ export const en: Record<string, string> = {
   landing_trust3_title: "Transparency and control",
   landing_trust3_desc: "Complete history, visible status and less rework to track each hire with full context.",
 
-  // ── Landing — screenshots ─────────────────────────────────────────────────
+  // â”€â”€ Landing â€” screenshots â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_ss_pill: "See the platform in action",
   landing_ss_title: "A quick overview of what agencies track",
   landing_ss_desc: "Product screenshots organized to show, without noise, how agencies track jobs, finances and talents day-to-day.",
@@ -409,7 +457,7 @@ export const en: Record<string, string> = {
   landing_showcase_tal_title: "Profiles ready to evaluate",
   landing_showcase_tal_desc: "Compare professionals with photos, tags and context to decide with more confidence.",
 
-  // ── Landing — plans ───────────────────────────────────────────────────────
+  // â”€â”€ Landing â€” plans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_plans_pill: "Plans",
   landing_plans_title: "Choose the plan for your operation's pace",
   landing_plans_desc: "Start without a monthly fee to validate your first job, upgrade to Pro when you hire frequently, and use Premium for private processes and more reserved selections.",
@@ -420,7 +468,7 @@ export const en: Record<string, string> = {
   landing_plan_premium_audience: "Private agency workspace",
   landing_plan_premium_summary: "A polished private operation for your agency with internal agents, invite-only jobs, custom branding and clear usage controls.",
 
-  // ── Plan card universal labels ────────────────────────────────────────────
+  // â”€â”€ Plan card universal labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   plan_popular_badge: "Most popular",
   plan_coming_soon: "Coming soon",
   plan_per_month: "/month",
@@ -431,7 +479,7 @@ export const en: Record<string, string> = {
   plan_cta_prefix: "Get started with",
   plan_everything_in_pro: "Everything in Pro",
 
-  // ── Landing — trust ───────────────────────────────────────────────────────
+  // â”€â”€ Landing â€” trust â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_ctrust_pill: "Trust",
   landing_ctrust_title: "Legal and financial security for hiring with peace of mind",
   landing_ctrust_desc: "Contract, payment and history are recorded so the agency has operational predictability and the talent knows exactly which stage they're at.",
@@ -439,20 +487,20 @@ export const en: Record<string, string> = {
   landing_ctrust_item2: "Payment with traceable status",
   landing_ctrust_item3: "History for decisions and rehiring",
 
-  // ── Landing — CTA ─────────────────────────────────────────────────────────
+  // â”€â”€ Landing â€” CTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   landing_cta_pill: "Structure your next hire",
   landing_cta_title: "Open your agency account and manage your next job with a contract, secure payment and less rework.",
   landing_cta_desc: "If you hire frequently, Pro makes the operational gain clear. If you're a talent, you can also create your profile to receive invites and track opportunities.",
   landing_cta_btn_agency: "Get started as agency",
   landing_cta_btn_talent: "Join as talent",
-  landing_footer_rights: "© 2026 BrisaHub. All rights reserved.",
+  landing_footer_rights: "Â© 2026 BrisaHub. All rights reserved.",
 
-  // ── Login ─────────────────────────────────────────────────────────────────
+  // â”€â”€ Login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   login_tagline: "Talent platform",
   login_hero_line1: "The place where",
   login_hero_gradient: "talents and agencies",
   login_hero_line3: "meet.",
-  login_hero_subtitle: "Manage hirings, contracts and payments in one place — fast, secure and hassle-free.",
+  login_hero_subtitle: "Manage hirings, contracts and payments in one place â€” fast, secure and hassle-free.",
   login_stat_secure: "Secure",
   login_stat_payments: "Payments",
   login_stat_support: "Support",
@@ -461,7 +509,7 @@ export const en: Record<string, string> = {
   login_email_label: "Email",
   login_password_label: "Password",
   login_submit: "Sign in",
-  login_loading: "Signing in…",
+  login_loading: "Signing inâ€¦",
   login_no_account: "Don't have an account?",
   login_create_account: "Create account",
   login_role_agency: "Agency",
@@ -469,7 +517,7 @@ export const en: Record<string, string> = {
   login_role_talent: "Talent",
   login_role_talent_sub: "Apply",
 
-  // ── Signup ────────────────────────────────────────────────────────────────
+  // â”€â”€ Signup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   signup_badge: "Premium registration",
   signup_agency_title: "Create your complete operation in one place",
   signup_agency_subtitle: "Register your agency, configure the profile, choose a plan and go post jobs without rework.",
@@ -495,10 +543,10 @@ export const en: Record<string, string> = {
   signup_talent_info_eyebrow: "Main information",
   signup_talent_info_title: "Your base talent profile",
   signup_photo_label: "Profile photo",
-  signup_photo_hint: "Click to upload · JPG, PNG, WebP",
+  signup_photo_hint: "Click to upload Â· JPG, PNG, WebP",
   signup_full_name_label: "Full name",
   signup_cpf_label: "CPF",
-  signup_cpf_hint: "Numbers only — 11 digits",
+  signup_cpf_hint: "Numbers only â€” 11 digits",
   signup_phone_label: "Phone",
   signup_country_label: "Country",
   signup_city_label: "City",
@@ -545,7 +593,7 @@ export const en: Record<string, string> = {
   signup_already_account: "Already have an account?",
   signup_signin_link: "Sign in",
 
-  // Signup — payment waiting screen
+  // Signup â€” payment waiting screen
   signup_payment_title_prefix: "Waiting for plan confirmation:",
   signup_payment_desc: "Complete the payment in the Asaas tab. Once the subscription is confirmed, you will be automatically directed to the onboarding page.",
   signup_payment_popup_blocked: "Could not open the payment tab. Use the button below to open it again.",
@@ -554,7 +602,7 @@ export const en: Record<string, string> = {
   signup_payment_not_confirmed: "Payment not yet confirmed. Please wait a moment.",
   signup_payment_check_error: "Error checking payment. Please try again.",
 
-  // Signup — validation errors
+  // Signup â€” validation errors
   signup_val_email: "Please enter your email.",
   signup_val_password: "Please create a password.",
   signup_val_password_len: "Password must be at least 6 characters.",
@@ -584,7 +632,7 @@ export const en: Record<string, string> = {
   signup_error_payment: "Error starting payment. Please try again.",
   signup_error_unexpected: "Unexpected error creating account.",
 
-  // ── Onboarding ────────────────────────────────────────────────────────────
+  // â”€â”€ Onboarding â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   onboarding_agency_eyebrow: "Agency flow",
   onboarding_talent_eyebrow: "Talent flow",
   onboarding_agency_heading: "All set. Now take a quick look at how your operation works on BrisaHub",
@@ -600,7 +648,7 @@ export const en: Record<string, string> = {
   onboarding_talent_enter: "Enter as talent",
   onboarding_loading: "Entering...",
 
-  // Onboarding — agency cards
+  // Onboarding â€” agency cards
   onboarding_agency_step1_title: "Post your job",
   onboarding_agency_step1_body: "Open opportunities with a clear brief, defined category and well-communicated rate from the start.",
   onboarding_agency_step2_title: "Receive applications",
@@ -612,7 +660,7 @@ export const en: Record<string, string> = {
   onboarding_agency_step5_title: "Release payment securely",
   onboarding_agency_step5_body: "After delivery, the release follows the internal flow to the talent's wallet, with no shortcuts outside it.",
 
-  // Onboarding — talent cards
+  // Onboarding â€” talent cards
   onboarding_talent_step1_title: "Your profile is ready",
   onboarding_talent_step1_body: "The main data was already saved during registration so you can start without rework.",
   onboarding_talent_step2_title: "Apply for jobs",
@@ -737,33 +785,33 @@ export const en: Record<string, string> = {
   billing_deposit: "Deposit",
   billing_withdrawal: "Withdrawal",
 
-  // ── Common actions / feedback ─────────────────────────────────────────────
+  // â”€â”€ Common actions / feedback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   common_cancel:             "Cancel",
   common_confirm:            "Confirm",
-  common_sending:            "Sending…",
-  common_updating:           "Updating…",
+  common_sending:            "Sendingâ€¦",
+  common_updating:           "Updatingâ€¦",
   common_unexpected_error:   "Something went wrong.",
 
-  // ── Period filters ────────────────────────────────────────────────────────
+  // â”€â”€ Period filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   filter_today:              "Today",
   filter_this_month:         "This month",
 
-  // ── TalentBookings ────────────────────────────────────────────────────────
+  // â”€â”€ TalentBookings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   bookings_activity:         "Activity",
   bookings_my_bookings:      "My Bookings",
-  bookings_updating:         "Updating…",
+  bookings_updating:         "Updatingâ€¦",
   bookings_empty_hint:       "Apply for jobs to get booked.",
   bookings_agreed_value:     "Agreed Value",
   bookings_you_receive:      "You receive",
   bookings_booked_at:        "Booked on",
   bookings_sign_contract:    "Sign Contract",
-  bookings_cancelling:       "Cancelling…",
+  bookings_cancelling:       "Cancellingâ€¦",
   bookings_cancel_booking:   "Cancel Booking",
   bookings_cancel_confirm:   "Cancel this booking?",
   bookings_cancelled_toast:  "Booking cancelled.",
   bookings_cancel_failed:    "Failed to cancel.",
 
-  // ── TalentContracts ───────────────────────────────────────────────────────
+  // â”€â”€ TalentContracts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   contracts_show_less:             "Show less",
   contracts_show_more:             "Show more",
   contracts_received_at:           "Received on",
@@ -777,7 +825,7 @@ export const en: Record<string, string> = {
   contracts_signed_version:        "Signed version",
   contracts_docusign_instructions: "Contract sent by agency. Download the PDF, sign via DocuSign or another tool, and upload the signed version below.",
   contracts_download_contract:     "Download contract",
-  contracts_select_signed:         "Select signed contract…",
+  contracts_select_signed:         "Select signed contractâ€¦",
   contracts_invalid_pdf:           "Please upload a valid PDF file up to 20MB.",
   contracts_file_too_large:        "File too large. Please upload a PDF up to 20MB.",
   contracts_reject:                "Reject",
@@ -785,15 +833,15 @@ export const en: Record<string, string> = {
   contracts_signed_uploaded_title: "Signed contract submitted",
   contracts_awaiting_agency_confirm: "Waiting for the agency to confirm receipt.",
   contracts_no_contract_info:      "This job has no contract. You can accept without signing.",
-  contracts_accepting:             "Accepting…",
+  contracts_accepting:             "Acceptingâ€¦",
   contracts_accept_job:            "Accept Job",
   contracts_completed_no_file:     "This job was completed without an attached contract.",
   contracts_confirm_reject:        "Confirm rejection?",
-  contracts_rejecting:             "Rejecting…",
+  contracts_rejecting:             "Rejectingâ€¦",
   contracts_upload_init_failed:    "Failed to start signed contract upload.",
   contracts_upload_storage_failed: "Failed to upload file to Storage. Please try again.",
   contracts_signed_toast:          "Signed contract submitted successfully.",
-  contracts_signed_toast_pending:  "Contract signed — booking is waiting for agency confirmation.",
+  contracts_signed_toast_pending:  "Contract signed â€” booking is waiting for agency confirmation.",
   contracts_sign_error:            "Error signing contract.",
   contracts_rejected_toast:        "Contract rejected.",
   contracts_booking_created_toast: "Accepted! Booking created successfully.",
@@ -810,10 +858,10 @@ export const en: Record<string, string> = {
   contracts_adjust_filter:         "Adjust the filter to see other records.",
   contracts_empty_hint:            "Contracts sent by agencies will appear here.",
 
-  // ── AgencyContracts ───────────────────────────────────────────────────────
+  // â”€â”€ AgencyContracts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   agency_contracts_if_applicable:  "(if applicable)",
 
-  // ── Admin topbar ──────────────────────────────────────────────────────────
+  // â”€â”€ Admin topbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   topbar_admin_dashboard_title: "Dashboard",
   topbar_admin_dashboard_desc:  "Platform overview",
   topbar_admin_jobs_title:      "Jobs",
@@ -849,7 +897,7 @@ export const en: Record<string, string> = {
   topbar_admin_notifications_title: "Notifications",
   topbar_admin_notifications_desc:  "Send mass notifications to platform users",
 
-  // ── Admin shared labels ───────────────────────────────────────────────────
+  // â”€â”€ Admin shared labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   admin_platform:        "Platform admin",
   admin_overview:        "Overview",
   admin_period_all:      "All time",
@@ -861,7 +909,7 @@ export const en: Record<string, string> = {
   admin_platform_revenue:"Platform Revenue",
   admin_pending_actions: "Pending actions",
   admin_no_pending:      "No pending actions.",
-  admin_search_bookings: "Search bookings…",
+  admin_search_bookings: "Search bookingsâ€¦",
   admin_booking_id:      "Booking ID",
   admin_total_value:     "Total Value",
   admin_commission:      "Platform Commission",
@@ -884,7 +932,7 @@ export const en: Record<string, string> = {
   admin_unfreeze:        "Unfreeze",
   admin_trash_btn:       "Trash",
   admin_add_balance:     "+ Balance",
-  admin_debit_balance:   "− Balance",
+  admin_debit_balance:   "âˆ’ Balance",
   admin_saving:          "Saving...",
   admin_sort_default:    "Default",
   admin_sort_earnings:   "Earnings / balance",
@@ -914,7 +962,7 @@ export const en: Record<string, string> = {
   admin_wallet_current:  "current balance",
   admin_confirmed_spending:"confirmed spending",
   admin_platform_commission:"platform commission",
-  admin_search_jobs:     "Search jobs…",
+  admin_search_jobs:     "Search jobsâ€¦",
   admin_category:        "Category",
   admin_budget:          "Budget",
   admin_posted_by:       "Posted by",
@@ -936,7 +984,7 @@ export const en: Record<string, string> = {
   admin_contract_status: "Contract Status",
   admin_booking_date:    "Booking Date",
   admin_all_status:      "All",
-  admin_search_contracts:"Search contracts…",
+  admin_search_contracts:"Search contractsâ€¦",
   admin_no_contracts:    "No contracts found.",
   admin_contract_id:     "Contract ID",
   admin_contracts_count: "contracts",
@@ -975,7 +1023,7 @@ export const en: Record<string, string> = {
   admin_notifications_audience: "Audience",
   admin_notifications_message:  "Message",
   admin_notifications_send:     "Send",
-  admin_notifications_sending:  "Sending…",
+  admin_notifications_sending:  "Sendingâ€¦",
   admin_notifications_sent:     "Notification sent.",
   admin_notifications_error:    "Error sending notification.",
   admin_audience_all:    "All users",
@@ -999,14 +1047,14 @@ export const en: Record<string, string> = {
   admin_disputed:        "In dispute",
   admin_all_categories_label: "All",
 
-  // ── Booking unified status labels ─────────────────────────────────────────
+  // â”€â”€ Booking unified status labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   booking_status_awaiting_signature: "Awaiting Signature",
   booking_status_awaiting_deposit:   "Awaiting Deposit",
   booking_status_awaiting_payment:   "Awaiting Payment",
   booking_status_paid:               "Paid",
   booking_status_cancelled:          "Cancelled",
 
-  // ── Reconciliation / system / audit labels ────────────────────────────────
+  // â”€â”€ Reconciliation / system / audit labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   reconciliation_status_ok:      "Reconciled",
   reconciliation_status_warn:    "Warning",
   reconciliation_status_diff:    "Discrepancy",
@@ -1022,7 +1070,7 @@ export const en: Record<string, string> = {
   support_status_closed:         "Closed",
   support_status_pending:        "Awaiting reply",
 
-  // ── Premium wallet ledger ─────────────────────────────────────────────────────
+  // â”€â”€ Premium wallet ledger â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   wallet_allocated: "Allocated balance",
   wallet_committed: "Committed balance",
   wallet_available: "Available balance",
@@ -1040,4 +1088,123 @@ export const en: Record<string, string> = {
   wallet_tx_release:           "Released",
   wallet_tx_refund:            "Refund",
   wallet_tx_adjustment:        "Adjustment",
+  landing_alt_jobs: "BrisaHub job list screen",
+  landing_alt_finances: "BrisaHub agency finance screen",
+  landing_alt_talents: "BrisaHub talent screen",
+  landing_alt_dashboard: "BrisaHub agency dashboard",
+  workspace_view_all: "View all",
+  workspace_available_plural: "available",
+  workspace_agent_singular: "agent",
+  workspace_agent_plural: "agents",
+  workspace_job_singular: "job",
+  workspace_job_plural: "jobs",
+  workspace_job_singular_created: "job created by you",
+  workspace_job_plural_created: "jobs created by you",
+  workspace_job_application_singular: "application",
+  workspace_job_application_plural: "applications",
+  workspace_invite_singular: "invite",
+  workspace_invite_plural: "invites",
+  workspace_pending_singular: "pending",
+  workspace_pending_plural: "pending",
+  workspace_locked_description: "Create a private environment for your agency, manage agents, send exclusive invites, and follow the whole operation in one place.",
+  workspace_locked_private_space: "Private agency space",
+  workspace_locked_internal_agents: "Internal agents",
+  workspace_locked_limit_control: "Usage limit control",
+  workspace_locked_branding: "Logo and color customization",
+  workspace_locked_owner_supervision: "Owner supervision",
+  workspace_header_logo_alt: "Premium Space logo",
+  workspace_header_default_welcome: "Customize the space with your agency logo and colors.",
+  workspace_header_created_at: "Created on",
+  workspace_header_access: "Access",
+  workspace_header_access_owner: "Full oversight",
+  workspace_header_access_agent: "Team operations",
+  workspace_identity_summary: "Visual identity and private portal link summary.",
+  workspace_identity_edit: "Edit branding",
+  workspace_identity_logo_alt: "Workspace logo",
+  workspace_identity_portal_url: "Portal URL:",
+  workspace_identity_portal_url_missing: "Portal URL not configured",
+  workspace_summary_pending_invites: "Invites awaiting acceptance",
+  workspace_summary_active_team: "Active team in the space",
+  workspace_summary_all_workspace_jobs: "All jobs in the Premium Space",
+  workspace_summary_main_account_balance: "Current main balance in BrisaHub",
+  workspace_summary_configured: "Configured",
+  workspace_summary_pending: "Pending",
+  workspace_summary_branding_ready: "Space logo and identity",
+  workspace_summary_branding_missing: "Add your agency logo and colors",
+  workspace_summary_owner_value: "Oversight",
+  workspace_summary_owner_hint: "Full control of the operation",
+  workspace_summary_role_operation: "Operations",
+  workspace_summary_agent_balance_usage: "Operational access to the Premium Space",
+  workspace_summary_reserved_in_jobs: "Reserved in open jobs",
+  workspace_summary_balance_depleted: "Free balance depleted",
+  workspace_summary_remaining_balance: "Remaining balance for new jobs",
+  workspace_seat_limit_title: "You have reached the Premium agent limit.",
+  workspace_seat_limit_description: "Contact support to evaluate expanding your team capacity in the Premium Space.",
+  workspace_team_manage: "Manage team",
+  workspace_team_manage_in: "manage in",
+  workspace_team_more: "more",
+  workspace_team_empty_prefix: "No active agents yet.",
+  workspace_team_invite_your_team: "Invite your team",
+  workspace_agent_active_since: "Agent active since",
+  workspace_agent_wallet_hint: "To view your allocated balance, open Wallet.",
+  workspace_agent_view_wallet: "View wallet",
+  workspace_jobs_created_in_premium: "Created inside Premium Space",
+  workspace_jobs_count_in_space: "in Premium Space",
+  workspace_jobs_owner_empty_description: "Create the team's first job to start using the Premium Space private flow.",
+  workspace_jobs_agent_empty_title: "You have not created any jobs yet.",
+  workspace_jobs_agent_empty_description: "Create your first job inside the Premium Space to start operating.",
+  workspace_wallet_page_title: "Premium Wallet",
+  workspace_wallet_agent_page_description: "Your full history of allocations, commitments, releases, and payments in the Premium Space.",
+  workspace_wallet_owner_page_description: "Complete view of workspace money: the agency's real balance, virtual allocations per agent, commitments, releases, and payments to talents.",
+  workspace_wallet_total_sent_by_owner: "Total sent by the owner",
+  workspace_wallet_reserved_in_open_jobs: "Reserved in open jobs",
+  workspace_wallet_available_new_jobs: "Can be used in new jobs",
+  workspace_wallet_settled_paid_contracts: "Settled in paid contracts",
+  workspace_wallet_owner_balance_label: "Agency wallet balance",
+  workspace_wallet_owner_balance_hint: "Current real balance in BrisaHub",
+  workspace_wallet_allocated_to_agents: "Allocated to agents",
+  workspace_wallet_allocated_to_agents_hint: "Still reserved in agent operations",
+  workspace_wallet_committed_escrow: "Committed / escrow",
+  workspace_wallet_committed_escrow_hint: "Locked in still-open jobs",
+  workspace_wallet_paid_talents: "Paid to talents",
+  workspace_wallet_available_allocate_reclaim: "Available to allocate / pull back",
+  workspace_wallet_available_allocate_reclaim_hint: "Agency free wallet + agents' free balances",
+  workspace_wallet_allocator_title: "Allocations and reclaim by agent",
+  workspace_wallet_allocator_description: "Select an agent, review their available balance, and use \"Pull balance\" to create an `allocation_reversal` row without touching `profiles.wallet_balance`.",
+  workspace_wallet_timeline_title_agent: "Your wallet timeline",
+  workspace_wallet_timeline_description_agent: "Each row shows type, date, status, related job, contract, and how much of this balance entered, left, or became committed.",
+  workspace_wallet_timeline_title_owner: "Full workspace ledger",
+  workspace_wallet_timeline_description_owner: "Shows allocations sent to agents, money pulled back, job commitments, releases, settlements, and contract-related payments.",
+  workspace_wallet_no_transactions: "No transactions yet.",
+  workspace_wallet_date_label: "Date",
+  workspace_wallet_agent_label: "Agent",
+  workspace_wallet_job_label: "Job",
+  workspace_wallet_note_label: "Note",
+  workspace_wallet_contract_label: "Contract",
+  workspace_wallet_gross: "Gross",
+  workspace_wallet_commission: "Commission",
+  workspace_wallet_paid_to_talent: "Paid to talent",
+  workspace_wallet_paid_at: "Paid at",
+  workspace_wallet_tx_allocation: "Allocation sent to agent",
+  workspace_wallet_tx_allocation_reversal: "Balance pulled back",
+  workspace_wallet_tx_job_commitment: "Job commitment / escrow",
+  workspace_wallet_tx_job_release: "Commitment released",
+  workspace_wallet_tx_job_settlement: "Talent payment settled",
+  workspace_wallet_tx_refund: "Commitment refund / reversal",
+  workspace_wallet_tx_adjustment: "Manual adjustment",
+  portal_job_fallback: "Job",
+  portal_earnings_in_portal: "Earnings in this portal",
+  portal_available_jobs: "Available jobs",
+  portal_open_now: "open now",
+  portal_reservations: "Bookings",
+  portal_application_singular: "application",
+  portal_application_plural: "applications",
+  portal_active_contracts: "Active contracts",
+  portal_in_progress: "in progress",
+  portal_paid_singular: "paid",
+  portal_paid_plural: "paid",
+  portal_recent_jobs: "Recent jobs",
+  portal_no_jobs_available: "No jobs available right now.",
+  portal_recent_reservations: "Recent bookings",
+  portal_recent_contracts: "Recent contracts",
 };

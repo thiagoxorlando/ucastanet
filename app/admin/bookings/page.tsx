@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import AdminBookings from "@/features/admin/AdminBookings";
-import { createServerClient } from "@/lib/supabase";
 import { getUnifiedBookingStatus } from "@/lib/bookingStatus";
+import { createServerClient } from "@/lib/supabase";
 
-export const metadata: Metadata = { title: "Administração — Reservas — BrisaHub" };
+export const metadata: Metadata = { title: "Administracao - Reservas - BrisaHub" };
 
 export default async function AdminBookingsPage() {
   const supabase = createServerClient({ useServiceRole: true });
 
-  // Single joined query — contract embedded via the booking_id FK (no stale join maps)
   const { data: bookingsData } = await supabase
     .from("bookings")
     .select(`
@@ -21,68 +20,68 @@ export default async function AdminBookingsPage() {
     .order("created_at", { ascending: false });
 
   const rows = bookingsData ?? [];
-  const jobIds = [...new Set(rows.map((b) => b.job_id).filter((x): x is string => !!x))];
+  const jobIds = [...new Set(rows.map((booking) => booking.job_id).filter((id): id is string => Boolean(id)))];
+  const talentIds = [...new Set(rows.map((booking) => booking.talent_user_id).filter((id): id is string => Boolean(id)))];
+  const agencyIds = [...new Set(rows.map((booking) => booking.agency_id).filter((id): id is string => Boolean(id)))];
 
-  const talentIds = [...new Set(rows.map((b) => b.talent_user_id).filter((x): x is string => !!x))];
-  const agencyIds = [...new Set(rows.map((b) => b.agency_id).filter((x): x is string => !!x))];
-
-  const [talentData, agencyData, jobsData] = await Promise.all([
-    talentIds.length
-      ? supabase.from("talent_profiles").select("id, full_name").in("id", talentIds).then((r) => r.data ?? [])
-      : Promise.resolve([]),
-    agencyIds.length
-      ? supabase.from("agencies").select("id, company_name").in("id", agencyIds).then((r) => r.data ?? [])
-      : Promise.resolve([]),
-    jobIds.length
-      ? supabase.from("jobs").select("id, job_date, workspace_id").in("id", jobIds).then((r) => r.data ?? [])
-      : Promise.resolve([]),
+  const [talentData, agencyData, jobsData, authUsersRes, profilesRes] = await Promise.all([
+    talentIds.length ? supabase.from("talent_profiles").select("id, full_name").in("id", talentIds).then((result) => result.data ?? []) : Promise.resolve([]),
+    agencyIds.length ? supabase.from("agencies").select("id, user_id, company_name").in("id", agencyIds).then((result) => result.data ?? []) : Promise.resolve([]),
+    jobIds.length ? supabase.from("jobs").select("id, job_date, workspace_id").in("id", jobIds).then((result) => result.data ?? []) : Promise.resolve([]),
+    supabase.auth.admin.listUsers({ perPage: 1000 }),
+    supabase.from("profiles").select("id").is("deleted_at", null),
   ]);
 
+  const validUserIds = new Set((authUsersRes.data?.users ?? []).map((user) => user.id));
+  const validProfileIds = new Set((profilesRes.data ?? []).map((profile) => profile.id));
   const talentMap = new Map<string, string>();
   const agencyMap = new Map<string, string>();
   const jobDateMap = new Map<string, string | null>();
   const jobWorkspaceIdMap = new Map<string, string | null>();
-  for (const t of talentData) talentMap.set(t.id, t.full_name ?? "Sem nome");
-  for (const a of agencyData) agencyMap.set(a.id, a.company_name ?? "Sem nome");
+
+  for (const talent of talentData) {
+    talentMap.set(talent.id, talent.full_name ?? "Talento órfão / usuário deletado");
+  }
+  for (const agency of agencyData) {
+    const ownerId = (agency as { user_id?: string | null }).user_id ?? agency.id;
+    const isOrphan = !ownerId || !validUserIds.has(ownerId) || !validProfileIds.has(ownerId);
+    agencyMap.set(agency.id, isOrphan ? "Agência órfã / usuário deletado" : agency.company_name ?? "Agência sem nome");
+  }
   for (const job of jobsData) {
     jobDateMap.set(job.id, (job as { job_date?: string | null }).job_date ?? null);
     jobWorkspaceIdMap.set(job.id, (job as { workspace_id?: string | null }).workspace_id ?? null);
   }
 
-  // Resolve workspace names for premium bookings
-  const bookingWorkspaceIds = [...new Set([...jobWorkspaceIdMap.values()].filter((id): id is string => !!id))];
+  const bookingWorkspaceIds = [...new Set([...jobWorkspaceIdMap.values()].filter((id): id is string => Boolean(id)))];
   const bookingWorkspaceNameMap = new Map<string, string>();
   if (bookingWorkspaceIds.length) {
-    const { data: wsData } = await supabase
-      .from("premium_workspaces")
-      .select("id, name")
-      .in("id", bookingWorkspaceIds);
-    for (const ws of wsData ?? []) bookingWorkspaceNameMap.set(ws.id, ws.name ?? "Premium");
+    const { data: workspaces } = await supabase.from("premium_workspaces").select("id, name").in("id", bookingWorkspaceIds);
+    for (const workspace of workspaces ?? []) bookingWorkspaceNameMap.set(workspace.id, workspace.name ?? "Workspace órfão");
   }
 
-  const bookings = rows.map((b) => {
-    const contractArr = Array.isArray((b as any).contracts) ? (b as any).contracts : [];
-    const contract = contractArr[0] ?? null;
-    const wsId = b.job_id ? (jobWorkspaceIdMap.get(b.job_id) ?? null) : null;
+  const bookings = rows.map((booking) => {
+    const contracts = Array.isArray((booking as { contracts?: unknown }).contracts) ? ((booking as { contracts?: Array<Record<string, unknown>> }).contracts ?? []) : [];
+    const contract = contracts[0] ?? null;
+    const workspaceId = booking.job_id ? (jobWorkspaceIdMap.get(booking.job_id) ?? null) : null;
 
     return {
-      id:                  b.id,
-      jobTitle:            b.job_title      ?? "—",
-      talentName:          b.talent_user_id ? (talentMap.get(b.talent_user_id) ?? "Talento sem nome") : "Sem nome",
-      agencyName:          b.agency_id      ? (agencyMap.get(b.agency_id)      ?? "Agência sem nome") : "—",
-      status:              b.status         ?? "pending",
-      contractStatus:      contract?.status         ?? null,
-      derivedStatus:       getUnifiedBookingStatus(b.status ?? "pending", contract?.status ?? null),
-      price:               b.price          ?? 0,
-      contractAmount:      contract?.payment_amount ?? null,
-      created_at:          b.created_at     ?? "",
-      jobDate:             b.job_id ? (jobDateMap.get(b.job_id) ?? null) : null,
-      contractSentAt:      contract?.created_at     ?? null,
-      contractSignedAt:    contract?.signed_at      ?? null,
-      contractConfirmedAt: contract?.confirmed_at ?? contract?.agency_signed_at ?? null,
-      paidAt:              contract?.paid_at        ?? null,
-      workspaceId:         wsId,
-      workspaceName:       wsId ? (bookingWorkspaceNameMap.get(wsId) ?? "Premium") : null,
+      id: booking.id,
+      jobTitle: booking.job_title ?? "—",
+      talentName: booking.talent_user_id ? (talentMap.get(booking.talent_user_id) ?? "Talento órfão / usuário deletado") : "Talento órfão / usuário deletado",
+      agencyName: booking.agency_id ? (agencyMap.get(booking.agency_id) ?? "Agência órfã / usuário deletado") : "—",
+      status: booking.status ?? "pending",
+      contractStatus: (contract?.status as string | null) ?? null,
+      derivedStatus: getUnifiedBookingStatus(booking.status ?? "pending", (contract?.status as string | null) ?? null),
+      price: booking.price ?? 0,
+      contractAmount: (contract?.payment_amount as number | null) ?? null,
+      created_at: booking.created_at ?? "",
+      jobDate: booking.job_id ? (jobDateMap.get(booking.job_id) ?? null) : null,
+      contractSentAt: (contract?.created_at as string | null) ?? null,
+      contractSignedAt: (contract?.signed_at as string | null) ?? null,
+      contractConfirmedAt: (contract?.confirmed_at as string | null) ?? (contract?.agency_signed_at as string | null) ?? null,
+      paidAt: (contract?.paid_at as string | null) ?? null,
+      workspaceId,
+      workspaceName: workspaceId ? (bookingWorkspaceNameMap.get(workspaceId) ?? "Workspace órfão") : null,
     };
   });
 
