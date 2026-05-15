@@ -100,11 +100,12 @@ export default async function TalentLayout({ children }: { children: React.React
 
     if (workspace) {
       initialWorkspacePortal = {
-        slug: workspace.slug,
-        name: workspace.name,
-        logoUrl: (workspace.logo_url as string | null) ?? null,
+        slug:         workspace.slug,
+        name:         workspace.name,
+        logoUrl:      (workspace.logo_url as string | null) ?? null,
         primaryColor: (workspace.brand_primary_color as string | null) ?? "#1ABC9C",
-        accentColor: (workspace.brand_accent_color as string | null) ?? "#27C1D6",
+        accentColor:  (workspace.brand_accent_color as string | null) ?? "#27C1D6",
+        mode:         "talent" as const,
       };
     }
   }

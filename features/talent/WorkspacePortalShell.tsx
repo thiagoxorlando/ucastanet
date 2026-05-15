@@ -21,11 +21,12 @@ export default function WorkspacePortalShell({ workspace, workspaceSlug, childre
 
   useEffect(() => {
     setWorkspace({
-      slug: workspaceSlug,
-      name: workspace.name,
-      logoUrl: workspace.logoUrl,
+      slug:         workspaceSlug,
+      name:         workspace.name,
+      logoUrl:      workspace.logoUrl,
       primaryColor: workspace.brandPrimaryColor ?? "#1ABC9C",
-      accentColor: workspace.brandAccentColor ?? "#27C1D6",
+      accentColor:  workspace.brandAccentColor  ?? "#27C1D6",
+      mode:         "talent",
     });
     return () => setWorkspace(null);
   }, [workspaceSlug, workspace.name, workspace.logoUrl, workspace.brandPrimaryColor, workspace.brandAccentColor, setWorkspace]);

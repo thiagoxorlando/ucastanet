@@ -8,6 +8,8 @@ export type WorkspacePortalData = {
   logoUrl: string | null;
   primaryColor: string;
   accentColor: string;
+  /** "talent" = portal talent sidebar; "agent" = agency workspace sidebar */
+  mode: "talent" | "agent";
 };
 
 type ContextValue = {

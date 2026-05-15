@@ -84,6 +84,7 @@ export default async function AgencyLayout({
         logoUrl:      ws.workspace.logoUrl,
         primaryColor: ws.workspace.brandPrimaryColor ?? "#1ABC9C",
         accentColor:  ws.workspace.brandAccentColor  ?? "#27C1D6",
+        mode:         "agent" as const,
       }
     : null;
 
