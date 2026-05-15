@@ -42,8 +42,14 @@ function AgentAllocRow({
   const [saving, setSaving] = useState(false);
 
   const initials = (member.displayName || member.email || "?")
-    .split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+    .split(" ")
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("");
   const isSuspended = member.status === "suspended";
+  const availableAmount = ledger?.availableAmount ?? 0;
+  const committedAmount = ledger?.committedAmount ?? 0;
+  const canReclaim = !isSuspended && availableAmount > 0;
 
   async function submitAlloc(e: React.FormEvent) {
     e.preventDefault();
@@ -83,16 +89,16 @@ function AgentAllocRow({
         </div>
         <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Comprometido</p>
-          <p className="mt-1 text-[13px] font-semibold text-amber-700">{brl(ledger?.committedAmount ?? 0)}</p>
+          <p className="mt-1 text-[13px] font-semibold text-amber-700">{brl(committedAmount)}</p>
         </div>
         <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Pago/Gasto</p>
           <p className="mt-1 text-[13px] font-semibold text-rose-600">{brl(ledger?.spentAmount ?? 0)}</p>
         </div>
         <div className="rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Disponível</p>
-          <p className={`mt-1 text-[13px] font-semibold ${(ledger?.availableAmount ?? 0) === 0 ? "text-rose-600" : "text-emerald-700"}`}>
-            {brl(ledger?.availableAmount ?? 0)}
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Disponivel</p>
+          <p className={`mt-1 text-[13px] font-semibold ${availableAmount === 0 ? "text-rose-600" : "text-emerald-700"}`}>
+            {brl(availableAmount)}
           </p>
         </div>
       </div>
@@ -100,20 +106,23 @@ function AgentAllocRow({
       {allocMode ? (
         <form onSubmit={submitAlloc} className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
           <p className="text-[12px] font-semibold text-zinc-700">
-            {allocMode === "allocation" ? "Adicionar saldo ao agente" : "Puxar saldo de volta"}
+            {allocMode === "allocation" ? "Adicionar saldo ao agente" : "Puxar saldo"}
           </p>
           {allocMode === "allocation" && (
             <p className="text-[11px] text-zinc-500">
-              Seu saldo disponível para alocar: <strong className="text-zinc-700">{brl(ownerUnallocated)}</strong>
+              Seu saldo disponivel para alocar: <strong className="text-zinc-700">{brl(ownerUnallocated)}</strong>
             </p>
           )}
           {allocMode === "allocation_reversal" && (
             <p className="text-[11px] text-zinc-500">
-              Saldo disponível do agente: <strong className="text-zinc-700">{brl(ledger?.availableAmount ?? 0)}</strong>
+              Saldo disponivel do agente: <strong className="text-zinc-700">{brl(availableAmount)}</strong>
             </p>
           )}
           <input
-            type="number" min={0.01} step={0.01} required
+            type="number"
+            min={0.01}
+            step={0.01}
+            required
             value={allocAmount}
             onChange={(e) => setAllocAmount(e.target.value)}
             placeholder="R$ 0,00"
@@ -128,33 +137,64 @@ function AgentAllocRow({
             className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[12px] text-zinc-700 focus:outline-none"
           />
           <div className="flex gap-2">
-            <button type="button" onClick={() => { setAllocMode(null); setAllocAmount(""); setAllocNote(""); }}
-              className="flex-1 rounded-lg border border-zinc-200 bg-white py-2 text-[11px] font-semibold text-zinc-600">
+            <button
+              type="button"
+              onClick={() => {
+                setAllocMode(null);
+                setAllocAmount("");
+                setAllocNote("");
+              }}
+              className="flex-1 rounded-lg border border-zinc-200 bg-white py-2 text-[11px] font-semibold text-zinc-600"
+            >
               Cancelar
             </button>
-            <button type="submit" disabled={saving || !allocAmount}
-              className={`flex-1 rounded-lg py-2 text-[11px] font-semibold text-white disabled:opacity-40 ${allocMode === "allocation" ? "bg-emerald-500 hover:bg-emerald-600" : "bg-rose-500 hover:bg-rose-600"}`}>
-              {saving ? "Salvando..." : allocMode === "allocation" ? "Adicionar saldo" : "Puxar saldo de volta"}
+            <button
+              type="submit"
+              disabled={saving || !allocAmount}
+              className={`flex-1 rounded-lg py-2 text-[11px] font-semibold text-white disabled:opacity-40 ${allocMode === "allocation" ? "bg-emerald-500 hover:bg-emerald-600" : "bg-rose-500 hover:bg-rose-600"}`}
+            >
+              {saving ? "Salvando..." : allocMode === "allocation" ? "Adicionar saldo" : "Puxar saldo"}
             </button>
           </div>
         </form>
       ) : (
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setAllocMode("allocation")} disabled={isSuspended}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-40">
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Adicionar saldo
-          </button>
-          {(ledger?.availableAmount ?? 0) > 0 ? (
-            <button type="button" onClick={() => setAllocMode("allocation_reversal")} disabled={isSuspended}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-[11px] font-semibold text-rose-600 transition-colors hover:bg-rose-100 disabled:opacity-40">
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setAllocMode("allocation")}
+              disabled={isSuspended}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-100 disabled:opacity-40"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Adicionar saldo
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!canReclaim) return;
+                setAllocMode("allocation_reversal");
+              }}
+              disabled={!canReclaim}
+              className={[
+                "inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-[11px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                canReclaim
+                  ? "border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-100"
+                  : "border-zinc-200 bg-zinc-100 text-zinc-400",
+              ].join(" ")}
+            >
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
               </svg>
-              Puxar saldo de volta
+              Puxar saldo
             </button>
+          </div>
+          {!canReclaim ? (
+            <p className="text-[11px] text-zinc-500">
+              Sem saldo disponivel para puxar. Este agente tem {brl(committedAmount)} comprometido em vagas.
+            </p>
           ) : null}
         </div>
       )}
@@ -165,7 +205,7 @@ function AgentAllocRow({
 export default function WorkspaceWalletAllocator({ agents, initialLedgerBalances, initialOwnerSummary }: Props) {
   const router = useRouter();
   const [ledgerMap, setLedgerMap] = useState<Map<string, AgentLedgerBalance>>(
-    new Map(initialLedgerBalances.map((b) => [b.agentUserId, b]))
+    new Map(initialLedgerBalances.map((balance) => [balance.agentUserId, balance])),
   );
   const [ownerSummary, setOwnerSummary] = useState<OwnerAllocationSummary>(initialOwnerSummary);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -181,12 +221,14 @@ export default function WorkspaceWalletAllocator({ agents, initialLedgerBalances
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type, amount, note }),
     });
+
     const data = (await res.json().catch(() => ({}))) as {
       ok?: boolean;
       error?: string;
       agentBalance?: AgentLedgerBalance;
       ownerSummary?: OwnerAllocationSummary;
     };
+
     if (res.ok && data.ok) {
       if (data.agentBalance) {
         setLedgerMap((prev) => {
@@ -199,19 +241,19 @@ export default function WorkspaceWalletAllocator({ agents, initialLedgerBalances
       showToast(type === "allocation" ? "Saldo adicionado ao agente." : "Saldo puxado de volta para o proprietario.", true);
       router.refresh();
     } else {
-      showToast(data.error ?? "Erro ao processar alocação.", false);
+      showToast(data.error ?? "Erro ao processar alocacao.", false);
     }
   }
 
   if (agents.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 px-5 py-6 text-center">
-        <p className="text-[14px] text-zinc-500">Nenhum agente ativo. Convide agentes na página de Agentes.</p>
+        <p className="text-[14px] text-zinc-500">Nenhum agente ativo. Convide agentes na pagina de Agentes.</p>
       </div>
     );
   }
 
-  const totalCommitted = Array.from(ledgerMap.values()).reduce((s, l) => s + l.committedAmount, 0);
+  const totalCommitted = Array.from(ledgerMap.values()).reduce((sum, ledger) => sum + ledger.committedAmount, 0);
 
   return (
     <div className="space-y-3">
@@ -226,8 +268,7 @@ export default function WorkspaceWalletAllocator({ agents, initialLedgerBalances
         />
       ))}
       <p className="text-[12px] text-zinc-400">
-        Total comprometido em vagas ativas:{" "}
-        <strong className="text-zinc-600">{brl(totalCommitted)}</strong>
+        Total comprometido em vagas ativas: <strong className="text-zinc-600">{brl(totalCommitted)}</strong>
       </p>
     </div>
   );
