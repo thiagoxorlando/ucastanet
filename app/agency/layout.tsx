@@ -5,7 +5,6 @@ import { createSessionClient } from "@/lib/supabase.server";
 import DashboardShell from "@/components/layout/DashboardShell";
 import { SubscriptionProvider } from "@/lib/SubscriptionContext";
 import SubscriptionBanner from "@/components/agency/SubscriptionBanner";
-import { WorkspacePortalProvider } from "@/lib/WorkspacePortalContext";
 import { resolvePlanInfo } from "@/lib/plans";
 import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
 
@@ -95,12 +94,10 @@ export default async function AgencyLayout({
       initialIsPro={planInfo.isPaid}
       initialIsWorkspaceAgent={isWorkspaceAgent}
     >
-      <WorkspacePortalProvider initialWorkspace={agentWorkspacePortal}>
-        <DashboardShell>
-          {!isActive && <SubscriptionBanner />}
-          {children}
-        </DashboardShell>
-      </WorkspacePortalProvider>
+      <DashboardShell initialWorkspacePortal={agentWorkspacePortal}>
+        {!isActive && <SubscriptionBanner />}
+        {children}
+      </DashboardShell>
     </SubscriptionProvider>
   );
 }

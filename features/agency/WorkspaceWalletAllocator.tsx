@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { brl } from "@/lib/brl";
 import type {
   WorkspaceMemberDetail,
@@ -99,7 +100,7 @@ function AgentAllocRow({
       {allocMode ? (
         <form onSubmit={submitAlloc} className="space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
           <p className="text-[12px] font-semibold text-zinc-700">
-            {allocMode === "allocation" ? "Adicionar saldo ao agente" : "Recolher saldo do agente"}
+            {allocMode === "allocation" ? "Adicionar saldo ao agente" : "Puxar saldo de volta"}
           </p>
           {allocMode === "allocation" && (
             <p className="text-[11px] text-zinc-500">
@@ -133,7 +134,7 @@ function AgentAllocRow({
             </button>
             <button type="submit" disabled={saving || !allocAmount}
               className={`flex-1 rounded-lg py-2 text-[11px] font-semibold text-white disabled:opacity-40 ${allocMode === "allocation" ? "bg-emerald-500 hover:bg-emerald-600" : "bg-rose-500 hover:bg-rose-600"}`}>
-              {saving ? "Salvando..." : allocMode === "allocation" ? "Adicionar saldo" : "Recolher saldo"}
+              {saving ? "Salvando..." : allocMode === "allocation" ? "Adicionar saldo" : "Puxar saldo de volta"}
             </button>
           </div>
         </form>
@@ -152,7 +153,7 @@ function AgentAllocRow({
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
               </svg>
-              Recolher saldo
+              Puxar saldo de volta
             </button>
           ) : null}
         </div>
@@ -162,6 +163,7 @@ function AgentAllocRow({
 }
 
 export default function WorkspaceWalletAllocator({ agents, initialLedgerBalances, initialOwnerSummary }: Props) {
+  const router = useRouter();
   const [ledgerMap, setLedgerMap] = useState<Map<string, AgentLedgerBalance>>(
     new Map(initialLedgerBalances.map((b) => [b.agentUserId, b]))
   );
@@ -194,7 +196,8 @@ export default function WorkspaceWalletAllocator({ agents, initialLedgerBalances
         });
       }
       if (data.ownerSummary) setOwnerSummary(data.ownerSummary);
-      showToast(type === "allocation" ? "Saldo adicionado ao agente." : "Saldo recolhido do agente.", true);
+      showToast(type === "allocation" ? "Saldo adicionado ao agente." : "Saldo puxado de volta para o proprietario.", true);
+      router.refresh();
     } else {
       showToast(data.error ?? "Erro ao processar alocação.", false);
     }

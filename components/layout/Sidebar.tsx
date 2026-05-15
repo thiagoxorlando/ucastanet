@@ -699,15 +699,49 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Logo */}
         <div className="relative flex items-center justify-between px-5 h-16 border-b border-white/[0.08] flex-shrink-0">
-          <Link href={isWorkspaceAgent ? "/agency/workspace" : "/"} className="flex flex-1 items-center justify-center">
-            <Image
-              src={heroBrandImage}
-              alt="BrisaHub"
-              width={heroBrandImage.width}
-              height={heroBrandImage.height}
-              className="h-auto w-full max-w-[72px]"
-            />
-          </Link>
+          {isWorkspaceAgent && portalWorkspace ? (
+            <Link href="/agency/workspace" className="flex min-w-0 flex-1 items-center gap-3">
+              <div
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/20"
+                style={{
+                  background: portalWorkspace.logoUrl
+                    ? "rgba(255,255,255,0.10)"
+                    : `linear-gradient(135deg, ${portalWorkspace.primaryColor} 0%, ${portalWorkspace.accentColor} 100%)`,
+                }}
+              >
+                {portalWorkspace.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={portalWorkspace.logoUrl} alt={portalWorkspace.name} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-[12px] font-black text-white select-none">
+                    {portalWorkspace.name
+                      .split(" ")
+                      .slice(0, 2)
+                      .map((word) => word[0]?.toUpperCase() ?? "")
+                      .join("") || "P"}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-bold leading-tight text-white">
+                  {portalWorkspace.name}
+                </p>
+                <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.16em] text-[#7BF0DE]">
+                  Espaco Premium
+                </p>
+              </div>
+            </Link>
+          ) : (
+            <Link href={isWorkspaceAgent ? "/agency/workspace" : "/"} className="flex flex-1 items-center justify-center">
+              <Image
+                src={heroBrandImage}
+                alt="BrisaHub"
+                width={heroBrandImage.width}
+                height={heroBrandImage.height}
+                className="h-auto w-full max-w-[72px]"
+              />
+            </Link>
+          )}
           <button
             onClick={onClose}
             className="lg:hidden w-7 h-7 flex items-center justify-center rounded-lg text-[#B8CECA] hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
@@ -938,4 +972,3 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     </>
   );
 }
-

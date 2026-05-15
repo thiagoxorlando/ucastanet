@@ -3,15 +3,28 @@
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 
+export type WorkspaceTalentContractHistory = {
+  id: string;
+  jobTitle: string;
+  statusLabel: string;
+  statusTone: string;
+  grossLabel: string;
+  netLabel: string;
+  paidAt: string | null;
+  createdAt: string;
+};
+
 export type WorkspaceTalentCard = {
   userId: string;
   name: string;
   email: string;
+  phone: string | null;
   avatarUrl: string | null;
   joinedAt: string;
   lastActivity: string;
   applicationCount: number;
   contractCount: number;
+  jobsCount: number;
   jobTitles: string[];
   isPortalMember: boolean;
   isCandidate: boolean;
@@ -19,6 +32,9 @@ export type WorkspaceTalentCard = {
   city?: string | null;
   country?: string | null;
   bio?: string | null;
+  sourceLabel: string;
+  contractHistory: WorkspaceTalentContractHistory[];
+  marketplaceVisible: boolean;
 };
 
 type Props = {
@@ -78,9 +94,9 @@ function cardStatus(talent: WorkspaceTalentCard) {
 
 function relationshipBadges(talent: WorkspaceTalentCard) {
   return [
-    talent.isPortalMember ? { label: "Membro do portal", className: "bg-[#EEF8F6] text-[#0E7C86]" } : null,
-    talent.isCandidate ? { label: "Candidato", className: "bg-sky-50 text-sky-700" } : null,
-    talent.isContracted ? { label: "Contratado", className: "bg-emerald-50 text-emerald-700" } : null,
+    talent.isPortalMember ? { label: "Portal", className: "bg-[#EEF8F6] text-[#0E7C86]" } : null,
+    talent.isCandidate ? { label: "Direto", className: "bg-sky-50 text-sky-700" } : null,
+    talent.isContracted ? { label: "Com contrato", className: "bg-emerald-50 text-emerald-700" } : null,
   ].filter(Boolean) as Array<{ label: string; className: string }>;
 }
 
@@ -135,11 +151,18 @@ function EmptyState({
 }
 
 function DetailRow({ label, value }: { label: string; value: ReactNode }) {
-  if (!value) return null;
   return (
-    <div>
+    <div className="rounded-[18px] border border-zinc-200 bg-white px-4 py-3">
       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{label}</p>
-      <p className="mt-0.5 text-[12px] text-zinc-700">{value}</p>
+      <p className="mt-1 text-[12px] text-zinc-700">{value || "-"}</p>
+    </div>
+  );
+}
+
+function HistoryEmptyState() {
+  return (
+    <div className="rounded-[18px] border border-dashed border-zinc-200 bg-white px-4 py-5 text-[12px] text-zinc-500">
+      Nenhum historico de pagamentos ou contratos disponivel para este talento ainda.
     </div>
   );
 }
@@ -175,12 +198,12 @@ export default function WorkspaceTalentsBoard({ talents, workspaceSlug }: Props)
       if (!matchesFilter(talent, filter)) return false;
       if (!query) return true;
 
-      const matchesText =
+      return (
         talent.name.toLowerCase().includes(query) ||
         talent.email.toLowerCase().includes(query) ||
-        talent.jobTitles.some((title) => title.toLowerCase().includes(query));
-
-      return matchesText;
+        (talent.phone ?? "").toLowerCase().includes(query) ||
+        talent.jobTitles.some((title) => title.toLowerCase().includes(query))
+      );
     });
   }, [filter, search, talents]);
 
@@ -218,7 +241,7 @@ export default function WorkspaceTalentsBoard({ talents, workspaceSlug }: Props)
                 Talentos convidados
               </h1>
               <p className="mt-3 text-[15px] leading-7 text-white/72">
-                Gerencie os talentos conectados ao Espaco Premium.
+                Lista expandivel com identidade, origem, atividade e historico privado de cada talento do workspace.
               </p>
             </div>
 
@@ -245,7 +268,7 @@ export default function WorkspaceTalentsBoard({ talents, workspaceSlug }: Props)
         <div className="grid gap-4 border-t border-zinc-100 px-6 py-6 sm:grid-cols-2 xl:grid-cols-4">
           {[
             { label: "Membros do portal", value: summary.portalMembers, hint: "Talentos que entraram pelo link privado" },
-            { label: "Candidaturas privadas", value: summary.privateCandidates, hint: "Talentos que responderam as vagas do workspace" },
+            { label: "Candidaturas privadas", value: summary.privateCandidates, hint: "Talentos ativos nas vagas do workspace" },
             { label: "Contratos Premium", value: summary.premiumContracts, hint: "Contratos ligados ao Espaco Premium" },
             { label: "Novos este mes", value: summary.newThisMonth, hint: "Entradas recentes no portal privado" },
           ].map((item) => (
@@ -268,7 +291,7 @@ export default function WorkspaceTalentsBoard({ talents, workspaceSlug }: Props)
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar por nome, e-mail ou vaga privada"
+              placeholder="Buscar por nome, e-mail, telefone ou vaga privada"
               className="w-full rounded-2xl border border-[#DDE6E6] bg-white py-3 pl-11 pr-4 text-[13px] text-zinc-800 shadow-sm outline-none transition-colors placeholder:text-zinc-400 focus:border-[#0E7C86]"
             />
           </div>
@@ -297,18 +320,19 @@ export default function WorkspaceTalentsBoard({ talents, workspaceSlug }: Props)
         {filteredTalents.length === 0 ? (
           <EmptyState workspaceSlug={workspaceSlug} copyPortalLink={copyPortalLink} copied={copied} />
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="space-y-4">
             {filteredTalents.map((talent) => {
               const status = cardStatus(talent);
               const badges = relationshipBadges(talent);
+              const isExpanded = expandedIds.has(talent.userId);
 
               return (
                 <article
                   key={talent.userId}
-                  className="group rounded-[28px] border border-zinc-200 bg-white p-5 shadow-[0_16px_38px_rgba(15,23,42,0.05)] transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_22px_46px_rgba(15,23,42,0.08)]"
+                  className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-[0_16px_38px_rgba(15,23,42,0.05)]"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="flex min-w-0 flex-1 items-start gap-4">
                       {talent.avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={talent.avatarUrl} alt={talent.name} className="h-14 w-14 rounded-[18px] object-cover ring-1 ring-zinc-200" />
@@ -317,128 +341,163 @@ export default function WorkspaceTalentsBoard({ talents, workspaceSlug }: Props)
                           {initials(talent.name)}
                         </div>
                       )}
-                      <div className="min-w-0">
-                        <p className="truncate text-[16px] font-semibold text-zinc-950">{talent.name}</p>
-                        <p className="mt-1 truncate text-[12px] text-zinc-500">{talent.email || "E-mail nao disponivel"}</p>
-                      </div>
-                    </div>
 
-                    <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold ${status.className}`}>
-                      {status.label}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {badges.map((badge) => (
-                      <span key={badge.label} className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ${badge.className}`}>
-                        {badge.label}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="mt-5 grid grid-cols-2 gap-3">
-                    <div className="rounded-[20px] border border-zinc-100 bg-zinc-50 px-4 py-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Candidaturas</p>
-                      <p className="mt-1 text-[1.2rem] font-bold text-zinc-900">{talent.applicationCount}</p>
-                    </div>
-                    <div className="rounded-[20px] border border-zinc-100 bg-zinc-50 px-4 py-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Contratos</p>
-                      <p className="mt-1 text-[1.2rem] font-bold text-zinc-900">{talent.contractCount}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 grid gap-3 text-[12px] text-zinc-500 sm:grid-cols-2">
-                    <div>
-                      <p className="font-semibold uppercase tracking-[0.14em] text-zinc-400">Entrou em</p>
-                      <p className="mt-1 text-zinc-700">{formatDate(talent.joinedAt)}</p>
-                    </div>
-                    <div>
-                      <p className="font-semibold uppercase tracking-[0.14em] text-zinc-400">Ultima atividade</p>
-                      <p className="mt-1 text-zinc-700">{talent.lastActivity ? formatDate(talent.lastActivity) : "-"}</p>
-                    </div>
-                  </div>
-
-                  {talent.jobTitles.length > 0 ? (
-                    <div className="mt-5">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Vagas relacionadas</p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {talent.jobTitles.slice(0, 3).map((title) => (
-                          <span
-                            key={`${talent.userId}-${title}`}
-                            className="inline-flex rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] text-zinc-600"
-                          >
-                            {title}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-[18px] font-semibold text-zinc-950">{talent.name}</p>
+                          <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold ${status.className}`}>
+                            {status.label}
                           </span>
-                        ))}
-                        {talent.jobTitles.length > 3 ? (
-                          <span className="inline-flex rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] text-zinc-500">
-                            +{talent.jobTitles.length - 3}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <div className="mt-5">
-                    <button
-                      type="button"
-                      onClick={() => toggleExpand(talent.userId)}
-                      className="inline-flex items-center gap-1.5 rounded-2xl border border-zinc-200 px-4 py-2.5 text-[12px] font-semibold text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
-                    >
-                      <svg
-                        className={`h-3.5 w-3.5 transition-transform ${expandedIds.has(talent.userId) ? "rotate-180" : ""}`}
-                        fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                      {expandedIds.has(talent.userId) ? "Ocultar detalhes" : "Ver detalhes"}
-                    </button>
-                  </div>
-
-                  {expandedIds.has(talent.userId) ? (
-                    <div className="mt-4 space-y-3 rounded-[20px] border border-zinc-100 bg-zinc-50 p-4">
-                      <div className="grid grid-cols-2 gap-3">
-                        <DetailRow label="Nome" value={talent.name} />
-                        <DetailRow label="E-mail" value={talent.email || "—"} />
-                        {talent.city || talent.country ? (
-                          <DetailRow
-                            label="Localização"
-                            value={[talent.city, talent.country].filter(Boolean).join(", ")}
-                          />
-                        ) : null}
-                        <DetailRow
-                          label="Entrou em"
-                          value={talent.joinedAt ? formatDate(talent.joinedAt) : "—"}
-                        />
-                        <DetailRow
-                          label="Última atividade"
-                          value={talent.lastActivity ? formatDate(talent.lastActivity) : "—"}
-                        />
-                        <DetailRow
-                          label="Origem"
-                          value={talent.isPortalMember ? "Portal privado" : "Candidatura direta"}
-                        />
-                      </div>
-                      {talent.bio ? (
-                        <div className="border-t border-zinc-200 pt-3">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Bio</p>
-                          <p className="mt-1 text-[12px] leading-5 text-zinc-600 line-clamp-3">{talent.bio}</p>
+                          {badges.map((badge) => (
+                            <span key={`${talent.userId}-${badge.label}`} className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-medium ${badge.className}`}>
+                              {badge.label}
+                            </span>
+                          ))}
                         </div>
-                      ) : null}
-                      <div className="border-t border-zinc-200 pt-3">
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="rounded-[16px] bg-white border border-zinc-200 px-3 py-2.5 text-center">
-                            <p className="text-[18px] font-bold text-zinc-900">{talent.applicationCount}</p>
-                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Candidaturas</p>
+
+                        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-[12px] text-zinc-500">
+                          <span>{talent.email || "E-mail nao disponivel"}</span>
+                          <span>{talent.phone || "Telefone nao disponivel"}</span>
+                          <span>Origem: {talent.sourceLabel}</span>
+                          <span>Entrou em {formatDate(talent.joinedAt)}</span>
+                          <span>Ultima atividade {formatDate(talent.lastActivity)}</span>
+                        </div>
+
+                        {talent.jobTitles.length > 0 ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {talent.jobTitles.slice(0, 4).map((title) => (
+                              <span
+                                key={`${talent.userId}-${title}`}
+                                className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] text-zinc-600"
+                              >
+                                {title}
+                              </span>
+                            ))}
+                            {talent.jobTitles.length > 4 ? (
+                              <span className="inline-flex rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] text-zinc-500">
+                                +{talent.jobTitles.length - 4}
+                              </span>
+                            ) : null}
                           </div>
-                          <div className="rounded-[16px] bg-white border border-zinc-200 px-3 py-2.5 text-center">
-                            <p className="text-[18px] font-bold text-zinc-900">{talent.contractCount}</p>
-                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Contratos</p>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-3 xl:min-w-[320px]">
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="rounded-[20px] border border-zinc-100 bg-zinc-50 px-4 py-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Candidaturas</p>
+                          <p className="mt-1 text-[1.2rem] font-bold text-zinc-900">{talent.applicationCount}</p>
+                        </div>
+                        <div className="rounded-[20px] border border-zinc-100 bg-zinc-50 px-4 py-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Contratos</p>
+                          <p className="mt-1 text-[1.2rem] font-bold text-zinc-900">{talent.contractCount}</p>
+                        </div>
+                        <div className="rounded-[20px] border border-zinc-100 bg-zinc-50 px-4 py-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">Vagas</p>
+                          <p className="mt-1 text-[1.2rem] font-bold text-zinc-900">{talent.jobsCount}</p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleExpand(talent.userId)}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-2xl border border-zinc-200 px-4 py-3 text-[12px] font-semibold text-zinc-700 transition-colors hover:border-zinc-300 hover:bg-zinc-50"
+                      >
+                        <svg
+                          className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                        {isExpanded ? "Ocultar detalhes" : "Ver detalhes"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {isExpanded ? (
+                    <div className="mt-5 space-y-4 rounded-[24px] border border-zinc-100 bg-zinc-50 p-4">
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        <DetailRow label="Nome" value={talent.name} />
+                        <DetailRow label="E-mail" value={talent.email || "-"} />
+                        <DetailRow label="Telefone" value={talent.phone || "-"} />
+                        <DetailRow label="Cidade / Pais" value={[talent.city, talent.country].filter(Boolean).join(", ") || "-"} />
+                        <DetailRow label="Entrou em" value={formatDate(talent.joinedAt)} />
+                        <DetailRow label="Ultima atividade" value={formatDate(talent.lastActivity)} />
+                        <DetailRow label="Origem" value={talent.sourceLabel} />
+                        <DetailRow label="Candidaturas" value={String(talent.applicationCount)} />
+                        <DetailRow label="Contratos" value={String(talent.contractCount)} />
+                        <DetailRow label="Vagas" value={String(talent.jobsCount)} />
+                      </div>
+
+                      <div className="rounded-[20px] border border-zinc-200 bg-white p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Bio</p>
+                        <p className="mt-2 text-[13px] leading-6 text-zinc-600">
+                          {talent.bio || "Sem bio preenchida ate o momento."}
+                        </p>
+                      </div>
+
+                      <div className="rounded-[20px] border border-zinc-200 bg-white p-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <p className="text-[14px] font-semibold text-zinc-900">Historico de pagamentos e contratos</p>
+                            <p className="mt-1 text-[12px] text-zinc-500">
+                              Contratos privados do workspace com status, bruto e valor pago ao talento quando houver.
+                            </p>
                           </div>
-                          <div className="rounded-[16px] bg-white border border-zinc-200 px-3 py-2.5 text-center">
-                            <p className="text-[18px] font-bold text-zinc-900">{talent.jobTitles.length}</p>
-                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Vagas</p>
-                          </div>
+                          {talent.marketplaceVisible ? (
+                            <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-[10px] font-semibold text-sky-700">
+                              Marketplace visivel
+                            </span>
+                          ) : (
+                            <span className="inline-flex rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-[10px] font-semibold text-zinc-600">
+                              Privado no Premium
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-4 space-y-3">
+                          {talent.contractHistory.length === 0 ? (
+                            <HistoryEmptyState />
+                          ) : (
+                            talent.contractHistory.map((item) => (
+                              <div key={item.id} className="rounded-[18px] border border-zinc-200 bg-zinc-50 p-4">
+                                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                  <div className="space-y-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <p className="text-[13px] font-semibold text-zinc-900">{item.jobTitle}</p>
+                                      <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${item.statusTone}`}>
+                                        {item.statusLabel}
+                                      </span>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 text-[11px] text-zinc-500">
+                                      <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1">
+                                        Contrato #{item.id.slice(0, 8).toUpperCase()}
+                                      </span>
+                                      <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1">
+                                        Criado em {formatDate(item.createdAt)}
+                                      </span>
+                                      <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1">
+                                        Pago em {formatDate(item.paidAt ?? "")}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="grid gap-2 text-[12px] text-zinc-600 sm:grid-cols-2">
+                                    <div className="rounded-[16px] border border-zinc-200 bg-white px-3 py-2.5">
+                                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Bruto</p>
+                                      <p className="mt-1 font-semibold text-zinc-900">{item.grossLabel}</p>
+                                    </div>
+                                    <div className="rounded-[16px] border border-zinc-200 bg-white px-3 py-2.5">
+                                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">Pago ao talento</p>
+                                      <p className="mt-1 font-semibold text-zinc-900">{item.netLabel}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))
+                          )}
                         </div>
                       </div>
                     </div>
