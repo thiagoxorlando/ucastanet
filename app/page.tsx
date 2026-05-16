@@ -393,16 +393,17 @@ export default function Home() {
             <div className="relative">
               {/* Glow halo behind dashboard */}
               <div className="absolute -inset-8 bg-[radial-gradient(ellipse_at_center,rgba(26,188,156,0.22),transparent_65%)] blur-3xl" />
-              {/* Laptop chrome frame */}
-              <div className="relative overflow-hidden rounded-[1.6rem] bg-[#0d1f22] shadow-[0_36px_100px_rgba(0,0,0,0.75),0_0_60px_rgba(26,188,156,0.16)] ring-1 ring-white/10">
-                {/* Browser bar */}
-                <div className="flex items-center gap-2 border-b border-white/8 bg-[#0a1819] px-4 py-2.5">
-                  <span className="h-3 w-3 rounded-full bg-[#FF5F57]" />
-                  <span className="h-3 w-3 rounded-full bg-[#FFBD2E]" />
-                  <span className="h-3 w-3 rounded-full bg-[#28CA41]" />
-                  <div className="mx-3 flex flex-1 items-center justify-center rounded-md bg-white/5 px-3 py-1">
-                    <span className="text-[10px] text-white/30">app.brisahub.com/workspace</span>
+              {/* Device frame */}
+              <div className="relative overflow-hidden rounded-[1.4rem] bg-[#071314] shadow-[0_36px_100px_rgba(0,0,0,0.75),0_0_60px_rgba(26,188,156,0.18)] ring-1 ring-[#1ABC9C]/25">
+                {/* Minimal top chrome */}
+                <div className="flex items-center justify-between border-b border-white/8 bg-[#071314] px-4 py-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-white/15" />
+                    <span className="h-2 w-2 rounded-full bg-white/15" />
+                    <span className="h-2 w-2 rounded-full bg-white/15" />
                   </div>
+                  <span className="text-[10px] text-white/20">app.brisahub.com</span>
+                  <div className="w-12" />
                 </div>
                 {/* Dashboard screenshot */}
                 <Image
