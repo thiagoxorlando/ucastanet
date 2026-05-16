@@ -19,6 +19,7 @@ import {
 } from "@/lib/premiumWorkspace.server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import WorkspaceOnboardingChecklist from "@/features/agency/WorkspaceOnboardingChecklist";
 
 export const metadata: Metadata = { title: "Espaco Premium - BrisaHub" };
 
@@ -439,7 +440,7 @@ export default async function WorkspacePage() {
   const { workspace, membership } = workspaceAccess;
   const isOwner = membership.role === "owner";
 
-  const [seatUsage, members, invites, jobsResult, selfLedger, ownerProfile] = await Promise.all([
+  const [seatUsage, members, invites, jobsResult, selfLedger, ownerProfile, portalTalentCount] = await Promise.all([
     getWorkspaceSeatUsage(workspace.id),
     getWorkspaceMembers(workspace.id),
     isOwner ? getWorkspacePendingInvites(workspace.id) : Promise.resolve([]),
@@ -450,6 +451,9 @@ export default async function WorkspacePage() {
       .order("created_at", { ascending: false }),
     !isOwner ? getAgentLedgerBalance(workspace.id, user.id) : Promise.resolve(null),
     supabase.from("profiles").select("wallet_balance").eq("id", workspace.ownerUserId).maybeSingle(),
+    isOwner
+      ? supabase.from("premium_workspace_talents").select("id", { count: "exact", head: true }).eq("workspace_id", workspace.id)
+      : Promise.resolve({ count: 0 }),
   ]);
 
   const jobRows = jobsResult.data ?? [];
@@ -499,9 +503,57 @@ export default async function WorkspacePage() {
   const seatLimitReached = isOwner && seatUsage.remaining === 0;
   const activeAgents = members.filter((member) => member.role === "agent" && member.status === "active");
 
+  const checklistLang = lang === "en" ? "en" : "pt-BR";
+  const onboardingItems = isOwner
+    ? [
+        {
+          label: lang === "en" ? "Workspace created" : "Workspace criado",
+          hint: "",
+          href: "/agency/workspace",
+          done: true,
+        },
+        {
+          label: lang === "en" ? "Customize branding" : "Personalizar branding",
+          hint: lang === "en" ? "Add your logo, colors and welcome message." : "Adicione seu logo, cores e mensagem de boas-vindas.",
+          href: "/agency/workspace/branding",
+          done: !!(workspace.logoUrl || workspace.welcomeMessage),
+        },
+        {
+          label: lang === "en" ? "Invite your first agent" : "Convidar primeiro agente",
+          hint: lang === "en" ? "Add an agent to your workspace team." : "Adicione um agente à sua equipe no workspace.",
+          href: "/agency/workspace/agents",
+          done: activeAgents.length > 0 || invites.length > 0,
+        },
+        {
+          label: lang === "en" ? "Invite your first talent" : "Convidar primeiro talento",
+          hint: lang === "en" ? "Add talent to your private portal." : "Adicione talentos ao seu portal privado.",
+          href: "/agency/workspace/talents",
+          done: (portalTalentCount.count ?? 0) > 0,
+        },
+        {
+          label: lang === "en" ? "Add balance to wallet" : "Adicionar saldo à carteira",
+          hint: lang === "en" ? "Fund your workspace wallet to cover bookings." : "Adicione saldo para cobrir reservas.",
+          href: "/agency/workspace/wallet",
+          done: walletBalance > 0,
+        },
+        {
+          label: lang === "en" ? "Create your first private job" : "Criar primeira vaga privada",
+          hint: lang === "en" ? "Post a private job visible only to invited talent." : "Publique uma vaga privada visível apenas para talentos convidados.",
+          href: "/agency/workspace/jobs",
+          done: privateJobs.length > 0,
+        },
+      ]
+    : [];
+
+  const showOnboarding = isOwner && !workspace.onboardingCompleted;
+
   return (
     <div className="space-y-6">
       <WorkspaceHeader workspace={workspace} membership={membership} t={t} locale={locale} />
+
+      {showOnboarding && (
+        <WorkspaceOnboardingChecklist items={onboardingItems} lang={checklistLang} />
+      )}
 
       {isOwner ? (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

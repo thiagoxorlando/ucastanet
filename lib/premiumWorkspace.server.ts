@@ -24,6 +24,7 @@ export type PremiumWorkspace = {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  onboardingCompleted: boolean;
 };
 
 export type PremiumMembership = {
@@ -128,7 +129,7 @@ export async function getUserPremiumWorkspace(userId: string): Promise<PremiumWo
   const { data: workspace } = await supabase
     .from("premium_workspaces")
     .select(
-      "id, owner_user_id, agency_id, name, slug, logo_url, brand_primary_color, brand_accent_color, welcome_message, status, included_agent_seats, extra_agent_seats, created_at, updated_at, deleted_at"
+      "id, owner_user_id, agency_id, name, slug, logo_url, brand_primary_color, brand_accent_color, welcome_message, status, included_agent_seats, extra_agent_seats, created_at, updated_at, deleted_at, onboarding_completed"
     )
     .eq("id", member.workspace_id)
     .eq("status", "active")
@@ -206,7 +207,7 @@ export async function ensurePremiumWorkspaceForAgency(userId: string): Promise<P
       extra_agent_seats: 0,
     })
     .select(
-      "id, owner_user_id, agency_id, name, slug, logo_url, brand_primary_color, brand_accent_color, welcome_message, status, included_agent_seats, extra_agent_seats, created_at, updated_at, deleted_at"
+      "id, owner_user_id, agency_id, name, slug, logo_url, brand_primary_color, brand_accent_color, welcome_message, status, included_agent_seats, extra_agent_seats, created_at, updated_at, deleted_at, onboarding_completed"
     )
     .single();
 
@@ -218,7 +219,7 @@ export async function ensurePremiumWorkspaceForAgency(userId: string): Promise<P
     const { data: existingWorkspace } = await supabase
       .from("premium_workspaces")
       .select(
-        "id, owner_user_id, agency_id, name, slug, logo_url, brand_primary_color, brand_accent_color, welcome_message, status, included_agent_seats, extra_agent_seats, created_at, updated_at, deleted_at"
+        "id, owner_user_id, agency_id, name, slug, logo_url, brand_primary_color, brand_accent_color, welcome_message, status, included_agent_seats, extra_agent_seats, created_at, updated_at, deleted_at, onboarding_completed"
       )
       .eq("owner_user_id", userId)
       .eq("status", "active")
@@ -760,6 +761,7 @@ function mapWorkspace(row: Record<string, unknown>): PremiumWorkspace {
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     deletedAt: (row.deleted_at as string | null) ?? null,
+    onboardingCompleted: Boolean(row.onboarding_completed ?? false),
   };
 }
 
