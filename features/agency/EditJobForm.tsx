@@ -34,8 +34,8 @@ export default function EditJobForm({ job }: { job: EditableJob }) {
   const router = useRouter();
   const { maxHiresPerJob } = useSubscription();
 
-  // If open/draft → only deadline editable; if inactive → all editable
-  const allEditable = job.status === "inactive" || job.status === "draft";
+  // draft or paused → all fields editable; open → deadline only
+  const allEditable = job.status === "paused" || job.status === "draft";
 
   const [title,                 setTitle]               = useState(job.title);
   const [description,           setDescription]         = useState(job.description);
@@ -124,7 +124,7 @@ export default function EditJobForm({ job }: { job: EditableJob }) {
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
           <p className="text-[13px] text-amber-800">
-            Para editar todos os campos, defina o status da vaga como <strong>Inativa</strong> na lista de vagas primeiro.
+            Pause a vaga para desbloquear a edição completa.
           </p>
         </div>
       )}

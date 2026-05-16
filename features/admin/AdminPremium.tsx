@@ -54,7 +54,7 @@ function jobStatusBadge(s: string) {
     draft: "bg-amber-50 text-amber-700 border-amber-100",
     inactive: "bg-red-50 text-red-600 border-red-100",
   };
-  const labels: Record<string, string> = { open: "Aberta", closed: "Fechada", draft: "Rascunho", inactive: "Inativa" };
+  const labels: Record<string, string> = { open: "Aberta", closed: "Fechada", draft: "Rascunho", inactive: "Inativa", paused: "Pausada" };
   const cls = colors[s] ?? "bg-zinc-100 text-zinc-500 border-zinc-200";
   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cls}`}>{labels[s] ?? s}</span>;
 }

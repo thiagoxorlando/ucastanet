@@ -214,7 +214,7 @@ function JobCard({ job, onUpdate, onRemove }: {
             </button>
             {menuOpen && (
               <div className="absolute bottom-full right-0 mb-1.5 w-36 bg-white rounded-xl border border-zinc-100 shadow-[0_4px_16px_rgba(0,0,0,0.1)] z-10 overflow-hidden">
-                {(["open", "inactive", "closed", "draft"] as Job["status"][]).map((s) => {
+                {(["open", "paused", "closed", "draft"] as Job["status"][]).map((s) => {
                   const label = jobStatusLabel(s, lang);
                   return (
                     <button
@@ -259,9 +259,9 @@ function JobCard({ job, onUpdate, onRemove }: {
 
 // ─── Filter bar ───────────────────────────────────────────────────────────────
 
-const STATUS_OPTIONS = ["All", "Open", "Draft", "Closed", "Inactive"] as const;
+const STATUS_OPTIONS = ["All", "Open", "Draft", "Paused", "Closed"] as const;
 const STATUS_LABELS: Record<typeof STATUS_OPTIONS[number], string> = {
-  All: "Todas", Open: "Aberta", Draft: "Rascunho", Closed: "Fechada", Inactive: "Inativa",
+  All: "Todas", Open: "Aberta", Draft: "Rascunho", Paused: "Pausada", Closed: "Fechada",
 };
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -391,7 +391,7 @@ export default function JobList({ jobs: initial }: { jobs: Job[] }) {
                 >
                   <div>
                     <h2 className="text-[13px] font-black uppercase tracking-[0.18em] text-zinc-400">Outras vagas</h2>
-                    <p className="mt-1 text-[13px] text-zinc-500">Rascunhos, vagas fechadas e inativas ficam separadas para reduzir ruído.</p>
+                    <p className="mt-1 text-[13px] text-zinc-500">Rascunhos, vagas pausadas e fechadas ficam separadas para reduzir ruído.</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="rounded-full bg-zinc-100 px-3 py-1 text-[12px] font-bold text-zinc-600">
