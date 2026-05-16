@@ -15,9 +15,92 @@ export const metadata: Metadata = { title: "Contratos — BrisaHub" };
 
 type Props = { params: Promise<{ workspaceSlug: string }> };
 
+// Progress stepper from the talent's perspective
+function TalentContractProgress({
+  status,
+  signedAt,
+  paidAt,
+  locale,
+}: {
+  status: string;
+  signedAt: string | null;
+  paidAt: string | null;
+  locale: string;
+}) {
+  if (["cancelled", "rejected"].includes(status)) return null;
+
+  const youSigned       = ["signed", "confirmed", "paid"].includes(status);
+  const agencyDeposited = ["confirmed", "paid"].includes(status);
+  const isPaid          = status === "paid";
+
+  function fmt(s: string | null) {
+    if (!s) return null;
+    return new Date(s).toLocaleDateString(locale, { day: "numeric", month: "short" });
+  }
+
+  const steps = [
+    { label: "Enviado",         done: true,          date: null },
+    { label: "Você assinou",    done: youSigned,     date: fmt(signedAt) },
+    { label: "Depósito",        done: agencyDeposited, date: null },
+    { label: "Pago na carteira", done: isPaid,        date: fmt(paidAt) },
+  ];
+  const connectors = [youSigned, agencyDeposited, isPaid];
+
+  return (
+    <div className="mt-4 flex items-start">
+      {steps.map((step, i) => (
+        <div key={i} className="flex flex-1 flex-col items-center">
+          <div className="flex w-full items-center">
+            {i > 0 && (
+              <div className={`flex-1 h-px ${connectors[i - 1] ? "bg-emerald-300" : "bg-zinc-200"}`} />
+            )}
+            <div className={[
+              "w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0",
+              step.done ? "bg-emerald-500 text-white" : "bg-zinc-100 text-zinc-400 ring-1 ring-zinc-200",
+            ].join(" ")}>
+              {step.done ? (
+                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <span className="text-[9px] font-bold">{i + 1}</span>
+              )}
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`flex-1 h-px ${connectors[i] ? "bg-emerald-300" : "bg-zinc-200"}`} />
+            )}
+          </div>
+          <p className={`mt-1.5 text-[10px] text-center leading-tight ${step.done ? "font-medium text-zinc-600" : "text-zinc-400"}`}>
+            {step.label}
+          </p>
+          {step.date && (
+            <p className="mt-0.5 text-[9px] text-center text-zinc-400">{step.date}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Human-readable action hint based on contract status
+function StatusHint({ status }: { status: string }) {
+  const hints: Record<string, { text: string; cls: string }> = {
+    sent:      { text: "Aguardando sua assinatura.", cls: "text-violet-600 bg-violet-50 border-violet-100" },
+    signed:    { text: "Contrato assinado. Aguardando depósito da agência.", cls: "text-sky-700 bg-sky-50 border-sky-100" },
+    confirmed: { text: "Fundos em custódia. A agência irá liberar o pagamento em breve.", cls: "text-amber-700 bg-amber-50 border-amber-100" },
+  };
+  const hint = hints[status];
+  if (!hint) return null;
+  return (
+    <p className={`mt-3 rounded-lg border px-3 py-2 text-[12px] font-medium ${hint.cls}`}>
+      {hint.text}
+    </p>
+  );
+}
+
 export default async function WorkspaceContractsPage({ params }: Props) {
   const { workspaceSlug } = await params;
-  const lang = await getServerLang();
+  const lang   = await getServerLang();
   const locale = lang === "en" ? "en-US" : "pt-BR";
   const statusLang = lang === "en" ? "en" : "pt-BR";
 
@@ -48,7 +131,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
   const { data: contractRows } = workspaceJobIds.length
     ? await supabase
         .from("contracts")
-        .select("id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, job_date, location, created_at")
+        .select("id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at")
         .eq("talent_id", user.id)
         .in("job_id", workspaceJobIds)
         .order("created_at", { ascending: false })
@@ -68,9 +151,14 @@ export default async function WorkspaceContractsPage({ params }: Props) {
     return s + net;
   }, 0);
 
+  const totalActive = active.reduce((s, c) => {
+    const { net } = resolveContractAmounts(c as Parameters<typeof resolveContractAmounts>[0]);
+    return s + net;
+  }, 0);
+
   return (
     <div className="space-y-6">
-      {/* Branded page header */}
+      {/* Branded header */}
       <div className="flex items-center gap-3.5">
         {workspace.logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -95,7 +183,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Summary bar */}
+      {/* Summary */}
       {contracts.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-[12px] font-medium text-zinc-600">
@@ -103,7 +191,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
           </span>
           {active.length > 0 && (
             <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[12px] font-medium text-amber-700">
-              {active.length} em andamento
+              {active.length} em andamento · {brl(totalActive)} a receber
             </span>
           )}
           {paid.length > 0 && (
@@ -132,7 +220,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
         </div>
       )}
 
-      {/* Active / pending contracts */}
+      {/* Active contracts */}
       {active.length > 0 && (
         <section className="space-y-2.5">
           <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Em andamento</p>
@@ -162,17 +250,31 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                         </div>
                         <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{label}</span>
                       </div>
-                      <div className="mt-3 flex flex-wrap gap-4 text-[12px] text-zinc-500">
+
+                      {/* Action hint */}
+                      <StatusHint status={contract.status ?? ""} />
+
+                      {/* Progress stepper */}
+                      <TalentContractProgress
+                        status={contract.status ?? ""}
+                        signedAt={(contract as { signed_at?: string | null }).signed_at ?? null}
+                        paidAt={contract.paid_at ?? null}
+                        locale={locale}
+                      />
+
+                      <div className="mt-4 flex flex-wrap gap-4 text-[12px] text-zinc-500">
                         <span>
-                          <span className="font-medium text-zinc-700">Valor bruto:</span> {brl(gross)}
+                          <span className="font-medium text-zinc-700">A receber: </span>
+                          <span className="font-semibold text-emerald-600">{brl(net)}</span>
                         </span>
                         <span>
-                          <span className="font-medium text-zinc-700">Valor líquido:</span>{" "}
-                          <span className="font-semibold text-emerald-600">{brl(net)}</span>
+                          <span className="font-medium text-zinc-700">Bruto: </span>
+                          {brl(gross)}
                         </span>
                         {contract.location && (
                           <span>
-                            <span className="font-medium text-zinc-700">Local:</span> {contract.location}
+                            <span className="font-medium text-zinc-700">Local: </span>
+                            {contract.location}
                           </span>
                         )}
                       </div>
@@ -222,23 +324,26 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                       </div>
                       <div className="mt-3 flex flex-wrap gap-4 text-[12px] text-zinc-500">
                         <span>
-                          <span className="font-medium text-zinc-700">Valor líquido:</span>{" "}
-                          <span className="font-semibold text-emerald-600">{brl(net)}</span>
+                          <span className="font-medium text-zinc-700">Recebido: </span>
+                          <span className="font-bold text-emerald-600">{brl(net)}</span>
                         </span>
                         <span>
-                          <span className="font-medium text-zinc-700">Bruto:</span> {brl(gross)}
+                          <span className="font-medium text-zinc-700">Bruto: </span>
+                          {brl(gross)}
                         </span>
                         <span>
-                          <span className="font-medium text-zinc-700">Comissão:</span> {commissionPct}%
+                          <span className="font-medium text-zinc-700">Comissão: </span>
+                          {commissionPct}%
                         </span>
                         {contract.location && (
                           <span>
-                            <span className="font-medium text-zinc-700">Local:</span> {contract.location}
+                            <span className="font-medium text-zinc-700">Local: </span>
+                            {contract.location}
                           </span>
                         )}
                       </div>
                       {contract.paid_at && (
-                        <p className="mt-2.5 flex items-center gap-1.5 text-[11px] text-emerald-600">
+                        <p className="mt-3 flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
                           <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
@@ -257,7 +362,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
       {/* Cancelled / rejected */}
       {other.length > 0 && (
         <section className="space-y-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Cancelados / rejeitados</p>
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Cancelados / Rejeitados</p>
           <ul className="flex flex-col gap-2.5">
             {other.map((contract) => {
               const ps    = getContractPaymentStatus(contract as Parameters<typeof getContractPaymentStatus>[0]);
