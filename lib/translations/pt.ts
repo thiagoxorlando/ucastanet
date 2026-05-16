@@ -1,5 +1,5 @@
 ﻿export const pt: Record<string, string> = {
-  // â”€â”€ Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Navigation â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   nav_dashboard:   "Painel",
   nav_jobs:        "Vagas",
   nav_talent:      "Talentos",
@@ -37,12 +37,12 @@
   nav_menu:        "Menu",
   nav_logout:      "Sair",
 
-  // â”€â”€ Portal labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Portal labels â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   portal_talent:   "Portal do Talento",
   portal_agency:   "Portal da Agência",
   portal_admin:    "Portal administrativo",
 
-  // â”€â”€ Common actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Common actions â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   action_view:       "Ver",
   action_edit:       "Editar",
   action_delete:     "Excluir",
@@ -69,7 +69,7 @@
   action_create:     "Criar",
   action_loading:    "Carregando…",
 
-  // â”€â”€ Status labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Status labels â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   status_all:          "Todos",
   status_open:         "Aberta",
   status_closed:       "Fechada",
@@ -87,7 +87,7 @@
   status_completed:    "Concluído",
   status_pending_payment: "Aguardando Pagamento",
 
-  // â”€â”€ Contract status labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Contract status labels â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   contract_status_sent:      "Aguardando Talento",
   contract_status_signed:    "Aguardando Depósito",
   contract_status_confirmed: "Em Custódia",
@@ -95,7 +95,7 @@
   contract_status_rejected:  "Rejeitado",
   contract_status_cancelled: "Cancelado",
 
-  // â”€â”€ Page titles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Page titles â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   page_jobs:         "Vagas",
   page_bookings:     "Reservas",
   page_finances:     "Financeiro",
@@ -249,7 +249,7 @@
   billing_deposit: "Depósito",
   billing_withdrawal: "Saque",
 
-  // â”€â”€ Jobs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Jobs â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   jobs_open_positions:   "vagas abertas",
   jobs_search:           "Buscar vagas…",
   jobs_apply_by:         "Inscrever até",
@@ -274,7 +274,7 @@
   jobs_any:              "Qualquer",
   jobs_no_description:   "Sem descrição.",
 
-  // â”€â”€ Bookings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Bookings â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   bookings_title:          "Reservas",
   bookings_all:            "Todas as Reservas",
   bookings_talent:         "Talento",
@@ -286,7 +286,7 @@
   bookings_no_bookings_hint: "As reservas aparecerão quando um talento for selecionado.",
   bookings_referred:       "Indicado",
 
-  // â”€â”€ Contracts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Contracts â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   contracts_title:          "Contratos",
   contracts_talent:         "Talento",
   contracts_agency:         "Agência",
@@ -318,7 +318,7 @@
   contracts_pay_talent:     "Pagar Talento",
   contracts_pay_confirm:    "Liberar pagamento para este talento?",
 
-  // â”€â”€ Finances â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Finances â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   finances_title:              "Financeiro",
   finances_total_gross:        "Valor Bruto Total",
   finances_confirmed_gross:    "Bruto Confirmado",
@@ -353,7 +353,7 @@
   finances_contracts_section:  "Contratos (Escrow)",
   finances_paid_to_referrers:  "Pago a indicadores",
 
-  // â”€â”€ Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Dashboard â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   dashboard_welcome:           "Bem-vindo(a) de volta",
   dashboard_overview:          "Veja o que está acontecendo.",
   dashboard_active_jobs:       "Vagas Ativas",
@@ -367,7 +367,7 @@
   dashboard_no_activity:       "Nenhuma atividade recente.",
   dashboard_view_all:          "Ver todos",
 
-  // â”€â”€ Profile / Onboarding â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Profile / Onboarding â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   profile_full_name:       "Nome Completo",
   profile_email:           "E-mail",
   profile_bio:             "Biografia",
@@ -396,7 +396,7 @@
   profile_agent_name:      "Nome do Agente",
   profile_represented_by:  "Representado por",
 
-  // â”€â”€ Post Job form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Post Job form â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   post_job_title:           "Publicar Nova Vaga",
   post_job_title_field:     "Título da Vaga",
   post_job_description:     "Descrição",
@@ -414,7 +414,7 @@
   post_job_success:         "Vaga publicada com sucesso!",
   post_job_error:           "Falha ao publicar vaga.",
 
-  // â”€â”€ Talent list / grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Talent list / grid â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   talent_search:       "Buscar talentos…",
   talent_no_talent:    "Nenhum talento encontrado",
   talent_view_profile: "Ver Perfil",
@@ -424,7 +424,7 @@
   talent_grid_view:    "Grade",
   talent_list_view:    "Lista",
 
-  // â”€â”€ Referrals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Referrals â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   referrals_title:       "Indicações",
   referrals_link:        "Seu Link de Indicação",
   referrals_copy:        "Copiar Link",
@@ -437,7 +437,7 @@
   referrals_joined:      "Entrou em",
   referrals_payout:      "Pagamento",
 
-  // â”€â”€ Trash â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Trash â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   trash_title:        "Lixeira",
   trash_restore:      "Restaurar",
   trash_delete_perm:  "Excluir Permanentemente",
@@ -448,7 +448,7 @@
   trash_agencies:     "Agências",
   trash_talent:       "Talentos",
 
-  // â”€â”€ Admin â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Admin â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   admin_users_title:      "Usuários",
   admin_search_users:     "Buscar usuários…",
   admin_no_users:         "Nenhum usuário encontrado.",
@@ -458,7 +458,7 @@
   admin_agency_name:      "Agência",
   admin_talent_name:      "Talento",
 
-  // â”€â”€ Submissions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Submissions â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   submissions_title:       "Candidatos",
   submissions_no_apps:     "Nenhum candidato ainda.",
   submissions_select:      "Selecionar",
@@ -471,7 +471,7 @@
   submission_source_self:            "Candidatura propria",
   submission_source_referred:        "Indicado",
 
-  // â”€â”€ i18n public page keys (pt-BR values kept here for TypeScript coverage) â”€
+  // â"€â"€ i18n public page keys (pt-BR values kept here for TypeScript coverage) â"€
   lang_selector: "Idioma",
   landing_nav_signin: "Entrar",
   landing_nav_register: "Criar conta",
@@ -479,16 +479,16 @@
   landing_nav_agency_sub: "Publique vagas e contrate",
   landing_nav_talent: "Talento",
   landing_nav_talent_sub: "Candidate-se a vagas",
-  landing_hero_badge: "Plataforma de talentos",
-  landing_hero_title_line1: "O lugar onde",
-  landing_hero_title_gradient: "talentos e agências",
-  landing_hero_title_line3: "se encontram.",
-  landing_hero_subtitle: "Gerencie contratações, contratos e pagamentos em um só lugar — rápido, seguro e sem burocracia.",
-  landing_hero_cta_agency: "Começar como agência",
+  landing_hero_badge: "Workspace Premium de Agência",
+  landing_hero_title_line1: "Sua agência.",
+  landing_hero_title_gradient: "Seu portal privado.",
+  landing_hero_title_line3: "Sua operação.",
+  landing_hero_subtitle: "Workspace Premium com portal de talentos por convite, contratos digitais, custódia de pagamentos e agentes internos — tudo com o branding da sua agência.",
+  landing_hero_cta_agency: "Criar workspace Premium",
   landing_hero_cta_talent: "Entrar como talento",
-  landing_stat_secure: "Seguro",
-  landing_stat_payments: "Pagamentos",
-  landing_stat_support: "Suporte",
+  landing_stat_secure: "Custódia de pagamento",
+  landing_stat_payments: "Portal privado",
+  landing_stat_support: "Bilíngue PT/EN",
   landing_hiw_pill1: "Sem WhatsApp. Sem planilhas.",
   landing_hiw_title1: "Um fluxo único para sair do briefing e chegar à contratação",
   landing_hiw_desc1: "A Brisa substitui mensagens soltas, planilhas e comprovantes dispersos por um processo estruturado para a agência publicar, selecionar, contratar e pagar com mais previsibilidade.",
@@ -517,6 +517,12 @@
   landing_feat5_desc: "Mantenha contexto sobre quem já trabalhou bem com a agência e reduza tempo na próxima contratação.",
   landing_feat6_title: "Vagas privadas no Premium",
   landing_feat6_desc: "Convide talentos para oportunidades fechadas e opere um fluxo privado quando a campanha exigir.",
+  landing_feat7_title: "Portal privado de talentos",
+  landing_feat7_desc: "Talentos convidados acessam um ambiente com identidade da agência, vagas e contratos em um só lugar.",
+  landing_feat8_title: "Gestão de equipe",
+  landing_feat8_desc: "Convide agentes internos, defina limites de uso e mantenha supervisão completa da operação.",
+  landing_feat9_title: "Interface bilíngue",
+  landing_feat9_desc: "PT/EN nativo. Equipes e talentos internacionais operam sem barreira de idioma.",
   landing_use_pill: "Uso profissional",
   landing_use_title: "Contratação segura para diferentes tipos de negócio",
   landing_use_desc: "A BrisaHub substitui processos informais em WhatsApp, planilhas e comprovantes soltos por um fluxo estruturado: da criação da vaga à contratação, contrato e pagamento.",
@@ -527,6 +533,45 @@
   landing_biz_audiovisual: "produção audiovisual",
   landing_biz_freelancers: "freelancers criativos",
   landing_biz_smb: "pequenos e médios negócios",
+  landing_pain_pill: "O problema atual",
+  landing_pain_title: "Agências perdem tempo em fluxos informais",
+  landing_pain_desc: "WhatsApp, planilhas e comprovantes dispersos tornam a operação imprevisível — especialmente quando a equipe cresce.",
+  landing_pain1_title: "Coordenação pelo WhatsApp",
+  landing_pain1_desc: "Confirmações, cancelamentos e dúvidas espalhadas em conversas que ninguém mais rastreia.",
+  landing_pain2_title: "Casting manual e sem histórico",
+  landing_pain2_desc: "Sem fila centralizada, sem contexto acumulado, sem como comparar candidatos com segurança.",
+  landing_pain3_title: "Pagamentos sem rastreamento",
+  landing_pain3_desc: "Cachês combinados verbalmente, comprovantes perdidos e disputas por valores mal registrados.",
+  landing_pain4_title: "Sem portal privado da agência",
+  landing_pain4_desc: "Talentos usam ferramentas genéricas sem identidade da agência e sem contexto da operação.",
+  landing_solution_label: "A solução BrisaHub",
+  landing_solution_text: "Um workspace Premium privado com portal branded, agentes internos, vagas por convite, contratos, custódia e histórico completo — tudo sob o teto da sua agência.",
+  landing_ws_pill: "Espaço Premium",
+  landing_ws_title: "O app da sua agência, sem uma linha de código",
+  landing_ws_subtitle: "Configure uma vez, convide sua equipe e talentos, e opere toda a contratação com a identidade da sua agência.",
+  landing_ws1_title: "Portal com seu branding",
+  landing_ws1_desc: "Logo, cores e boas-vindas personalizados. Talentos acessam um ambiente que parece da sua agência.",
+  landing_ws2_title: "Equipe de agentes internos",
+  landing_ws2_desc: "Convide agentes, defina limites de saldo e mantenha supervisão completa da operação.",
+  landing_ws3_title: "Vagas privadas por convite",
+  landing_ws3_desc: "Publique oportunidades visíveis só para quem você convida. Zero ruído externo no casting.",
+  landing_ws4_title: "Carteira e custódia",
+  landing_ws4_desc: "Deposite saldo, aloque para agentes e libere pagamentos com escrow integrado.",
+  landing_ws5_title: "Contrato em cada reserva",
+  landing_ws5_desc: "Cada confirmação gera contrato digital com valor, data, entregáveis e assinatura de ambos.",
+  landing_ws6_title: "Histórico e relatórios",
+  landing_ws6_desc: "Fluxo completo da candidatura ao pagamento, com status em tempo real para todos.",
+  landing_ws_cta: "Criar workspace Premium",
+  landing_stats_pill: "Operação real",
+  landing_stats_title: "Uma operação profissional, não uma planilha",
+  landing_stat1_label: "Digital",
+  landing_stat1_desc: "Contratos, reservas e pagamentos sem papel ou comprovante avulso.",
+  landing_stat2_label: "Papéis integrados",
+  landing_stat2_desc: "Agência e talento no mesmo fluxo, com visibilidade dedicada para cada papel.",
+  landing_stat3_label: "Pagamento instantâneo",
+  landing_stat3_desc: "Liberação de cachê via PIX diretamente na carteira do talento.",
+  landing_stat4_label: "Bilíngue nativo",
+  landing_stat4_desc: "Interface completa em português e inglês para equipes internacionais.",
   landing_trust1_title: "Segurança de pagamento",
   landing_trust1_desc: "O valor pode ficar em custódia durante a reserva e ser liberado apenas após a confirmação do trabalho.",
   landing_trust2_title: "Contratos claros",
@@ -569,10 +614,10 @@
   landing_ctrust_item1: "Escopo e valores registrados",
   landing_ctrust_item2: "Pagamento com status rastreável",
   landing_ctrust_item3: "Histórico para decisão e recontratação",
-  landing_cta_pill: "Estruture a próxima contratação",
-  landing_cta_title: "Abra sua conta de agência e conduza a próxima vaga com contrato, pagamento seguro e menos retrabalho.",
-  landing_cta_desc: "Se você contrata com frequência, o Pro já deixa claro o ganho operacional. Se você é talento, também pode criar seu perfil para receber convites e acompanhar oportunidades.",
-  landing_cta_btn_agency: "Começar como agência",
+  landing_cta_pill: "Profissionalize sua operação",
+  landing_cta_title: "Crie seu workspace Premium e opere com portal privado, contratos e pagamentos da sua agência.",
+  landing_cta_desc: "Configure em minutos. Convide agentes e talentos. Conduza casting, contratos e pagamentos sem ferramentas externas.",
+  landing_cta_btn_agency: "Criar workspace Premium",
   landing_cta_btn_talent: "Entrar como talento",
   landing_footer_rights: "Â© 2026 BrisaHub. Todos os direitos reservados.",
   login_tagline: "Plataforma de talentos",
@@ -741,7 +786,7 @@
   onboarding_talent_step5_title: "Saque via PIX",
   onboarding_talent_step5_body: "Com a chave PIX já configurada, você consegue sacar o saldo disponível quando quiser.",
 
-  // â”€â”€ Admin topbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Admin topbar â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   topbar_admin_dashboard_title: "Painel",
   topbar_admin_dashboard_desc:  "Visão geral da plataforma",
   topbar_admin_jobs_title:      "Vagas",
@@ -777,7 +822,7 @@
   topbar_admin_notifications_title: "Notificações",
   topbar_admin_notifications_desc:  "Envie notificações em massa para os usuários da plataforma",
 
-  // â”€â”€ Admin shared labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Admin shared labels â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   admin_platform:        "Admin da plataforma",
   admin_overview:        "Visão Geral",
   admin_period_all:      "Todo Período",
@@ -812,7 +857,7 @@
   admin_unfreeze:        "Descongelar",
   admin_trash_btn:       "Lixeira",
   admin_add_balance:     "+ Saldo",
-  admin_debit_balance:   "âˆ’ Saldo",
+  admin_debit_balance:   "âˆ' Saldo",
   admin_saving:          "Salvando...",
   admin_sort_default:    "Padrao",
   admin_sort_earnings:   "Ganhos / saldo",
@@ -927,14 +972,14 @@
   admin_disputed:        "Em disputa",
   admin_all_categories_label: "Todas",
 
-  // â”€â”€ Booking unified status labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Booking unified status labels â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   booking_status_awaiting_signature: "Aguardando Assinatura",
   booking_status_awaiting_deposit:   "Aguardando Depósito",
   booking_status_awaiting_payment:   "Aguardando Pagamento",
   booking_status_paid:               "Pago",
   booking_status_cancelled:          "Cancelado",
 
-  // â”€â”€ Reconciliation / system / audit labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Reconciliation / system / audit labels â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   reconciliation_status_ok:      "Conciliado",
   reconciliation_status_warn:    "Atenção",
   reconciliation_status_diff:    "Divergente",
@@ -950,7 +995,7 @@
   support_status_closed:         "Fechado",
   support_status_pending:        "Aguardando resposta",
 
-  // â”€â”€ Premium wallet ledger â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Premium wallet ledger â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   wallet_allocated: "Saldo alocado",
   wallet_committed: "Saldo comprometido",
   wallet_available: "Saldo disponível",
@@ -969,18 +1014,18 @@
   wallet_tx_refund:            "Reembolso",
   wallet_tx_adjustment:        "Ajuste",
 
-  // â”€â”€ Common actions / feedback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Common actions / feedback â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   common_cancel:             "Cancelar",
   common_confirm:            "Confirmar",
   common_sending:            "Enviando…",
   common_updating:           "Atualizando…",
   common_unexpected_error:   "Algo deu errado.",
 
-  // â”€â”€ Period filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Period filters â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   filter_today:              "Hoje",
   filter_this_month:         "Este mês",
 
-  // â”€â”€ TalentBookings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ TalentBookings â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   bookings_activity:         "Atividade",
   bookings_my_bookings:      "Minhas Reservas",
   bookings_updating:         "Atualizando…",
@@ -995,7 +1040,7 @@
   bookings_cancelled_toast:  "Reserva cancelada.",
   bookings_cancel_failed:    "Falha ao cancelar.",
 
-  // â”€â”€ TalentContracts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ TalentContracts â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   contracts_show_less:             "Ver menos",
   contracts_show_more:             "Ver mais",
   contracts_received_at:           "Recebido em",
@@ -1042,10 +1087,10 @@
   contracts_adjust_filter:         "Ajuste o filtro para ver outros registros.",
   contracts_empty_hint:            "Contratos enviados por agências aparecerão aqui.",
 
-  // â”€â”€ AgencyContracts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ AgencyContracts â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   agency_contracts_if_applicable:  "(se aplicável)",
 
-  // â”€â”€ General â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ General â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   general_no_results:  "Nenhum resultado encontrado.",
   general_loading:     "Carregando…",
   general_error:       "Algo deu errado.",

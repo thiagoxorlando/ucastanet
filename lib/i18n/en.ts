@@ -2,10 +2,10 @@
 // Keys not present here fall back to pt-BR in LanguageContext.
 
 export const en: Record<string, string> = {
-  // â”€â”€ Language selector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Language selector â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   lang_selector: "Language",
 
-  // â”€â”€ Navigation (sidebar + topbar) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Navigation (sidebar + topbar) â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   nav_dashboard:      "Dashboard",
   nav_jobs:           "Jobs",
   nav_talent:         "Talent",
@@ -29,15 +29,15 @@ export const en: Record<string, string> = {
   nav_menu:           "Menu",
   nav_logout:         "Sign out",
 
-  // â”€â”€ Portal labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Portal labels â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   portal_admin: "Admin portal",
 
-  // â”€â”€ Page titles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Page titles â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   page_finances:   "Finances",
   page_trash:      "Trash",
   page_users:      "Users",
 
-  // â”€â”€ Status labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Status labels â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   status_all:          "All",
   status_open:         "Open",
   status_closed:       "Closed",
@@ -56,7 +56,7 @@ export const en: Record<string, string> = {
   status_pending_payment: "Awaiting Payment",
   status_processing:   "Processing",
 
-  // â”€â”€ Contract status labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Contract status labels â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   contract_status_sent:      "Awaiting Talent",
   contract_status_signed:    "Awaiting Deposit",
   contract_status_confirmed: "In Escrow",
@@ -64,7 +64,7 @@ export const en: Record<string, string> = {
   contract_status_rejected:  "Rejected",
   contract_status_cancelled: "Cancelled",
 
-  // â”€â”€ Common actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Common actions â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   action_view:       "View",
   action_edit:       "Edit",
   action_delete:     "Delete",
@@ -91,7 +91,7 @@ export const en: Record<string, string> = {
   action_create:     "Create",
   action_loading:    "Loading…",
 
-  // â”€â”€ General â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ General â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   general_no_results: "No results found.",
   general_loading:    "Loading…",
   general_error:      "Something went wrong.",
@@ -106,12 +106,12 @@ export const en: Record<string, string> = {
   general_for:        "for",
   general_contracts:  "contracts",
 
-  // â”€â”€ Login extras â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Login extras â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   login_failed: "Sign-in failed. Please try again.",
 
   login_email_placeholder: "you@example.com",
   login_password_placeholder: "••••••••",
-  // â”€â”€ Dashboard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Dashboard â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   dashboard_welcome:          "Welcome back",
   dashboard_overview:         "Here's what's happening.",
   dashboard_active_jobs:      "Active Jobs",
@@ -125,7 +125,7 @@ export const en: Record<string, string> = {
   dashboard_no_activity:      "No recent activity.",
   dashboard_view_all:         "View all",
 
-  // â”€â”€ Jobs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Jobs â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   jobs_open_positions:   "open positions",
   jobs_search:           "Search jobs…",
   jobs_apply_by:         "Apply by",
@@ -150,7 +150,7 @@ export const en: Record<string, string> = {
   jobs_any:              "Any",
   jobs_no_description:   "No description.",
 
-  // â”€â”€ Bookings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Bookings â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   bookings_title:           "Bookings",
   bookings_all:             "All Bookings",
   bookings_talent:          "Talent",
@@ -162,7 +162,7 @@ export const en: Record<string, string> = {
   bookings_no_bookings_hint:"Bookings will appear when a talent is selected.",
   bookings_referred:        "Referred",
 
-  // â”€â”€ Contracts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Contracts â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   contracts_title:           "Contracts",
   contracts_talent:          "Talent",
   contracts_agency:          "Agency",
@@ -240,7 +240,7 @@ export const en: Record<string, string> = {
   workspace_jobs_tbd: "To be defined",
   workspace_jobs_negotiable: "Negotiable",
 
-  // â”€â”€ Finances â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Finances â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   finances_title:               "Finances",
   finances_total_gross:         "Total Gross",
   finances_confirmed_gross:     "Confirmed Gross",
@@ -275,7 +275,7 @@ export const en: Record<string, string> = {
   finances_contracts_section:   "Contracts (Escrow)",
   finances_paid_to_referrers:   "Paid to referrers",
 
-  // â”€â”€ Talent list / grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Talent list / grid â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   talent_search:       "Search talents…",
   talent_no_talent:    "No talent found",
   talent_view_profile: "View Profile",
@@ -285,7 +285,7 @@ export const en: Record<string, string> = {
   talent_grid_view:    "Grid",
   talent_list_view:    "List",
 
-  // â”€â”€ Referrals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Referrals â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   referrals_title:        "Referrals",
   referrals_link:         "Your Referral Link",
   referrals_copy:         "Copy Link",
@@ -298,7 +298,7 @@ export const en: Record<string, string> = {
   referrals_joined:       "Joined",
   referrals_payout:       "Payout",
 
-  // â”€â”€ Trash â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Trash â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   trash_title:       "Trash",
   trash_restore:     "Restore",
   trash_delete_perm: "Delete Permanently",
@@ -309,7 +309,7 @@ export const en: Record<string, string> = {
   trash_agencies:    "Agencies",
   trash_talent:      "Talent",
 
-  // â”€â”€ Submissions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Submissions â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   submissions_title:    "Applicants",
   submissions_no_apps:  "No applicants yet.",
   submissions_select:   "Select",
@@ -322,7 +322,7 @@ export const en: Record<string, string> = {
   submission_source_self:            "Own application",
   submission_source_referred:        "Referred",
 
-  // â”€â”€ Post job â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Post job â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   post_job_title:          "Post New Job",
   post_job_title_field:    "Job Title",
   post_job_description:    "Description",
@@ -340,7 +340,7 @@ export const en: Record<string, string> = {
   post_job_success:        "Job posted successfully!",
   post_job_error:          "Failed to post job.",
 
-  // â”€â”€ Profile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Profile â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   profile_full_name:      "Full Name",
   profile_email:          "Email",
   profile_bio:            "Bio",
@@ -369,11 +369,11 @@ export const en: Record<string, string> = {
   profile_agent_name:     "Agent Name",
   profile_represented_by: "Represented by",
 
-  // â”€â”€ Workspace â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Workspace â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   workspace_private_job:  "Private job",
   workspace_private_invite: "Private invite",
 
-  // â”€â”€ Landing — nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Landing — nav â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   landing_nav_signin: "Sign in",
   landing_nav_register: "Sign up",
   landing_nav_agency: "Agency",
@@ -381,19 +381,19 @@ export const en: Record<string, string> = {
   landing_nav_talent: "Talent",
   landing_nav_talent_sub: "Apply for jobs",
 
-  // â”€â”€ Landing — hero â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  landing_hero_badge: "Talent platform",
-  landing_hero_title_line1: "The place where",
-  landing_hero_title_gradient: "talents and agencies",
-  landing_hero_title_line3: "meet.",
-  landing_hero_subtitle: "Manage hirings, contracts and payments in one place — fast, secure and hassle-free.",
-  landing_hero_cta_agency: "Get started as agency",
+  // â"€â"€ Landing — hero â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+  landing_hero_badge: "Premium Agency Workspace",
+  landing_hero_title_line1: "Your agency.",
+  landing_hero_title_gradient: "Your private portal.",
+  landing_hero_title_line3: "Your operation.",
+  landing_hero_subtitle: "Premium Workspace with an invite-only talent portal, digital contracts, payment escrow and internal agents — all branded for your agency.",
+  landing_hero_cta_agency: "Create Premium workspace",
   landing_hero_cta_talent: "Join as talent",
-  landing_stat_secure: "Secure",
-  landing_stat_payments: "Payments",
-  landing_stat_support: "Support",
+  landing_stat_secure: "Payment escrow",
+  landing_stat_payments: "Private portal",
+  landing_stat_support: "Bilingual PT/EN",
 
-  // â”€â”€ Landing — how it works â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Landing — how it works â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   landing_hiw_pill1: "No WhatsApp. No spreadsheets.",
   landing_hiw_title1: "One unified flow from briefing to hiring",
   landing_hiw_desc1: "Brisa replaces loose messages, spreadsheets and scattered receipts with a structured process for agencies to post, select, hire and pay with more predictability.",
@@ -408,7 +408,7 @@ export const en: Record<string, string> = {
   landing_hiw_step4_title: "Rehire with full history",
   landing_hiw_step4_desc: "Review past work, payments and approved talents to speed up new campaigns.",
 
-  // â”€â”€ Landing — features â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Landing — features â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   landing_feat_pill: "Key features",
   landing_feat_title: "Everything agencies need to hire with confidence",
   landing_feat_desc: "From job posting to final payment, the platform keeps context, documents and status in the same flow so agencies don't waste time on parallel controls.",
@@ -424,8 +424,14 @@ export const en: Record<string, string> = {
   landing_feat5_desc: "Keep context on who worked well with the agency and reduce time on the next hire.",
   landing_feat6_title: "Private jobs in Premium",
   landing_feat6_desc: "Invite talents to closed opportunities and run a private flow when the campaign requires it.",
+  landing_feat7_title: "Private talent portal",
+  landing_feat7_desc: "Invited talents access a branded environment with jobs and contracts in one place.",
+  landing_feat8_title: "Team management",
+  landing_feat8_desc: "Invite internal agents, set spending limits and keep full supervision over the entire operation.",
+  landing_feat9_title: "Bilingual interface",
+  landing_feat9_desc: "Native PT/EN. International teams and talents operate without a language barrier.",
 
-  // â”€â”€ Landing — use cases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Landing — use cases â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   landing_use_pill: "Professional use",
   landing_use_title: "Safe hiring for different types of business",
   landing_use_desc: "BrisaHub replaces informal WhatsApp processes, spreadsheets and loose receipts with a structured flow: from job creation to hiring, contract and payment.",
@@ -436,6 +442,45 @@ export const en: Record<string, string> = {
   landing_biz_audiovisual: "audiovisual production",
   landing_biz_freelancers: "creative freelancers",
   landing_biz_smb: "small and medium businesses",
+  landing_pain_pill: "The current problem",
+  landing_pain_title: "Agencies lose time to informal workflows",
+  landing_pain_desc: "WhatsApp, spreadsheets and scattered receipts make operations unpredictable — especially as the team grows.",
+  landing_pain1_title: "WhatsApp coordination",
+  landing_pain1_desc: "Confirmations, cancellations and questions scattered across private conversations nobody tracks.",
+  landing_pain2_title: "Manual casting without history",
+  landing_pain2_desc: "No centralized queue, no accumulated context, no reliable way to compare candidates.",
+  landing_pain3_title: "Payments without tracking",
+  landing_pain3_desc: "Fees agreed verbally, receipts lost and disputes over amounts that were never properly recorded.",
+  landing_pain4_title: "No private agency portal",
+  landing_pain4_desc: "Talents use generic tools with no agency branding and no operational context.",
+  landing_solution_label: "The BrisaHub solution",
+  landing_solution_text: "A private Premium workspace with a branded portal, internal agents, invite-only jobs, contracts, escrow and complete history — all under your agency's roof.",
+  landing_ws_pill: "Premium Space",
+  landing_ws_title: "Your agency's app, without writing a line of code",
+  landing_ws_subtitle: "Set it up once, invite your team and talents, and run all hiring with your agency's identity.",
+  landing_ws1_title: "Portal with your branding",
+  landing_ws1_desc: "Custom logo, colors and welcome message. Talents access an environment that feels like yours.",
+  landing_ws2_title: "Internal agent team",
+  landing_ws2_desc: "Invite agents, set spending limits and keep full supervision over the entire operation.",
+  landing_ws3_title: "Invite-only private jobs",
+  landing_ws3_desc: "Post opportunities visible only to who you invite. Zero external noise in your casting process.",
+  landing_ws4_title: "Wallet and escrow",
+  landing_ws4_desc: "Deposit funds, allocate to agents and release payments with integrated escrow.",
+  landing_ws5_title: "Contract on every booking",
+  landing_ws5_desc: "Each confirmation generates a digital contract with fee, date, deliverables and dual signatures.",
+  landing_ws6_title: "History and reporting",
+  landing_ws6_desc: "Full flow from application to payment, with real-time status for everyone involved.",
+  landing_ws_cta: "Create Premium workspace",
+  landing_stats_pill: "Real operation",
+  landing_stats_title: "A professional operation, not a spreadsheet",
+  landing_stat1_label: "Digital",
+  landing_stat1_desc: "Contracts, bookings and payments with no paper or loose receipts.",
+  landing_stat2_label: "Integrated roles",
+  landing_stat2_desc: "Agency and talent in the same flow, with dedicated visibility for each role.",
+  landing_stat3_label: "Instant payment",
+  landing_stat3_desc: "Fee release via PIX directly to the talent's wallet.",
+  landing_stat4_label: "Native bilingual",
+  landing_stat4_desc: "Full interface in Portuguese and English for international teams.",
   landing_trust1_title: "Payment security",
   landing_trust1_desc: "The amount can be held in escrow during the booking and released only after the work is confirmed.",
   landing_trust2_title: "Clear contracts",
@@ -443,7 +488,7 @@ export const en: Record<string, string> = {
   landing_trust3_title: "Transparency and control",
   landing_trust3_desc: "Complete history, visible status and less rework to track each hire with full context.",
 
-  // â”€â”€ Landing — screenshots â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Landing — screenshots â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   landing_ss_pill: "See the platform in action",
   landing_ss_title: "A quick overview of what agencies track",
   landing_ss_desc: "Product screenshots organized to show, without noise, how agencies track jobs, finances and talents day-to-day.",
@@ -457,7 +502,7 @@ export const en: Record<string, string> = {
   landing_showcase_tal_title: "Profiles ready to evaluate",
   landing_showcase_tal_desc: "Compare professionals with photos, tags and context to decide with more confidence.",
 
-  // â”€â”€ Landing — plans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Landing — plans â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   landing_plans_pill: "Plans",
   landing_plans_title: "Choose the plan for your operation's pace",
   landing_plans_desc: "Start without a monthly fee to validate your first job, upgrade to Pro when you hire frequently, and use Premium for private processes and more reserved selections.",
@@ -468,7 +513,7 @@ export const en: Record<string, string> = {
   landing_plan_premium_audience: "Private agency workspace",
   landing_plan_premium_summary: "A polished private operation for your agency with internal agents, invite-only jobs, custom branding and clear usage controls.",
 
-  // â”€â”€ Plan card universal labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Plan card universal labels â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   plan_popular_badge: "Most popular",
   plan_coming_soon: "Coming soon",
   plan_per_month: "/month",
@@ -479,7 +524,7 @@ export const en: Record<string, string> = {
   plan_cta_prefix: "Get started with",
   plan_everything_in_pro: "Everything in Pro",
 
-  // â”€â”€ Landing — trust â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Landing — trust â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   landing_ctrust_pill: "Trust",
   landing_ctrust_title: "Legal and financial security for hiring with peace of mind",
   landing_ctrust_desc: "Contract, payment and history are recorded so the agency has operational predictability and the talent knows exactly which stage they're at.",
@@ -487,15 +532,15 @@ export const en: Record<string, string> = {
   landing_ctrust_item2: "Payment with traceable status",
   landing_ctrust_item3: "History for decisions and rehiring",
 
-  // â”€â”€ Landing — CTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  landing_cta_pill: "Structure your next hire",
-  landing_cta_title: "Open your agency account and manage your next job with a contract, secure payment and less rework.",
-  landing_cta_desc: "If you hire frequently, Pro makes the operational gain clear. If you're a talent, you can also create your profile to receive invites and track opportunities.",
-  landing_cta_btn_agency: "Get started as agency",
+  // â"€â"€ Landing — CTA â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+  landing_cta_pill: "Professionalize your operation",
+  landing_cta_title: "Create your Premium workspace and operate with a private portal, contracts and payments for your agency.",
+  landing_cta_desc: "Set up in minutes. Invite agents and talents. Run casting, contracts and payments without external tools.",
+  landing_cta_btn_agency: "Create Premium workspace",
   landing_cta_btn_talent: "Join as talent",
   landing_footer_rights: "© 2026 BrisaHub. All rights reserved.",
 
-  // â”€â”€ Login â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Login â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   login_tagline: "Talent platform",
   login_hero_line1: "The place where",
   login_hero_gradient: "talents and agencies",
@@ -517,7 +562,7 @@ export const en: Record<string, string> = {
   login_role_talent: "Talent",
   login_role_talent_sub: "Apply",
 
-  // â”€â”€ Signup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Signup â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   signup_badge: "Premium registration",
   signup_agency_title: "Create your complete operation in one place",
   signup_agency_subtitle: "Register your agency, configure the profile, choose a plan and go post jobs without rework.",
@@ -632,7 +677,7 @@ export const en: Record<string, string> = {
   signup_error_payment: "Error starting payment. Please try again.",
   signup_error_unexpected: "Unexpected error creating account.",
 
-  // â”€â”€ Onboarding â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Onboarding â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   onboarding_agency_eyebrow: "Agency flow",
   onboarding_talent_eyebrow: "Talent flow",
   onboarding_agency_heading: "All set. Now take a quick look at how your operation works on BrisaHub",
@@ -787,18 +832,18 @@ export const en: Record<string, string> = {
   billing_deposit: "Deposit",
   billing_withdrawal: "Withdrawal",
 
-  // â”€â”€ Common actions / feedback â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Common actions / feedback â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   common_cancel:             "Cancel",
   common_confirm:            "Confirm",
   common_sending:            "Sending…",
   common_updating:           "Updating…",
   common_unexpected_error:   "Something went wrong.",
 
-  // â”€â”€ Period filters â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Period filters â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   filter_today:              "Today",
   filter_this_month:         "This month",
 
-  // â”€â”€ TalentBookings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ TalentBookings â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   bookings_activity:         "Activity",
   bookings_my_bookings:      "My Bookings",
   bookings_updating:         "Updating…",
@@ -813,7 +858,7 @@ export const en: Record<string, string> = {
   bookings_cancelled_toast:  "Booking cancelled.",
   bookings_cancel_failed:    "Failed to cancel.",
 
-  // â”€â”€ TalentContracts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ TalentContracts â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   contracts_show_less:             "Show less",
   contracts_show_more:             "Show more",
   contracts_received_at:           "Received on",
@@ -860,10 +905,10 @@ export const en: Record<string, string> = {
   contracts_adjust_filter:         "Adjust the filter to see other records.",
   contracts_empty_hint:            "Contracts sent by agencies will appear here.",
 
-  // â”€â”€ AgencyContracts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ AgencyContracts â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   agency_contracts_if_applicable:  "(if applicable)",
 
-  // â”€â”€ Admin topbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Admin topbar â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   topbar_admin_dashboard_title: "Dashboard",
   topbar_admin_dashboard_desc:  "Platform overview",
   topbar_admin_jobs_title:      "Jobs",
@@ -899,7 +944,7 @@ export const en: Record<string, string> = {
   topbar_admin_notifications_title: "Notifications",
   topbar_admin_notifications_desc:  "Send mass notifications to platform users",
 
-  // â”€â”€ Admin shared labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Admin shared labels â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   admin_platform:        "Platform admin",
   admin_overview:        "Overview",
   admin_period_all:      "All time",
@@ -934,7 +979,7 @@ export const en: Record<string, string> = {
   admin_unfreeze:        "Unfreeze",
   admin_trash_btn:       "Trash",
   admin_add_balance:     "+ Balance",
-  admin_debit_balance:   "âˆ’ Balance",
+  admin_debit_balance:   "âˆ' Balance",
   admin_saving:          "Saving...",
   admin_sort_default:    "Default",
   admin_sort_earnings:   "Earnings / balance",
@@ -1049,14 +1094,14 @@ export const en: Record<string, string> = {
   admin_disputed:        "In dispute",
   admin_all_categories_label: "All",
 
-  // â”€â”€ Booking unified status labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Booking unified status labels â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   booking_status_awaiting_signature: "Awaiting Signature",
   booking_status_awaiting_deposit:   "Awaiting Deposit",
   booking_status_awaiting_payment:   "Awaiting Payment",
   booking_status_paid:               "Paid",
   booking_status_cancelled:          "Cancelled",
 
-  // â”€â”€ Reconciliation / system / audit labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Reconciliation / system / audit labels â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   reconciliation_status_ok:      "Reconciled",
   reconciliation_status_warn:    "Warning",
   reconciliation_status_diff:    "Discrepancy",
@@ -1072,7 +1117,7 @@ export const en: Record<string, string> = {
   support_status_closed:         "Closed",
   support_status_pending:        "Awaiting reply",
 
-  // â”€â”€ Premium wallet ledger â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ Premium wallet ledger â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   wallet_allocated: "Allocated balance",
   wallet_committed: "Committed balance",
   wallet_available: "Available balance",
