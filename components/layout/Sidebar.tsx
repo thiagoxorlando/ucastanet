@@ -762,8 +762,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
-        {/* Workspace branding strip — shown for talent portal or workspace agent */}
-        {(isInWorkspacePortal || isWorkspaceAgent) && portalWorkspace && (() => {
+        {/* Workspace branding strip — shown for talent portal only; agents already have the header */}
+        {isInWorkspacePortal && !isWorkspaceAgent && portalWorkspace && (() => {
           const primary = portalWorkspace.primaryColor;
           const accent  = portalWorkspace.accentColor;
           const wsInitials = portalWorkspace.name
