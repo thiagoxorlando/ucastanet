@@ -334,17 +334,17 @@ export default function Home() {
         {/* Layered background */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_60%_at_50%_-5%,rgba(26,188,156,0.22),transparent),radial-gradient(circle_at_80%_85%,rgba(39,193,214,0.10),transparent_40%),radial-gradient(circle_at_12%_70%,rgba(26,188,156,0.07),transparent_35%),linear-gradient(180deg,#071516_0%,#041012_100%)]" />
         <div className="absolute inset-0 opacity-[0.04]" style={{backgroundImage:"linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)",backgroundSize:"48px 48px"}} />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_42%,rgba(4,12,14,0.72)_100%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_38%,rgba(4,12,14,0.82)_100%)]" />
 
         <div className="relative mx-auto max-w-7xl px-5 lg:px-10">
 
           {/* Text block — centered */}
-          <div className="flex flex-col items-center pb-10 pt-16 text-center sm:pt-20">
+          <div className="flex flex-col items-center pb-8 pt-12 text-center sm:pt-16">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-4 py-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-[#1ABC9C]" />
               <span className="text-[12px] font-semibold uppercase tracking-wide text-white/60">{t("landing_hero_badge")}</span>
             </div>
-            <h1 className="mt-6 max-w-4xl text-[2.8rem] font-black leading-[1.04] tracking-[-0.04em] text-white sm:text-[3.8rem] lg:text-[4.8rem]">
+            <h1 className="mt-6 max-w-4xl text-[2.8rem] font-black leading-[1.04] tracking-[-0.04em] text-white sm:text-[3.8rem] lg:text-[5.2rem]">
               {t("landing_hero_title_line1")}<br />
               <span className="bg-gradient-to-r from-[#1ABC9C] via-[#20D4BE] to-[#27C1D6] bg-clip-text text-transparent">
                 {t("landing_hero_title_gradient")}
@@ -364,10 +364,11 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Dashboard + floating feature cards */}
-          <div className="relative pb-6">
-            {/* Left cards — visible only xl+ */}
-            <div className="absolute left-0 top-1/2 z-10 hidden w-[205px] -translate-y-1/2 flex-col gap-4 xl:flex">
+          {/* Dashboard + floating feature cards — 3-col grid on xl */}
+          <div className="grid items-center gap-4 pb-5 xl:grid-cols-[190px_1fr_190px]">
+
+            {/* Left cards */}
+            <div className="hidden flex-col gap-3.5 xl:flex">
               {[
                 { path: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", title: t("landing_hero_callout1"), sub: t("landing_hero_callout1_sub") },
                 { path: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z", title: t("landing_hero_callout2"), sub: t("landing_hero_callout2_sub") },
@@ -389,26 +390,35 @@ export default function Home() {
             </div>
 
             {/* Central dashboard mockup */}
-            <div className="relative xl:px-[222px]">
+            <div className="relative">
               {/* Glow halo behind dashboard */}
-              <div className="absolute -inset-6 bg-[radial-gradient(ellipse_at_center,rgba(26,188,156,0.18),transparent_68%)] blur-3xl" />
-              {/* Gradient border frame */}
-              <div className="relative rounded-[2.2rem] bg-[linear-gradient(135deg,rgba(26,188,156,0.28),rgba(39,193,214,0.14)_45%,rgba(255,255,255,0.05))] p-px shadow-[0_28px_80px_rgba(0,0,0,0.60),0_0_0_1px_rgba(26,188,156,0.10)]">
-                <ScreenshotFrame
+              <div className="absolute -inset-8 bg-[radial-gradient(ellipse_at_center,rgba(26,188,156,0.22),transparent_65%)] blur-3xl" />
+              {/* Laptop chrome frame */}
+              <div className="relative overflow-hidden rounded-[1.6rem] bg-[#0d1f22] shadow-[0_36px_100px_rgba(0,0,0,0.75),0_0_60px_rgba(26,188,156,0.16)] ring-1 ring-white/10">
+                {/* Browser bar */}
+                <div className="flex items-center gap-2 border-b border-white/8 bg-[#0a1819] px-4 py-2.5">
+                  <span className="h-3 w-3 rounded-full bg-[#FF5F57]" />
+                  <span className="h-3 w-3 rounded-full bg-[#FFBD2E]" />
+                  <span className="h-3 w-3 rounded-full bg-[#28CA41]" />
+                  <div className="mx-3 flex flex-1 items-center justify-center rounded-md bg-white/5 px-3 py-1">
+                    <span className="text-[10px] text-white/30">app.brisahub.com/workspace</span>
+                  </div>
+                </div>
+                {/* Dashboard screenshot */}
+                <Image
                   src={dashboardScreenshot}
                   alt={t("landing_alt_dashboard")}
                   width={dashboardScreenshot.width}
                   height={dashboardScreenshot.height}
                   priority
-                  className="rounded-[2.1rem] bg-[#071314]"
-                  sizes="(min-width: 1280px) 50vw, (min-width: 768px) 70vw, 96vw"
-                  aspectRatio={`${dashboardScreenshot.width} / ${dashboardScreenshot.height}`}
+                  className="block w-full"
+                  sizes="(min-width: 1280px) 62vw, (min-width: 768px) 82vw, 96vw"
                 />
               </div>
             </div>
 
-            {/* Right cards — visible only xl+ */}
-            <div className="absolute right-0 top-1/2 z-10 hidden w-[205px] -translate-y-1/2 flex-col gap-4 xl:flex">
+            {/* Right cards */}
+            <div className="hidden flex-col gap-3.5 xl:flex">
               {[
                 { path: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z", title: t("landing_hero_callout4"), sub: t("landing_hero_callout4_sub") },
                 { path: "M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z", title: t("landing_hero_callout5"), sub: t("landing_hero_callout5_sub") },
@@ -431,7 +441,7 @@ export default function Home() {
           </div>
 
           {/* Metrics glass bar */}
-          <div className="pb-6">
+          <div className="pb-5">
             <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.04] shadow-[0_8px_36px_rgba(0,0,0,0.35)] backdrop-blur-sm">
               <div className="grid grid-cols-2 divide-x divide-y divide-white/8 lg:grid-cols-4 lg:divide-y-0">
                 {[
@@ -440,14 +450,14 @@ export default function Home() {
                   { path: "M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z", value: "PT/EN", desc: t("landing_metric3_desc") },
                   { path: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", value: "100% Digital", desc: t("landing_metric4_desc") },
                 ].map((m) => (
-                  <div key={m.value} className="flex items-center gap-4 px-5 py-5 sm:px-6">
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-[#1ABC9C]/20 bg-[#1ABC9C]/10">
-                      <svg className="h-[18px] w-[18px] text-[#1ABC9C]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <div key={m.value} className="flex items-center gap-4 px-5 py-6 sm:px-7">
+                    <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border border-[#1ABC9C]/20 bg-[#1ABC9C]/10">
+                      <svg className="h-5 w-5 text-[#1ABC9C]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={m.path} />
                       </svg>
                     </div>
                     <div>
-                      <p className="text-[15px] font-black leading-tight text-white">{m.value}</p>
+                      <p className="text-[17px] font-black leading-tight text-white">{m.value}</p>
                       <p className="mt-0.5 text-[11px] leading-snug text-white/40">{m.desc}</p>
                     </div>
                   </div>
@@ -459,14 +469,14 @@ export default function Home() {
         </div>
 
         {/* Bottom logo — centered, glowing */}
-        <div className="relative flex justify-center py-8">
-          <div className="absolute left-1/2 top-0 h-px w-52 -translate-x-1/2 bg-gradient-to-r from-transparent via-[#1ABC9C]/28 to-transparent" />
+        <div className="relative flex justify-center pb-10 pt-5">
+          <div className="absolute left-1/2 top-0 h-px w-64 -translate-x-1/2 bg-gradient-to-r from-transparent via-[#1ABC9C]/35 to-transparent" />
           <Image
             src={heroBrandImage}
             alt="BrisaHub"
             width={heroBrandImage.width}
             height={heroBrandImage.height}
-            className="h-auto w-full max-w-[100px] opacity-65 drop-shadow-[0_0_18px_rgba(26,188,156,0.45)]"
+            className="h-auto w-full max-w-[115px] opacity-70 drop-shadow-[0_0_24px_rgba(26,188,156,0.60)]"
           />
         </div>
       </section>
