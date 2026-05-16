@@ -331,65 +331,143 @@ export default function Home() {
 
       {/* ── Hero ── */}
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(39,193,214,0.22),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(26,188,156,0.18),transparent_35%),linear-gradient(180deg,#081718_0%,#041012_100%)]" />
+        {/* Layered background */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_60%_at_50%_-5%,rgba(26,188,156,0.22),transparent),radial-gradient(circle_at_80%_85%,rgba(39,193,214,0.10),transparent_40%),radial-gradient(circle_at_12%_70%,rgba(26,188,156,0.07),transparent_35%),linear-gradient(180deg,#071516_0%,#041012_100%)]" />
         <div className="absolute inset-0 opacity-[0.04]" style={{backgroundImage:"linear-gradient(rgba(255,255,255,1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,1) 1px,transparent 1px)",backgroundSize:"48px 48px"}} />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_42%,rgba(4,12,14,0.72)_100%)]" />
 
-        <div className="relative mx-auto grid max-w-7xl lg:min-h-[calc(100vh-4rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)]">
+        <div className="relative mx-auto max-w-7xl px-5 lg:px-10">
 
-          <div className="flex flex-col justify-between px-6 py-14 sm:px-10 lg:px-12 lg:py-12">
-            <div>
-              <Image
-                src={heroBrandImage}
-                alt="BrisaHub"
-                width={heroBrandImage.width}
-                height={heroBrandImage.height}
-                priority
-                className="h-auto w-full max-w-[110px] lg:max-w-[120px]"
-              />
+          {/* Text block — centered */}
+          <div className="flex flex-col items-center pb-10 pt-16 text-center sm:pt-20">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-4 py-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#1ABC9C]" />
+              <span className="text-[12px] font-semibold uppercase tracking-wide text-white/60">{t("landing_hero_badge")}</span>
             </div>
-
-            <div className="space-y-6 py-10 lg:py-0">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/8 border border-white/10 px-4 py-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#1ABC9C]" />
-                <span className="text-[12px] font-semibold text-white/60 tracking-wide">{t("landing_hero_badge")}</span>
-              </div>
-              <h1 className="text-[2.2rem] font-black tracking-[-0.04em] leading-[1.1] text-white sm:text-[2.6rem]">
-                {t("landing_hero_title_line1")}<br />
-                <span className="bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] bg-clip-text text-transparent">
-                  {t("landing_hero_title_gradient")}
-                </span><br />
-                {t("landing_hero_title_line3")}
-              </h1>
-              <p className="text-[15px] leading-7 text-white/50 max-w-sm">
-                {t("landing_hero_subtitle")}
-              </p>
-              <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-                <Link href="/signup?role=agency" className={primaryLink}>
-                  {t("landing_hero_cta_agency")}
-                </Link>
-                <Link href="/signup?role=talent" className={ghostLink}>
-                  {t("landing_hero_cta_talent")}
-                </Link>
-              </div>
+            <h1 className="mt-6 max-w-4xl text-[2.8rem] font-black leading-[1.04] tracking-[-0.04em] text-white sm:text-[3.8rem] lg:text-[4.8rem]">
+              {t("landing_hero_title_line1")}<br />
+              <span className="bg-gradient-to-r from-[#1ABC9C] via-[#20D4BE] to-[#27C1D6] bg-clip-text text-transparent">
+                {t("landing_hero_title_gradient")}
+              </span><br />
+              {t("landing_hero_title_line3")}
+            </h1>
+            <p className="mt-6 max-w-xl text-[15px] leading-7 text-white/50">
+              {t("landing_hero_subtitle")}
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href="/signup?role=agency&plan=premium" className={primaryLink}>
+                {t("landing_hero_cta_agency")}
+              </Link>
+              <Link href="/signup?role=talent" className={ghostLink}>
+                {t("landing_hero_cta_talent")}
+              </Link>
             </div>
+          </div>
 
-            <div className="flex items-center gap-8">
+          {/* Dashboard + floating feature cards */}
+          <div className="relative pb-6">
+            {/* Left cards — visible only xl+ */}
+            <div className="absolute left-0 top-1/2 z-10 hidden w-[205px] -translate-y-1/2 flex-col gap-4 xl:flex">
               {[
-                { value: "Escrow", label: t("landing_stat_secure") },
-                { value: "Portal", label: t("landing_stat_payments") },
-                { value: "PT/EN",  label: t("landing_stat_support") },
-              ].map(({ value, label }) => (
-                <div key={label}>
-                  <p className="text-[1.25rem] font-black text-white tracking-tight">{value}</p>
-                  <p className="text-[11px] text-white/40 font-medium mt-0.5">{label}</p>
+                { path: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", title: t("landing_hero_callout1"), sub: t("landing_hero_callout1_sub") },
+                { path: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z", title: t("landing_hero_callout2"), sub: t("landing_hero_callout2_sub") },
+                { path: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z", title: t("landing_hero_callout3"), sub: t("landing_hero_callout3_sub") },
+              ].map((card) => (
+                <div key={card.title} className="relative flex items-start gap-3 rounded-2xl border border-white/12 bg-[#071314]/92 px-4 py-3.5 shadow-[0_8px_28px_rgba(0,0,0,0.5)] backdrop-blur-sm">
+                  <span className="absolute -right-[5px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-[#1ABC9C] shadow-[0_0_10px_rgba(26,188,156,0.95)]" />
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[#1ABC9C]/20 bg-[#1ABC9C]/10">
+                    <svg className="h-4 w-4 text-[#1ABC9C]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={card.path} />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-black leading-tight text-white">{card.title}</p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-white/40">{card.sub}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Central dashboard mockup */}
+            <div className="relative xl:px-[222px]">
+              {/* Glow halo behind dashboard */}
+              <div className="absolute -inset-6 bg-[radial-gradient(ellipse_at_center,rgba(26,188,156,0.18),transparent_68%)] blur-3xl" />
+              {/* Gradient border frame */}
+              <div className="relative rounded-[2.2rem] bg-[linear-gradient(135deg,rgba(26,188,156,0.28),rgba(39,193,214,0.14)_45%,rgba(255,255,255,0.05))] p-px shadow-[0_28px_80px_rgba(0,0,0,0.60),0_0_0_1px_rgba(26,188,156,0.10)]">
+                <ScreenshotFrame
+                  src={dashboardScreenshot}
+                  alt={t("landing_alt_dashboard")}
+                  width={dashboardScreenshot.width}
+                  height={dashboardScreenshot.height}
+                  priority
+                  className="rounded-[2.1rem] bg-[#071314]"
+                  sizes="(min-width: 1280px) 50vw, (min-width: 768px) 70vw, 96vw"
+                  aspectRatio={`${dashboardScreenshot.width} / ${dashboardScreenshot.height}`}
+                />
+              </div>
+            </div>
+
+            {/* Right cards — visible only xl+ */}
+            <div className="absolute right-0 top-1/2 z-10 hidden w-[205px] -translate-y-1/2 flex-col gap-4 xl:flex">
+              {[
+                { path: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z", title: t("landing_hero_callout4"), sub: t("landing_hero_callout4_sub") },
+                { path: "M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z", title: t("landing_hero_callout5"), sub: t("landing_hero_callout5_sub") },
+                { path: "M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z", title: t("landing_hero_callout6"), sub: t("landing_hero_callout6_sub") },
+              ].map((card) => (
+                <div key={card.title} className="relative flex items-start gap-3 rounded-2xl border border-white/12 bg-[#071314]/92 px-4 py-3.5 shadow-[0_8px_28px_rgba(0,0,0,0.5)] backdrop-blur-sm">
+                  <span className="absolute -left-[5px] top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full bg-[#1ABC9C] shadow-[0_0_10px_rgba(26,188,156,0.95)]" />
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-[#1ABC9C]/20 bg-[#1ABC9C]/10">
+                    <svg className="h-4 w-4 text-[#1ABC9C]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={card.path} />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-black leading-tight text-white">{card.title}</p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-white/40">{card.sub}</p>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="hidden lg:flex items-center justify-center px-6 py-12 lg:px-10">
-            <ProductPreview alt={t("landing_alt_dashboard")} />
+          {/* Metrics glass bar */}
+          <div className="pb-6">
+            <div className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/[0.04] shadow-[0_8px_36px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+              <div className="grid grid-cols-2 divide-x divide-y divide-white/8 lg:grid-cols-4 lg:divide-y-0">
+                {[
+                  { path: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z", value: "Escrow", desc: t("landing_metric1_desc") },
+                  { path: "M17 20v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zm13 9v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75", value: "Portal", desc: t("landing_metric2_desc") },
+                  { path: "M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z", value: "PT/EN", desc: t("landing_metric3_desc") },
+                  { path: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z", value: "100% Digital", desc: t("landing_metric4_desc") },
+                ].map((m) => (
+                  <div key={m.value} className="flex items-center gap-4 px-5 py-5 sm:px-6">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-[#1ABC9C]/20 bg-[#1ABC9C]/10">
+                      <svg className="h-[18px] w-[18px] text-[#1ABC9C]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={m.path} />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-[15px] font-black leading-tight text-white">{m.value}</p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-white/40">{m.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
+
+        </div>
+
+        {/* Bottom logo — centered, glowing */}
+        <div className="relative flex justify-center py-8">
+          <div className="absolute left-1/2 top-0 h-px w-52 -translate-x-1/2 bg-gradient-to-r from-transparent via-[#1ABC9C]/28 to-transparent" />
+          <Image
+            src={heroBrandImage}
+            alt="BrisaHub"
+            width={heroBrandImage.width}
+            height={heroBrandImage.height}
+            className="h-auto w-full max-w-[100px] opacity-65 drop-shadow-[0_0_18px_rgba(26,188,156,0.45)]"
+          />
         </div>
       </section>
 
