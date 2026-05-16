@@ -15,7 +15,7 @@ export type Job = {
   deadline: string;
   jobDate: string | null;
   description: string;
-  status: "open" | "closed" | "draft" | "inactive";
+  status: "open" | "closed" | "draft" | "inactive" | "paused";
   visibility: "public" | "private" | "private_invite";
   applicants: number;
   talentsNeeded: number;

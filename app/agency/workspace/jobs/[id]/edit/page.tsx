@@ -58,7 +58,7 @@ export default async function WorkspaceEditJobPage({ params }: Props) {
         category: job.category ?? "",
         budget: job.budget ?? 0,
         deadline: job.deadline ?? "",
-        status: (job.status ?? "open") as "open" | "closed" | "draft" | "inactive",
+        status: (job.status ?? "open") as "open" | "closed" | "draft" | "inactive" | "paused",
         location: job.location ?? "",
         gender: job.gender ?? "any",
         age_min: job.age_min ?? null,

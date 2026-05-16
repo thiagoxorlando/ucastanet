@@ -12,7 +12,7 @@ export type EditableJob = {
   category: string;
   budget: number;
   deadline: string;
-  status: "open" | "closed" | "draft" | "inactive";
+  status: "open" | "closed" | "draft" | "inactive" | "paused";
   location: string;
   gender: string;
   age_min: number | null;

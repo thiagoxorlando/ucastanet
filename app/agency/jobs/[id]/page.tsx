@@ -102,7 +102,7 @@ export default async function JobDetailPage({ params }: Props) {
     visibility: (jobData.visibility ?? "public") as "public" | "private" | "private_invite",
     inviteOnly: (jobData as { invite_only?: boolean }).invite_only ?? false,
     workspaceId: workspaceId,
-    status: (jobData.status ?? "open") as "open" | "closed" | "draft" | "inactive",
+    status: (jobData.status ?? "open") as "open" | "closed" | "draft" | "inactive" | "paused",
     postedAt: jobData.created_at ?? "",
     agencyId: String(jobData.agency_id ?? user.id),
     numberOfTalentsRequired: jobData.number_of_talents_required ?? 1,

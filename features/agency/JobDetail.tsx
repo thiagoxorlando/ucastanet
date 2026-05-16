@@ -24,7 +24,7 @@ type Job = {
   deadline: string;
   jobDate?: string | null;
   jobTime?: string | null;
-  status: "open" | "closed" | "draft" | "inactive";
+  status: "open" | "closed" | "draft" | "inactive" | "paused";
   visibility?: "public" | "private" | "private_invite";
   inviteOnly?: boolean;
   workspaceId?: string | null;
@@ -1084,17 +1084,18 @@ export default function JobDetail({
   // Plan-limit checks (Free: 1 active job) are enforced only server-side.
   const canReopenJob = !hasPaidBookings && !isJobFull;
   const canShareJob = !isWorkspaceJob && currentStatus === "open" && !isJobFull;
+  const canHire = !readOnly && currentStatus === "open" && !isJobFull;
   const days   = daysUntil(job.deadline);
   const urgent = days <= 7 && days > 0 && currentStatus === "open";
 
   function openContractModal(s: Submission) {
-    if (!canShareJob) return;
+    if (!canHire) return;
     if (!s.talentId) return;
     setContractModal([{ submissionId: s.id, talentId: s.talentId, talentName: s.talentName }]);
   }
 
   function openBulkContractModal() {
-    if (!canShareJob) return;
+    if (!canHire) return;
     const targets = safeSubmissions
       .filter((s) => s.talentId && selected.has(s.id) && !sentContracts.has(s.id))
       .map((s) => ({ submissionId: s.id, talentId: s.talentId!, talentName: s.talentName }));
@@ -1238,7 +1239,7 @@ export default function JobDetail({
             <h1 className="text-[1.85rem] font-black tracking-[-0.04em] leading-tight text-white">{job.title}</h1>
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`text-[12px] font-medium px-2.5 py-1 rounded-full ${jobStatusTone(currentStatus)}`}>
-                {{ open: "Aberta", closed: "Fechada", draft: "Rascunho", inactive: "Inativa" }[currentStatus] ?? currentStatus}
+                {{ open: "Aberta", closed: "Fechada", draft: "Rascunho", inactive: "Inativa", paused: "Pausada" }[currentStatus] ?? currentStatus}
               </span>
               {(job.visibility === "private" || job.visibility === "private_invite") && (
                 <span className="inline-flex items-center gap-1 text-[12px] font-medium bg-violet-50 text-violet-600 border border-violet-100 px-2.5 py-1 rounded-full">
@@ -1391,7 +1392,7 @@ export default function JobDetail({
           <DetailRow label="Candidaturas" value={`${safeSubmissions.length} recebida${safeSubmissions.length !== 1 ? "s" : ""}`}
             icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2h5M12 12a4 4 0 100-8 4 4 0 000 8z" /></svg>}
           />
-          <DetailRow label="Status" value={{ open: "Aberta", closed: "Fechada", draft: "Rascunho", inactive: "Inativa" }[currentStatus] ?? currentStatus}
+          <DetailRow label="Status" value={{ open: "Aberta", closed: "Fechada", draft: "Rascunho", inactive: "Inativa", paused: "Pausada" }[currentStatus] ?? currentStatus}
             icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
           />
 
@@ -1408,16 +1409,17 @@ export default function JobDetail({
             <select
               value={pendingStatus}
               onChange={(e) => { setPendingStatus(e.target.value as Job["status"]); setStatusFeedback(null); }}
-              disabled={statusChanging || (currentStatus !== "open" && !canReopenJob)}
+              disabled={statusChanging || (currentStatus !== "open" && currentStatus !== "paused" && !canReopenJob)}
               className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] font-medium text-zinc-800 hover:border-zinc-300 focus:outline-none focus:border-[#1F2D2E] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {currentStatus === "draft" && <option value="draft">Rascunho</option>}
-              {(currentStatus === "open" || canReopenJob) && <option value="open">Aberta</option>}
+              {(currentStatus === "open" || currentStatus === "paused" || canReopenJob) && <option value="open">Aberta</option>}
+              {(currentStatus === "open" || currentStatus === "paused") && <option value="paused">Pausada</option>}
               <option value="closed">Fechada</option>
             </select>
             <button
               onClick={() => handleChangeStatus(pendingStatus)}
-              disabled={pendingStatus === currentStatus || statusChanging || (currentStatus !== "open" && !canReopenJob)}
+              disabled={pendingStatus === currentStatus || statusChanging || (currentStatus !== "open" && currentStatus !== "paused" && !canReopenJob)}
               className="px-5 py-2.5 rounded-xl bg-[#1F2D2E] text-white text-[13px] font-semibold hover:bg-[#2a3d3e] transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               {statusChanging ? "Salvando…" : "Salvar status"}
@@ -1496,10 +1498,10 @@ export default function JobDetail({
             {role === "agency" && selected.size > 0 && !readOnly && (
               <button
                 onClick={() => openBulkContractModal()}
-                disabled={!canShareJob}
+                disabled={!canHire}
                 className={[
                   "inline-flex items-center gap-2 text-[13px] font-semibold px-4 py-2 rounded-xl transition-colors cursor-pointer",
-                  !canShareJob
+                  !canHire
                     ? "bg-zinc-100 text-zinc-400 cursor-not-allowed"
                     : selected.size >= numberOfTalentsRequired
                       ? "bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] text-white"

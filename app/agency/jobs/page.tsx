@@ -56,7 +56,7 @@ export default async function JobsPage() {
     deadline: row.deadline ?? "",
     jobDate: row.job_date ?? null,
     description: row.description ?? "",
-    status: (row.status ?? "open") as "open" | "closed" | "draft" | "inactive",
+    status: (row.status ?? "open") as "open" | "closed" | "draft" | "inactive" | "paused",
     visibility: (row.visibility ?? "public") as "public" | "private" | "private_invite",
     applicants: submissionsCountMap.get(row.id) ?? 0,
     talentsNeeded: row.number_of_talents_required ?? 1,

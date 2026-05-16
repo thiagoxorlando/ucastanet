@@ -116,7 +116,7 @@ export async function PATCH(
   });
 
   if (update.status !== undefined) {
-    const validStatuses = ["open", "closed", "draft", "inactive"];
+    const validStatuses = ["open", "closed", "draft", "inactive", "paused"];
     if (!validStatuses.includes(update.status as string)) {
       return NextResponse.json({ error: "Status inválido." }, { status: 400 });
     }
