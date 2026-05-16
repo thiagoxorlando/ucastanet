@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { REFERRAL_RATE } from "@/lib/plans";
 import { brl } from "@/lib/brl";
+import { isGenderEligible, genderLabel, normalizeGender } from "@/lib/genderNormalization";
 
 export type TalentJobDetailProps = {
   id: string;
@@ -872,10 +873,10 @@ export default function TalentJobDetail({
                 <p className="text-[14px] font-semibold text-zinc-900">{job.location}</p>
               </div>
             )}
-            {job.gender && (
+            {job.gender && normalizeGender(job.gender) !== "any" && (
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1">Gênero</p>
-                <p className="text-[14px] font-semibold text-zinc-900">{job.gender}</p>
+                <p className="text-[14px] font-semibold text-zinc-900">{genderLabel(job.gender)}</p>
               </div>
             )}
             {(job.ageMin !== null || job.ageMax !== null) && (
@@ -937,9 +938,8 @@ export default function TalentJobDetail({
       {/* Apply flow — Info */}
       {step === "info" && (() => {
         const blockReasons: string[] = [];
-        if (job.gender && talentGender && job.gender !== talentGender) {
-          const label = job.gender === "male" ? "Masculino" : job.gender === "female" ? "Feminino" : "Outro";
-          blockReasons.push(`Esta vaga é exclusiva para o gênero ${label}.`);
+        if (!isGenderEligible(job.gender, talentGender)) {
+          blockReasons.push(`Esta vaga é exclusiva para o gênero ${genderLabel(job.gender)}.`);
         }
         if (job.ageMin !== null && talentAge !== null && talentAge < job.ageMin) {
           blockReasons.push(`Idade mínima exigida: ${job.ageMin} anos.`);
