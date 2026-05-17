@@ -4,6 +4,7 @@ import WorkspacePipelineBoard, {
   type PipelineJob,
   type PipelineCandidate,
   type PipelineNote,
+  type PresentationSummary,
 } from "@/features/agency/WorkspacePipelineBoard";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
@@ -80,7 +81,7 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
 
   const submissionIds = submissions.map((s) => s.id).filter(Boolean);
 
-  const [profilesResult, notesResult] = await Promise.all([
+  const [profilesResult, notesResult, presResult] = await Promise.all([
     talentIds.length
       ? supabase
           .from("talent_profiles")
@@ -94,6 +95,28 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
           .in("submission_id", submissionIds)
           .order("created_at", { ascending: true })
       : Promise.resolve({ data: [] as Array<{ id: string; submission_id: string; author_name: string; body: string; created_at: string }> }),
+    supabase
+      .from("workspace_presentations")
+      .select("id, title, token, expires_at, view_count, created_at, password_hash")
+      .eq("job_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  const presIds = (presResult.data ?? []).map((p) => p.id);
+
+  const [presCandResult, feedbackResult] = await Promise.all([
+    presIds.length
+      ? supabase
+          .from("workspace_presentation_candidates")
+          .select("presentation_id")
+          .in("presentation_id", presIds)
+      : Promise.resolve({ data: [] as Array<{ presentation_id: string }> }),
+    presIds.length
+      ? supabase
+          .from("presentation_feedback")
+          .select("presentation_id, vote")
+          .in("presentation_id", presIds)
+      : Promise.resolve({ data: [] as Array<{ presentation_id: string; vote: string }> }),
   ]);
 
   const profileMap = new Map<string, { full_name: string; avatar_url: string | null; age: number | null; city: string | null; gender: string | null }>();
@@ -158,6 +181,35 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
     };
   });
 
+  // Build presentations list with counts + feedback
+  const presRows = presResult.data ?? [];
+
+  const presCandCount = new Map<string, number>();
+  for (const c of presCandResult.data ?? []) {
+    presCandCount.set(c.presentation_id, (presCandCount.get(c.presentation_id) ?? 0) + 1);
+  }
+
+  const presFbMap = new Map<string, PresentationSummary["feedbackSummary"]>();
+  for (const f of feedbackResult.data ?? []) {
+    const cur = presFbMap.get(f.presentation_id) ?? { approved: 0, rejected: 0, favorite: 0 };
+    if (f.vote === "approved")  cur.approved++;
+    if (f.vote === "rejected")  cur.rejected++;
+    if (f.vote === "favorite")  cur.favorite++;
+    presFbMap.set(f.presentation_id, cur);
+  }
+
+  const presentations: PresentationSummary[] = presRows.map((p) => ({
+    id:              p.id,
+    title:           p.title,
+    token:           p.token,
+    expiresAt:       (p as { expires_at?: string | null }).expires_at ?? null,
+    viewCount:       (p as { view_count?: number }).view_count ?? 0,
+    createdAt:       p.created_at,
+    hasPassword:     !!(p as { password_hash?: string | null }).password_hash,
+    candidateCount:  presCandCount.get(p.id) ?? 0,
+    feedbackSummary: presFbMap.get(p.id) ?? { approved: 0, rejected: 0, favorite: 0 },
+  }));
+
   const job: PipelineJob = {
     id:                     String(jobData.id),
     title:                  jobData.title        ?? "",
@@ -179,6 +231,7 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
     <WorkspacePipelineBoard
       job={job}
       candidates={candidates}
+      presentations={presentations}
       userId={user.id}
       isOwner={isWorkspaceOwner}
       readOnly={readOnly}

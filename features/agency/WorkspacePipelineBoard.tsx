@@ -5,6 +5,7 @@ import Link from "next/link";
 import { brl } from "@/lib/brl";
 import { supabase } from "@/lib/supabase";
 import { CONTRACTS_BUCKET } from "@/lib/contractFiles";
+import CreatePresentationModal from "@/features/agency/CreatePresentationModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,18 @@ export type PipelineJob = {
   numberOfTalentsRequired: number;
   workspaceId: string;
   agencyId: string;
+};
+
+export type PresentationSummary = {
+  id: string;
+  title: string;
+  token: string;
+  expiresAt: string | null;
+  viewCount: number;
+  createdAt: string;
+  hasPassword: boolean;
+  candidateCount: number;
+  feedbackSummary: { approved: number; rejected: number; favorite: number };
 };
 
 // ─── Pipeline stage config ────────────────────────────────────────────────────
@@ -121,21 +134,27 @@ function relTime(iso: string): string {
 export default function WorkspacePipelineBoard({
   job,
   candidates: initial,
+  presentations: initialPresentations,
   userId,
   isOwner,
   readOnly,
 }: {
   job: PipelineJob;
   candidates: PipelineCandidate[];
+  presentations: PresentationSummary[];
   userId: string;
   isOwner: boolean;
   readOnly: boolean;
 }) {
   const [candidates, setCandidates] = useState<PipelineCandidate[]>(initial);
+  const [presentations, setPresentations] = useState<PresentationSummary[]>(initialPresentations);
   const [activeStage, setActiveStage] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [contractTarget, setContractTarget] = useState<PipelineCandidate | null>(null);
+  const [showCreatePresentation, setShowCreatePresentation] = useState(false);
+  const [createdToken, setCreatedToken] = useState<string | null>(null);
+  const [deletingPres, setDeletingPres] = useState<string | null>(null);
 
   const canManage = isOwner || !readOnly;
 
@@ -207,6 +226,19 @@ export default function WorkspacePipelineBoard({
 
   function selectAll() { setSelected(new Set(visible.map((c) => c.id))); }
   function clearSelect() { setSelected(new Set()); }
+
+  // Candidates to pre-fill in "create presentation" modal
+  const selectedCandidates = useMemo(
+    () => candidates.filter((c) => selected.has(c.id) && effectiveStage(c) !== "rejeitado"),
+    [candidates, selected]
+  );
+
+  async function handleDeletePresentation(id: string) {
+    setDeletingPres(id);
+    const res = await fetch(`/api/workspace/presentations/${id}`, { method: "DELETE" });
+    setDeletingPres(null);
+    if (res.ok) setPresentations((prev) => prev.filter((p) => p.id !== id));
+  }
 
   async function bulkMove(nextStatus: string) {
     const ids = [...selected];
@@ -339,7 +371,7 @@ export default function WorkspacePipelineBoard({
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
           <span className="text-[12px] font-semibold text-zinc-700 mr-1">
             {selected.size} selecionado{selected.size !== 1 ? "s" : ""}
           </span>
@@ -348,6 +380,13 @@ export default function WorkspacePipelineBoard({
           <BulkBtn label="→ Aguard. cliente"     onClick={() => bulkMove("aguardando_cliente")} />
           <BulkBtn label="→ Aprovado"            onClick={() => bulkMove("aprovado")} />
           <BulkBtn label="Rejeitar" danger       onClick={() => bulkMove("rejeitado")} />
+          {canManage && selectedCandidates.length > 0 && (
+            <BulkBtn
+              label="Criar apresentação"
+              onClick={() => setShowCreatePresentation(true)}
+              highlight
+            />
+          )}
           <button
             onClick={clearSelect}
             className="ml-auto text-[11px] text-zinc-400 hover:text-zinc-600 cursor-pointer transition-colors"
@@ -417,6 +456,16 @@ export default function WorkspacePipelineBoard({
         </div>
       )}
 
+      {/* Presentations panel */}
+      <PresentationsPanel
+        presentations={presentations}
+        workspaceId={job.workspaceId}
+        canManage={canManage}
+        deletingId={deletingPres}
+        onDelete={handleDeletePresentation}
+        onCreateClick={() => setShowCreatePresentation(true)}
+      />
+
       {/* Contract modal */}
       {contractTarget && (
         <ContractModal
@@ -428,6 +477,29 @@ export default function WorkspacePipelineBoard({
             patchCandidateBooking(contractTarget.id, bookingId, "pending");
             setContractTarget(null);
           }}
+        />
+      )}
+
+      {/* Create presentation modal */}
+      {showCreatePresentation && (
+        <CreatePresentationModal
+          workspaceId={job.workspaceId}
+          jobId={job.id}
+          preselected={selectedCandidates.map((c) => ({ id: c.id, name: c.talentName }))}
+          onClose={() => setShowCreatePresentation(false)}
+          onCreated={(token) => {
+            setShowCreatePresentation(false);
+            clearSelect();
+            setCreatedToken(token);
+          }}
+        />
+      )}
+
+      {/* Created success banner */}
+      {createdToken && (
+        <CreatedBanner
+          token={createdToken}
+          onClose={() => setCreatedToken(null)}
         />
       )}
     </div>
@@ -456,19 +528,214 @@ function StBadge({ status }: { status: string }) {
 
 // ─── Bulk action button ───────────────────────────────────────────────────────
 
-function BulkBtn({ label, onClick, danger }: { label: string; onClick: () => void; danger?: boolean }) {
+function BulkBtn({ label, onClick, danger, highlight }: { label: string; onClick: () => void; danger?: boolean; highlight?: boolean }) {
   return (
     <button
       onClick={onClick}
       className={[
         "rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-colors cursor-pointer",
-        danger
-          ? "border-red-200 text-red-600 hover:bg-red-50"
-          : "border-zinc-200 text-zinc-700 hover:bg-zinc-50",
+        danger     ? "border-red-200 text-red-600 hover:bg-red-50" :
+        highlight  ? "border-[#1ABC9C]/50 bg-[#1ABC9C]/10 text-[#1ABC9C] hover:bg-[#1ABC9C]/20" :
+                     "border-zinc-200 text-zinc-700 hover:bg-zinc-50",
       ].join(" ")}
     >
       {label}
     </button>
+  );
+}
+
+// ─── Presentations panel ──────────────────────────────────────────────────────
+
+function PresentationsPanel({
+  presentations,
+  workspaceId: _workspaceId,
+  canManage,
+  deletingId,
+  onDelete,
+  onCreateClick,
+}: {
+  presentations: PresentationSummary[];
+  workspaceId: string;
+  canManage: boolean;
+  deletingId: string | null;
+  onDelete: (id: string) => void;
+  onCreateClick: () => void;
+}) {
+  const [open, setOpen] = useState(true);
+
+  function fmtDate(iso: string) {
+    return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+  }
+
+  function isExpired(expiresAt: string | null) {
+    return !!expiresAt && new Date(expiresAt) < new Date();
+  }
+
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-5 py-4 cursor-pointer hover:bg-zinc-50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] font-semibold text-zinc-800">Apresentações para clientes</span>
+          {presentations.length > 0 && (
+            <span className="rounded-full bg-zinc-100 px-2 py-px text-[10px] font-bold text-zinc-500">
+              {presentations.length}
+            </span>
+          )}
+        </div>
+        <svg
+          className={`h-4 w-4 text-zinc-400 transition-transform ${open ? "rotate-180" : ""}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="border-t border-zinc-100 px-5 pb-5 pt-4 space-y-3">
+          {presentations.length === 0 && (
+            <p className="text-[12px] text-zinc-400">
+              Nenhuma apresentação criada. Selecione candidatos e clique em &quot;Criar apresentação&quot;.
+            </p>
+          )}
+
+          {presentations.map((p) => {
+            const expired = isExpired(p.expiresAt);
+            const url = `/presentation/${p.token}`;
+            const fb  = p.feedbackSummary;
+            return (
+              <div key={p.id} className="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[13px] font-semibold text-zinc-800 truncate">{p.title}</span>
+                      {expired && (
+                        <span className="rounded-full bg-zinc-200 px-2 py-px text-[10px] font-semibold text-zinc-500">Expirada</span>
+                      )}
+                      {p.hasPassword && (
+                        <span className="rounded-full bg-amber-50 border border-amber-100 px-2 py-px text-[10px] font-semibold text-amber-700">
+                          Com senha
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-500">
+                      <span>{p.candidateCount} candidato{p.candidateCount !== 1 ? "s" : ""}</span>
+                      <span>{p.viewCount} visualizaç{p.viewCount !== 1 ? "ões" : "ão"}</span>
+                      {p.expiresAt && <span>Expira {fmtDate(p.expiresAt)}</span>}
+                      <span>Criada {fmtDate(p.createdAt)}</span>
+                    </div>
+                    {(fb.approved + fb.rejected + fb.favorite) > 0 && (
+                      <div className="mt-1.5 flex items-center gap-2 text-[11px]">
+                        {fb.approved  > 0 && <span className="text-emerald-600">✓ {fb.approved} aprovado{fb.approved !== 1 ? "s" : ""}</span>}
+                        {fb.favorite  > 0 && <span className="text-amber-600">★ {fb.favorite} favorito{fb.favorite !== 1 ? "s" : ""}</span>}
+                        {fb.rejected  > 0 && <span className="text-zinc-400">✕ {fb.rejected} rejeitado{fb.rejected !== 1 ? "s" : ""}</span>}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(window.location.origin + url).catch(() => {}); }}
+                      title="Copiar link"
+                      className="rounded-lg border border-zinc-200 bg-white p-1.5 text-zinc-500 hover:bg-zinc-100 transition-colors cursor-pointer"
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                      </svg>
+                    </button>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Abrir apresentação"
+                      className="rounded-lg border border-zinc-200 bg-white p-1.5 text-zinc-500 hover:bg-zinc-100 transition-colors"
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                    {canManage && (
+                      <button
+                        onClick={() => { if (confirm("Excluir esta apresentação?")) onDelete(p.id); }}
+                        disabled={deletingId === p.id}
+                        title="Excluir"
+                        className="rounded-lg border border-zinc-200 bg-white p-1.5 text-zinc-400 hover:border-red-200 hover:text-red-500 transition-colors cursor-pointer disabled:opacity-40"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {canManage && (
+            <button
+              onClick={onCreateClick}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-zinc-300 px-4 py-2.5 text-[12px] font-medium text-zinc-500 hover:border-[#1ABC9C] hover:text-[#1ABC9C] transition-colors cursor-pointer w-full justify-center"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Nova apresentação
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Created banner ───────────────────────────────────────────────────────────
+
+function CreatedBanner({ token, onClose }: { token: string; onClose: () => void }) {
+  const url = typeof window !== "undefined" ? `${window.location.origin}/presentation/${token}` : `/presentation/${token}`;
+  const [copied, setCopied] = useState(false);
+
+  function copy() {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  }
+
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4">
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-emerald-800">Apresentação criada!</p>
+            <p className="mt-0.5 truncate text-[11px] text-emerald-600">{url}</p>
+          </div>
+          <button onClick={onClose} className="text-emerald-400 hover:text-emerald-700 cursor-pointer flex-shrink-0">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={copy}
+            className="flex-1 rounded-xl bg-emerald-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-emerald-700 transition-colors cursor-pointer"
+          >
+            {copied ? "Copiado!" : "Copiar link"}
+          </button>
+          <a
+            href={`/presentation/${token}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-center text-[12px] font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
+          >
+            Abrir
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
 
