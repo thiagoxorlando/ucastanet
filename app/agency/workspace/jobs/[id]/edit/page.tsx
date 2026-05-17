@@ -29,7 +29,7 @@ export default async function WorkspaceEditJobPage({ params }: Props) {
 
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, title, description, category, budget, deadline, status, location, gender, age_min, age_max, number_of_talents_required, application_requirements, agency_id, workspace_id, created_by_user_id")
+    .select("id, title, description, category, budget, deadline, job_date, job_time, status, location, gender, age_min, age_max, number_of_talents_required, application_requirements, agency_id, workspace_id, created_by_user_id")
     .eq("id", id)
     .single();
 
@@ -58,6 +58,8 @@ export default async function WorkspaceEditJobPage({ params }: Props) {
         category: job.category ?? "",
         budget: job.budget ?? 0,
         deadline: job.deadline ?? "",
+        job_date: (job as { job_date?: string | null }).job_date ?? "",
+        job_time: (job as { job_time?: string | null }).job_time ?? "",
         status: (job.status ?? "open") as "open" | "closed" | "draft" | "inactive" | "paused",
         location: job.location ?? "",
         gender: job.gender ?? "any",

@@ -14,6 +14,7 @@ const PATCH_ALLOWED = [
   "budget",
   "deadline",
   "job_date",
+  "job_time",
   "status",
   "location",
   "gender",

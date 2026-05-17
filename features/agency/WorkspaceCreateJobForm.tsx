@@ -36,6 +36,7 @@ export default function WorkspaceCreateJobForm({
   const [talentsRequired, setTalentsRequired] = useState("1");
   const [deadline,        setDeadline]        = useState("");
   const [jobDate,         setJobDate]         = useState("");
+  const [jobTime,         setJobTime]         = useState("");
   const [location,        setLocation]        = useState("");
   const [gender,          setGender]          = useState("any");
   const [ageMin,          setAgeMin]          = useState("");
@@ -69,6 +70,7 @@ export default function WorkspaceCreateJobForm({
       budget:                    budgetNum,
       deadline,
       job_date:                  jobDate  || null,
+      job_time:                  jobTime  || null,
       location:                  location || null,
       gender:                    gender   || null,
       age_min:                   ageMin   ? Number(ageMin)  : null,
@@ -244,24 +246,35 @@ export default function WorkspaceCreateJobForm({
           />
         </div>
 
-        {/* Deadline + Job date */}
+        {/* Deadline */}
+        <div>
+          <label className={labelCls}>Prazo para candidaturas *</label>
+          <input
+            type="date"
+            required
+            value={deadline}
+            onChange={(e) => setDeadline(e.target.value)}
+            className={base}
+          />
+        </div>
+
+        {/* Work date + time */}
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={labelCls}>Prazo para candidaturas *</label>
-            <input
-              type="date"
-              required
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              className={base}
-            />
-          </div>
           <div>
             <label className={labelCls}>Data do trabalho</label>
             <input
               type="date"
               value={jobDate}
               onChange={(e) => setJobDate(e.target.value)}
+              className={base}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Horário da vaga</label>
+            <input
+              type="time"
+              value={jobTime}
+              onChange={(e) => setJobTime(e.target.value)}
               className={base}
             />
           </div>

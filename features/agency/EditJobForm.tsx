@@ -13,6 +13,8 @@ export type EditableJob = {
   category: string;
   budget: number;
   deadline: string;
+  job_date: string;
+  job_time: string;
   status: "open" | "closed" | "draft" | "inactive" | "paused";
   location: string;
   gender: string;
@@ -44,6 +46,8 @@ export default function EditJobForm({ job }: { job: EditableJob }) {
   const [category,              setCategory]            = useState(job.category);
   const [budget,                setBudget]              = useState(String(job.budget));
   const [deadline,              setDeadline]            = useState(job.deadline);
+  const [jobDate,               setJobDate]             = useState(job.job_date ?? "");
+  const [jobTime,               setJobTime]             = useState(job.job_time ?? "");
   const [location,              setLocation]            = useState(job.location ?? "");
   const [gender,                setGender]              = useState(job.gender ?? "any");
   const [ageMin,                setAgeMin]              = useState(job.age_min ? String(job.age_min) : "");
@@ -72,6 +76,8 @@ export default function EditJobForm({ job }: { job: EditableJob }) {
       payload.description = description.trim();
       payload.category    = category;
       payload.budget      = Number(budget);
+      payload.job_date    = jobDate  || null;
+      payload.job_time    = jobTime  || null;
       payload.location    = location || null;
       payload.gender      = gender || null;
       payload.age_min     = ageMin  ? Number(ageMin)  : null;
@@ -190,7 +196,7 @@ export default function EditJobForm({ job }: { job: EditableJob }) {
         {/* Deadline — always editable */}
         <div>
           <label className={labelCls}>
-            Prazo
+            Prazo para candidaturas
             {!allEditable && <span className="ml-2 text-emerald-600 normal-case font-medium">(editável)</span>}
           </label>
           <input
@@ -200,6 +206,30 @@ export default function EditJobForm({ job }: { job: EditableJob }) {
             required
             className={base}
           />
+        </div>
+
+        {/* Work date + time */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>Data do trabalho</label>
+            <input
+              type="date"
+              value={jobDate}
+              onChange={(e) => setJobDate(e.target.value)}
+              disabled={!allEditable}
+              className={allEditable ? base : disabledBase}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Horário da vaga</label>
+            <input
+              type="time"
+              value={jobTime}
+              onChange={(e) => setJobTime(e.target.value)}
+              disabled={!allEditable}
+              className={allEditable ? base : disabledBase}
+            />
+          </div>
         </div>
 
         {/* Location */}
