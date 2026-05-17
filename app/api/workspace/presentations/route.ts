@@ -135,7 +135,7 @@ export async function GET(req: NextRequest) {
   const [candsResult, feedbackResult] = await Promise.all([
     supabase
       .from("workspace_presentation_candidates")
-      .select("presentation_id")
+      .select("presentation_id, submission_id")
       .in("presentation_id", presentationIds),
     supabase
       .from("presentation_feedback")
@@ -143,10 +143,14 @@ export async function GET(req: NextRequest) {
       .in("presentation_id", presentationIds),
   ]);
 
-  // Count candidates per presentation
-  const candCount = new Map<string, number>();
+  // Count candidates and collect submission IDs per presentation
+  const candCount  = new Map<string, number>();
+  const subIdsMap  = new Map<string, string[]>();
   for (const c of candsResult.data ?? []) {
     candCount.set(c.presentation_id, (candCount.get(c.presentation_id) ?? 0) + 1);
+    const list = subIdsMap.get(c.presentation_id) ?? [];
+    list.push(c.submission_id);
+    subIdsMap.set(c.presentation_id, list);
   }
 
   // Aggregate feedback per presentation
@@ -169,6 +173,7 @@ export async function GET(req: NextRequest) {
     hasPassword:     !!r.password_hash,
     candidateCount:  candCount.get(r.id) ?? 0,
     feedbackSummary: fbMap.get(r.id) ?? { approved: 0, rejected: 0, favorite: 0 },
+    submissionIds:   subIdsMap.get(r.id) ?? [],
   }));
 
   return NextResponse.json({ presentations });

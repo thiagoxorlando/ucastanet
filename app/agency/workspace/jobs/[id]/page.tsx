@@ -120,9 +120,9 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
     presIds.length
       ? supabase
           .from("workspace_presentation_candidates")
-          .select("presentation_id")
+          .select("presentation_id, submission_id")
           .in("presentation_id", presIds)
-      : Promise.resolve({ data: [] as Array<{ presentation_id: string }> }),
+      : Promise.resolve({ data: [] as Array<{ presentation_id: string; submission_id: string }> }),
     presIds.length
       ? supabase
           .from("presentation_feedback")
@@ -205,8 +205,12 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
   const presRows = presResult.data ?? [];
 
   const presCandCount = new Map<string, number>();
+  const presSubIds    = new Map<string, string[]>();
   for (const c of presCandResult.data ?? []) {
     presCandCount.set(c.presentation_id, (presCandCount.get(c.presentation_id) ?? 0) + 1);
+    const list = presSubIds.get(c.presentation_id) ?? [];
+    list.push(c.submission_id);
+    presSubIds.set(c.presentation_id, list);
   }
 
   const presFbMap = new Map<string, PresentationSummary["feedbackSummary"]>();
@@ -228,6 +232,7 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
     hasPassword:     !!(p as { password_hash?: string | null }).password_hash,
     candidateCount:  presCandCount.get(p.id) ?? 0,
     feedbackSummary: presFbMap.get(p.id) ?? { approved: 0, rejected: 0, favorite: 0 },
+    submissionIds:   presSubIds.get(p.id) ?? [],
   }));
 
   const job: PipelineJob = {

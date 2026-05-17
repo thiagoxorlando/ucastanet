@@ -71,6 +71,7 @@ export type PresentationSummary = {
   hasPassword: boolean;
   candidateCount: number;
   feedbackSummary: { approved: number; rejected: number; favorite: number };
+  submissionIds: string[];
 };
 
 // ─── Pipeline stage config ────────────────────────────────────────────────────
@@ -371,28 +372,51 @@ export default function WorkspacePipelineBoard({
 
       {/* Bulk action bar — sticky floating */}
       {selected.size > 0 && (
-        <div className="sticky bottom-4 z-30 flex flex-wrap items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.14)]">
-          <span className="text-[12px] font-semibold text-zinc-700 mr-1">
-            {selected.size} selecionado{selected.size !== 1 ? "s" : ""}
-          </span>
-          <BulkBtn label="→ Em análise"         onClick={() => bulkMove("em_analise")} />
-          <BulkBtn label="→ Shortlist"           onClick={() => bulkMove("shortlist")} />
-          <BulkBtn label="→ Aguard. cliente"     onClick={() => bulkMove("aguardando_cliente")} />
-          <BulkBtn label="→ Aprovado"            onClick={() => bulkMove("aprovado")} />
-          <BulkBtn label="Rejeitar" danger       onClick={() => bulkMove("rejeitado")} />
-          {canManage && selectedCandidates.length > 0 && (
-            <BulkBtn
-              label="Criar apresentação"
-              onClick={() => setShowCreatePresentation(true)}
-              highlight
-            />
-          )}
-          <button
-            onClick={clearSelect}
-            className="ml-auto text-[11px] text-zinc-400 hover:text-zinc-600 cursor-pointer transition-colors"
-          >
-            Cancelar
-          </button>
+        <div className="sticky bottom-4 z-30 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.14)]">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="text-[12px] font-semibold text-zinc-900">
+              {selected.size} candidato{selected.size !== 1 ? "s" : ""} selecionado{selected.size !== 1 ? "s" : ""}
+            </span>
+
+            {/* Primary: Criar apresentação */}
+            {canManage && selectedCandidates.length > 0 && (
+              <button
+                onClick={() => setShowCreatePresentation(true)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#1ABC9C] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[#17A58A] transition-colors cursor-pointer"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Criar apresentação
+              </button>
+            )}
+
+            {/* Move stage dropdown */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] text-zinc-500 whitespace-nowrap">Mover para:</span>
+              <select
+                defaultValue=""
+                onChange={(e) => { if (e.target.value) { void bulkMove(e.target.value); e.currentTarget.value = ""; } }}
+                className="h-7 rounded-lg border border-zinc-200 bg-white px-2 text-[11px] font-semibold text-zinc-700 focus:outline-none cursor-pointer"
+              >
+                <option value="" disabled>Etapa...</option>
+                {STAGES.filter((s) => s.movable).map((s) => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Rejeitar */}
+            <BulkBtn label="Rejeitar" danger onClick={() => bulkMove("rejeitado")} />
+
+            {/* Clear */}
+            <button
+              onClick={clearSelect}
+              className="ml-auto text-[11px] text-zinc-400 hover:text-zinc-600 cursor-pointer transition-colors whitespace-nowrap"
+            >
+              Limpar seleção
+            </button>
+          </div>
         </div>
       )}
 
@@ -429,6 +453,7 @@ export default function WorkspacePipelineBoard({
                     key={c.id}
                     candidate={c}
                     job={job}
+                    presentations={presentations}
                     canManage={canManage}
                     isSelected={selected.has(c.id)}
                     onToggleSelect={() => toggleSelect(c.id)}
@@ -451,6 +476,7 @@ export default function WorkspacePipelineBoard({
               key={c.id}
               candidate={c}
               job={job}
+              presentations={presentations}
               canManage={canManage}
               isSelected={selected.has(c.id)}
               onToggleSelect={() => toggleSelect(c.id)}
@@ -610,9 +636,15 @@ function PresentationsPanel({
       {open && (
         <div className="border-t border-zinc-100 px-5 pb-5 pt-4 space-y-3">
           {presentations.length === 0 && (
-            <p className="text-[12px] text-zinc-400">
-              Selecione um ou mais candidatos acima para criar uma apresentação privada para seu cliente.
-            </p>
+            <div className="space-y-2.5">
+              <p className="text-[13px] font-semibold text-zinc-700">Nenhuma apresentação criada</p>
+              <p className="text-[12px] text-zinc-500 leading-relaxed">
+                Selecione um ou mais candidatos acima e crie uma apresentação privada para enviar ao cliente.
+              </p>
+              <p className="text-[11px] text-zinc-400 bg-zinc-50 rounded-xl px-3 py-2.5 leading-relaxed">
+                As apresentações mostram apenas materiais públicos dos talentos — sem notas internas, pagamentos ou dados operacionais.
+              </p>
+            </div>
           )}
 
           {presentations.map((p) => {
@@ -758,6 +790,7 @@ function CreatedBanner({ token, onClose }: { token: string; onClose: () => void 
 function CandidateCard({
   candidate: c,
   job,
+  presentations,
   canManage,
   isSelected,
   onToggleSelect,
@@ -767,6 +800,7 @@ function CandidateCard({
 }: {
   candidate: PipelineCandidate;
   job: PipelineJob;
+  presentations: PresentationSummary[];
   canManage: boolean;
   isSelected: boolean;
   onToggleSelect: () => void;
@@ -833,21 +867,31 @@ function CandidateCard({
       {/* Main row */}
       <div className="flex items-start gap-3 px-4 py-3">
 
-        {/* Checkbox */}
+        {/* Checkbox with label */}
         {canManage && (
           <button
             onClick={onToggleSelect}
-            aria-label={isSelected ? "Desmarcar" : "Selecionar candidato"}
-            className={[
-              "mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer",
-              isSelected ? "bg-[#1ABC9C] border-[#1ABC9C] shadow-sm" : "border-zinc-300 hover:border-[#1ABC9C]/60 hover:bg-[#1ABC9C]/5",
-            ].join(" ")}
+            aria-label={isSelected ? "Desmarcar candidato" : "Selecionar candidato"}
+            className="mt-0.5 flex-shrink-0 flex flex-col items-center gap-1 cursor-pointer group"
           >
-            {isSelected && (
-              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-              </svg>
-            )}
+            <span className={[
+              "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all",
+              isSelected
+                ? "bg-[#1ABC9C] border-[#1ABC9C] shadow-sm"
+                : "border-zinc-300 group-hover:border-[#1ABC9C]/70 group-hover:bg-[#1ABC9C]/5",
+            ].join(" ")}>
+              {isSelected && (
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </span>
+            <span className={[
+              "text-[9px] font-semibold leading-none whitespace-nowrap transition-colors",
+              isSelected ? "text-[#1ABC9C]" : "text-zinc-400 group-hover:text-zinc-600",
+            ].join(" ")}>
+              {isSelected ? "✓" : "Sel."}
+            </span>
           </button>
         )}
 
@@ -1048,12 +1092,64 @@ function CandidateCard({
 
           {/* Bio */}
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Apresentação</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Bio / Perfil do talento</p>
             {c.bio ? (
               <p className="text-[12px] text-zinc-600 leading-relaxed">{c.bio}</p>
             ) : (
-              <p className="text-[12px] text-zinc-400 italic">Sem apresentação cadastrada</p>
+              <p className="text-[12px] text-zinc-400 italic">Nenhuma bio cadastrada pelo talento</p>
             )}
+          </div>
+
+          {/* Apresentações para clientes */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Apresentações para clientes</p>
+            {(() => {
+              const inPres = presentations.filter((p) => p.submissionIds.includes(c.id));
+              if (!inPres.length) {
+                return (
+                  <p className="text-[12px] text-zinc-400 italic">
+                    Este talento ainda não foi incluído em nenhuma apresentação enviada para clientes.
+                  </p>
+                );
+              }
+              return (
+                <div className="space-y-1.5">
+                  {inPres.map((p) => {
+                    const fb = p.feedbackSummary;
+                    const hasFb = fb.approved + fb.rejected + fb.favorite > 0;
+                    return (
+                      <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl bg-white border border-zinc-100 px-3 py-2">
+                        <div className="min-w-0">
+                          <span className="text-[12px] font-medium text-zinc-800 block truncate">{p.title}</span>
+                          <div className="flex items-center gap-2 mt-0.5 text-[10px] text-zinc-400">
+                            <span>{new Date(p.createdAt).toLocaleDateString("pt-BR")}</span>
+                            <span>{p.viewCount} viz.</span>
+                            {hasFb && (
+                              <span className="text-zinc-500">
+                                {fb.approved > 0 && `✓${fb.approved} `}
+                                {fb.favorite > 0 && `★${fb.favorite} `}
+                                {fb.rejected > 0 && `✕${fb.rejected}`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <a
+                          href={`/presentation/${p.token}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Abrir apresentação"
+                          className="flex-shrink-0 rounded-lg border border-zinc-200 bg-zinc-50 p-1.5 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 transition-colors"
+                        >
+                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
 
         </div>
