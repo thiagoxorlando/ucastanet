@@ -369,9 +369,9 @@ export default function WorkspacePipelineBoard({
         )}
       </div>
 
-      {/* Bulk action bar */}
+      {/* Bulk action bar — sticky floating */}
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+        <div className="sticky bottom-4 z-30 flex flex-wrap items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.14)]">
           <span className="text-[12px] font-semibold text-zinc-700 mr-1">
             {selected.size} selecionado{selected.size !== 1 ? "s" : ""}
           </span>
@@ -493,10 +493,18 @@ export default function WorkspacePipelineBoard({
           jobId={job.id}
           preselected={selectedCandidates.map((c) => ({ id: c.id, name: c.talentName }))}
           onClose={() => setShowCreatePresentation(false)}
-          onCreated={(token) => {
+          onCreated={async (token) => {
             setShowCreatePresentation(false);
             clearSelect();
             setCreatedToken(token);
+            // Refresh presentations list to show the new card immediately
+            try {
+              const res = await fetch(`/api/workspace/presentations?workspaceId=${job.workspaceId}&jobId=${job.id}`);
+              if (res.ok) {
+                const data = await res.json() as { presentations?: PresentationSummary[] };
+                if (data.presentations) setPresentations(data.presentations);
+              }
+            } catch {}
           }}
         />
       )}
@@ -603,7 +611,7 @@ function PresentationsPanel({
         <div className="border-t border-zinc-100 px-5 pb-5 pt-4 space-y-3">
           {presentations.length === 0 && (
             <p className="text-[12px] text-zinc-400">
-              Nenhuma apresentação criada. Selecione candidatos e clique em &quot;Criar apresentação&quot;.
+              Selecione um ou mais candidatos acima para criar uma apresentação privada para seu cliente.
             </p>
           )}
 
@@ -829,13 +837,14 @@ function CandidateCard({
         {canManage && (
           <button
             onClick={onToggleSelect}
+            aria-label={isSelected ? "Desmarcar" : "Selecionar candidato"}
             className={[
-              "mt-0.5 flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer",
-              isSelected ? "bg-[#1ABC9C] border-[#1ABC9C]" : "border-zinc-300 hover:border-zinc-500",
+              "mt-0.5 flex-shrink-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all cursor-pointer",
+              isSelected ? "bg-[#1ABC9C] border-[#1ABC9C] shadow-sm" : "border-zinc-300 hover:border-[#1ABC9C]/60 hover:bg-[#1ABC9C]/5",
             ].join(" ")}
           >
             {isSelected && (
-              <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
             )}
@@ -931,15 +940,13 @@ function CandidateCard({
           {/* Actions */}
           <div className="flex flex-wrap items-center gap-1.5">
 
-            {/* View media / expand */}
-            {(hasPhotos || c.videoUrl || c.bio) && (
-              <button
-                onClick={() => setExpanded((v) => !v)}
-                className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
-              >
-                {expanded ? "Fechar" : "Ver materiais"}
-              </button>
-            )}
+            {/* View media / expand — always available */}
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
+            >
+              {expanded ? "Fechar" : "Ver perfil"}
+            </button>
 
             {/* Move status */}
             {canMove && (
@@ -981,46 +988,74 @@ function CandidateCard({
         </div>
       </div>
 
-      {/* Expanded: media + bio */}
+      {/* Expanded: media + bio — always shows all sections */}
       {expanded && (
-        <div className="border-t border-zinc-50 bg-zinc-50/50 px-4 py-4 space-y-4">
-          {photos.length > 0 && (
-            <div className={`grid gap-2 ${photos.length === 1 ? "grid-cols-1 max-w-[120px]" : photos.length === 2 ? "grid-cols-2 max-w-[260px]" : "grid-cols-3 max-w-[380px]"}`}>
-              {photos.map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                  className="aspect-[3/4] rounded-xl overflow-hidden bg-zinc-100 block group relative">
-                  <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform" />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-xl" />
-                </a>
-              ))}
-            </div>
-          )}
-          {c.videoUrl && (
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1.5">Vídeo</p>
+        <div className="border-t border-zinc-100 bg-zinc-50/60 px-4 py-4 space-y-4">
+
+          {/* Photos */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Fotos</p>
+            {photos.length > 0 ? (
+              <div className={`grid gap-2 ${photos.length === 1 ? "grid-cols-1 max-w-[120px]" : photos.length === 2 ? "grid-cols-2 max-w-[260px]" : "grid-cols-3 max-w-[380px]"}`}>
+                {photos.map((url, i) => (
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                    className="aspect-[3/4] rounded-xl overflow-hidden bg-zinc-100 block group relative">
+                    <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-xl" />
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[12px] text-zinc-400 italic">Nenhuma foto enviada</p>
+            )}
+          </div>
+
+          {/* Video */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Vídeo</p>
+            {c.videoUrl ? (
               <a href={c.videoUrl} target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors">
                 Abrir vídeo
               </a>
-            </div>
-          )}
-          {(c.curriculumUrl || c.portfolioUrl) && (
-            <div className="flex gap-2 flex-wrap">
-              {c.curriculumUrl && (
-                <a href={c.curriculumUrl} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors">
-                  Currículo
-                </a>
-              )}
-              {c.portfolioUrl && (
-                <a href={c.portfolioUrl} target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors">
-                  Portfólio
-                </a>
-              )}
-            </div>
-          )}
-          {c.bio && <p className="text-[12px] text-zinc-500 leading-relaxed">{c.bio}</p>}
+            ) : (
+              <p className="text-[12px] text-zinc-400 italic">Nenhum vídeo enviado</p>
+            )}
+          </div>
+
+          {/* Docs */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Documentos</p>
+            {(c.curriculumUrl || c.portfolioUrl) ? (
+              <div className="flex gap-2 flex-wrap">
+                {c.curriculumUrl && (
+                  <a href={c.curriculumUrl} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors">
+                    Currículo
+                  </a>
+                )}
+                {c.portfolioUrl && (
+                  <a href={c.portfolioUrl} target="_blank" rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors">
+                    Portfólio
+                  </a>
+                )}
+              </div>
+            ) : (
+              <p className="text-[12px] text-zinc-400 italic">Nenhum documento enviado</p>
+            )}
+          </div>
+
+          {/* Bio */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Apresentação</p>
+            {c.bio ? (
+              <p className="text-[12px] text-zinc-600 leading-relaxed">{c.bio}</p>
+            ) : (
+              <p className="text-[12px] text-zinc-400 italic">Sem apresentação cadastrada</p>
+            )}
+          </div>
+
         </div>
       )}
 
