@@ -846,12 +846,13 @@ function CandidateCard({
         {c.avatarUrl ? (
           <img
             src={c.avatarUrl}
-            alt={c.talentName}
+            alt={c.talentName || "Talento"}
             className="w-9 h-9 rounded-full object-cover flex-shrink-0 mt-0.5"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
           />
         ) : (
-          <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarGrad(c.talentName)} flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5`}>
-            {initials(c.talentName)}
+          <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarGrad(c.talentName || "T")} flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5`}>
+            {initials(c.talentName || "T")}
           </div>
         )}
 
@@ -860,12 +861,12 @@ function CandidateCard({
 
           {/* Name + stage + contract badge */}
           <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
-            <Link
-              href={`/talent/${c.talentId ?? ""}`}
-              className="text-[14px] font-semibold text-zinc-900 hover:text-[#1ABC9C] transition-colors"
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="text-[14px] font-semibold text-zinc-900 hover:text-[#1ABC9C] transition-colors text-left cursor-pointer"
             >
-              {c.talentName}
-            </Link>
+              {c.talentName || "Talento sem nome"}
+            </button>
             {stageCfg && (
               <span className={`rounded-full px-2 py-px text-[10px] font-semibold ${stageCfg.pill}`}>
                 {stageCfg.label}
@@ -897,7 +898,9 @@ function CandidateCard({
             {(c.city || c.country) && (
               <span>{[c.city, c.country].filter(Boolean).join(", ")}</span>
             )}
-            <span className="text-zinc-400">{new Date(c.submittedAt).toLocaleDateString("pt-BR")}</span>
+            {c.submittedAt && (
+              <span className="text-zinc-400">{new Date(c.submittedAt).toLocaleDateString("pt-BR")}</span>
+            )}
           </div>
 
           {/* Upload completeness */}
