@@ -43,10 +43,12 @@ type Submission = {
   mode: string;
   isReferral?: boolean;
   submittedAt: string;
-  photoFrontUrl: string | null;
-  photoLeftUrl:  string | null;
-  photoRightUrl: string | null;
-  videoUrl:      string | null;
+  photoFrontUrl:   string | null;
+  photoLeftUrl:    string | null;
+  photoRightUrl:   string | null;
+  videoUrl:        string | null;
+  curriculumUrl:   string | null;
+  portfolioUrl:    string | null;
 };
 
 export type JobBooking = {
@@ -678,7 +680,7 @@ function SubmissionCard({
 }) {
   const { t } = useT();
   const [expanded, setExpanded] = useState(false);
-  const hasMedia = !!(submission.photoFrontUrl || submission.photoLeftUrl || submission.photoRightUrl || submission.videoUrl);
+  const hasMedia = !!(submission.photoFrontUrl || submission.photoLeftUrl || submission.photoRightUrl || submission.videoUrl || submission.curriculumUrl || submission.portfolioUrl);
   const photos = [submission.photoFrontUrl, submission.photoLeftUrl, submission.photoRightUrl].filter(Boolean) as string[];
   const displayName =
     submission.talentName || (submission.isReferral ? t("submission_referral_fallback_name") : t("general_unknown"));
@@ -741,6 +743,10 @@ function SubmissionCard({
                 {photos.length > 0 && `${photos.length} foto${photos.length !== 1 ? "s" : ""}`}
                 {photos.length > 0 && submission.videoUrl && " · "}
                 {submission.videoUrl && "vídeo"}
+                {(photos.length > 0 || submission.videoUrl) && submission.curriculumUrl && " · "}
+                {submission.curriculumUrl && "currículo"}
+                {(photos.length > 0 || submission.videoUrl || submission.curriculumUrl) && submission.portfolioUrl && " · "}
+                {submission.portfolioUrl && "portfólio"}
               </span>
             )}
           </p>
@@ -834,6 +840,38 @@ function SubmissionCard({
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Vídeo</p>
                   <VideoPlayer url={submission.videoUrl} />
+                </div>
+              )}
+              {(submission.curriculumUrl || submission.portfolioUrl) && (
+                <div className="flex flex-wrap gap-3">
+                  {submission.curriculumUrl && (
+                    <a
+                      href={submission.curriculumUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50 transition-colors text-[13px] font-medium text-zinc-700"
+                    >
+                      <svg className="w-4 h-4 text-zinc-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Abrir currículo
+                    </a>
+                  )}
+                  {submission.portfolioUrl && (
+                    <a
+                      href={submission.portfolioUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50 transition-colors text-[13px] font-medium text-zinc-700"
+                    >
+                      <svg className="w-4 h-4 text-zinc-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                          d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                      Abrir portfólio
+                    </a>
+                  )}
                 </div>
               )}
             </>

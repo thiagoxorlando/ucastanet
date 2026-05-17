@@ -54,7 +54,7 @@ export default async function JobDetailPage({ params }: Props) {
   const [{ data: submissionsData }, { data: bookingsData }] = await Promise.all([
     supabase
       .from("submissions")
-      .select("id, talent_user_id, talent_name, referrer_id, bio, status, mode, created_at, photo_front_url, photo_left_url, photo_right_url, video_url")
+      .select("id, talent_user_id, talent_name, referrer_id, bio, status, mode, created_at, photo_front_url, photo_left_url, photo_right_url, video_url, curriculum_url, portfolio_url")
       .eq("job_id", id)
       .order("created_at", { ascending: false }),
     supabase
@@ -120,10 +120,12 @@ export default async function JobDetailPage({ params }: Props) {
       mode: submission.mode ?? "other",
       isReferral: Boolean(submission.referrer_id),
       submittedAt: submission.created_at ?? "",
-      photoFrontUrl: submission.photo_front_url ?? null,
-      photoLeftUrl: submission.photo_left_url ?? null,
-      photoRightUrl: submission.photo_right_url ?? null,
-      videoUrl: submission.video_url ?? null,
+      photoFrontUrl:  submission.photo_front_url ?? null,
+      photoLeftUrl:   submission.photo_left_url ?? null,
+      photoRightUrl:  submission.photo_right_url ?? null,
+      videoUrl:       submission.video_url ?? null,
+      curriculumUrl:  submission.curriculum_url ?? null,
+      portfolioUrl:   submission.portfolio_url ?? null,
     };
   });
 
