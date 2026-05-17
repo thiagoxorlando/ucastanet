@@ -46,16 +46,16 @@ export default async function WorkspaceJobsPage() {
             {t("workspace_jobs_page_subtitle")}
           </p>
         </div>
-        {/* Only owners can create workspace jobs.
-            Agents have read access to all jobs in this list and manage rights over their own. */}
-        {context.isOwner && (
-          <Link
-            href="/agency/post-job"
-            className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-5 py-3 text-[14px] font-semibold text-white shadow-[0_14px_28px_rgba(26,188,156,0.24)]"
-          >
-            {t("workspace_jobs_create_private")}
-          </Link>
-        )}
+        {/* Owner and agents can create workspace jobs */}
+        <Link
+          href="/agency/workspace/jobs/new"
+          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-5 py-3 text-[14px] font-semibold text-white shadow-[0_14px_28px_rgba(26,188,156,0.24)]"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          {t("workspace_jobs_create_private")}
+        </Link>
       </div>
 
       {jobs.length === 0 ? (
