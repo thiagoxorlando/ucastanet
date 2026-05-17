@@ -493,9 +493,12 @@ export default function WorkspacePipelineBoard({
         presentations={presentations}
         workspaceId={job.workspaceId}
         canManage={canManage}
+        hasSelection={selectedCandidates.length > 0}
         deletingId={deletingPres}
         onDelete={handleDeletePresentation}
-        onCreateClick={() => setShowCreatePresentation(true)}
+        onCreateClick={() => {
+          if (selectedCandidates.length > 0) setShowCreatePresentation(true);
+        }}
       />
 
       {/* Contract modal */}
@@ -512,8 +515,8 @@ export default function WorkspacePipelineBoard({
         />
       )}
 
-      {/* Create presentation modal */}
-      {showCreatePresentation && (
+      {/* Create presentation modal — only renders when candidates are actually selected */}
+      {showCreatePresentation && selectedCandidates.length > 0 && (
         <CreatePresentationModal
           workspaceId={job.workspaceId}
           jobId={job.id}
@@ -590,6 +593,7 @@ function PresentationsPanel({
   presentations,
   workspaceId: _workspaceId,
   canManage,
+  hasSelection,
   deletingId,
   onDelete,
   onCreateClick,
@@ -597,6 +601,7 @@ function PresentationsPanel({
   presentations: PresentationSummary[];
   workspaceId: string;
   canManage: boolean;
+  hasSelection: boolean;
   deletingId: string | null;
   onDelete: (id: string) => void;
   onCreateClick: () => void;
@@ -721,15 +726,28 @@ function PresentationsPanel({
           })}
 
           {canManage && (
-            <button
-              onClick={onCreateClick}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-dashed border-zinc-300 px-4 py-2.5 text-[12px] font-medium text-zinc-500 hover:border-[#1ABC9C] hover:text-[#1ABC9C] transition-colors cursor-pointer w-full justify-center"
-            >
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Nova apresentação
-            </button>
+            <div className="space-y-1.5">
+              <button
+                onClick={onCreateClick}
+                disabled={!hasSelection}
+                className={[
+                  "inline-flex items-center gap-1.5 rounded-xl border border-dashed px-4 py-2.5 text-[12px] font-medium transition-colors w-full justify-center",
+                  hasSelection
+                    ? "border-[#1ABC9C] text-[#1ABC9C] hover:bg-[#1ABC9C]/5 cursor-pointer"
+                    : "border-zinc-200 text-zinc-400 cursor-not-allowed",
+                ].join(" ")}
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Nova apresentação
+              </button>
+              {!hasSelection && (
+                <p className="text-center text-[11px] text-zinc-400">
+                  Selecione um ou mais candidatos acima para criar uma apresentação.
+                </p>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -890,7 +908,7 @@ function CandidateCard({
               "text-[9px] font-semibold leading-none whitespace-nowrap transition-colors",
               isSelected ? "text-[#1ABC9C]" : "text-zinc-400 group-hover:text-zinc-600",
             ].join(" ")}>
-              {isSelected ? "✓" : "Sel."}
+              {isSelected ? "Selecionado" : "Selecionar"}
             </span>
           </button>
         )}
