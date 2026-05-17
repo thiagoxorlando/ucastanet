@@ -29,7 +29,7 @@ export default async function JobDetailPage({ params }: Props) {
   const { data: jobData } = await supabase
     .from("jobs")
     .select(
-      "id, title, description, category, budget, deadline, job_date, job_time, status, created_at, number_of_talents_required, visibility, invite_only, workspace_id, agency_id, created_by_user_id"
+      "id, title, description, category, budget, deadline, job_date, job_time, location, status, created_at, number_of_talents_required, visibility, invite_only, workspace_id, agency_id, created_by_user_id"
     )
     .eq("id", id)
     .single();
@@ -99,6 +99,7 @@ export default async function JobDetailPage({ params }: Props) {
     deadline: jobData.deadline ?? "",
     jobDate: jobData.job_date ?? null,
     jobTime: jobData.job_time ?? null,
+    location: jobData.location ?? null,
     visibility: (jobData.visibility ?? "public") as "public" | "private" | "private_invite",
     inviteOnly: (jobData as { invite_only?: boolean }).invite_only ?? false,
     workspaceId: workspaceId,

@@ -24,6 +24,7 @@ type Job = {
   deadline: string;
   jobDate?: string | null;
   jobTime?: string | null;
+  location?: string | null;
   status: "open" | "closed" | "draft" | "inactive" | "paused";
   visibility?: "public" | "private" | "private_invite";
   inviteOnly?: boolean;
@@ -271,7 +272,7 @@ function ContractModal({
   const [form, setForm] = useState<ContractForm>({
     job_date:        job.jobDate ?? "",
     job_time:        job.jobTime ?? "",
-    location:        "",
+    location:        job.location ?? "",
     job_description: job.description,
     payment_amount:  String(job.budget),
     payment_method:  "PIX",
