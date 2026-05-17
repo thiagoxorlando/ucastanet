@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import JobDetail from "@/features/agency/JobDetail";
+import WorkspacePipelineBoard, {
+  type PipelineJob,
+  type PipelineCandidate,
+  type PipelineNote,
+} from "@/features/agency/WorkspacePipelineBoard";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
@@ -40,10 +44,16 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
   const workspaceId = (jobData as { workspace_id?: string | null }).workspace_id ?? null;
   if (!workspaceId || workspaceAccess.workspace.id !== workspaceId) notFound();
 
+  const createdByUserId = (jobData as { created_by_user_id?: string | null }).created_by_user_id ?? null;
+  const isJobCreator = createdByUserId === user.id;
+  const readOnly = !isWorkspaceOwner && !isJobCreator;
+
   const [{ data: submissionsData }, { data: bookingsData }] = await Promise.all([
     supabase
       .from("submissions")
-      .select("id, talent_user_id, talent_name, referrer_id, bio, status, mode, created_at, photo_front_url, photo_left_url, photo_right_url, video_url, curriculum_url, portfolio_url")
+      .select(
+        "id, talent_user_id, talent_name, referrer_id, bio, status, pipeline_status, mode, created_at, photo_front_url, photo_left_url, photo_right_url, video_url, curriculum_url, portfolio_url"
+      )
       .eq("job_id", id)
       .order("created_at", { ascending: false }),
     supabase
@@ -56,90 +66,122 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
       .order("created_at", { ascending: false }),
   ]);
 
+  const submissions = submissionsData ?? [];
+  const bookings   = bookingsData   ?? [];
+
   const talentIds = [
     ...new Set(
       [
-        ...(submissionsData ?? []).map((submission) => submission.talent_user_id),
-        ...(bookingsData ?? []).map((booking) => booking.talent_user_id),
-      ].filter((talentId): talentId is string => !!talentId),
+        ...submissions.map((s) => s.talent_user_id),
+        ...bookings.map((b) => b.talent_user_id),
+      ].filter((tid): tid is string => !!tid)
     ),
   ];
 
-  const profileMap = new Map<string, { full_name: string; avatar_url: string | null }>();
-  if (talentIds.length) {
-    const { data: profiles } = await supabase
-      .from("talent_profiles")
-      .select("id, full_name, avatar_url")
-      .in("id", talentIds);
-    for (const profile of profiles ?? []) {
-      profileMap.set(profile.id, {
-        full_name: profile.full_name ?? "",
-        avatar_url: profile.avatar_url ?? null,
-      });
-    }
+  const submissionIds = submissions.map((s) => s.id).filter(Boolean);
+
+  const [profilesResult, notesResult] = await Promise.all([
+    talentIds.length
+      ? supabase
+          .from("talent_profiles")
+          .select("id, full_name, avatar_url, age, city, gender")
+          .in("id", talentIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; full_name: string | null; avatar_url: string | null; age: number | null; city: string | null; gender: string | null }> }),
+    submissionIds.length
+      ? supabase
+          .from("submission_pipeline_notes")
+          .select("id, submission_id, author_name, body, created_at")
+          .in("submission_id", submissionIds)
+          .order("created_at", { ascending: true })
+      : Promise.resolve({ data: [] as Array<{ id: string; submission_id: string; author_name: string; body: string; created_at: string }> }),
+  ]);
+
+  const profileMap = new Map<string, { full_name: string; avatar_url: string | null; age: number | null; city: string | null; gender: string | null }>();
+  for (const p of profilesResult.data ?? []) {
+    profileMap.set(p.id, {
+      full_name:  p.full_name  ?? "",
+      avatar_url: p.avatar_url ?? null,
+      age:        p.age        ?? null,
+      city:       p.city       ?? null,
+      gender:     p.gender     ?? null,
+    });
   }
 
-  const job = {
-    id: String(jobData.id),
-    title: jobData.title ?? "",
-    description: jobData.description ?? "",
-    category: jobData.category ?? "",
-    budget: jobData.budget ?? 0,
-    deadline: jobData.deadline ?? "",
-    jobDate: jobData.job_date ?? null,
-    jobTime: jobData.job_time ?? null,
-    location: jobData.location ?? null,
-    visibility: (jobData.visibility ?? "public") as "public" | "private" | "private_invite",
-    inviteOnly: (jobData as { invite_only?: boolean }).invite_only ?? false,
-    workspaceId,
-    status: (jobData.status ?? "open") as "open" | "closed" | "draft" | "inactive" | "paused",
-    postedAt: jobData.created_at ?? "",
-    agencyId: String(jobData.agency_id ?? user.id),
+  // Group notes by submission id
+  const notesMap = new Map<string, PipelineNote[]>();
+  for (const n of notesResult.data ?? []) {
+    const list = notesMap.get(n.submission_id) ?? [];
+    list.push({ id: n.id, authorName: n.author_name, body: n.body, createdAt: n.created_at });
+    notesMap.set(n.submission_id, list);
+  }
+
+  // Index bookings by talent_user_id (most recent booking wins for this job)
+  const bookingByTalent = new Map<string, { bookingId: string; bookingStatus: string; contractId: string | null }>();
+  for (const b of bookings) {
+    if (!b.talent_user_id) continue;
+    const contractArr = Array.isArray((b as { contracts?: Array<{ id?: string | null }> }).contracts)
+      ? ((b as { contracts?: Array<{ id?: string | null }> }).contracts ?? [])
+      : [];
+    bookingByTalent.set(b.talent_user_id, {
+      bookingId:     String(b.id),
+      bookingStatus: b.status ?? "pending",
+      contractId:    contractArr[0]?.id ?? null,
+    });
+  }
+
+  const candidates: PipelineCandidate[] = submissions.map((s) => {
+    const profile  = s.talent_user_id ? profileMap.get(s.talent_user_id) : null;
+    const booking  = s.talent_user_id ? bookingByTalent.get(s.talent_user_id) : null;
+    return {
+      id:            String(s.id),
+      talentId:      s.talent_user_id ?? null,
+      talentName:    profile?.full_name ?? s.talent_name ?? "",
+      avatarUrl:     profile?.avatar_url ?? null,
+      age:           profile?.age    ?? null,
+      city:          profile?.city   ?? null,
+      country:       null,
+      gender:        profile?.gender ?? null,
+      bio:           s.bio ?? "",
+      pipelineStatus: (s as { pipeline_status?: string | null }).pipeline_status ?? "novo",
+      submittedAt:   s.created_at ?? "",
+      isReferral:    Boolean(s.referrer_id),
+      photoFrontUrl: s.photo_front_url  ?? null,
+      photoLeftUrl:  s.photo_left_url   ?? null,
+      photoRightUrl: s.photo_right_url  ?? null,
+      videoUrl:      s.video_url        ?? null,
+      curriculumUrl: s.curriculum_url   ?? null,
+      portfolioUrl:  s.portfolio_url    ?? null,
+      bookingId:     booking?.bookingId     ?? null,
+      bookingStatus: booking?.bookingStatus ?? null,
+      contractId:    booking?.contractId    ?? null,
+      notes:         notesMap.get(String(s.id)) ?? [],
+    };
+  });
+
+  const job: PipelineJob = {
+    id:                     String(jobData.id),
+    title:                  jobData.title        ?? "",
+    status:                 jobData.status       ?? "open",
+    visibility:             (jobData.visibility  ?? "public") as string,
+    budget:                 jobData.budget       ?? 0,
+    deadline:               jobData.deadline     ?? null,
+    jobDate:                jobData.job_date      ?? null,
+    jobTime:                (jobData as { job_time?: string | null }).job_time  ?? null,
+    location:               (jobData as { location?: string | null }).location  ?? null,
+    description:            jobData.description  ?? "",
+    category:               jobData.category     ?? "",
     numberOfTalentsRequired: jobData.number_of_talents_required ?? 1,
+    workspaceId:            workspaceId,
+    agencyId:               String(jobData.agency_id ?? user.id),
   };
 
-  const submissions = (submissionsData ?? []).map((submission) => {
-    const profile = submission.talent_user_id ? profileMap.get(submission.talent_user_id) : null;
-    return {
-      id: String(submission.id),
-      talentId: submission.talent_user_id ?? null,
-      talentName: profile?.full_name ?? submission.talent_name ?? "",
-      avatarUrl: profile?.avatar_url ?? null,
-      bio: submission.bio ?? "",
-      status: submission.status ?? "pending",
-      mode: submission.mode ?? "other",
-      isReferral: Boolean(submission.referrer_id),
-      submittedAt: submission.created_at ?? "",
-      photoFrontUrl:  submission.photo_front_url ?? null,
-      photoLeftUrl:   submission.photo_left_url ?? null,
-      photoRightUrl:  submission.photo_right_url ?? null,
-      videoUrl:       submission.video_url ?? null,
-      curriculumUrl:  submission.curriculum_url ?? null,
-      portfolioUrl:   submission.portfolio_url ?? null,
-    };
-  });
-
-  const bookings = (bookingsData ?? []).map((booking) => {
-    const profile = booking.talent_user_id ? profileMap.get(booking.talent_user_id) : null;
-    const contractArr = Array.isArray((booking as { contracts?: Array<{ id?: string | null }> }).contracts)
-      ? ((booking as { contracts?: Array<{ id?: string | null }> }).contracts ?? [])
-      : [];
-
-    return {
-      id: String(booking.id),
-      talentId: booking.talent_user_id ?? null,
-      talentName: profile?.full_name ?? "Talento sem nome",
-      jobTitle: booking.job_title ?? job.title ?? "—",
-      price: booking.price ?? 0,
-      status: booking.status ?? "pending",
-      createdAt: booking.created_at ?? "",
-      contractId: contractArr[0]?.id ?? null,
-    };
-  });
-
-  const createdByUserId = (jobData as { created_by_user_id?: string | null }).created_by_user_id ?? null;
-  const isJobCreator = createdByUserId === user.id;
-  const readOnly = !isWorkspaceOwner && !isJobCreator;
-
-  return <JobDetail job={job} submissions={submissions} bookings={bookings} agencyId={String(jobData.agency_id ?? user.id)} readOnly={readOnly} />;
+  return (
+    <WorkspacePipelineBoard
+      job={job}
+      candidates={candidates}
+      userId={user.id}
+      isOwner={isWorkspaceOwner}
+      readOnly={readOnly}
+    />
+  );
 }

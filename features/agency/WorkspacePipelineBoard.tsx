@@ -1,0 +1,946 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import Link from "next/link";
+import { brl } from "@/lib/brl";
+import { supabase } from "@/lib/supabase";
+import { CONTRACTS_BUCKET } from "@/lib/contractFiles";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export type PipelineNote = {
+  id: string;
+  authorName: string;
+  body: string;
+  createdAt: string;
+};
+
+export type PipelineCandidate = {
+  id: string;                   // submission id
+  talentId: string | null;
+  talentName: string;
+  avatarUrl: string | null;
+  age: number | null;
+  city: string | null;
+  country: string | null;
+  gender: string | null;
+  bio: string;
+  pipelineStatus: string;       // pre-contract casting stage
+  submittedAt: string;
+  isReferral: boolean;
+  // uploads
+  photoFrontUrl:  string | null;
+  photoLeftUrl:   string | null;
+  photoRightUrl:  string | null;
+  videoUrl:       string | null;
+  curriculumUrl:  string | null;
+  portfolioUrl:   string | null;
+  // contract state (derived from bookings)
+  bookingId:      string | null;
+  bookingStatus:  string | null;
+  contractId:     string | null;
+  // notes
+  notes: PipelineNote[];
+};
+
+export type PipelineJob = {
+  id: string;
+  title: string;
+  status: string;
+  visibility: string;
+  budget: number;
+  deadline: string | null;
+  jobDate: string | null;
+  jobTime: string | null;
+  location: string | null;
+  description: string;
+  category: string;
+  numberOfTalentsRequired: number;
+  workspaceId: string;
+  agencyId: string;
+};
+
+// ─── Pipeline stage config ────────────────────────────────────────────────────
+
+type StageId =
+  | "novo" | "em_analise" | "shortlist" | "aguardando_cliente"
+  | "aprovado" | "contrato_enviado" | "confirmado" | "finalizado" | "rejeitado";
+
+type StageConfig = { id: StageId; label: string; pill: string; movable: boolean };
+
+const STAGES: StageConfig[] = [
+  { id: "novo",               label: "Novo",               pill: "bg-zinc-100 text-zinc-600",                   movable: true  },
+  { id: "em_analise",         label: "Em análise",         pill: "bg-blue-50 text-blue-700 ring-1 ring-blue-100",movable: true  },
+  { id: "shortlist",          label: "Shortlist",          pill: "bg-violet-50 text-violet-700 ring-1 ring-violet-100", movable: true },
+  { id: "aguardando_cliente", label: "Aguard. cliente",    pill: "bg-amber-50 text-amber-700 ring-1 ring-amber-100",   movable: true },
+  { id: "aprovado",           label: "Aprovado",           pill: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100", movable: true },
+  { id: "contrato_enviado",   label: "Contrato enviado",   pill: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100", movable: false },
+  { id: "confirmado",         label: "Confirmado",         pill: "bg-teal-50 text-teal-700 ring-1 ring-teal-100",      movable: false },
+  { id: "finalizado",         label: "Finalizado",         pill: "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200", movable: false },
+  { id: "rejeitado",          label: "Rejeitado",          pill: "bg-zinc-100 text-zinc-400",                   movable: true  },
+];
+
+const STAGE_MAP = new Map(STAGES.map((s) => [s.id, s]));
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function effectiveStage(c: PipelineCandidate): StageId {
+  const bs = c.bookingStatus;
+  if (bs === "paid")      return "finalizado";
+  if (bs === "confirmed") return "confirmado";
+  if (bs && !["cancelled", "rejected"].includes(bs)) return "contrato_enviado";
+  return (c.pipelineStatus as StageId) || "novo";
+}
+
+function initials(name: string): string {
+  return name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+}
+
+function avatarGrad(str: string): string {
+  const palette = [
+    "from-[#1ABC9C] to-[#27C1D6]", "from-violet-500 to-purple-600",
+    "from-amber-400 to-orange-500", "from-pink-500 to-rose-500",
+    "from-sky-500 to-blue-600",     "from-teal-500 to-cyan-600",
+  ];
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) & 0xffff;
+  return palette[h % palette.length];
+}
+
+function relTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 60)  return `${m}min atrás`;
+  const h = Math.floor(m / 60);
+  if (h < 24)  return `${h}h atrás`;
+  return `${Math.floor(h / 24)}d atrás`;
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function WorkspacePipelineBoard({
+  job,
+  candidates: initial,
+  userId,
+  isOwner,
+  readOnly,
+}: {
+  job: PipelineJob;
+  candidates: PipelineCandidate[];
+  userId: string;
+  isOwner: boolean;
+  readOnly: boolean;
+}) {
+  const [candidates, setCandidates] = useState<PipelineCandidate[]>(initial);
+  const [activeStage, setActiveStage] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [contractTarget, setContractTarget] = useState<PipelineCandidate | null>(null);
+
+  const canManage = isOwner || !readOnly;
+
+  // Stage counts from effective stage
+  const stageCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of candidates) {
+      const s = effectiveStage(c);
+      m.set(s, (m.get(s) ?? 0) + 1);
+    }
+    return m;
+  }, [candidates]);
+
+  const visible = useMemo(() => {
+    const q = search.toLowerCase();
+    return candidates.filter((c) => {
+      if (q && !c.talentName.toLowerCase().includes(q)) return false;
+      if (activeStage !== "all" && effectiveStage(c) !== activeStage) return false;
+      return true;
+    });
+  }, [candidates, activeStage, search]);
+
+  // Group by effective stage for "all" view
+  const sections = useMemo(() => {
+    if (activeStage !== "all") return null;
+    const groups = new Map<string, PipelineCandidate[]>();
+    for (const c of visible) {
+      const s = effectiveStage(c);
+      if (!groups.has(s)) groups.set(s, []);
+      groups.get(s)!.push(c);
+    }
+    return STAGES.filter((s) => groups.has(s.id)).map((s) => ({
+      stage: s,
+      candidates: groups.get(s.id)!,
+    }));
+  }, [visible, activeStage]);
+
+  // Optimistic status update
+  function patchCandidateStatus(submissionId: string, nextStatus: string) {
+    setCandidates((prev) =>
+      prev.map((c) => c.id === submissionId ? { ...c, pipelineStatus: nextStatus } : c)
+    );
+  }
+
+  function patchCandidateNote(submissionId: string, note: PipelineNote) {
+    setCandidates((prev) =>
+      prev.map((c) => c.id === submissionId ? { ...c, notes: [...c.notes, note] } : c)
+    );
+  }
+
+  function patchCandidateBooking(submissionId: string, bookingId: string, bookingStatus: string) {
+    setCandidates((prev) =>
+      prev.map((c) =>
+        c.id === submissionId
+          ? { ...c, bookingId, bookingStatus, pipelineStatus: "aprovado" }
+          : c
+      )
+    );
+  }
+
+  // Bulk selection
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function selectAll() { setSelected(new Set(visible.map((c) => c.id))); }
+  function clearSelect() { setSelected(new Set()); }
+
+  async function bulkMove(nextStatus: string) {
+    const ids = [...selected];
+    await Promise.all(
+      ids.map((id) =>
+        fetch(`/api/workspace/submissions/${id}/pipeline`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pipeline_status: nextStatus }),
+        })
+      )
+    );
+    ids.forEach((id) => patchCandidateStatus(id, nextStatus));
+    clearSelect();
+  }
+
+  const tabAll = candidates.length;
+
+  return (
+    <div className="space-y-5">
+
+      {/* Back + header */}
+      <div>
+        <Link
+          href="/agency/workspace/jobs"
+          className="inline-flex items-center gap-1.5 text-[12px] text-zinc-400 hover:text-zinc-700 transition-colors mb-3"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Vagas do workspace
+        </Link>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <h1 className="text-[1.5rem] font-bold tracking-tight text-zinc-950 leading-snug">
+                {job.title}
+              </h1>
+              <StBadge status={job.status} />
+              {job.visibility === "private_invite" && (
+                <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[11px] font-semibold text-violet-700">
+                  Privada
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-zinc-500">
+              {job.budget > 0 && (
+                <span className="font-semibold text-zinc-700">{brl(job.budget)}/talento</span>
+              )}
+              {job.location && <span>{job.location}</span>}
+              {job.jobDate && (
+                <span>
+                  {new Date(`${job.jobDate}T00:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                  {job.jobTime && ` · ${job.jobTime}`}
+                </span>
+              )}
+              <span>{job.numberOfTalentsRequired} talento{job.numberOfTalentsRequired !== 1 ? "s" : ""}</span>
+            </div>
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            {canManage && (
+              <Link
+                href={`/agency/workspace/jobs/${job.id}/edit`}
+                className="inline-flex items-center rounded-xl border border-zinc-200 px-3 py-2 text-[12px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
+              >
+                Editar
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Stage tabs */}
+      <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide">
+        <div className="flex border-b border-zinc-100 min-w-max">
+          {/* All tab */}
+          {[{ id: "all", label: "Todos", count: tabAll }, ...STAGES.map((s) => ({
+            id: s.id, label: s.label, count: stageCounts.get(s.id) ?? 0,
+          }))].filter((t) => t.id === "all" || t.count > 0).map((tab) => {
+            const active = activeStage === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveStage(tab.id)}
+                className={[
+                  "inline-flex items-center gap-1.5 px-3.5 py-2.5 text-[12px] font-medium border-b-2 -mb-px transition-colors whitespace-nowrap cursor-pointer",
+                  active
+                    ? "border-[#1ABC9C] text-zinc-900"
+                    : "border-transparent text-zinc-500 hover:text-zinc-700 hover:border-zinc-200",
+                ].join(" ")}
+              >
+                {tab.label}
+                {tab.count > 0 && (
+                  <span className={[
+                    "rounded-full px-1.5 py-px text-[10px] font-bold leading-none",
+                    active ? "bg-[#1ABC9C]/15 text-[#1ABC9C]" : "bg-zinc-100 text-zinc-500",
+                  ].join(" ")}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Search + bulk bar */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-xs">
+          <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Buscar candidato..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 w-full rounded-xl border border-zinc-200 bg-white pl-8 pr-3 text-[12px] text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none transition-colors"
+          />
+        </div>
+        {visible.length > 0 && canManage && (
+          <button
+            onClick={() => selected.size === visible.length ? clearSelect() : selectAll()}
+            className="text-[11px] text-zinc-400 hover:text-zinc-600 transition-colors whitespace-nowrap cursor-pointer"
+          >
+            {selected.size === visible.length ? "Desmarcar todos" : "Selecionar todos"}
+          </button>
+        )}
+      </div>
+
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-[0_2px_8px_rgba(0,0,0,0.06)]">
+          <span className="text-[12px] font-semibold text-zinc-700 mr-1">
+            {selected.size} selecionado{selected.size !== 1 ? "s" : ""}
+          </span>
+          <BulkBtn label="→ Em análise"         onClick={() => bulkMove("em_analise")} />
+          <BulkBtn label="→ Shortlist"           onClick={() => bulkMove("shortlist")} />
+          <BulkBtn label="→ Aguard. cliente"     onClick={() => bulkMove("aguardando_cliente")} />
+          <BulkBtn label="→ Aprovado"            onClick={() => bulkMove("aprovado")} />
+          <BulkBtn label="Rejeitar" danger       onClick={() => bulkMove("rejeitado")} />
+          <button
+            onClick={clearSelect}
+            className="ml-auto text-[11px] text-zinc-400 hover:text-zinc-600 cursor-pointer transition-colors"
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {visible.length === 0 && (
+        <div className="rounded-[1.5rem] border border-zinc-100 bg-white px-6 py-12 text-center">
+          <p className="text-[15px] font-semibold text-zinc-800">Nenhum candidato</p>
+          <p className="mt-1 text-[13px] text-zinc-400">
+            {search ? "Nenhum resultado para esta busca." : "Nenhum candidato nesta etapa."}
+          </p>
+        </div>
+      )}
+
+      {/* Grouped sections (all tab) */}
+      {sections && sections.length > 0 && (
+        <div className="space-y-6">
+          {sections.map(({ stage, candidates: cs }) => (
+            <div key={stage.id}>
+              <div className="flex items-center gap-2 mb-2.5">
+                <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${stage.pill}`}>
+                  {stage.label}
+                </span>
+                <span className="text-[11px] text-zinc-400">{cs.length} candidato{cs.length !== 1 ? "s" : ""}</span>
+              </div>
+              <div className="space-y-2">
+                {cs.map((c) => (
+                  <CandidateCard
+                    key={c.id}
+                    candidate={c}
+                    job={job}
+                    canManage={canManage}
+                    isSelected={selected.has(c.id)}
+                    onToggleSelect={() => toggleSelect(c.id)}
+                    onStatusChange={patchCandidateStatus}
+                    onNoteAdded={patchCandidateNote}
+                    onContractOpen={() => setContractTarget(c)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Flat list (specific stage tab) */}
+      {!sections && visible.length > 0 && (
+        <div className="space-y-2">
+          {visible.map((c) => (
+            <CandidateCard
+              key={c.id}
+              candidate={c}
+              job={job}
+              canManage={canManage}
+              isSelected={selected.has(c.id)}
+              onToggleSelect={() => toggleSelect(c.id)}
+              onStatusChange={patchCandidateStatus}
+              onNoteAdded={patchCandidateNote}
+              onContractOpen={() => setContractTarget(c)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Contract modal */}
+      {contractTarget && (
+        <ContractModal
+          job={job}
+          candidate={contractTarget}
+          agencyId={job.agencyId}
+          onClose={() => setContractTarget(null)}
+          onSent={(bookingId) => {
+            patchCandidateBooking(contractTarget.id, bookingId, "pending");
+            setContractTarget(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Status badge ─────────────────────────────────────────────────────────────
+
+function StBadge({ status }: { status: string }) {
+  const map: Record<string, string> = {
+    open:     "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
+    paused:   "bg-blue-50 text-blue-600 ring-1 ring-blue-100",
+    draft:    "bg-zinc-100 text-zinc-500",
+    closed:   "bg-zinc-100 text-zinc-500",
+    inactive: "bg-zinc-100 text-zinc-400",
+  };
+  const label: Record<string, string> = {
+    open: "Aberta", paused: "Pausada", draft: "Rascunho", closed: "Fechada", inactive: "Inativa",
+  };
+  return (
+    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${map[status] ?? "bg-zinc-100 text-zinc-500"}`}>
+      {label[status] ?? status}
+    </span>
+  );
+}
+
+// ─── Bulk action button ───────────────────────────────────────────────────────
+
+function BulkBtn({ label, onClick, danger }: { label: string; onClick: () => void; danger?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className={[
+        "rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-colors cursor-pointer",
+        danger
+          ? "border-red-200 text-red-600 hover:bg-red-50"
+          : "border-zinc-200 text-zinc-700 hover:bg-zinc-50",
+      ].join(" ")}
+    >
+      {label}
+    </button>
+  );
+}
+
+// ─── Candidate card ───────────────────────────────────────────────────────────
+
+function CandidateCard({
+  candidate: c,
+  job,
+  canManage,
+  isSelected,
+  onToggleSelect,
+  onStatusChange,
+  onNoteAdded,
+  onContractOpen,
+}: {
+  candidate: PipelineCandidate;
+  job: PipelineJob;
+  canManage: boolean;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  onStatusChange: (id: string, status: string) => void;
+  onNoteAdded: (id: string, note: PipelineNote) => void;
+  onContractOpen: () => void;
+}) {
+  const [moving, setMoving]   = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+
+  const stage      = effectiveStage(c);
+  const stageCfg   = STAGE_MAP.get(stage);
+  const hasPhotos  = !!(c.photoFrontUrl || c.photoLeftUrl || c.photoRightUrl);
+  const photos     = [c.photoFrontUrl, c.photoLeftUrl, c.photoRightUrl].filter(Boolean) as string[];
+  const uploadBits = [hasPhotos, !!c.videoUrl, !!c.curriculumUrl, !!c.portfolioUrl];
+  const uploadDone = uploadBits.filter(Boolean).length;
+  const canContract = canManage && c.pipelineStatus === "aprovado" && !c.bookingId && job.status === "open";
+  const canMove = canManage && !!stageCfg?.movable;
+
+  async function handleMove(nextStatus: string) {
+    if (nextStatus === c.pipelineStatus) return;
+    setMoving(true);
+    const res = await fetch(`/api/workspace/submissions/${c.id}/pipeline`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pipeline_status: nextStatus }),
+    });
+    setMoving(false);
+    if (res.ok) onStatusChange(c.id, nextStatus);
+  }
+
+  async function handleAddNote() {
+    const body = noteText.trim();
+    if (!body) return;
+    setSavingNote(true);
+    const res = await fetch(`/api/workspace/submissions/${c.id}/notes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body }),
+    });
+    setSavingNote(false);
+    if (res.ok) {
+      const data = await res.json() as { note?: PipelineNote };
+      if (data.note) {
+        onNoteAdded(c.id, data.note);
+        setNoteText("");
+      }
+    }
+  }
+
+  // Upload completeness display
+  const uploadLabels = ["Fotos", "Vídeo", "Currículo", "Portfólio"];
+  const uploadFlags  = [hasPhotos, !!c.videoUrl, !!c.curriculumUrl, !!c.portfolioUrl];
+
+  return (
+    <div className={[
+      "rounded-2xl border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all",
+      isSelected ? "border-[#1ABC9C] ring-1 ring-[#1ABC9C]/30" : "border-zinc-200 hover:border-zinc-300",
+    ].join(" ")}>
+
+      {/* Main row */}
+      <div className="flex items-start gap-3 px-4 py-3">
+
+        {/* Checkbox */}
+        {canManage && (
+          <button
+            onClick={onToggleSelect}
+            className={[
+              "mt-0.5 flex-shrink-0 w-4 h-4 rounded border-2 flex items-center justify-center transition-colors cursor-pointer",
+              isSelected ? "bg-[#1ABC9C] border-[#1ABC9C]" : "border-zinc-300 hover:border-zinc-500",
+            ].join(" ")}
+          >
+            {isSelected && (
+              <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </button>
+        )}
+
+        {/* Avatar */}
+        {c.avatarUrl ? (
+          <img
+            src={c.avatarUrl}
+            alt={c.talentName}
+            className="w-9 h-9 rounded-full object-cover flex-shrink-0 mt-0.5"
+          />
+        ) : (
+          <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${avatarGrad(c.talentName)} flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5`}>
+            {initials(c.talentName)}
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+
+          {/* Name + stage + contract badge */}
+          <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+            <Link
+              href={`/talent/${c.talentId ?? ""}`}
+              className="text-[14px] font-semibold text-zinc-900 hover:text-[#1ABC9C] transition-colors"
+            >
+              {c.talentName}
+            </Link>
+            {stageCfg && (
+              <span className={`rounded-full px-2 py-px text-[10px] font-semibold ${stageCfg.pill}`}>
+                {stageCfg.label}
+              </span>
+            )}
+            {c.isReferral && (
+              <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-px text-[10px] font-semibold text-violet-700">
+                Indicado
+              </span>
+            )}
+            {c.bookingStatus === "confirmed" && (
+              <span className="rounded-full bg-teal-50 text-teal-700 ring-1 ring-teal-100 px-2 py-px text-[10px] font-semibold">
+                Em custódia
+              </span>
+            )}
+            {c.bookingStatus === "paid" && (
+              <span className="rounded-full bg-emerald-100 text-emerald-800 px-2 py-px text-[10px] font-semibold">
+                Pago
+              </span>
+            )}
+          </div>
+
+          {/* Meta row */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-500 mb-2">
+            {c.age && <span>{c.age} anos</span>}
+            {c.gender && (
+              <span>{c.gender === "female" || c.gender === "feminino" ? "Feminino" : c.gender === "male" || c.gender === "masculino" ? "Masculino" : c.gender}</span>
+            )}
+            {(c.city || c.country) && (
+              <span>{[c.city, c.country].filter(Boolean).join(", ")}</span>
+            )}
+            <span className="text-zinc-400">{new Date(c.submittedAt).toLocaleDateString("pt-BR")}</span>
+          </div>
+
+          {/* Upload completeness */}
+          <div className="flex items-center gap-1.5 mb-2.5">
+            {uploadLabels.map((label, i) => (
+              <span
+                key={label}
+                className={[
+                  "rounded-full px-2 py-px text-[10px] font-medium",
+                  uploadFlags[i]
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-zinc-100 text-zinc-400",
+                ].join(" ")}
+              >
+                {label}
+              </span>
+            ))}
+            <span className="text-[10px] text-zinc-400 ml-1">{uploadDone}/4</span>
+          </div>
+
+          {/* Notes preview */}
+          {c.notes.length > 0 && (
+            <div className="text-[11px] text-zinc-400 mb-2">
+              {c.notes.length} nota{c.notes.length !== 1 ? "s" : ""} internas
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex flex-wrap items-center gap-1.5">
+
+            {/* View media / expand */}
+            {(hasPhotos || c.videoUrl || c.bio) && (
+              <button
+                onClick={() => setExpanded((v) => !v)}
+                className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
+              >
+                {expanded ? "Fechar" : "Ver materiais"}
+              </button>
+            )}
+
+            {/* Move status */}
+            {canMove && (
+              <select
+                value={c.pipelineStatus || "novo"}
+                onChange={(e) => handleMove(e.target.value)}
+                disabled={moving}
+                className="h-7 rounded-lg border border-zinc-200 bg-white px-2 text-[11px] font-semibold text-zinc-700 focus:outline-none appearance-none cursor-pointer disabled:opacity-50"
+              >
+                {STAGES.filter((s) => s.movable).map((s) => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+            )}
+
+            {/* Send contract */}
+            {canContract && (
+              <button
+                onClick={onContractOpen}
+                className="inline-flex items-center rounded-lg bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-2.5 py-1.5 text-[11px] font-semibold text-white hover:from-[#17A58A] hover:to-[#22B5C2] transition-all cursor-pointer"
+              >
+                Contratar
+              </button>
+            )}
+
+            {/* Note toggle */}
+            <button
+              onClick={() => setNotesOpen((v) => !v)}
+              className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
+            >
+              + Nota
+              {c.notes.length > 0 && (
+                <span className="rounded-full bg-zinc-200 px-1.5 py-px text-[9px] font-bold leading-none text-zinc-600">
+                  {c.notes.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded: media + bio */}
+      {expanded && (
+        <div className="border-t border-zinc-50 bg-zinc-50/50 px-4 py-4 space-y-4">
+          {photos.length > 0 && (
+            <div className={`grid gap-2 ${photos.length === 1 ? "grid-cols-1 max-w-[120px]" : photos.length === 2 ? "grid-cols-2 max-w-[260px]" : "grid-cols-3 max-w-[380px]"}`}>
+              {photos.map((url, i) => (
+                <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                  className="aspect-[3/4] rounded-xl overflow-hidden bg-zinc-100 block group relative">
+                  <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors rounded-xl" />
+                </a>
+              ))}
+            </div>
+          )}
+          {c.videoUrl && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 mb-1.5">Vídeo</p>
+              <a href={c.videoUrl} target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors">
+                Abrir vídeo
+              </a>
+            </div>
+          )}
+          {(c.curriculumUrl || c.portfolioUrl) && (
+            <div className="flex gap-2 flex-wrap">
+              {c.curriculumUrl && (
+                <a href={c.curriculumUrl} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors">
+                  Currículo
+                </a>
+              )}
+              {c.portfolioUrl && (
+                <a href={c.portfolioUrl} target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors">
+                  Portfólio
+                </a>
+              )}
+            </div>
+          )}
+          {c.bio && <p className="text-[12px] text-zinc-500 leading-relaxed">{c.bio}</p>}
+        </div>
+      )}
+
+      {/* Notes panel */}
+      {notesOpen && (
+        <div className="border-t border-zinc-100 bg-zinc-50/40 px-4 py-3 space-y-3">
+          {c.notes.length === 0 && (
+            <p className="text-[11px] text-zinc-400 italic">Nenhuma nota ainda.</p>
+          )}
+          {c.notes.map((note) => (
+            <div key={note.id} className="rounded-xl bg-white border border-zinc-100 px-3 py-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] font-semibold text-zinc-700">{note.authorName}</span>
+                <span className="text-[10px] text-zinc-400">{relTime(note.createdAt)}</span>
+              </div>
+              <p className="text-[12px] text-zinc-600 leading-relaxed">{note.body}</p>
+            </div>
+          ))}
+          <div className="flex gap-2">
+            <textarea
+              rows={2}
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              placeholder="Adicionar nota interna (visível para toda a equipe)..."
+              className="flex-1 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[12px] text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none resize-none transition-colors"
+            />
+            <button
+              onClick={handleAddNote}
+              disabled={!noteText.trim() || savingNote}
+              className="self-end rounded-xl bg-zinc-900 px-3 py-2 text-[11px] font-semibold text-white hover:bg-zinc-700 transition-colors disabled:opacity-40 cursor-pointer"
+            >
+              {savingNote ? "…" : "Salvar"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Contract modal ───────────────────────────────────────────────────────────
+
+function ContractModal({
+  job,
+  candidate,
+  agencyId,
+  onClose,
+  onSent,
+}: {
+  job: PipelineJob;
+  candidate: PipelineCandidate;
+  agencyId: string;
+  onClose: () => void;
+  onSent: (bookingId: string) => void;
+}) {
+  const [form, setForm] = useState({
+    job_date:        job.jobDate        ?? "",
+    job_time:        job.jobTime        ?? "",
+    location:        job.location       ?? "",
+    job_description: job.description    ?? "",
+    payment_amount:  String(job.budget  ?? ""),
+    payment_method:  "PIX",
+    additional_notes: "",
+  });
+  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [sending, setSending] = useState(false);
+  const [error, setError]     = useState("");
+
+  function set(k: keyof typeof form, v: string) {
+    setForm((f) => ({ ...f, [k]: v }));
+  }
+
+  async function handleSend() {
+    setSending(true);
+    setError("");
+
+    let uploadedPath: string | null = null;
+    if (contractFile) {
+      const ext  = contractFile.name.split(".").pop() ?? "pdf";
+      const path = `${agencyId}/${job.id}/${candidate.talentId ?? "ref"}-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from(CONTRACTS_BUCKET)
+        .upload(path, contractFile, { upsert: true });
+      if (upErr) { setError("Falha ao enviar arquivo: " + upErr.message); setSending(false); return; }
+      uploadedPath = path;
+    }
+
+    const res = await fetch("/api/bookings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        talent_id:          candidate.talentId,
+        job_id:             job.id,
+        agency_id:          agencyId,
+        contract_file_url:  uploadedPath,
+        job_date:           form.job_date         || null,
+        job_time:           form.job_time         || null,
+        location:           form.location         || null,
+        job_description:    form.job_description  || null,
+        payment_amount:     Number(String(form.payment_amount).replace(",", ".")),
+        payment_method:     form.payment_method   || null,
+        additional_notes:   form.additional_notes || null,
+      }),
+    });
+
+    setSending(false);
+    if (res.ok) {
+      const data = await res.json() as { booking?: { id?: string } };
+      onSent(data.booking?.id ?? "");
+    } else {
+      const d = await res.json().catch(() => ({})) as { error?: string; message?: string };
+      setError(d.error ?? d.message ?? "Falha ao enviar contrato.");
+    }
+  }
+
+  const inputCls = "w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-[13px] text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-900 focus:bg-white focus:outline-none transition-colors";
+  const labelCls = "block text-[11px] font-semibold uppercase tracking-widest text-zinc-500 mb-1";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="w-full max-w-lg bg-white rounded-[1.5rem] shadow-2xl overflow-y-auto max-h-[90vh]">
+        <div className="px-6 py-5">
+          <div className="flex items-start justify-between mb-5">
+            <div>
+              <h2 className="text-[16px] font-bold text-zinc-900">Enviar contrato</h2>
+              <p className="text-[12px] text-zinc-500 mt-0.5">{candidate.talentName}</p>
+            </div>
+            <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Data do trabalho *</label>
+                <input type="date" required value={form.job_date} onChange={(e) => set("job_date", e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Horário *</label>
+                <input type="time" required value={form.job_time} onChange={(e) => set("job_time", e.target.value)} className={inputCls} />
+              </div>
+            </div>
+            <div>
+              <label className={labelCls}>Localização</label>
+              <input type="text" value={form.location} onChange={(e) => set("location", e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Descrição do trabalho</label>
+              <textarea rows={3} value={form.job_description} onChange={(e) => set("job_description", e.target.value)} className={`${inputCls} resize-none`} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Valor (BRL) *</label>
+                <input type="number" min={1} step={0.01} required value={form.payment_amount} onChange={(e) => set("payment_amount", e.target.value)} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Método</label>
+                <input type="text" value={form.payment_method} onChange={(e) => set("payment_method", e.target.value)} className={inputCls} />
+              </div>
+            </div>
+            <div>
+              <label className={labelCls}>Notas adicionais</label>
+              <textarea rows={2} value={form.additional_notes} onChange={(e) => set("additional_notes", e.target.value)} placeholder="Instruções, detalhes logísticos..." className={`${inputCls} resize-none`} />
+            </div>
+            <div>
+              <label className={labelCls}>Arquivo do contrato (opcional)</label>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={(e) => setContractFile(e.target.files?.[0] ?? null)}
+                className="w-full text-[12px] text-zinc-700 file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-[11px] file:font-semibold file:text-zinc-700 hover:file:bg-zinc-200 cursor-pointer"
+              />
+            </div>
+
+            {error && (
+              <p className="text-[12px] text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2.5">{error}</p>
+            )}
+          </div>
+
+          <div className="flex gap-3 mt-5">
+            <button onClick={onClose} className="flex-1 py-3 text-[13px] font-medium border border-zinc-200 rounded-xl hover:bg-zinc-50 transition-colors cursor-pointer">
+              Cancelar
+            </button>
+            <button
+              onClick={handleSend}
+              disabled={sending || !form.job_date || !form.job_time || !form.payment_amount}
+              className="flex-1 py-3 text-[13px] font-semibold bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] hover:from-[#17A58A] hover:to-[#22B5C2] text-white rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {sending ? "Enviando…" : "Enviar contrato"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
