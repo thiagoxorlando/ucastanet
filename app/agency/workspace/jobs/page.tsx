@@ -1,149 +1,95 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { createServerClient } from "@/lib/supabase";
-import { brl } from "@/lib/brl";
-import { getServerLang, getServerT } from "@/lib/i18n/server";
-import { jobStatusLabel, jobStatusTone } from "@/lib/jobStatus";
 import { getWorkspaceMembers } from "@/lib/premiumWorkspace.server";
 import { requirePremiumWorkspacePageContext } from "@/lib/premiumWorkspaceApp.server";
-import WorkspacePrivateInviteButton from "@/features/agency/WorkspacePrivateInviteButton";
+import WorkspaceJobsBoard, { type WorkspaceJob } from "@/features/agency/WorkspaceJobsBoard";
 
 export const metadata: Metadata = { title: "Vagas privadas — BrisaHub" };
 
 export default async function WorkspaceJobsPage() {
   const context = await requirePremiumWorkspacePageContext();
-  const [t, lang] = await Promise.all([getServerT(), getServerLang()]);
-  const locale = lang === "en" ? "en-US" : "pt-BR";
   const supabase = createServerClient({ useServiceRole: true });
 
   const [members, jobsResult] = await Promise.all([
     getWorkspaceMembers(context.workspace.id),
     supabase
       .from("jobs")
-      .select("id, title, visibility, status, budget, created_at, created_by_user_id, job_date")
+      .select(
+        "id, title, visibility, status, budget, deadline, created_at, created_by_user_id, job_date, job_time, location, category, number_of_talents_required"
+      )
       .eq("workspace_id", context.workspace.id)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false }),
   ]);
 
   const jobs = jobsResult.data ?? [];
-  const jobIds = jobs.map((job) => job.id);
-  const creatorMap = new Map(members.map((member) => [member.userId, member.displayName || member.email]));
+  const jobIds = jobs.map((j) => j.id);
 
-  const submissionsMap = new Map<string, number>();
-  if (jobIds.length > 0) {
-    const { data: submissions } = await supabase.from("submissions").select("job_id").in("job_id", jobIds);
-    for (const row of submissions ?? []) {
-      submissionsMap.set(row.job_id, (submissionsMap.get(row.job_id) ?? 0) + 1);
+  const memberNameMap = new Map(members.map((m) => [m.userId, m.displayName || m.email]));
+  const memberRoleMap = new Map(members.map((m) => [m.userId, m.role as "owner" | "agent"]));
+
+  // Submissions and contracts in parallel
+  const [subsResult, contractsResult] = await Promise.all([
+    jobIds.length > 0
+      ? supabase.from("submissions").select("job_id, status").in("job_id", jobIds)
+      : Promise.resolve({ data: [] as { job_id: string; status: string }[] }),
+    jobIds.length > 0
+      ? supabase
+          .from("contracts")
+          .select("job_id, status")
+          .in("job_id", jobIds)
+          .is("deleted_at", null)
+          .not("status", "in", '("cancelled","rejected")')
+      : Promise.resolve({ data: [] as { job_id: string; status: string }[] }),
+  ]);
+
+  // Submission counts
+  const subTotalMap  = new Map<string, number>();
+  const subPendMap   = new Map<string, number>();
+  for (const row of subsResult.data ?? []) {
+    subTotalMap.set(row.job_id, (subTotalMap.get(row.job_id) ?? 0) + 1);
+    if (row.status === "pending") {
+      subPendMap.set(row.job_id, (subPendMap.get(row.job_id) ?? 0) + 1);
     }
   }
 
+  // Contract counts by status
+  const contractMap = new Map<string, WorkspaceJob["contractCounts"]>();
+  for (const row of contractsResult.data ?? []) {
+    const cur = contractMap.get(row.job_id) ?? { sent: 0, signed: 0, confirmed: 0, paid: 0 };
+    if      (row.status === "sent")      cur.sent++;
+    else if (row.status === "signed")    cur.signed++;
+    else if (row.status === "confirmed") cur.confirmed++;
+    else if (row.status === "paid")      cur.paid++;
+    contractMap.set(row.job_id, cur);
+  }
+
+  const workspaceJobs: WorkspaceJob[] = jobs.map((job) => ({
+    id:              String(job.id),
+    title:           job.title           ?? "",
+    status:          job.status          ?? "open",
+    visibility:      job.visibility      ?? "public",
+    budget:          job.budget          ?? null,
+    deadline:        job.deadline        ?? null,
+    jobDate:         job.job_date        ?? null,
+    jobTime:         (job as { job_time?: string | null }).job_time   ?? null,
+    location:        (job as { location?: string | null }).location   ?? null,
+    category:        (job as { category?: string | null }).category   ?? null,
+    talentsRequired: (job as { number_of_talents_required?: number }).number_of_talents_required ?? 1,
+    createdAt:       job.created_at      ?? "",
+    createdByUserId: job.created_by_user_id ?? null,
+    createdByName:   memberNameMap.get(job.created_by_user_id ?? "") ?? "Equipe",
+    createdByRole:   memberRoleMap.get(job.created_by_user_id ?? "") ?? "agent",
+    submissionCount: subTotalMap.get(job.id)  ?? 0,
+    pendingCount:    subPendMap.get(job.id)   ?? 0,
+    contractCounts:  contractMap.get(job.id)  ?? { sent: 0, signed: 0, confirmed: 0, paid: 0 },
+  }));
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-[1.5rem] font-bold tracking-tight text-zinc-950 sm:text-[1.8rem]">{t("nav_workspace_jobs")}</h1>
-          <p className="mt-1 text-[14px] text-zinc-500">
-            {t("workspace_jobs_page_subtitle")}
-          </p>
-        </div>
-        {/* Owner and agents can create workspace jobs */}
-        <Link
-          href="/agency/workspace/jobs/new"
-          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-5 py-3 text-[14px] font-semibold text-white shadow-[0_14px_28px_rgba(26,188,156,0.24)]"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          {t("workspace_jobs_create_private")}
-        </Link>
-      </div>
-
-      {jobs.length === 0 ? (
-        <div className="rounded-[28px] border border-zinc-200 bg-white px-6 py-10 text-center shadow-[0_12px_34px_rgba(15,23,42,0.05)]">
-          <p className="text-[15px] font-semibold text-zinc-900">{t("workspace_jobs_empty_title")}</p>
-          <p className="mt-2 text-[13px] leading-6 text-zinc-500">
-            {t("workspace_jobs_empty_description")}
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {jobs.map((job) => {
-            const createdBy = creatorMap.get(job.created_by_user_id ?? "") ?? t("workspace_jobs_team_default");
-            const isOwnJob = job.created_by_user_id === context.userId;
-
-            return (
-              <div key={job.id} className="rounded-[28px] border border-zinc-200 bg-white p-5 shadow-[0_12px_34px_rgba(15,23,42,0.05)]">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="truncate text-[18px] font-semibold text-zinc-950">{job.title}</h2>
-                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${jobStatusTone(job.status ?? "open")}`}>
-                        {jobStatusLabel(job.status ?? "open", context.lang)}
-                      </span>
-                      <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${job.visibility === "private_invite" ? "border border-violet-200 bg-violet-50 text-violet-700" : "border border-sky-200 bg-sky-50 text-sky-700"}`}>
-                        {job.visibility === "private_invite" ? t("workspace_jobs_visibility_private") : t("workspace_jobs_visibility_public")}
-                      </span>
-                      {isOwnJob ? (
-                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                          {t("workspace_jobs_my_job")}
-                        </span>
-                      ) : !context.isOwner ? (
-                        <span className="rounded-full border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-[11px] font-semibold text-zinc-500">
-                          {t("workspace_jobs_team_badge")}
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="mt-3 grid gap-3 text-[13px] text-zinc-600 sm:grid-cols-2 xl:grid-cols-5">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{t("workspace_jobs_created_by")}</p>
-                        <p className="mt-1 font-medium text-zinc-800">{createdBy}</p>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{t("workspace_jobs_date")}</p>
-                        <p className="mt-1 font-medium text-zinc-800">
-                          {job.job_date ? new Date(`${job.job_date}T00:00:00`).toLocaleDateString(locale) : t("workspace_jobs_tbd")}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{t("workspace_jobs_budget")}</p>
-                        <p className="mt-1 font-medium text-zinc-800">{job.budget != null ? brl(job.budget) : t("workspace_jobs_negotiable")}</p>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{t("workspace_jobs_candidates")}</p>
-                        <p className="mt-1 font-medium text-zinc-800">{submissionsMap.get(job.id) ?? 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-400">{t("workspace_jobs_created_at")}</p>
-                        <p className="mt-1 font-medium text-zinc-800">{new Date(job.created_at ?? "").toLocaleDateString(locale)}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      href={`/agency/workspace/jobs/${job.id}`}
-                      className="inline-flex items-center rounded-xl border border-zinc-200 px-3 py-2 text-[12px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50"
-                    >
-                      {t("workspace_jobs_view_detail")}
-                    </Link>
-                    {job.visibility === "private_invite" && (context.isOwner || isOwnJob) ? (
-                      <WorkspacePrivateInviteButton jobId={job.id} />
-                    ) : job.visibility === "private_invite" && !context.isOwner && !isOwnJob ? (
-                      <span
-                        title={t("workspace_jobs_invite_disabled_title")}
-                        className="inline-flex cursor-not-allowed items-center rounded-xl border border-zinc-100 bg-zinc-50 px-3 py-2 text-[12px] font-semibold text-zinc-400"
-                      >
-                        {t("workspace_private_invite")}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+    <WorkspaceJobsBoard
+      jobs={workspaceJobs}
+      userId={context.userId}
+      isOwner={context.isOwner}
+    />
   );
 }
-
