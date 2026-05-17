@@ -1030,32 +1030,31 @@ console.log(`  ✓ ${agentWalletCount} agent wallet entries inserted`);
 console.log("\n[12/13] Creating submissions…");
 
 const submissionDefs = [
-  // Job: casting_ativo (Natura) — multiple pending
-  { job_id: jobIds.casting_ativo, talent_user_id: sofiaId,   status: "pending",  created_at: "2026-05-08T09:00:00Z" },
-  { job_id: jobIds.casting_ativo, talent_user_id: camilaId,  status: "pending",  created_at: "2026-05-08T10:00:00Z" },
-  { job_id: jobIds.casting_ativo, talent_user_id: rafaelId,  status: "pending",  created_at: "2026-05-09T11:00:00Z" },
-  { job_id: jobIds.casting_ativo, talent_user_id: beatrizId, status: "pending",  created_at: "2026-05-09T14:00:00Z" },
-  // Job: talento_selecionado (FARM lookbook) — mix approved/rejected
-  { job_id: jobIds.talento_selecionado, talent_user_id: sofiaId,   status: "approved", created_at: "2026-05-04T10:00:00Z" },
-  { job_id: jobIds.talento_selecionado, talent_user_id: beatrizId, status: "rejected", created_at: "2026-05-04T11:00:00Z" },
-  { job_id: jobIds.talento_selecionado, talent_user_id: isabelaId, status: "rejected", created_at: "2026-05-05T09:00:00Z" },
-  { job_id: jobIds.talento_selecionado, talent_user_id: camilaId,  status: "approved", created_at: "2026-05-05T10:00:00Z" },
-  // Job: campanha_nike — several under review
-  { job_id: jobIds.campanha_nike, talent_user_id: rafaelId,  status: "pending",  created_at: "2026-05-10T09:00:00Z" },
-  { job_id: jobIds.campanha_nike, talent_user_id: lucasId,   status: "pending",  created_at: "2026-05-10T10:00:00Z" },
-  { job_id: jobIds.campanha_nike, talent_user_id: camilaId,  status: "pending",  created_at: "2026-05-11T08:00:00Z" },
-  { job_id: jobIds.campanha_nike, talent_user_id: sofiaId,   status: "pending",  created_at: "2026-05-11T09:00:00Z" },
-  { job_id: jobIds.campanha_nike, talent_user_id: beatrizId, status: "pending",  created_at: "2026-05-11T10:00:00Z" },
-  // Job: book_feminino — pending
-  { job_id: jobIds.book_feminino, talent_user_id: beatrizId, status: "pending",  created_at: "2026-05-10T09:00:00Z" },
-  { job_id: jobIds.book_feminino, talent_user_id: isabelaId, status: "pending",  created_at: "2026-05-10T11:00:00Z" },
+  // Job: casting_ativo (Natura) — spread across early pipeline stages
+  { job_id: jobIds.casting_ativo, talent_user_id: sofiaId,   status: "pending",  pipeline_status: "shortlist",          created_at: "2026-05-08T09:00:00Z" },
+  { job_id: jobIds.casting_ativo, talent_user_id: camilaId,  status: "pending",  pipeline_status: "em_analise",         created_at: "2026-05-08T10:00:00Z" },
+  { job_id: jobIds.casting_ativo, talent_user_id: rafaelId,  status: "pending",  pipeline_status: "novo",               created_at: "2026-05-09T11:00:00Z" },
+  { job_id: jobIds.casting_ativo, talent_user_id: beatrizId, status: "pending",  pipeline_status: "aguardando_cliente", created_at: "2026-05-09T14:00:00Z" },
+  // Job: talento_selecionado (FARM lookbook) — mix approved/rejected pipeline stages
+  { job_id: jobIds.talento_selecionado, talent_user_id: sofiaId,   status: "approved", pipeline_status: "aprovado",   created_at: "2026-05-04T10:00:00Z" },
+  { job_id: jobIds.talento_selecionado, talent_user_id: beatrizId, status: "rejected", pipeline_status: "rejeitado",  created_at: "2026-05-04T11:00:00Z" },
+  { job_id: jobIds.talento_selecionado, talent_user_id: isabelaId, status: "rejected", pipeline_status: "rejeitado",  created_at: "2026-05-05T09:00:00Z" },
+  { job_id: jobIds.talento_selecionado, talent_user_id: camilaId,  status: "approved", pipeline_status: "shortlist",  created_at: "2026-05-05T10:00:00Z" },
+  { job_id: jobIds.talento_selecionado, talent_user_id: lucasId,   status: "rejected", pipeline_status: "rejeitado",  created_at: "2026-05-04T15:00:00Z" },
+  // Job: campanha_nike — several under review across stages
+  { job_id: jobIds.campanha_nike, talent_user_id: rafaelId,  status: "pending",  pipeline_status: "em_analise",  created_at: "2026-05-10T09:00:00Z" },
+  { job_id: jobIds.campanha_nike, talent_user_id: lucasId,   status: "pending",  pipeline_status: "novo",         created_at: "2026-05-10T10:00:00Z" },
+  { job_id: jobIds.campanha_nike, talent_user_id: camilaId,  status: "pending",  pipeline_status: "shortlist",   created_at: "2026-05-11T08:00:00Z" },
+  { job_id: jobIds.campanha_nike, talent_user_id: sofiaId,   status: "pending",  pipeline_status: "em_analise",  created_at: "2026-05-11T09:00:00Z" },
+  { job_id: jobIds.campanha_nike, talent_user_id: beatrizId, status: "pending",  pipeline_status: "novo",         created_at: "2026-05-11T10:00:00Z" },
+  // Job: book_feminino — pending/novo
+  { job_id: jobIds.book_feminino, talent_user_id: beatrizId, status: "pending",  pipeline_status: "novo",        created_at: "2026-05-10T09:00:00Z" },
+  { job_id: jobIds.book_feminino, talent_user_id: isabelaId, status: "pending",  pipeline_status: "em_analise", created_at: "2026-05-10T11:00:00Z" },
   // Job: escrow_funded (Samsung) — approved Rafael, rejected Lucas
-  { job_id: jobIds.escrow_funded, talent_user_id: rafaelId, status: "approved",  created_at: "2026-05-07T09:00:00Z" },
-  { job_id: jobIds.escrow_funded, talent_user_id: lucasId,  status: "rejected",  created_at: "2026-05-07T10:00:00Z" },
+  { job_id: jobIds.escrow_funded, talent_user_id: rafaelId, status: "approved",  pipeline_status: "aprovado",  created_at: "2026-05-07T09:00:00Z" },
+  { job_id: jobIds.escrow_funded, talent_user_id: lucasId,  status: "rejected",  pipeline_status: "rejeitado", created_at: "2026-05-07T10:00:00Z" },
   // Job: contrato_assinado (Havaianas) — approved Beatriz
-  { job_id: jobIds.contrato_assinado, talent_user_id: beatrizId, status: "approved", created_at: "2026-05-12T14:00:00Z" },
-  // Lucas — rejected application on high-budget job (shows rejection state)
-  { job_id: jobIds.talento_selecionado, talent_user_id: lucasId, status: "rejected", created_at: "2026-05-04T15:00:00Z" },
+  { job_id: jobIds.contrato_assinado, talent_user_id: beatrizId, status: "approved", pipeline_status: "aprovado", created_at: "2026-05-12T14:00:00Z" },
 ];
 
 let submissionCount = 0;
@@ -1064,10 +1063,11 @@ for (const sub of submissionDefs) {
   if (existing) continue;
 
   const { error } = await sb.from("submissions").insert({
-    job_id: sub.job_id,
-    talent_user_id: sub.talent_user_id,
-    status: sub.status,
-    created_at: sub.created_at,
+    job_id:          sub.job_id,
+    talent_user_id:  sub.talent_user_id,
+    status:          sub.status,
+    pipeline_status: sub.pipeline_status ?? null,
+    created_at:      sub.created_at,
   });
   check(`submission ${sub.talent_user_id}`, error);
   submissionCount++;

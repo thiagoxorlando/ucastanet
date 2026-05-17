@@ -399,9 +399,15 @@ export default function WorkspacePipelineBoard({
       {/* Empty state */}
       {visible.length === 0 && (
         <div className="rounded-[1.5rem] border border-zinc-100 bg-white px-6 py-12 text-center">
-          <p className="text-[15px] font-semibold text-zinc-800">Nenhum candidato</p>
+          <p className="text-[15px] font-semibold text-zinc-800">
+            {candidates.length === 0 ? "Nenhuma candidatura recebida" : "Nenhum candidato nesta etapa"}
+          </p>
           <p className="mt-1 text-[13px] text-zinc-400">
-            {search ? "Nenhum resultado para esta busca." : "Nenhum candidato nesta etapa."}
+            {search
+              ? "Nenhum resultado para esta busca."
+              : candidates.length === 0
+              ? "Quando talentos se candidatarem à vaga eles aparecerão aqui."
+              : "Mude a aba ou limpe a busca para ver outros candidatos."}
           </p>
         </div>
       )}

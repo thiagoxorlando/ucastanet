@@ -49,12 +49,15 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
   const isJobCreator = createdByUserId === user.id;
   const readOnly = !isWorkspaceOwner && !isJobCreator;
 
-  const [{ data: submissionsData }, { data: bookingsData }] = await Promise.all([
+  // Try fetching submissions with pipeline_status (requires migration 20260517).
+  // If the column doesn't exist yet PostgREST returns data:null — fall back to
+  // the legacy select so candidates are never silently empty.
+  const BASE_SELECT = "id, talent_user_id, talent_name, referrer_id, bio, status, mode, created_at, photo_front_url, photo_left_url, photo_right_url, video_url, curriculum_url, portfolio_url";
+
+  const [subsResult, { data: bookingsData }] = await Promise.all([
     supabase
       .from("submissions")
-      .select(
-        "id, talent_user_id, talent_name, referrer_id, bio, status, pipeline_status, mode, created_at, photo_front_url, photo_left_url, photo_right_url, video_url, curriculum_url, portfolio_url"
-      )
+      .select(`${BASE_SELECT}, pipeline_status`)
       .eq("job_id", id)
       .order("created_at", { ascending: false }),
     supabase
@@ -66,6 +69,15 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
       .eq("job_id", id)
       .order("created_at", { ascending: false }),
   ]);
+
+  // If pipeline_status column doesn't exist the query returns data:null — retry without it
+  const submissionsData = subsResult.data
+    ?? (await supabase
+        .from("submissions")
+        .select(BASE_SELECT)
+        .eq("job_id", id)
+        .order("created_at", { ascending: false })
+      ).data;
 
   const submissions = submissionsData ?? [];
   const bookings   = bookingsData   ?? [];
@@ -152,9 +164,16 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
     });
   }
 
+  function legacyStatusToStage(status: string | null | undefined): string {
+    if (status === "approved") return "aprovado";
+    if (status === "rejected") return "rejeitado";
+    return "novo";
+  }
+
   const candidates: PipelineCandidate[] = submissions.map((s) => {
     const profile  = s.talent_user_id ? profileMap.get(s.talent_user_id) : null;
     const booking  = s.talent_user_id ? bookingByTalent.get(s.talent_user_id) : null;
+    const rawPipelineStatus = (s as { pipeline_status?: string | null }).pipeline_status;
     return {
       id:            String(s.id),
       talentId:      s.talent_user_id ?? null,
@@ -165,7 +184,8 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
       country:       null,
       gender:        profile?.gender ?? null,
       bio:           s.bio ?? "",
-      pipelineStatus: (s as { pipeline_status?: string | null }).pipeline_status ?? "novo",
+      // Use pipeline_status if set; fall back to mapping from legacy submission.status
+      pipelineStatus: rawPipelineStatus ?? legacyStatusToStage(s.status),
       submittedAt:   s.created_at ?? "",
       isReferral:    Boolean(s.referrer_id),
       photoFrontUrl: s.photo_front_url  ?? null,
