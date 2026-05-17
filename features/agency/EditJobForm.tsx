@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSubscription } from "@/lib/SubscriptionContext";
+import ApplicationRequirementsInput from "@/features/agency/ApplicationRequirementsInput";
 
 export type EditableJob = {
   id: string;
@@ -18,6 +19,7 @@ export type EditableJob = {
   age_min: number | null;
   age_max: number | null;
   number_of_talents_required: number;
+  application_requirements: string[];
 };
 
 const CATEGORIES = [
@@ -47,6 +49,7 @@ export default function EditJobForm({ job }: { job: EditableJob }) {
   const [ageMin,                setAgeMin]              = useState(job.age_min ? String(job.age_min) : "");
   const [ageMax,                setAgeMax]              = useState(job.age_max ? String(job.age_max) : "");
   const [talentsRequired,       setTalentsRequired]     = useState(String(job.number_of_talents_required ?? 1));
+  const [appRequirements,       setAppRequirements]     = useState<string[]>(job.application_requirements ?? []);
   const [saving,                setSaving]              = useState(false);
   const [error,                 setError]               = useState("");
   const [saved,                 setSaved]               = useState(false);
@@ -74,6 +77,7 @@ export default function EditJobForm({ job }: { job: EditableJob }) {
       payload.age_min     = ageMin  ? Number(ageMin)  : null;
       payload.age_max     = ageMax  ? Number(ageMax)  : null;
       payload.number_of_talents_required = talentsNum;
+      payload.application_requirements   = appRequirements;
     }
 
     const res = await fetch(`/api/jobs/${job.id}`, {
@@ -265,6 +269,14 @@ export default function EditJobForm({ job }: { job: EditableJob }) {
             className={allEditable ? base : disabledBase}
           />
         </div>
+
+        {/* Application requirements — only editable when all fields unlocked */}
+        {allEditable && (
+          <ApplicationRequirementsInput
+            value={appRequirements}
+            onChange={setAppRequirements}
+          />
+        )}
 
         {error && (
           <p className="text-[13px] text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">

@@ -25,7 +25,7 @@ export default async function EditJobPage({ params }: Props) {
 
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, title, description, category, budget, deadline, status, location, gender, age_min, age_max, number_of_talents_required, agency_id, workspace_id")
+    .select("id, title, description, category, budget, deadline, status, location, gender, age_min, age_max, number_of_talents_required, application_requirements, agency_id, workspace_id")
     .eq("id", id)
     .single();
 
@@ -64,6 +64,7 @@ export default async function EditJobPage({ params }: Props) {
         age_min:                     job.age_min     ?? null,
         age_max:                     job.age_max     ?? null,
         number_of_talents_required:  job.number_of_talents_required ?? 1,
+        application_requirements:    (job as { application_requirements?: string[] }).application_requirements ?? [],
       }}
     />
   );

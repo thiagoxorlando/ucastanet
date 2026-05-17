@@ -21,6 +21,7 @@ const PATCH_ALLOWED = [
   "age_max",
   "number_of_talents_required",
   "visibility",
+  "application_requirements",
 ];
 
 export async function PATCH(

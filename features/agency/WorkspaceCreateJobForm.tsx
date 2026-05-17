@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { brl } from "@/lib/brl";
+import ApplicationRequirementsInput from "@/features/agency/ApplicationRequirementsInput";
 
 const CATEGORIES = [
   "Lifestyle & Fashion", "Technology", "Food & Cooking", "Health & Fitness",
@@ -39,7 +40,8 @@ export default function WorkspaceCreateJobForm({
   const [gender,          setGender]          = useState("any");
   const [ageMin,          setAgeMin]          = useState("");
   const [ageMax,          setAgeMax]          = useState("");
-  const [visibility,      setVisibility]      = useState<"private_invite" | "public">("private_invite");
+  const [visibility,        setVisibility]        = useState<"private_invite" | "public">("private_invite");
+  const [appRequirements,   setAppRequirements]   = useState<string[]>([]);
 
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState("");
@@ -75,6 +77,7 @@ export default function WorkspaceCreateJobForm({
       visibility:                isOwner ? visibility : "private_invite",
       status:                    "open",
       auto_invite:               false,
+      application_requirements:  appRequirements,
     };
 
     const res = await fetch("/api/jobs", {
@@ -313,6 +316,12 @@ export default function WorkspaceCreateJobForm({
             />
           </div>
         </div>
+
+        {/* Application requirements */}
+        <ApplicationRequirementsInput
+          value={appRequirements}
+          onChange={setAppRequirements}
+        />
 
         {/* Visibility — owners can choose; agents are locked to private_invite */}
         {isOwner ? (
