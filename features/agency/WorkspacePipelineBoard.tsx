@@ -1069,7 +1069,7 @@ function CandidateCard({
   const photos        = [c.photoFrontUrl, c.photoLeftUrl, c.photoRightUrl].filter(Boolean) as string[];
   const uploadBits    = [hasPhotos, !!c.videoUrl, !!c.curriculumUrl, !!c.portfolioUrl];
   const uploadDone    = uploadBits.filter(Boolean).length;
-  const canContract   = canManage && !c.bookingId && job.status === "open" && !!c.talentId;
+  const canContract   = canManage && !c.bookingId && !!c.talentId && !["closed", "draft", "inactive"].includes(job.status);
   const canMove       = canManage && !!stageCfg?.movable;
   const fbStatus      = clientFeedbackStatus(c.clientFeedback);
   const clientApproved = fbStatus === "approved" || fbStatus === "mixed";
