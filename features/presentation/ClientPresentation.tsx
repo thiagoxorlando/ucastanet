@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import Image from "next/image";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -298,10 +297,12 @@ export default function ClientPresentation({ token }: { token: string }) {
     <div className="min-h-screen bg-[#F8F9FA]">
 
       {/* ── Hero header ── */}
-      <header className="relative overflow-hidden" style={{ background: "linear-gradient(160deg, #060F0F 0%, #0B2B2B 55%, #0A1E35 100%)" }}>
+      <header className="relative overflow-hidden" style={{ background: `linear-gradient(160deg, #060F0F 0%, ${brandColor}22 35%, #0B2B2B 60%, #0A1E35 100%)` }}>
+        {/* Brand color accent line at top */}
+        <div className="absolute inset-x-0 top-0 h-[3px]" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}, transparent)` }} />
         {/* Ambient glows */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-32 left-1/4 h-80 w-80 rounded-full opacity-20 blur-[100px]" style={{ background: brandColor }} />
+          <div className="absolute -top-32 left-1/4 h-80 w-80 rounded-full opacity-35 blur-[100px]" style={{ background: brandColor }} />
           <div className="absolute -bottom-20 right-1/4 h-60 w-60 rounded-full bg-[#0E7CB6]/30 blur-[80px]" />
         </div>
 
@@ -311,11 +312,9 @@ export default function ClientPresentation({ token }: { token: string }) {
           <div className="mb-8 flex items-center justify-between">
             <div className="flex items-center gap-3">
               {ws.logoUrl ? (
-                <Image
+                <img
                   src={ws.logoUrl}
                   alt={ws.name}
-                  width={44}
-                  height={44}
                   className="h-11 w-11 rounded-2xl object-contain ring-2 ring-white/15"
                 />
               ) : (
@@ -327,14 +326,14 @@ export default function ClientPresentation({ token }: { token: string }) {
                 </div>
               )}
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#1ABC9C]">{ws.name}</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: brandColor }}>{ws.name}</p>
                 <p className="text-[11px] text-white/40">Apresentação de talentos</p>
               </div>
             </div>
 
             {identity && (
               <div className="hidden sm:flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-3 py-1.5 backdrop-blur-sm">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#1ABC9C]/20 text-[9px] font-black text-[#1ABC9C]">
+                <div className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-black" style={{ backgroundColor: `${brandColor}33`, color: brandColor }}>
                   {initials(identity.name)}
                 </div>
                 <span className="text-[11px] font-medium text-white/70">{identity.name}</span>
@@ -357,7 +356,7 @@ export default function ClientPresentation({ token }: { token: string }) {
           {/* Stats chips */}
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-3.5 py-1.5 text-[12px] font-semibold text-white/80 backdrop-blur-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#1ABC9C]" />
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: brandColor }} />
               {data.candidates.length} talento{data.candidates.length !== 1 ? "s" : ""}
             </span>
             {totalVoted > 0 && (
