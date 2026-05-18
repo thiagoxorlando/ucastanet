@@ -4,6 +4,7 @@ import { createSessionClient } from "@/lib/supabase.server";
 import { syncBooking } from "@/lib/syncBooking";
 import { notify, notifyAdmins } from "@/lib/notify";
 import { getUnifiedBookingStatus } from "@/lib/bookingStatus";
+import { resolveContractCreationAccess } from "@/lib/contractCreationAccess.server";
 import {
   agencyWorkspaceBookingsHref,
   agencyWorkspaceContractsHref,
@@ -50,6 +51,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Contract not found" }, { status: 404 });
   }
 
+  const contractTalentUserId = contract.talent_user_id ?? contract.talent_id ?? null;
+
   const workspaceLifecycle = await resolveWorkspaceLifecycleByJobId(supabase, contract.job_id ?? null);
   const agencyBookingsHref = agencyWorkspaceBookingsHref(workspaceLifecycle?.workspaceSlug);
   const agencyContractsHref = agencyWorkspaceContractsHref(workspaceLifecycle?.workspaceSlug);
@@ -62,8 +65,16 @@ export async function PATCH(
     .eq("id", user.id)
     .single();
 
-  const isAgencyOwner = caller?.role === "agency" && contract.agency_id === user.id;
-  const isTalentOwner = caller?.role === "talent" && contract.talent_id === user.id;
+  const agencyAccess = caller?.role === "agency"
+    ? await resolveContractCreationAccess({
+        userId: user.id,
+        jobId: contract.job_id ?? null,
+        requestedAgencyId: contract.agency_id ?? null,
+      })
+    : null;
+
+  const isAgencyOwner = caller?.role === "agency" && !!agencyAccess?.allowed;
+  const isTalentOwner = caller?.role === "talent" && contractTalentUserId === user.id;
   const agencyActions = ["set_file_url", "agency_sign", "pay", "cancel_job"];
   const talentActions = ["reject", "talent_cancel"];
 
@@ -134,12 +145,12 @@ export async function PATCH(
         .eq("id", contract.booking_id);
     }
 
-    if (contract.job_id && contract.talent_id) {
+    if (contract.job_id && contractTalentUserId) {
       await supabase
         .from("submissions")
         .delete()
         .eq("job_id", contract.job_id)
-        .eq("talent_user_id", contract.talent_id);
+        .eq("talent_user_id", contractTalentUserId);
     }
 
     await notify(contract.agency_id, "contract", "Talento cancelou a reserva", agencyBookingsHref);
@@ -207,9 +218,9 @@ export async function PATCH(
     // Notify talent about the confirmation + escrow deposit.
     // Uses the same idempotency_key as the RPC insert so the DB deduplicates
     // automatically — no double notification even if the RPC already sent it.
-    if (contract.talent_id) {
+    if (contractTalentUserId) {
       await notify(
-        contract.talent_id,
+        contractTalentUserId,
         "contract",
         "Agência confirmou o contrato e realizou o depósito",
         talentContractsHref,
@@ -251,13 +262,13 @@ export async function PATCH(
     let referralCommission = 0;
     let referralJobTitle   = "";
 
-    if (contract.talent_id && contract.payment_amount && contract.job_id) {
+    if (contractTalentUserId && contract.payment_amount && contract.job_id) {
       const [jobRes, inviteRes] = await Promise.all([
         supabase.from("jobs").select("title").eq("id", contract.job_id).maybeSingle(),
         supabase
           .from("referral_invites")
           .select("id, referrer_id, commission_rate")
-          .eq("referred_user_id", contract.talent_id)
+          .eq("referred_user_id", contractTalentUserId)
           .eq("job_id", contract.job_id)
           .neq("status", "fraud_reported")
           .neq("status", "commission_paid")
@@ -284,7 +295,7 @@ export async function PATCH(
         });
       } else {
         console.log("[referral commission] no referral found", {
-          talentId: contract.talent_id,
+          talentId: contractTalentUserId,
           jobId:    contract.job_id,
         });
       }
@@ -543,15 +554,17 @@ export async function PATCH(
         .eq("id", contract.booking_id);
     }
 
-    if (contract.job_id && contract.talent_id) {
+    if (contract.job_id && contractTalentUserId) {
       await supabase
         .from("submissions")
         .delete()
         .eq("job_id", contract.job_id)
-        .eq("talent_user_id", contract.talent_id);
+        .eq("talent_user_id", contractTalentUserId);
     }
 
-    await notify(contract.talent_id, "contract", "Agência cancelou o contrato", talentContractsHref);
+    if (contractTalentUserId) {
+      await notify(contractTalentUserId, "contract", "Agência cancelou o contrato", talentContractsHref);
+    }
     return NextResponse.json({ ok: true, status: "cancelled", derived_status: getUnifiedBookingStatus("cancelled", "cancelled") });
   }
 
@@ -590,10 +603,18 @@ export async function GET(
     .eq("id", user.id)
     .single();
 
+  const agencyAccess = caller?.role === "agency"
+    ? await resolveContractCreationAccess({
+        userId: user.id,
+        jobId: data.job_id ?? null,
+        requestedAgencyId: data.agency_id ?? null,
+      })
+    : null;
+
   const canRead =
     caller?.role === "admin" ||
-    (caller?.role === "agency" && data.agency_id === user.id) ||
-    (caller?.role === "talent" && data.talent_id === user.id);
+    (caller?.role === "agency" && !!agencyAccess?.allowed) ||
+    (caller?.role === "talent" && (data.talent_user_id ?? data.talent_id) === user.id);
 
   if (!canRead) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 

@@ -37,6 +37,7 @@ type AuthUserRow = {
 type WorkspaceContractRow = {
   id: string;
   talent_id: string | null;
+  talent_user_id?: string | null;
   job_id: string | null;
   status: string;
   payment_amount: number | null;
@@ -160,7 +161,7 @@ export default async function WorkspaceTalentsPage() {
     jobIds.length > 0
       ? supabase
           .from("contracts")
-          .select("id, talent_id, job_id, status, payment_amount, commission_amount, net_amount, commission_percent, paid_at, created_at")
+          .select("id, talent_id, talent_user_id, job_id, status, payment_amount, commission_amount, net_amount, commission_percent, paid_at, created_at")
           .in("job_id", jobIds)
       : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
     supabase.auth.admin.listUsers({ perPage: 1000 }),
@@ -212,8 +213,9 @@ export default async function WorkspaceTalentsPage() {
   }
 
   for (const contract of contracts) {
-    if (!contract.talent_id) continue;
-    const userId = String(contract.talent_id);
+    const talentUserId = contract.talent_user_id ?? contract.talent_id;
+    if (!talentUserId) continue;
+    const userId = String(talentUserId);
     const current = aggMap.get(userId) ?? {
       jobIds: new Set<string>(),
       latestActivity: "",
@@ -252,8 +254,9 @@ export default async function WorkspaceTalentsPage() {
 
   const contractHistoryMap = new Map<string, WorkspaceTalentContractHistory[]>();
   for (const contract of contracts) {
-    if (!contract.talent_id) continue;
-    const userId = String(contract.talent_id);
+    const talentUserId = contract.talent_user_id ?? contract.talent_id;
+    if (!talentUserId) continue;
+    const userId = String(talentUserId);
     const paymentStatus = getContractPaymentStatus(contract);
     const { gross, commission, net } = resolveContractAmounts(contract);
     const paidToTalent =

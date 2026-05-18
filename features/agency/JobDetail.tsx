@@ -356,7 +356,7 @@ function ContractModal({
         fetch("/api/contracts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...payload, talent_id: t.talentId }),
+          body: JSON.stringify({ ...payload, talent_id: t.talentId, talent_user_id: t.talentId }),
         })
       )
     );

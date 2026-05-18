@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase";
+import { resolveContractCreationAccess } from "@/lib/contractCreationAccess.server";
+import { getContractBucket, getStoredContractPath, resolveContractFileUrl } from "@/lib/contractFiles";
 import { createSessionClient } from "@/lib/supabase.server";
-import { resolveContractFileUrl, getContractBucket, getStoredContractPath, CONTRACTS_BUCKET } from "@/lib/contractFiles";
+import { createServerClient } from "@/lib/supabase";
 
 export async function GET(
   req: NextRequest,
@@ -12,14 +13,14 @@ export async function GET(
 
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+  if (!user) return NextResponse.json({ error: "Nao autorizado." }, { status: 401 });
 
   const supabase = createServerClient({ useServiceRole: true });
 
   const [{ data: contract, error: contractError }, { data: caller }] = await Promise.all([
     supabase
       .from("contracts")
-      .select("id, agency_id, talent_id, contract_file_url, signed_contract_url")
+      .select("id, agency_id, talent_id, talent_user_id, job_id, contract_file_url, signed_contract_url")
       .eq("id", id)
       .single(),
     supabase
@@ -30,25 +31,34 @@ export async function GET(
   ]);
 
   if (contractError || !contract) {
-    return NextResponse.json({ error: "Contrato não encontrado." }, { status: 404 });
+    return NextResponse.json({ error: "Contrato nao encontrado." }, { status: 404 });
   }
+
+  const contractTalentUserId = contract.talent_user_id ?? contract.talent_id ?? null;
+  const agencyAccess = caller?.role === "agency"
+    ? await resolveContractCreationAccess({
+        userId: user.id,
+        jobId: contract.job_id ?? null,
+        requestedAgencyId: contract.agency_id ?? null,
+      })
+    : null;
 
   const canRead =
     caller?.role === "admin" ||
-    (caller?.role === "agency" && contract.agency_id === user.id) ||
-    (caller?.role === "talent" && contract.talent_id === user.id);
+    (caller?.role === "agency" && !!agencyAccess?.allowed) ||
+    (caller?.role === "talent" && contractTalentUserId === user.id);
 
   if (!canRead) {
-    return NextResponse.json({ error: "Você não tem permissão para acessar este contrato." }, { status: 403 });
+    return NextResponse.json({ error: "Voce nao tem permissao para acessar este contrato." }, { status: 403 });
   }
 
   const fileRef = fileType === "signed" ? contract.signed_contract_url : contract.contract_file_url;
   if (!fileRef) {
-    return NextResponse.json({ error: "Arquivo do contrato não encontrado." }, { status: 404 });
+    return NextResponse.json({ error: "Arquivo do contrato nao encontrado." }, { status: 404 });
   }
 
   const storagePath = getStoredContractPath(fileRef);
-  const bucket      = getContractBucket(fileType, fileRef);
+  const bucket = getContractBucket(fileType, fileRef);
 
   console.error("[contracts/file] resolving", {
     contractId: id,
@@ -67,7 +77,7 @@ export async function GET(
       storagePath,
       bucket,
     });
-    return NextResponse.json({ error: "Arquivo do contrato não encontrado." }, { status: 404 });
+    return NextResponse.json({ error: "Arquivo do contrato nao encontrado." }, { status: 404 });
   }
 
   return NextResponse.redirect(fileUrl);

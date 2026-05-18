@@ -157,7 +157,7 @@ export default async function TalentWorkspaceDashboard({ params }: Props) {
       supabase
         .from("contracts")
         .select("id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, job_date, created_at")
-        .eq("talent_id", user.id)
+        .or(`talent_user_id.eq.${user.id},talent_id.eq.${user.id}`)
         .in("job_id", allJobIds)
         .order("created_at", { ascending: false }),
     ]);

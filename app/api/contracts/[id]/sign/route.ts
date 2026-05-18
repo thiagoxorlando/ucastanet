@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@/lib/supabase";
-import { createSessionClient } from "@/lib/supabase.server";
-import { syncBooking } from "@/lib/syncBooking";
 import { notify } from "@/lib/notify";
+import { syncBooking } from "@/lib/syncBooking";
 import { agencyWorkspaceBookingsHref, resolveWorkspaceLifecycleByJobId } from "@/lib/workspaceLifecycle";
+import { createSessionClient } from "@/lib/supabase.server";
+import { createServerClient } from "@/lib/supabase";
 
 export async function POST(
   req: NextRequest,
@@ -21,7 +21,7 @@ export async function POST(
 
   const { data: contract, error: fetchErr } = await supabase
     .from("contracts")
-    .select("agency_id, talent_id, job_id, booking_id, status")
+    .select("agency_id, talent_id, talent_user_id, job_id, booking_id, status")
     .eq("id", id)
     .single();
 
@@ -29,6 +29,7 @@ export async function POST(
     return NextResponse.json({ error: "Contract not found" }, { status: 404 });
   }
 
+  const contractTalentUserId = contract.talent_user_id ?? contract.talent_id ?? null;
   const workspaceLifecycle = await resolveWorkspaceLifecycleByJobId(supabase, contract.job_id ?? null);
   const agencyBookingsHref = agencyWorkspaceBookingsHref(workspaceLifecycle?.workspaceSlug);
 
@@ -38,7 +39,7 @@ export async function POST(
     .eq("id", user.id)
     .single();
 
-  if (caller?.role !== "talent" || contract.talent_id !== user.id) {
+  if (caller?.role !== "talent" || contractTalentUserId !== user.id) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -47,7 +48,7 @@ export async function POST(
   }
 
   const updates: Record<string, string> = {
-    status:    "signed",
+    status: "signed",
     signed_at: new Date().toISOString(),
   };
   if (signed_contract_url) {
@@ -61,10 +62,11 @@ export async function POST(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
-  await syncBooking(supabase, contract, "pending_payment");
+  await syncBooking(supabase, {
+    ...contract,
+    talent_id: contractTalentUserId,
+  }, "pending_payment");
 
-  // Notify agency only — talent already received "Você recebeu um novo contrato"
-  // when the contract was created; a second notification here would be a duplicate.
   await notify(contract.agency_id, "contract", "Talento assinou o contrato", agencyBookingsHref);
 
   return NextResponse.json({ ok: true, status: "signed" });

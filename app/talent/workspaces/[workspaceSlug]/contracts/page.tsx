@@ -113,7 +113,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
 
   const { data: workspace } = await supabase
     .from("premium_workspaces")
-    .select("id, name, logo_url, brand_primary_color, brand_accent_color")
+    .select("id, agency_id, owner_user_id, name, logo_url, brand_primary_color, brand_accent_color")
     .eq("slug", workspaceSlug)
     .is("deleted_at", null)
     .eq("status", "active")
@@ -130,30 +130,78 @@ export default async function WorkspaceContractsPage({ params }: Props) {
   const jobMap = new Map((allJobs ?? []).map((j) => [String(j.id), String(j.title ?? "Vaga")]));
   const contractColumnSupport = await getExistingContractColumns();
 
-  const [workspaceScopedContractsResult, jobScopedContractsResult] = await Promise.all([
+  const [agencyResult, directTalentContractsResult, workspaceScopedContractsResult, jobScopedContractsResult, legacyWorkspaceScopedContractsResult, legacyJobScopedContractsResult] = await Promise.all([
+    workspace.agency_id
+      ? supabase
+          .from("agencies")
+          .select("company_name")
+          .eq("id", workspace.agency_id)
+          .maybeSingle()
+      : workspace.owner_user_id
+        ? supabase
+            .from("agencies")
+            .select("company_name")
+            .eq("user_id", workspace.owner_user_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    supabase
+      .from("contracts")
+      .select("id", { count: "exact", head: true })
+      .eq("talent_user_id", user.id),
     contractColumnSupport.hasWorkspaceId
       ? supabase
           .from("contracts")
-          .select("id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at")
+          .select("id, agency_id, talent_user_id, talent_id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at")
+          .eq("talent_user_id", user.id)
+          .eq("workspace_id", workspace.id)
+      : Promise.resolve({ data: [] }),
+    workspaceJobIds.length
+      ? supabase
+          .from("contracts")
+          .select("id, agency_id, talent_user_id, talent_id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at")
+          .eq("talent_user_id", user.id)
+          .in("job_id", workspaceJobIds)
+      : Promise.resolve({ data: [] }),
+    contractColumnSupport.hasWorkspaceId
+      ? supabase
+          .from("contracts")
+          .select("id, agency_id, talent_user_id, talent_id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at")
           .eq("talent_id", user.id)
           .eq("workspace_id", workspace.id)
       : Promise.resolve({ data: [] }),
     workspaceJobIds.length
       ? supabase
           .from("contracts")
-          .select("id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at")
+          .select("id, agency_id, talent_user_id, talent_id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at")
           .eq("talent_id", user.id)
           .in("job_id", workspaceJobIds)
       : Promise.resolve({ data: [] }),
   ]);
 
-  const contracts = [...(workspaceScopedContractsResult.data ?? []), ...(jobScopedContractsResult.data ?? [])]
+  console.log("[talent workspace contracts] lookup", {
+    userId: user.id,
+    workspaceId: workspace.id,
+    directTalentUserContractCount: directTalentContractsResult.count ?? 0,
+    workspaceScopeTalentUserCount: workspaceScopedContractsResult.data?.length ?? 0,
+    jobWorkspaceTalentUserCount: jobScopedContractsResult.data?.length ?? 0,
+    workspaceScopeLegacyTalentIdCount: legacyWorkspaceScopedContractsResult.data?.length ?? 0,
+    jobWorkspaceLegacyTalentIdCount: legacyJobScopedContractsResult.data?.length ?? 0,
+  });
+
+  const contracts = [
+    ...(workspaceScopedContractsResult.data ?? []),
+    ...(jobScopedContractsResult.data ?? []),
+    ...(legacyWorkspaceScopedContractsResult.data ?? []),
+    ...(legacyJobScopedContractsResult.data ?? []),
+  ]
     .filter((contract, index, rows) => rows.findIndex((row) => row.id === contract.id) === index)
     .sort((a, b) => {
       const aTime = new Date(a.created_at ?? 0).getTime();
       const bTime = new Date(b.created_at ?? 0).getTime();
       return bTime - aTime;
     });
+
+  const agencyName = agencyResult.data?.company_name ?? (workspace.name as string);
 
   const active = contracts.filter((c) => ["sent", "signed", "confirmed"].includes(c.status ?? ""));
   const paid   = contracts.filter((c) => c.status === "paid");
@@ -256,6 +304,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                           <p className="truncate text-[15px] font-semibold text-zinc-900">
                             {jobMap.get(String(contract.job_id)) ?? "Vaga"}
                           </p>
+                          <p className="mt-0.5 text-[11px] text-zinc-400">{agencyName}</p>
                           {contract.job_date && (
                             <p className="mt-0.5 text-[12px] text-zinc-500">
                               {new Date(`${contract.job_date}T00:00:00`).toLocaleDateString(locale, {
@@ -326,6 +375,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                           <p className="truncate text-[15px] font-semibold text-zinc-900">
                             {jobMap.get(String(contract.job_id)) ?? "Vaga"}
                           </p>
+                          <p className="mt-0.5 text-[11px] text-zinc-400">{agencyName}</p>
                           {contract.job_date && (
                             <p className="mt-0.5 text-[12px] text-zinc-500">
                               {new Date(`${contract.job_date}T00:00:00`).toLocaleDateString(locale, {
@@ -392,6 +442,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                       <p className="truncate text-[13px] font-semibold text-zinc-500">
                         {jobMap.get(String(contract.job_id)) ?? "Vaga"}
                       </p>
+                      <p className="text-[11px] text-zinc-400">{agencyName}</p>
                       <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{label}</span>
                     </div>
                     <div className="mt-1.5 flex flex-wrap gap-3 text-[12px] text-zinc-400">

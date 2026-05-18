@@ -18,6 +18,7 @@ export async function POST(req: NextRequest) {
   const {
     job_id,
     talent_id,
+    talent_user_id,
     agency_id,
     contract_file_url,
     job_date,
@@ -30,8 +31,10 @@ export async function POST(req: NextRequest) {
     is_rehire,
   } = body;
 
-  if (!talent_id || !agency_id) {
-    return NextResponse.json({ error: "talent_id and agency_id are required" }, { status: 400 });
+  const resolvedTalentUserId = talent_user_id ?? talent_id ?? null;
+
+  if (!resolvedTalentUserId || !agency_id) {
+    return NextResponse.json({ error: "talent_user_id and agency_id are required" }, { status: 400 });
   }
   if (payment_amount === undefined || payment_amount === null || isNaN(Number(payment_amount)) || Number(payment_amount) < 0) {
     return NextResponse.json({ error: "payment_amount must be 0 or greater" }, { status: 400 });
@@ -171,7 +174,7 @@ export async function POST(req: NextRequest) {
     .insert({
       job_id: job_id ?? null,
       agency_id: resolvedAgencyId,
-      talent_user_id: talent_id,
+      talent_user_id: resolvedTalentUserId,
       job_title: jobTitle,
       price: amount,
       status: "pending",
@@ -187,7 +190,8 @@ export async function POST(req: NextRequest) {
   const contractInsert: Record<string, unknown> = {
     booking_id: booking.id,
     job_id: job_id ?? null,
-    talent_id,
+    talent_id: resolvedTalentUserId,
+    talent_user_id: resolvedTalentUserId,
     agency_id: resolvedAgencyId,
     job_date: job_date ?? null,
     job_time: job_time ?? null,
@@ -231,9 +235,9 @@ export async function POST(req: NextRequest) {
       .eq("id", resolvedAgencyId)
       .single();
     const agencyName = agencyProfile?.full_name ?? "a agencia";
-    await notify(talent_id, "rehire", `Voce foi contratado novamente por ${agencyName}`, talentContractsHref);
+    await notify(resolvedTalentUserId, "rehire", `Voce foi contratado novamente por ${agencyName}`, talentContractsHref);
   } else {
-    await notify(talent_id, "contract", "Voce recebeu um novo contrato", talentContractsHref);
+    await notify(resolvedTalentUserId, "contract", "Voce recebeu um novo contrato", talentContractsHref);
   }
 
   await notifyAdmins(
@@ -291,13 +295,13 @@ export async function GET(req: NextRequest) {
 
   if (caller?.role === "admin") {
     if (agencyId) query = query.eq("agency_id", agencyId);
-    if (talentId) query = query.eq("talent_id", talentId);
+    if (talentId) query = query.or(`talent_user_id.eq.${talentId},talent_id.eq.${talentId}`);
   } else if (caller?.role === "agency") {
     if (agencyId && agencyId !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     query = query.eq("agency_id", user.id);
   } else if (caller?.role === "talent") {
     if (talentId && talentId !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    query = query.eq("talent_id", user.id);
+    query = query.or(`talent_user_id.eq.${user.id},talent_id.eq.${user.id}`);
   } else {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

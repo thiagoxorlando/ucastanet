@@ -66,7 +66,7 @@ export default async function WorkspaceFinancesPage({ params }: Props) {
     ? await supabase
         .from("contracts")
         .select("id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at")
-        .eq("talent_id", user.id)
+        .or(`talent_user_id.eq.${user.id},talent_id.eq.${user.id}`)
         .in("job_id", workspaceJobIds)
         .order("paid_at", { ascending: false })
     : { data: [] };
