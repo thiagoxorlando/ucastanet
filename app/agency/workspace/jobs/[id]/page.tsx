@@ -116,7 +116,7 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
 
   const presIds = (presResult.data ?? []).map((p) => p.id);
 
-  const [presCandResult, feedbackResult] = await Promise.all([
+  const [presCandResult, feedbackResult, subFbResult] = await Promise.all([
     presIds.length
       ? supabase
           .from("workspace_presentation_candidates")
@@ -129,6 +129,13 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
           .select("presentation_id, vote")
           .in("presentation_id", presIds)
       : Promise.resolve({ data: [] as Array<{ presentation_id: string; vote: string }> }),
+    // Per-submission feedback — used to show client approval badges directly on candidate cards
+    submissionIds.length
+      ? supabase
+          .from("presentation_feedback")
+          .select("submission_id, vote")
+          .in("submission_id", submissionIds)
+      : Promise.resolve({ data: [] as Array<{ submission_id: string; vote: string }> }),
   ]);
 
   const profileMap = new Map<string, { full_name: string; avatar_url: string | null; age: number | null; city: string | null; gender: string | null }>();
@@ -198,11 +205,25 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
       bookingStatus: booking?.bookingStatus ?? null,
       contractId:    booking?.contractId    ?? null,
       notes:         notesMap.get(String(s.id)) ?? [],
+      clientFeedback: (() => {
+        const fb = subFeedbackMap.get(String(s.id));
+        return fb && (fb.approved + fb.rejected + fb.favorite) > 0 ? fb : null;
+      })(),
     };
   });
 
   // Build presentations list with counts + feedback
   const presRows = presResult.data ?? [];
+
+  // Aggregate per-submission feedback for candidate card badges
+  const subFeedbackMap = new Map<string, { approved: number; rejected: number; favorite: number }>();
+  for (const f of subFbResult.data ?? []) {
+    const cur = subFeedbackMap.get(f.submission_id) ?? { approved: 0, rejected: 0, favorite: 0 };
+    if (f.vote === "approved") cur.approved++;
+    if (f.vote === "rejected") cur.rejected++;
+    if (f.vote === "favorite") cur.favorite++;
+    subFeedbackMap.set(f.submission_id, cur);
+  }
 
   const presCandCount = new Map<string, number>();
   const presSubIds    = new Map<string, string[]>();

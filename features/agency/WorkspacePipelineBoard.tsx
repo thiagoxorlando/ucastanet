@@ -42,6 +42,8 @@ export type PipelineCandidate = {
   contractId:     string | null;
   // notes
   notes: PipelineNote[];
+  // aggregated client feedback across all presentations this candidate appears in
+  clientFeedback: { approved: number; rejected: number; favorite: number } | null;
 };
 
 export type PipelineJob = {
@@ -95,6 +97,30 @@ const STAGES: StageConfig[] = [
 ];
 
 const STAGE_MAP = new Map(STAGES.map((s) => [s.id, s]));
+
+// ─── Client feedback helpers ──────────────────────────────────────────────────
+
+type ClientFeedbackStatus = "approved" | "favorite" | "rejected" | "mixed" | "pending";
+type FeedbackFilter       = "all" | "approved" | "favorite" | "rejected";
+
+function clientFeedbackStatus(fb: PipelineCandidate["clientFeedback"]): ClientFeedbackStatus {
+  if (!fb) return "pending";
+  const { approved, rejected, favorite } = fb;
+  if (approved + rejected + favorite === 0) return "pending";
+  if (approved > 0 && rejected > 0) return "mixed";
+  if (approved > 0) return "approved";
+  if (favorite > 0) return "favorite";
+  if (rejected > 0) return "rejected";
+  return "pending";
+}
+
+function feedbackSortKey(s: ClientFeedbackStatus): number {
+  if (s === "approved") return 0;
+  if (s === "mixed")    return 1;
+  if (s === "favorite") return 2;
+  if (s === "pending")  return 3;
+  return 4; // rejected
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -150,6 +176,7 @@ export default function WorkspacePipelineBoard({
   const [candidates, setCandidates] = useState<PipelineCandidate[]>(initial);
   const [presentations, setPresentations] = useState<PresentationSummary[]>(initialPresentations);
   const [activeStage, setActiveStage] = useState<string>("all");
+  const [feedbackFilter, setFeedbackFilter] = useState<FeedbackFilter>("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [contractTarget, setContractTarget] = useState<PipelineCandidate | null>(null);
@@ -174,11 +201,18 @@ export default function WorkspacePipelineBoard({
     return candidates.filter((c) => {
       if (q && !c.talentName.toLowerCase().includes(q)) return false;
       if (activeStage !== "all" && effectiveStage(c) !== activeStage) return false;
+      if (feedbackFilter !== "all") {
+        const fb = c.clientFeedback;
+        if (!fb) return false;
+        if (feedbackFilter === "approved" && fb.approved === 0) return false;
+        if (feedbackFilter === "favorite" && fb.favorite === 0) return false;
+        if (feedbackFilter === "rejected" && fb.rejected === 0) return false;
+      }
       return true;
     });
-  }, [candidates, activeStage, search]);
+  }, [candidates, activeStage, search, feedbackFilter]);
 
-  // Group by effective stage for "all" view
+  // Group by effective stage for "all" view; within each stage sort by client feedback priority
   const sections = useMemo(() => {
     if (activeStage !== "all") return null;
     const groups = new Map<string, PipelineCandidate[]>();
@@ -189,9 +223,25 @@ export default function WorkspacePipelineBoard({
     }
     return STAGES.filter((s) => groups.has(s.id)).map((s) => ({
       stage: s,
-      candidates: groups.get(s.id)!,
+      candidates: groups.get(s.id)!.sort(
+        (a, b) => feedbackSortKey(clientFeedbackStatus(a.clientFeedback)) -
+                  feedbackSortKey(clientFeedbackStatus(b.clientFeedback))
+      ),
     }));
   }, [visible, activeStage]);
+
+  // Count candidates with each feedback type (for filter badges)
+  const feedbackCounts = useMemo(() => {
+    let approved = 0, favorite = 0, rejected = 0;
+    for (const c of candidates) {
+      const fb = c.clientFeedback;
+      if (!fb) continue;
+      if (fb.approved > 0) approved++;
+      if (fb.favorite > 0) favorite++;
+      if (fb.rejected > 0) rejected++;
+    }
+    return { approved, favorite, rejected };
+  }, [candidates]);
 
   // Optimistic status update
   function patchCandidateStatus(submissionId: string, nextStatus: string) {
@@ -370,6 +420,38 @@ export default function WorkspacePipelineBoard({
         )}
       </div>
 
+      {/* Client feedback filter — only shown when there is feedback to filter on */}
+      {(feedbackCounts.approved + feedbackCounts.favorite + feedbackCounts.rejected) > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[11px] font-medium text-zinc-400 whitespace-nowrap">Feedback do cliente:</span>
+          {([
+            { key: "approved" as const, label: "Aprovados",  count: feedbackCounts.approved,  icon: "✓", on: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200", off: "bg-zinc-50 text-zinc-500 ring-1 ring-zinc-200 hover:ring-emerald-200 hover:text-emerald-700" },
+            { key: "favorite" as const, label: "Favoritos",  count: feedbackCounts.favorite,  icon: "★", on: "bg-amber-50  text-amber-700  ring-1 ring-amber-200",   off: "bg-zinc-50 text-zinc-500 ring-1 ring-zinc-200 hover:ring-amber-200  hover:text-amber-700"  },
+            { key: "rejected" as const, label: "Rejeitados", count: feedbackCounts.rejected,  icon: "✕", on: "bg-zinc-200  text-zinc-600  ring-1 ring-zinc-300",     off: "bg-zinc-50 text-zinc-500 ring-1 ring-zinc-200 hover:ring-zinc-300" },
+          ] as const).filter((f) => f.count > 0).map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setFeedbackFilter(feedbackFilter === f.key ? "all" : f.key)}
+              className={[
+                "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition-colors cursor-pointer",
+                feedbackFilter === f.key ? f.on : f.off,
+              ].join(" ")}
+            >
+              {f.icon} {f.label}
+              <span className="rounded-full bg-white/70 px-1.5 py-px text-[9px] font-bold leading-none">{f.count}</span>
+            </button>
+          ))}
+          {feedbackFilter !== "all" && (
+            <button
+              onClick={() => setFeedbackFilter("all")}
+              className="text-[11px] text-zinc-400 hover:text-zinc-600 cursor-pointer transition-colors"
+            >
+              Limpar filtro
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Bulk action bar — sticky floating */}
       {selected.size > 0 && (
         <div className="sticky bottom-4 z-30 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.14)]">
@@ -468,10 +550,13 @@ export default function WorkspacePipelineBoard({
         </div>
       )}
 
-      {/* Flat list (specific stage tab) */}
+      {/* Flat list (specific stage tab) — sorted by client feedback priority */}
       {!sections && visible.length > 0 && (
         <div className="space-y-2">
-          {visible.map((c) => (
+          {[...visible].sort((a, b) =>
+            feedbackSortKey(clientFeedbackStatus(a.clientFeedback)) -
+            feedbackSortKey(clientFeedbackStatus(b.clientFeedback))
+          ).map((c) => (
             <CandidateCard
               key={c.id}
               candidate={c}
@@ -587,6 +672,29 @@ function BulkBtn({ label, onClick, danger, highlight }: { label: string; onClick
   );
 }
 
+// ─── Copy link button ─────────────────────────────────────────────────────────
+
+function CopyLinkBtn({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  function copy() {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  }
+  return (
+    <button
+      onClick={copy}
+      className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
+    >
+      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+      </svg>
+      {copied ? "Copiado!" : "Copiar link"}
+    </button>
+  );
+}
+
 // ─── Presentations panel ──────────────────────────────────────────────────────
 
 function PresentationsPanel({
@@ -656,70 +764,77 @@ function PresentationsPanel({
             const expired = isExpired(p.expiresAt);
             const url = `/presentation/${p.token}`;
             const fb  = p.feedbackSummary;
+            const hasFb = fb.approved + fb.rejected + fb.favorite > 0;
             return (
-              <div key={p.id} className="rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3">
-                <div className="flex items-start justify-between gap-3">
+              <div key={p.id} className="rounded-2xl border border-zinc-100 bg-zinc-50 px-5 py-4">
+                {/* Title row */}
+                <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[13px] font-semibold text-zinc-800 truncate">{p.title}</span>
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="text-[14px] font-bold text-zinc-900 truncate">{p.title}</span>
                       {expired && (
                         <span className="rounded-full bg-zinc-200 px-2 py-px text-[10px] font-semibold text-zinc-500">Expirada</span>
                       )}
                       {p.hasPassword && (
                         <span className="rounded-full bg-amber-50 border border-amber-100 px-2 py-px text-[10px] font-semibold text-amber-700">
-                          Com senha
+                          🔒 Com senha
                         </span>
                       )}
                     </div>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-500">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-500">
                       <span>{p.candidateCount} candidato{p.candidateCount !== 1 ? "s" : ""}</span>
-                      <span>{p.viewCount} visualizaç{p.viewCount !== 1 ? "ões" : "ão"}</span>
+                      <span>{p.viewCount} visualização{p.viewCount !== 1 ? "ões" : ""}</span>
                       {p.expiresAt && <span>Expira {fmtDate(p.expiresAt)}</span>}
                       <span>Criada {fmtDate(p.createdAt)}</span>
                     </div>
-                    {(fb.approved + fb.rejected + fb.favorite) > 0 && (
-                      <div className="mt-1.5 flex items-center gap-2 text-[11px]">
-                        {fb.approved  > 0 && <span className="text-emerald-600">✓ {fb.approved} aprovado{fb.approved !== 1 ? "s" : ""}</span>}
-                        {fb.favorite  > 0 && <span className="text-amber-600">★ {fb.favorite} favorito{fb.favorite !== 1 ? "s" : ""}</span>}
-                        {fb.rejected  > 0 && <span className="text-zinc-400">✕ {fb.rejected} rejeitado{fb.rejected !== 1 ? "s" : ""}</span>}
-                      </div>
-                    )}
                   </div>
-
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {canManage && (
                     <button
-                      onClick={() => { navigator.clipboard.writeText(window.location.origin + url).catch(() => {}); }}
-                      title="Copiar link"
-                      className="rounded-lg border border-zinc-200 bg-white p-1.5 text-zinc-500 hover:bg-zinc-100 transition-colors cursor-pointer"
+                      onClick={() => { if (confirm("Excluir esta apresentação?")) onDelete(p.id); }}
+                      disabled={deletingId === p.id}
+                      title="Excluir"
+                      className="flex-shrink-0 rounded-lg border border-zinc-200 bg-white p-1.5 text-zinc-400 hover:border-red-200 hover:text-red-500 transition-colors cursor-pointer disabled:opacity-40"
                     >
                       <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                     </button>
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Abrir apresentação"
-                      className="rounded-lg border border-zinc-200 bg-white p-1.5 text-zinc-500 hover:bg-zinc-100 transition-colors"
-                    >
-                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                    </a>
-                    {canManage && (
-                      <button
-                        onClick={() => { if (confirm("Excluir esta apresentação?")) onDelete(p.id); }}
-                        disabled={deletingId === p.id}
-                        title="Excluir"
-                        className="rounded-lg border border-zinc-200 bg-white p-1.5 text-zinc-400 hover:border-red-200 hover:text-red-500 transition-colors cursor-pointer disabled:opacity-40"
-                      >
-                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    )}
+                  )}
+                </div>
+
+                {/* Feedback summary — prominent */}
+                <div className="mb-3 flex items-center gap-4">
+                  <div className="flex items-center gap-1">
+                    <span className={`text-[18px] font-bold leading-none ${fb.approved > 0 ? "text-emerald-600" : "text-zinc-200"}`}>{fb.approved}</span>
+                    <span className={`text-[11px] font-medium ${fb.approved > 0 ? "text-emerald-600" : "text-zinc-300"}`}>✓ aprovado{fb.approved !== 1 ? "s" : ""}</span>
                   </div>
+                  <div className="flex items-center gap-1">
+                    <span className={`text-[18px] font-bold leading-none ${fb.favorite > 0 ? "text-amber-500" : "text-zinc-200"}`}>{fb.favorite}</span>
+                    <span className={`text-[11px] font-medium ${fb.favorite > 0 ? "text-amber-500" : "text-zinc-300"}`}>★ favorito{fb.favorite !== 1 ? "s" : ""}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className={`text-[18px] font-bold leading-none ${fb.rejected > 0 ? "text-red-400" : "text-zinc-200"}`}>{fb.rejected}</span>
+                    <span className={`text-[11px] font-medium ${fb.rejected > 0 ? "text-red-400" : "text-zinc-300"}`}>✕ rejeitado{fb.rejected !== 1 ? "s" : ""}</span>
+                  </div>
+                  {!hasFb && (
+                    <span className="text-[11px] text-zinc-400 italic">Aguardando feedback do cliente</span>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-[12px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    Abrir apresentação
+                  </a>
+                  <CopyLinkBtn url={typeof window !== "undefined" ? window.location.origin + url : url} />
                 </div>
               </div>
             );
@@ -958,6 +1073,26 @@ function CandidateCard({
                 Pago
               </span>
             )}
+            {/* Client feedback badge — highest priority signal */}
+            {c.clientFeedback && (() => {
+              const { approved, favorite, rejected } = c.clientFeedback;
+              if (approved > 0) return (
+                <span className="rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 px-2 py-px text-[10px] font-semibold">
+                  ✓ Aprovado pelo cliente
+                </span>
+              );
+              if (favorite > 0) return (
+                <span className="rounded-full bg-amber-50 text-amber-700 ring-1 ring-amber-200 px-2 py-px text-[10px] font-semibold">
+                  ★ Favorito do cliente
+                </span>
+              );
+              if (rejected > 0) return (
+                <span className="rounded-full bg-zinc-100 text-zinc-400 ring-1 ring-zinc-200 px-2 py-px text-[10px] font-semibold">
+                  ✕ Rejeitado pelo cliente
+                </span>
+              );
+              return null;
+            })()}
           </div>
 
           {/* Meta row */}
@@ -1009,6 +1144,30 @@ function CandidateCard({
             >
               {expanded ? "Fechar" : "Ver perfil"}
             </button>
+
+            {/* Client-approved shortcut: move to Aprovado stage */}
+            {canManage && c.clientFeedback && c.clientFeedback.approved > 0 &&
+              effectiveStage(c) !== "aprovado" && !c.bookingId && (
+              <button
+                onClick={() => handleMove("aprovado")}
+                disabled={moving}
+                className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                ↑ Mover para Aprovado
+              </button>
+            )}
+
+            {/* Client-rejected shortcut: archive candidate */}
+            {canManage && c.clientFeedback && c.clientFeedback.rejected > 0 &&
+              c.clientFeedback.approved === 0 && effectiveStage(c) !== "rejeitado" && (
+              <button
+                onClick={() => handleMove("rejeitado")}
+                disabled={moving}
+                className="inline-flex items-center gap-1 rounded-lg bg-zinc-50 border border-zinc-200 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-500 hover:bg-zinc-100 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Arquivar candidato
+              </button>
+            )}
 
             {/* Move status */}
             {canMove && (
@@ -1115,6 +1274,26 @@ function CandidateCard({
               <p className="text-[12px] text-zinc-600 leading-relaxed">{c.bio}</p>
             ) : (
               <p className="text-[12px] text-zinc-400 italic">Nenhuma bio cadastrada pelo talento</p>
+            )}
+          </div>
+
+          {/* Client feedback summary */}
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Feedback do cliente</p>
+            {c.clientFeedback ? (
+              <div className="flex flex-wrap gap-3">
+                <span className={`text-[12px] font-semibold ${c.clientFeedback.approved > 0 ? "text-emerald-600" : "text-zinc-300"}`}>
+                  ✓ {c.clientFeedback.approved} aprovação{c.clientFeedback.approved !== 1 ? "ões" : ""}
+                </span>
+                <span className={`text-[12px] font-semibold ${c.clientFeedback.favorite > 0 ? "text-amber-600" : "text-zinc-300"}`}>
+                  ★ {c.clientFeedback.favorite} favorito{c.clientFeedback.favorite !== 1 ? "s" : ""}
+                </span>
+                <span className={`text-[12px] font-semibold ${c.clientFeedback.rejected > 0 ? "text-red-400" : "text-zinc-300"}`}>
+                  ✕ {c.clientFeedback.rejected} rejeição{c.clientFeedback.rejected !== 1 ? "ões" : ""}
+                </span>
+              </div>
+            ) : (
+              <p className="text-[12px] text-zinc-400 italic">Nenhum feedback recebido ainda.</p>
             )}
           </div>
 
