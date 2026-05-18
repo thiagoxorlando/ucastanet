@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { brl } from "@/lib/brl";
 import { supabase } from "@/lib/supabase";
 import { CONTRACTS_BUCKET } from "@/lib/contractFiles";
@@ -192,12 +193,14 @@ function JobOverviewSection({
   job,
   jobStatus,
   savingStatus,
+  statusFeedback,
   candidates,
   onStatusChange,
 }: {
   job: PipelineJob;
   jobStatus: string;
   savingStatus: boolean;
+  statusFeedback: { ok: boolean; msg: string } | null;
   candidates: PipelineCandidate[];
   onStatusChange: (s: string) => void;
 }) {
@@ -275,7 +278,9 @@ function JobOverviewSection({
             <div className="flex items-center gap-1.5">
               <select
                 value={jobStatus}
-                onChange={(e) => onStatusChange(e.target.value)}
+                onChange={(e) => {
+                  void onStatusChange(e.target.value);
+                }}
                 disabled={savingStatus}
                 className={[
                   "h-8 rounded-xl border px-2.5 text-[12px] font-semibold focus:outline-none cursor-pointer disabled:opacity-50 transition-colors",
@@ -333,6 +338,13 @@ function JobOverviewSection({
             </div>
           ))}
         </div>
+        {statusFeedback && (
+          <div className="border-t border-zinc-100 px-5 py-3">
+            <p className={`text-[12px] font-medium ${statusFeedback.ok ? "text-emerald-600" : "text-rose-600"}`}>
+              {statusFeedback.msg}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Info grid */}
@@ -403,10 +415,12 @@ export default function WorkspacePipelineBoard({
   isOwner: boolean;
   readOnly: boolean;
 }) {
+  const router = useRouter();
   const [candidates, setCandidates] = useState<PipelineCandidate[]>(initial);
   const [presentations, setPresentations] = useState<PresentationSummary[]>(initialPresentations);
   const [jobStatus, setJobStatus] = useState(job.status);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [statusFeedback, setStatusFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
   const [activeStage, setActiveStage] = useState<string>("all");
   const [feedbackFilter, setFeedbackFilter] = useState<FeedbackFilter>("all");
   const [search, setSearch] = useState("");
@@ -421,14 +435,31 @@ export default function WorkspacePipelineBoard({
   const canManage = isOwner || !readOnly;
 
   async function handleJobStatusChange(nextStatus: string) {
+    if (nextStatus === jobStatus) return;
+
     setSavingStatus(true);
-    const res = await fetch(`/api/jobs/${job.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: nextStatus }),
-    });
-    setSavingStatus(false);
-    if (res.ok) setJobStatus(nextStatus);
+    setStatusFeedback(null);
+
+    try {
+      const res = await fetch(`/api/jobs/${job.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+
+      if (res.ok) {
+        setJobStatus(nextStatus);
+        setStatusFeedback({ ok: true, msg: "Status da vaga atualizado." });
+        router.refresh();
+      } else {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        setStatusFeedback({ ok: false, msg: data.error ?? "Não foi possível atualizar o status da vaga." });
+      }
+    } catch {
+      setStatusFeedback({ ok: false, msg: "Não foi possível atualizar o status da vaga." });
+    } finally {
+      setSavingStatus(false);
+    }
   }
 
   function handleCreatePresentationClick() {
@@ -573,6 +604,7 @@ export default function WorkspacePipelineBoard({
           job={job}
           jobStatus={jobStatus}
           savingStatus={savingStatus}
+          statusFeedback={statusFeedback}
           candidates={candidates}
           onStatusChange={handleJobStatusChange}
         />
@@ -1259,7 +1291,8 @@ function CandidateCard({
   const photos        = [c.photoFrontUrl, c.photoLeftUrl, c.photoRightUrl].filter(Boolean) as string[];
   const uploadBits    = [hasPhotos, !!c.videoUrl, !!c.curriculumUrl, !!c.portfolioUrl];
   const uploadDone    = uploadBits.filter(Boolean).length;
-  const canContract   = canManage && !c.bookingId && !!c.talentId && !["closed", "draft", "inactive"].includes(job.status);
+  const hasActiveBooking = !!c.bookingId && !["cancelled", "rejected"].includes(c.bookingStatus ?? "");
+  const canContract   = canManage && !hasActiveBooking && !!c.talentId && !["closed", "draft", "inactive"].includes(job.status);
   const canMove       = canManage && !!stageCfg?.movable;
   const fbStatus      = clientFeedbackStatus(c.clientFeedback);
   const clientApproved = fbStatus === "approved" || fbStatus === "mixed";
