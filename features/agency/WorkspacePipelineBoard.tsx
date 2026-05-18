@@ -61,6 +61,13 @@ export type PipelineJob = {
   numberOfTalentsRequired: number;
   workspaceId: string;
   agencyId: string;
+  // extended fields for overview section
+  createdAt: string | null;
+  gender: string | null;
+  ageMin: number | null;
+  ageMax: number | null;
+  applicationRequirements: string[] | null;
+  inviteOnly: boolean;
 };
 
 export type FeedbackEntry = {
@@ -161,6 +168,222 @@ function relTime(iso: string): string {
   const h = Math.floor(m / 60);
   if (h < 24)  return `${h}h atrás`;
   return `${Math.floor(h / 24)}d atrás`;
+}
+
+// ─── Job status badge ─────────────────────────────────────────────────────────
+
+function StBadge({ status }: { status: string }) {
+  const cfg =
+    status === "open"   ? { label: "Aberta",    cls: "bg-emerald-50 text-emerald-700 border-emerald-200" } :
+    status === "paused" ? { label: "Pausada",   cls: "bg-blue-50 text-blue-700 border-blue-200" } :
+    status === "closed" ? { label: "Fechada",   cls: "bg-zinc-100 text-zinc-500 border-zinc-200" } :
+    status === "draft"  ? { label: "Rascunho",  cls: "bg-zinc-50 text-zinc-400 border-zinc-200" } :
+                          { label: status,       cls: "bg-zinc-100 text-zinc-500 border-zinc-200" };
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${cfg.cls}`}>
+      {cfg.label}
+    </span>
+  );
+}
+
+// ─── Job overview section ─────────────────────────────────────────────────────
+
+function JobOverviewSection({
+  job,
+  jobStatus,
+  savingStatus,
+  candidates,
+  onStatusChange,
+}: {
+  job: PipelineJob;
+  jobStatus: string;
+  savingStatus: boolean;
+  candidates: PipelineCandidate[];
+  onStatusChange: (s: string) => void;
+}) {
+  // Stats
+  const totalCandidates = candidates.length;
+  const clientApproved  = candidates.filter((c) => c.clientFeedback && c.clientFeedback.approved > 0).length;
+  const clientRejected  = candidates.filter((c) => c.clientFeedback && c.clientFeedback.rejected > 0).length;
+  const contractsSent   = candidates.filter((c) => c.bookingId && c.bookingStatus && !["cancelled","rejected"].includes(c.bookingStatus)).length;
+  const confirmed       = candidates.filter((c) => c.bookingStatus === "confirmed" || c.bookingStatus === "paid").length;
+  const finalized       = candidates.filter((c) => c.bookingStatus === "paid").length;
+
+  const GENDER_LABEL: Record<string, string> = {
+    male: "Masculino", female: "Feminino", any: "Qualquer", other: "Outro",
+  };
+  const REQ_LABEL: Record<string, string> = {
+    photo_front: "Foto frontal", photo_left: "Foto lateral esq.", photo_right: "Foto lateral dir.",
+    video: "Vídeo", curriculum: "Currículo", portfolio: "Portfólio",
+  };
+
+  function copyInviteLink() {
+    const url = typeof window !== "undefined"
+      ? `${window.location.origin}/jobs/${job.id}/apply`
+      : `/jobs/${job.id}/apply`;
+    void navigator.clipboard.writeText(url);
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Back link */}
+      <Link
+        href="/agency/workspace/jobs"
+        className="inline-flex items-center gap-1.5 text-[12px] text-zinc-400 hover:text-zinc-700 transition-colors"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        Vagas do workspace
+      </Link>
+
+      {/* Header card */}
+      <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm overflow-hidden">
+        <div className="px-5 py-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          {/* Left: title + badges */}
+          <div className="min-w-0 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-[1.35rem] font-bold tracking-tight text-zinc-950 leading-snug">
+                {job.title}
+              </h1>
+              <StBadge status={jobStatus} />
+              {job.visibility === "private_invite" && (
+                <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[11px] font-semibold text-violet-700">
+                  Privada
+                </span>
+              )}
+              {job.inviteOnly && (
+                <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-700">
+                  Invite-only
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-zinc-500">
+              {job.category && <span className="font-medium text-zinc-700">{job.category}</span>}
+              {job.createdAt && (
+                <span>
+                  Criada em{" "}
+                  {new Date(job.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Right: action buttons */}
+          <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+            {/* Status dropdown */}
+            <div className="flex items-center gap-1.5">
+              <select
+                value={jobStatus}
+                onChange={(e) => onStatusChange(e.target.value)}
+                disabled={savingStatus}
+                className={[
+                  "h-8 rounded-xl border px-2.5 text-[12px] font-semibold focus:outline-none cursor-pointer disabled:opacity-50 transition-colors",
+                  jobStatus === "open"   ? "border-emerald-200 bg-emerald-50 text-emerald-700" :
+                  jobStatus === "paused" ? "border-blue-200 bg-blue-50 text-blue-700" :
+                  jobStatus === "closed" ? "border-zinc-200 bg-zinc-100 text-zinc-500" :
+                                          "border-zinc-200 bg-white text-zinc-700",
+                ].join(" ")}
+              >
+                <option value="open">Aberta</option>
+                <option value="paused">Pausada</option>
+                <option value="closed">Fechada</option>
+                <option value="draft">Rascunho</option>
+              </select>
+              {savingStatus && <span className="text-[11px] text-zinc-400">…</span>}
+            </div>
+
+            {/* Edit */}
+            <Link
+              href={`/agency/workspace/jobs/${job.id}/edit`}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3 py-1.5 text-[12px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Editar vaga
+            </Link>
+
+            {/* Copy invite */}
+            <button
+              onClick={copyInviteLink}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3 py-1.5 text-[12px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Copiar convite
+            </button>
+          </div>
+        </div>
+
+        {/* Stats bar */}
+        <div className="border-t border-zinc-100 bg-zinc-50 px-5 py-3 flex flex-wrap gap-x-6 gap-y-2">
+          {[
+            { label: "Candidatos",      value: totalCandidates, color: "text-zinc-700" },
+            { label: "Aprov. cliente",  value: clientApproved,  color: "text-emerald-600" },
+            { label: "Rejeit. cliente", value: clientRejected,  color: "text-zinc-400" },
+            { label: "Contratos",       value: contractsSent,   color: "text-indigo-600" },
+            { label: "Confirmados",     value: confirmed,       color: "text-teal-600" },
+            { label: "Finalizados",     value: finalized,       color: "text-emerald-700" },
+          ].map((s) => (
+            <div key={s.label} className="flex items-baseline gap-1.5">
+              <span className={`text-[18px] font-bold leading-none ${s.color}`}>{s.value}</span>
+              <span className="text-[11px] text-zinc-400">{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Info grid */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {[
+          job.budget > 0 && { label: "Orçamento", value: `${brl(job.budget)}/talento` },
+          { label: "Talentos", value: `${job.numberOfTalentsRequired} vaga${job.numberOfTalentsRequired !== 1 ? "s" : ""}` },
+          job.jobDate && { label: "Data do trabalho", value: new Date(`${job.jobDate}T00:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }) },
+          job.jobTime && { label: "Horário", value: job.jobTime },
+          job.location && { label: "Localização", value: job.location },
+          job.gender && job.gender !== "any" && { label: "Gênero", value: GENDER_LABEL[job.gender] ?? job.gender },
+          (job.ageMin || job.ageMax) && { label: "Faixa etária", value: job.ageMin && job.ageMax ? `${job.ageMin}–${job.ageMax} anos` : job.ageMin ? `${job.ageMin}+ anos` : `até ${job.ageMax} anos` },
+          job.deadline && { label: "Prazo candidaturas", value: new Date(`${job.deadline}T00:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" }) },
+          { label: "Visibilidade", value: job.visibility === "private_invite" ? "Privada (convite)" : "Pública" },
+        ].filter(Boolean).map((item) => {
+          const it = item as { label: string; value: string };
+          return (
+            <div key={it.label} className="rounded-xl border border-zinc-200 bg-white px-4 py-3">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 mb-0.5">{it.label}</div>
+              <div className="text-[13px] font-semibold text-zinc-800 leading-snug">{it.value}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Description */}
+      {job.description && (
+        <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-4">
+          <h2 className="text-[12px] font-bold uppercase tracking-wider text-zinc-400 mb-2">Descrição da vaga</h2>
+          <p className="text-[13px] text-zinc-700 leading-relaxed whitespace-pre-wrap">{job.description}</p>
+        </div>
+      )}
+
+      {/* Upload requirements */}
+      {job.applicationRequirements && job.applicationRequirements.length > 0 && (
+        <div className="rounded-2xl border border-zinc-200 bg-white px-5 py-4">
+          <h2 className="text-[12px] font-bold uppercase tracking-wider text-zinc-400 mb-3">O que o talento deve enviar</h2>
+          <div className="flex flex-wrap gap-2">
+            {job.applicationRequirements.map((req) => (
+              <span key={req} className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[12px] font-medium text-zinc-700">
+                <svg className="w-3.5 h-3.5 text-[#1ABC9C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                {REQ_LABEL[req] ?? req}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -344,79 +567,30 @@ export default function WorkspacePipelineBoard({
   return (
     <div className="space-y-5">
 
-      {/* Back + header */}
-      <div>
-        <Link
-          href="/agency/workspace/jobs"
-          className="inline-flex items-center gap-1.5 text-[12px] text-zinc-400 hover:text-zinc-700 transition-colors mb-3"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Vagas do workspace
-        </Link>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <h1 className="text-[1.5rem] font-bold tracking-tight text-zinc-950 leading-snug">
-                {job.title}
-              </h1>
-              <StBadge status={jobStatus} />
-              {job.visibility === "private_invite" && (
-                <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[11px] font-semibold text-violet-700">
-                  Privada
-                </span>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-zinc-500">
-              {job.budget > 0 && (
-                <span className="font-semibold text-zinc-700">{brl(job.budget)}/talento</span>
-              )}
-              {job.location && <span>{job.location}</span>}
-              {job.jobDate && (
-                <span>
-                  {new Date(`${job.jobDate}T00:00:00`).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })}
-                  {job.jobTime && ` · ${job.jobTime}`}
-                </span>
-              )}
-              <span>{job.numberOfTalentsRequired} talento{job.numberOfTalentsRequired !== 1 ? "s" : ""}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            {canManage && (
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-zinc-400 whitespace-nowrap">Status da vaga:</span>
-                <select
-                  value={jobStatus}
-                  onChange={(e) => handleJobStatusChange(e.target.value)}
-                  disabled={savingStatus}
-                  className={[
-                    "h-8 rounded-xl border px-2.5 text-[12px] font-semibold focus:outline-none cursor-pointer disabled:opacity-50 transition-colors",
-                    jobStatus === "open"     ? "border-emerald-200 bg-emerald-50 text-emerald-700" :
-                    jobStatus === "paused"   ? "border-blue-200 bg-blue-50 text-blue-700" :
-                    jobStatus === "closed"   ? "border-zinc-200 bg-zinc-100 text-zinc-500" :
-                                              "border-zinc-200 bg-white text-zinc-700",
-                  ].join(" ")}
-                >
-                  <option value="open">Aberta</option>
-                  <option value="paused">Pausada</option>
-                  <option value="closed">Fechada</option>
-                  <option value="draft">Rascunho</option>
-                </select>
-                {savingStatus && <span className="text-[11px] text-zinc-400">…</span>}
-              </div>
-            )}
-            {canManage && (
-              <Link
-                href={`/agency/workspace/jobs/${job.id}/edit`}
-                className="inline-flex items-center rounded-xl border border-zinc-200 px-3 py-2 text-[12px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
-              >
-                Editar
-              </Link>
-            )}
-          </div>
+      {/* Job overview */}
+      {canManage && (
+        <JobOverviewSection
+          job={job}
+          jobStatus={jobStatus}
+          savingStatus={savingStatus}
+          candidates={candidates}
+          onStatusChange={handleJobStatusChange}
+        />
+      )}
+      {!canManage && (
+        <div>
+          <Link
+            href="/agency/workspace/jobs"
+            className="inline-flex items-center gap-1.5 text-[12px] text-zinc-400 hover:text-zinc-700 transition-colors mb-3"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Vagas do workspace
+          </Link>
+          <h1 className="text-[1.5rem] font-bold tracking-tight text-zinc-950">{job.title}</h1>
         </div>
-      </div>
+      )}
 
       {/* Stage tabs */}
       <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide">
@@ -717,26 +891,6 @@ export default function WorkspacePipelineBoard({
         />
       )}
     </div>
-  );
-}
-
-// ─── Status badge ─────────────────────────────────────────────────────────────
-
-function StBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    open:     "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-    paused:   "bg-blue-50 text-blue-600 ring-1 ring-blue-100",
-    draft:    "bg-zinc-100 text-zinc-500",
-    closed:   "bg-zinc-100 text-zinc-500",
-    inactive: "bg-zinc-100 text-zinc-400",
-  };
-  const label: Record<string, string> = {
-    open: "Aberta", paused: "Pausada", draft: "Rascunho", closed: "Fechada", inactive: "Inativa",
-  };
-  return (
-    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${map[status] ?? "bg-zinc-100 text-zinc-500"}`}>
-      {label[status] ?? status}
-    </span>
   );
 }
 

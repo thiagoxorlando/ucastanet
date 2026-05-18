@@ -35,7 +35,7 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
   const { data: jobData } = await supabase
     .from("jobs")
     .select(
-      "id, title, description, category, budget, deadline, job_date, job_time, location, status, created_at, number_of_talents_required, visibility, invite_only, workspace_id, agency_id, created_by_user_id"
+      "id, title, description, category, budget, deadline, job_date, job_time, location, status, created_at, number_of_talents_required, visibility, invite_only, workspace_id, agency_id, created_by_user_id, gender, age_min, age_max, application_requirements"
     )
     .eq("id", id)
     .single();
@@ -264,6 +264,16 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
     submissionIds:   presSubIds.get(p.id) ?? [],
   }));
 
+  const jd = jobData as typeof jobData & {
+    job_time?: string | null;
+    location?: string | null;
+    gender?: string | null;
+    age_min?: number | null;
+    age_max?: number | null;
+    application_requirements?: string[] | null;
+    invite_only?: boolean | null;
+  };
+
   const job: PipelineJob = {
     id:                     String(jobData.id),
     title:                  jobData.title        ?? "",
@@ -272,13 +282,19 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
     budget:                 jobData.budget       ?? 0,
     deadline:               jobData.deadline     ?? null,
     jobDate:                jobData.job_date      ?? null,
-    jobTime:                (jobData as { job_time?: string | null }).job_time  ?? null,
-    location:               (jobData as { location?: string | null }).location  ?? null,
+    jobTime:                jd.job_time           ?? null,
+    location:               jd.location           ?? null,
     description:            jobData.description  ?? "",
     category:               jobData.category     ?? "",
     numberOfTalentsRequired: jobData.number_of_talents_required ?? 1,
     workspaceId:            workspaceId,
     agencyId:               String(jobData.agency_id ?? user.id),
+    createdAt:              jobData.created_at   ?? null,
+    gender:                 jd.gender             ?? null,
+    ageMin:                 jd.age_min            ?? null,
+    ageMax:                 jd.age_max            ?? null,
+    applicationRequirements: jd.application_requirements ?? null,
+    inviteOnly:             jd.invite_only        ?? false,
   };
 
   return (
