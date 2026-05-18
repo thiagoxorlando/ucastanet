@@ -56,7 +56,7 @@ export async function GET(
   // Fetch workspace branding
   const { data: workspace } = await supabase
     .from("premium_workspaces")
-    .select("name, logo_url, brand_primary_color")
+    .select("name, logo_url, brand_primary_color, brand_accent_color, welcome_message")
     .eq("id", presentation.workspace_id)
     .single();
 
@@ -75,7 +75,7 @@ export async function GET(
         id:         presentation.id,
         title:      presentation.title,
         intro:      presentation.intro ?? null,
-        workspace:  { name: workspace?.name ?? "", logoUrl: workspace?.logo_url ?? null, brandColor: workspace?.brand_primary_color ?? "#1ABC9C" },
+        workspace:  { name: workspace?.name ?? "", logoUrl: workspace?.logo_url ?? null, brandColor: workspace?.brand_primary_color ?? "#1ABC9C", brandAccentColor: workspace?.brand_accent_color ?? null, welcomeMessage: workspace?.welcome_message ?? null },
         candidates: [],
       },
     });
@@ -131,9 +131,11 @@ export async function GET(
       title:     presentation.title,
       intro:     presentation.intro ?? null,
       workspace: {
-        name:       workspace?.name               ?? "",
-        logoUrl:    workspace?.logo_url            ?? null,
-        brandColor: workspace?.brand_primary_color ?? "#1ABC9C",
+        name:             workspace?.name                ?? "",
+        logoUrl:          workspace?.logo_url             ?? null,
+        brandColor:       workspace?.brand_primary_color  ?? "#1ABC9C",
+        brandAccentColor: workspace?.brand_accent_color   ?? null,
+        welcomeMessage:   workspace?.welcome_message      ?? null,
       },
       candidates,
     },

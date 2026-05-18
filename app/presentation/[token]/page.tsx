@@ -17,9 +17,5 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PresentationPage({ params }: Props) {
   const { token } = await params;
-  return (
-    <div className="min-h-screen bg-zinc-50">
-      <ClientPresentation token={token} />
-    </div>
-  );
+  return <ClientPresentation token={token} />;
 }

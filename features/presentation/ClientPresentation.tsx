@@ -24,6 +24,8 @@ type Workspace = {
   name: string;
   logoUrl: string | null;
   brandColor: string;
+  brandAccentColor: string | null;
+  welcomeMessage: string | null;
 };
 
 type PresentationData = {
@@ -285,8 +287,9 @@ export default function ClientPresentation({ token }: { token: string }) {
 
   if (!data) return null;
 
-  const ws         = data.workspace;
-  const brandColor = ws.brandColor || "#1ABC9C";
+  const ws          = data.workspace;
+  const brandColor  = ws.brandColor       || "#1ABC9C";
+  const accentColor = ws.brandAccentColor || "#0E7CB6";
   const approvedCount = Object.values(votes).filter((v) => v === "approved").length;
   const favoriteCount = Object.values(votes).filter((v) => v === "favorite").length;
   const rejectedCount = Object.values(votes).filter((v) => v === "rejected").length;
@@ -294,96 +297,183 @@ export default function ClientPresentation({ token }: { token: string }) {
 
   // ── Main presentation ─────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#F8F9FA]">
+    <div className="min-h-screen bg-[#F2F3F5]">
 
       {/* ── Hero header ── */}
-      <header className="relative overflow-hidden" style={{ background: `linear-gradient(160deg, #060F0F 0%, ${brandColor}22 35%, #0B2B2B 60%, #0A1E35 100%)` }}>
-        {/* Brand color accent line at top */}
-        <div className="absolute inset-x-0 top-0 h-[3px]" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}, transparent)` }} />
+      <header
+        className="relative overflow-hidden"
+        style={{ background: `linear-gradient(140deg, #040C0C 0%, ${brandColor}1C 40%, ${accentColor}12 70%, #040C0C 100%)` }}
+      >
+        {/* Top accent line */}
+        <div
+          className="absolute inset-x-0 top-0 h-[3px]"
+          style={{ background: `linear-gradient(90deg, transparent 0%, ${brandColor} 35%, ${accentColor} 65%, transparent 100%)` }}
+        />
+
         {/* Ambient glows */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -top-32 left-1/4 h-80 w-80 rounded-full opacity-35 blur-[100px]" style={{ background: brandColor }} />
-          <div className="absolute -bottom-20 right-1/4 h-60 w-60 rounded-full bg-[#0E7CB6]/30 blur-[80px]" />
+          <div className="absolute -left-32 -top-20 h-[600px] w-[600px] rounded-full opacity-[0.18] blur-[140px]" style={{ background: brandColor }} />
+          <div className="absolute -right-32 bottom-[-60px] h-[450px] w-[450px] rounded-full opacity-[0.12] blur-[110px]" style={{ background: accentColor }} />
         </div>
 
-        <div className="relative mx-auto max-w-5xl px-5 pb-14 pt-10 sm:px-10">
+        {/* Viewer identity pill — top right */}
+        {identity && (
+          <div className="relative flex justify-end px-5 pt-4 sm:px-10">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-3 py-1.5 backdrop-blur-sm">
+              <div
+                className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-black"
+                style={{ backgroundColor: `${brandColor}30`, color: brandColor }}
+              >
+                {initials(identity.name)}
+              </div>
+              <span className="text-[11px] font-medium text-white/70">{identity.name}</span>
+              {identity.company && <span className="text-[10px] text-white/35">· {identity.company}</span>}
+            </div>
+          </div>
+        )}
 
-          {/* Top bar: workspace identity + viewer greeting */}
-          <div className="mb-8 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        {/* Main two-column grid */}
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-8 px-5 pb-16 pt-8 sm:px-10 lg:grid-cols-[1fr_300px] lg:gap-14 lg:items-center lg:pt-12">
+
+          {/* ── Left: brand identity + presentation info ── */}
+          <div className="flex flex-col">
+
+            {/* Agency block: logo + name + tagline */}
+            <div className="mb-8 flex items-start gap-5">
               {ws.logoUrl ? (
-                <img
-                  src={ws.logoUrl}
-                  alt={ws.name}
-                  className="h-11 w-11 rounded-2xl object-contain ring-2 ring-white/15"
-                />
+                <div
+                  className="flex-shrink-0 rounded-[24px] p-2"
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 16px 48px ${brandColor}28`,
+                  }}
+                >
+                  <img
+                    src={ws.logoUrl}
+                    alt={ws.name}
+                    className="h-[76px] w-[76px] rounded-xl object-contain sm:h-[92px] sm:w-[92px]"
+                  />
+                </div>
               ) : (
                 <div
-                  className="flex h-11 w-11 items-center justify-center rounded-2xl text-[12px] font-black text-white ring-2 ring-white/15"
-                  style={{ background: `linear-gradient(135deg, ${brandColor}, #0E7CB6)` }}
+                  className="flex h-[76px] w-[76px] flex-shrink-0 items-center justify-center rounded-[24px] text-[24px] font-black text-white sm:h-[92px] sm:w-[92px]"
+                  style={{
+                    background: `linear-gradient(135deg, ${brandColor}, ${accentColor})`,
+                    boxShadow: `0 16px 48px ${brandColor}35`,
+                  }}
                 >
                   {ws.name.slice(0, 2).toUpperCase()}
                 </div>
               )}
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: brandColor }}>{ws.name}</p>
-                <p className="text-[11px] text-white/40">Apresentação de talentos</p>
+
+              <div className="min-w-0 pt-1">
+                <p
+                  className="text-[11px] font-black uppercase tracking-[0.18em]"
+                  style={{ color: brandColor }}
+                >
+                  {ws.name}
+                </p>
+                {ws.welcomeMessage ? (
+                  <p className="mt-2 text-[13px] leading-relaxed text-white/50 max-w-xs">
+                    {ws.welcomeMessage}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[11px] text-white/35">Apresentação de talentos</p>
+                )}
               </div>
             </div>
 
-            {identity && (
-              <div className="hidden sm:flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-3 py-1.5 backdrop-blur-sm">
-                <div className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-black" style={{ backgroundColor: `${brandColor}33`, color: brandColor }}>
-                  {initials(identity.name)}
-                </div>
-                <span className="text-[11px] font-medium text-white/70">{identity.name}</span>
-              </div>
-            )}
-          </div>
+            {/* Brand divider */}
+            <div
+              className="mb-7 h-[2px] w-10 rounded-full"
+              style={{ background: `linear-gradient(90deg, ${brandColor}, transparent)` }}
+            />
 
-          {/* Main title */}
-          <div className="mb-5 max-w-2xl">
-            <h1 className="text-[2.4rem] font-black leading-[1.12] tracking-tight text-white sm:text-[3rem]">
+            {/* Presentation title */}
+            <h1 className="text-[2.6rem] font-black leading-[1.08] tracking-[-0.02em] text-white sm:text-[3.4rem]">
               {data.title}
             </h1>
+
+            {/* Intro */}
             {data.intro && (
-              <p className="mt-4 text-[15px] leading-relaxed text-white/60 whitespace-pre-wrap">
+              <p className="mt-5 max-w-xl text-[14px] leading-[1.75] text-white/55 whitespace-pre-wrap">
                 {data.intro}
               </p>
             )}
+
+            {/* Stats chips */}
+            <div className="mt-7 flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/6 px-3.5 py-1.5 text-[12px] font-semibold text-white/75 backdrop-blur-sm">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: brandColor }} />
+                {data.candidates.length} talento{data.candidates.length !== 1 ? "s" : ""}
+              </span>
+              {approvedCount > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1.5 text-[12px] font-semibold text-emerald-400">
+                  ✓ {approvedCount} aprovado{approvedCount !== 1 ? "s" : ""}
+                </span>
+              )}
+              {favoriteCount > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1.5 text-[12px] font-semibold text-amber-400">
+                  ★ {favoriteCount} favorito{favoriteCount !== 1 ? "s" : ""}
+                </span>
+              )}
+              {rejectedCount > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/6 px-3 py-1.5 text-[12px] font-semibold text-white/40">
+                  ✕ {rejectedCount} rejeitado{rejectedCount !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* Stats chips */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/8 px-3.5 py-1.5 text-[12px] font-semibold text-white/80 backdrop-blur-sm">
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: brandColor }} />
-              {data.candidates.length} talento{data.candidates.length !== 1 ? "s" : ""}
-            </span>
-            {totalVoted > 0 && (
-              <>
-                {approvedCount > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1.5 text-[12px] font-semibold text-emerald-400">
-                    ✓ {approvedCount} aprovado{approvedCount !== 1 ? "s" : ""}
-                  </span>
-                )}
-                {favoriteCount > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1.5 text-[12px] font-semibold text-amber-400">
-                    ★ {favoriteCount} favorito{favoriteCount !== 1 ? "s" : ""}
-                  </span>
-                )}
-                {rejectedCount > 0 && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-white/8 px-3 py-1.5 text-[12px] font-semibold text-white/40">
-                    ✕ {rejectedCount} rejeitado{rejectedCount !== 1 ? "s" : ""}
-                  </span>
-                )}
-              </>
-            )}
+          {/* ── Right: decorative visual (desktop only) ── */}
+          <div className="relative hidden items-center justify-center lg:flex">
+            <div className="relative h-72 w-72">
+              {/* Rings */}
+              <div
+                className="absolute inset-0 rounded-full border opacity-[0.12]"
+                style={{ borderColor: brandColor }}
+              />
+              <div
+                className="absolute inset-8 rounded-full border opacity-[0.08]"
+                style={{ borderColor: accentColor }}
+              />
+              <div className="absolute inset-16 rounded-full border border-white/5" />
+              {/* Center glow */}
+              <div
+                className="absolute inset-12 rounded-full opacity-20 blur-2xl"
+                style={{ background: brandColor }}
+              />
+              {/* Logo or initials */}
+              <div
+                className="absolute inset-0 flex items-center justify-center"
+              >
+                <div
+                  className="flex h-28 w-28 items-center justify-center rounded-[32px]"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 0 60px ${brandColor}20`,
+                  }}
+                >
+                  {ws.logoUrl ? (
+                    <img src={ws.logoUrl} alt="" className="h-[72px] w-[72px] rounded-2xl object-contain opacity-50" />
+                  ) : (
+                    <span className="select-none text-[40px] font-black text-white opacity-15">
+                      {ws.name.slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {/* Accent dots */}
+              <div className="absolute right-10 top-10 h-2 w-2 rounded-full opacity-70" style={{ background: brandColor }} />
+              <div className="absolute bottom-14 left-8 h-1.5 w-1.5 rounded-full opacity-50" style={{ background: accentColor }} />
+              <div className="absolute bottom-10 right-16 h-1 w-1 rounded-full bg-white opacity-25" />
+            </div>
           </div>
         </div>
 
         {/* Organic bottom curve */}
         <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 48" preserveAspectRatio="none" className="h-12 w-full fill-[#F8F9FA]">
+          <svg viewBox="0 0 1440 48" preserveAspectRatio="none" className="h-12 w-full fill-[#F2F3F5]">
             <path d="M0,48 C480,0 960,0 1440,48 L1440,48 L0,48 Z" />
           </svg>
         </div>
@@ -391,28 +481,34 @@ export default function ClientPresentation({ token }: { token: string }) {
 
       {/* ── Instruction hint (first visit) ── */}
       {totalVoted === 0 && data.candidates.length > 0 && (
-        <div className="mx-auto max-w-5xl px-5 pt-7 sm:px-10">
-          <div className="flex items-center gap-3 rounded-2xl border border-[#1ABC9C]/20 bg-[#1ABC9C]/5 px-4 py-3">
-            <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#1ABC9C]/15">
-              <svg className="h-3.5 w-3.5 text-[#1ABC9C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="mx-auto max-w-6xl px-5 pt-7 sm:px-10">
+          <div
+            className="flex items-center gap-3 rounded-2xl border px-4 py-3"
+            style={{ borderColor: `${brandColor}25`, background: `${brandColor}08` }}
+          >
+            <div
+              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full"
+              style={{ background: `${brandColor}20` }}
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: brandColor }}>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <p className="text-[12px] font-medium text-[#0B3C3D]">
-              Use os botões <strong className="text-emerald-700">Aprovar</strong>, <strong className="text-amber-600">Favoritar</strong> e <strong className="text-zinc-600">Rejeitar</strong> em cada talento para enviar seu feedback à agência.
+            <p className="text-[12px] font-medium text-zinc-700">
+              Use os botões <strong className="text-emerald-700">Aprovar</strong>, <strong className="text-amber-600">Favoritar</strong> e <strong className="text-zinc-500">Rejeitar</strong> em cada talento para enviar seu feedback à agência.
             </p>
           </div>
         </div>
       )}
 
       {/* ── Candidate grid ── */}
-      <main className="mx-auto max-w-5xl px-5 pb-20 pt-7 sm:px-10">
+      <main className="mx-auto max-w-6xl px-5 pb-20 pt-7 sm:px-10">
         {data.candidates.length === 0 ? (
           <div className="rounded-3xl border border-zinc-200 bg-white py-24 text-center">
             <p className="text-[15px] font-bold text-zinc-700">Nenhum talento nesta apresentação</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {data.candidates.map((c) => (
               <CandidateCard
                 key={c.id}
@@ -428,12 +524,12 @@ export default function ClientPresentation({ token }: { token: string }) {
 
         {/* Footer */}
         <div className="mt-20 flex flex-col items-center gap-2">
-          <div className="flex items-center gap-2 opacity-40">
+          <div className="flex items-center gap-2 opacity-35">
             <div
               className="h-5 w-5 rounded-md"
-              style={{ background: "linear-gradient(135deg, #1ABC9C, #0E7CB6)" }}
+              style={{ background: `linear-gradient(135deg, ${brandColor}, ${accentColor})` }}
             />
-            <span className="text-[12px] font-bold text-zinc-800">BrisaHub</span>
+            <span className="text-[12px] font-bold text-zinc-700">BrisaHub</span>
           </div>
           <p className="text-[10px] text-zinc-400">Plataforma de casting e talentos</p>
         </div>
