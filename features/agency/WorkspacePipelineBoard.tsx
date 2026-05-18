@@ -182,6 +182,8 @@ export default function WorkspacePipelineBoard({
 }) {
   const [candidates, setCandidates] = useState<PipelineCandidate[]>(initial);
   const [presentations, setPresentations] = useState<PresentationSummary[]>(initialPresentations);
+  const [jobStatus, setJobStatus] = useState(job.status);
+  const [savingStatus, setSavingStatus] = useState(false);
   const [activeStage, setActiveStage] = useState<string>("all");
   const [feedbackFilter, setFeedbackFilter] = useState<FeedbackFilter>("all");
   const [search, setSearch] = useState("");
@@ -194,6 +196,17 @@ export default function WorkspacePipelineBoard({
   const [highlightCheckboxes, setHighlightCheckboxes] = useState(false);
 
   const canManage = isOwner || !readOnly;
+
+  async function handleJobStatusChange(nextStatus: string) {
+    setSavingStatus(true);
+    const res = await fetch(`/api/jobs/${job.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: nextStatus }),
+    });
+    setSavingStatus(false);
+    if (res.ok) setJobStatus(nextStatus);
+  }
 
   function handleCreatePresentationClick() {
     if (selectedCandidates.length > 0) {
@@ -348,7 +361,7 @@ export default function WorkspacePipelineBoard({
               <h1 className="text-[1.5rem] font-bold tracking-tight text-zinc-950 leading-snug">
                 {job.title}
               </h1>
-              <StBadge status={job.status} />
+              <StBadge status={jobStatus} />
               {job.visibility === "private_invite" && (
                 <span className="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-0.5 text-[11px] font-semibold text-violet-700">
                   Privada
@@ -369,7 +382,30 @@ export default function WorkspacePipelineBoard({
               <span>{job.numberOfTalentsRequired} talento{job.numberOfTalentsRequired !== 1 ? "s" : ""}</span>
             </div>
           </div>
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {canManage && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-zinc-400 whitespace-nowrap">Status da vaga:</span>
+                <select
+                  value={jobStatus}
+                  onChange={(e) => handleJobStatusChange(e.target.value)}
+                  disabled={savingStatus}
+                  className={[
+                    "h-8 rounded-xl border px-2.5 text-[12px] font-semibold focus:outline-none cursor-pointer disabled:opacity-50 transition-colors",
+                    jobStatus === "open"     ? "border-emerald-200 bg-emerald-50 text-emerald-700" :
+                    jobStatus === "paused"   ? "border-blue-200 bg-blue-50 text-blue-700" :
+                    jobStatus === "closed"   ? "border-zinc-200 bg-zinc-100 text-zinc-500" :
+                                              "border-zinc-200 bg-white text-zinc-700",
+                  ].join(" ")}
+                >
+                  <option value="open">Aberta</option>
+                  <option value="paused">Pausada</option>
+                  <option value="closed">Fechada</option>
+                  <option value="draft">Rascunho</option>
+                </select>
+                {savingStatus && <span className="text-[11px] text-zinc-400">…</span>}
+              </div>
+            )}
             {canManage && (
               <Link
                 href={`/agency/workspace/jobs/${job.id}/edit`}
