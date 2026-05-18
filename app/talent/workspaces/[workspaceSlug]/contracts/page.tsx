@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { brl } from "@/lib/brl";
+import { getExistingContractColumns } from "@/lib/contractCreationAccess.server";
 import {
   getContractPaymentStatus,
   contractStatusLabel,
@@ -127,17 +128,32 @@ export default async function WorkspaceContractsPage({ params }: Props) {
 
   const workspaceJobIds = (allJobs ?? []).map((j) => j.id);
   const jobMap = new Map((allJobs ?? []).map((j) => [String(j.id), String(j.title ?? "Vaga")]));
+  const contractColumnSupport = await getExistingContractColumns();
 
-  const { data: contractRows } = workspaceJobIds.length
-    ? await supabase
-        .from("contracts")
-        .select("id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at")
-        .eq("talent_id", user.id)
-        .in("job_id", workspaceJobIds)
-        .order("created_at", { ascending: false })
-    : { data: [] };
+  const [workspaceScopedContractsResult, jobScopedContractsResult] = await Promise.all([
+    contractColumnSupport.hasWorkspaceId
+      ? supabase
+          .from("contracts")
+          .select("id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at")
+          .eq("talent_id", user.id)
+          .eq("workspace_id", workspace.id)
+      : Promise.resolve({ data: [] }),
+    workspaceJobIds.length
+      ? supabase
+          .from("contracts")
+          .select("id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at")
+          .eq("talent_id", user.id)
+          .in("job_id", workspaceJobIds)
+      : Promise.resolve({ data: [] }),
+  ]);
 
-  const contracts = contractRows ?? [];
+  const contracts = [...(workspaceScopedContractsResult.data ?? []), ...(jobScopedContractsResult.data ?? [])]
+    .filter((contract, index, rows) => rows.findIndex((row) => row.id === contract.id) === index)
+    .sort((a, b) => {
+      const aTime = new Date(a.created_at ?? 0).getTime();
+      const bTime = new Date(b.created_at ?? 0).getTime();
+      return bTime - aTime;
+    });
 
   const active = contracts.filter((c) => ["sent", "signed", "confirmed"].includes(c.status ?? ""));
   const paid   = contracts.filter((c) => c.status === "paid");
