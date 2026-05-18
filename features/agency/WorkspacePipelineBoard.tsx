@@ -1964,12 +1964,24 @@ function ContractModal({
 
     let uploadedPath: string | null = null;
     if (contractFile) {
-      const ext  = contractFile.name.split(".").pop() ?? "pdf";
-      const path = `${agencyId}/${job.id}/${candidate.talentId ?? "ref"}-${Date.now()}.${ext}`;
+      // Get a signed upload URL from the server (uses service role, bypasses RLS)
+      const urlRes = await fetch("/api/contracts/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: job.id, filename: contractFile.name, filesize: contractFile.size }),
+      });
+      if (!urlRes.ok) {
+        const errData = await urlRes.json().catch(() => ({})) as { error?: string };
+        setError("Falha ao enviar arquivo: " + (errData.error ?? "Tente novamente."));
+        setSending(false);
+        return;
+      }
+      const { signedUrl, token, path } = await urlRes.json() as { signedUrl: string; token: string; path: string };
       const { error: upErr } = await supabase.storage
         .from(CONTRACTS_BUCKET)
-        .upload(path, contractFile, { upsert: true });
+        .uploadToSignedUrl(path, token, contractFile, { contentType: "application/pdf" });
       if (upErr) { setError("Falha ao enviar arquivo: " + upErr.message); setSending(false); return; }
+      void signedUrl; // used by supabase internally via token
       uploadedPath = path;
     }
 
@@ -1978,6 +1990,7 @@ function ContractModal({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         talent_id:          candidate.talentId,
+        talent_user_id:     candidate.talentId,
         job_id:             job.id,
         agency_id:          agencyId,
         contract_file_url:  uploadedPath,
