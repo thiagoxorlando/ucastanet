@@ -225,6 +225,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  console.log("[contracts] created row", {
+    id:                 contract.id,
+    job_id:             contract.job_id,
+    agency_id:          contract.agency_id,
+    workspace_id:       (contract as Record<string, unknown>).workspace_id ?? null,
+    talent_id:          contract.talent_id,
+    talent_user_id:     contract.talent_user_id,
+    status:             contract.status,
+    created_by_user_id: (contract as Record<string, unknown>).created_by_user_id ?? null,
+  });
+
   const workspaceLifecycle = await resolveWorkspaceLifecycleByJobId(supabase, job_id ?? null);
   const talentContractsHref = talentWorkspaceContractsHref(workspaceLifecycle?.workspaceSlug);
 

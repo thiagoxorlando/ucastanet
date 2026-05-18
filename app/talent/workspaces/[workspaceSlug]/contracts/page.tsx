@@ -130,69 +130,84 @@ export default async function WorkspaceContractsPage({ params }: Props) {
   const jobMap = new Map((allJobs ?? []).map((j) => [String(j.id), String(j.title ?? "Vaga")]));
   const contractColumnSupport = await getExistingContractColumns();
 
-  const [agencyResult, directTalentContractsResult, workspaceScopedContractsResult, jobScopedContractsResult, legacyWorkspaceScopedContractsResult, legacyJobScopedContractsResult] = await Promise.all([
+  const CONTRACT_SELECT = "id, agency_id, talent_user_id, talent_id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at";
+
+  // owner_user_id is the auth UUID stored as agency_id on contracts (via job.agency_id)
+  const ownerUserId = workspace.owner_user_id as string | null;
+
+  const [
+    agencyResult,
+    directTalentContractsResult,
+    workspaceScopedResult,
+    jobScopedResult,
+    legacyWorkspaceScopedResult,
+    legacyJobScopedResult,
+    ownerAgencyFallbackResult,
+  ] = await Promise.all([
     workspace.agency_id
-      ? supabase
-          .from("agencies")
-          .select("company_name")
-          .eq("id", workspace.agency_id)
-          .maybeSingle()
+      ? supabase.from("agencies").select("company_name").eq("id", workspace.agency_id).maybeSingle()
       : workspace.owner_user_id
-        ? supabase
-            .from("agencies")
-            .select("company_name")
-            .eq("user_id", workspace.owner_user_id)
-            .maybeSingle()
+        ? supabase.from("agencies").select("company_name").eq("user_id", workspace.owner_user_id).maybeSingle()
         : Promise.resolve({ data: null }),
-    supabase
-      .from("contracts")
-      .select("id", { count: "exact", head: true })
-      .eq("talent_user_id", user.id),
+
+    // Diagnostic: how many contracts exist at all for this talent_user_id?
+    supabase.from("contracts").select("id", { count: "exact", head: true }).eq("talent_user_id", user.id),
+
+    // Workspace-scoped by workspace_id column (if it exists)
     contractColumnSupport.hasWorkspaceId
-      ? supabase
-          .from("contracts")
-          .select("id, agency_id, talent_user_id, talent_id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at")
-          .eq("talent_user_id", user.id)
-          .eq("workspace_id", workspace.id)
-      : Promise.resolve({ data: [] }),
+      ? supabase.from("contracts").select(CONTRACT_SELECT).eq("talent_user_id", user.id).eq("workspace_id", workspace.id)
+      : Promise.resolve({ data: [] as never[] }),
+
+    // Job-scoped: contract.job_id belongs to this workspace
     workspaceJobIds.length
-      ? supabase
-          .from("contracts")
-          .select("id, agency_id, talent_user_id, talent_id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at")
-          .eq("talent_user_id", user.id)
-          .in("job_id", workspaceJobIds)
-      : Promise.resolve({ data: [] }),
+      ? supabase.from("contracts").select(CONTRACT_SELECT).eq("talent_user_id", user.id).in("job_id", workspaceJobIds)
+      : Promise.resolve({ data: [] as never[] }),
+
+    // Legacy talent_id + workspace_id
     contractColumnSupport.hasWorkspaceId
-      ? supabase
-          .from("contracts")
-          .select("id, agency_id, talent_user_id, talent_id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at")
-          .eq("talent_id", user.id)
-          .eq("workspace_id", workspace.id)
-      : Promise.resolve({ data: [] }),
+      ? supabase.from("contracts").select(CONTRACT_SELECT).eq("talent_id", user.id).eq("workspace_id", workspace.id)
+      : Promise.resolve({ data: [] as never[] }),
+
+    // Legacy talent_id + job-scoped
     workspaceJobIds.length
-      ? supabase
-          .from("contracts")
-          .select("id, agency_id, talent_user_id, talent_id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at")
-          .eq("talent_id", user.id)
-          .in("job_id", workspaceJobIds)
-      : Promise.resolve({ data: [] }),
+      ? supabase.from("contracts").select(CONTRACT_SELECT).eq("talent_id", user.id).in("job_id", workspaceJobIds)
+      : Promise.resolve({ data: [] as never[] }),
+
+    // Final fallback: agency_id = workspace owner's user ID + talent match
+    // Catches contracts where workspace_id was not stored and job_id is null
+    ownerUserId
+      ? supabase.from("contracts").select(CONTRACT_SELECT)
+          .eq("agency_id", ownerUserId)
+          .or(`talent_user_id.eq.${user.id},talent_id.eq.${user.id}`)
+      : Promise.resolve({ data: [] as never[] }),
   ]);
 
   console.log("[talent workspace contracts] lookup", {
-    userId: user.id,
-    workspaceId: workspace.id,
-    directTalentUserContractCount: directTalentContractsResult.count ?? 0,
-    workspaceScopeTalentUserCount: workspaceScopedContractsResult.data?.length ?? 0,
-    jobWorkspaceTalentUserCount: jobScopedContractsResult.data?.length ?? 0,
-    workspaceScopeLegacyTalentIdCount: legacyWorkspaceScopedContractsResult.data?.length ?? 0,
-    jobWorkspaceLegacyTalentIdCount: legacyJobScopedContractsResult.data?.length ?? 0,
+    userId:           user.id,
+    workspaceId:      workspace.id,
+    ownerUserId,
+    workspaceJobIds:  workspaceJobIds.length,
+    directCount:      directTalentContractsResult.count ?? 0,
+    workspaceScopedCount:     workspaceScopedResult.data?.length ?? 0,
+    jobScopedCount:           jobScopedResult.data?.length ?? 0,
+    legacyWorkspaceScopedCount: legacyWorkspaceScopedResult.data?.length ?? 0,
+    legacyJobScopedCount:     legacyJobScopedResult.data?.length ?? 0,
+    ownerAgencyFallbackCount: ownerAgencyFallbackResult.data?.length ?? 0,
+    foundIds: [
+      ...(workspaceScopedResult.data ?? []),
+      ...(jobScopedResult.data ?? []),
+      ...(legacyWorkspaceScopedResult.data ?? []),
+      ...(legacyJobScopedResult.data ?? []),
+      ...(ownerAgencyFallbackResult.data ?? []),
+    ].map((c) => (c as { id: string }).id),
   });
 
   const contracts = [
-    ...(workspaceScopedContractsResult.data ?? []),
-    ...(jobScopedContractsResult.data ?? []),
-    ...(legacyWorkspaceScopedContractsResult.data ?? []),
-    ...(legacyJobScopedContractsResult.data ?? []),
+    ...(workspaceScopedResult.data ?? []),
+    ...(jobScopedResult.data ?? []),
+    ...(legacyWorkspaceScopedResult.data ?? []),
+    ...(legacyJobScopedResult.data ?? []),
+    ...(ownerAgencyFallbackResult.data ?? []),
   ]
     .filter((contract, index, rows) => rows.findIndex((row) => row.id === contract.id) === index)
     .sort((a, b) => {
