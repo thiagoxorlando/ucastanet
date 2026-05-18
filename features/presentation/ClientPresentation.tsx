@@ -297,218 +297,138 @@ export default function ClientPresentation({ token }: { token: string }) {
 
   // ── Main presentation ─────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#F2F3F5]">
+    <div className="min-h-screen bg-[#F0F1F3]">
 
-      {/* ── Hero header ── */}
-      <header
-        className="relative overflow-hidden"
-        style={{ background: `linear-gradient(140deg, #040C0C 0%, ${brandColor}1C 40%, ${accentColor}12 70%, #040C0C 100%)` }}
-      >
-        {/* Top accent line */}
-        <div
-          className="absolute inset-x-0 top-0 h-[3px]"
-          style={{ background: `linear-gradient(90deg, transparent 0%, ${brandColor} 35%, ${accentColor} 65%, transparent 100%)` }}
-        />
+      {/* ── Hero ── */}
+      <header className="bg-[#0A0F0F]">
+        {/* Thin brand accent line */}
+        <div className="h-[3px]" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}, transparent)` }} />
 
-        {/* Ambient glows */}
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -left-32 -top-20 h-[600px] w-[600px] rounded-full opacity-[0.18] blur-[140px]" style={{ background: brandColor }} />
-          <div className="absolute -right-32 bottom-[-60px] h-[450px] w-[450px] rounded-full opacity-[0.12] blur-[110px]" style={{ background: accentColor }} />
-        </div>
+        {/* Subtle centered glow behind content */}
+        <div className="pointer-events-none absolute left-1/2 top-0 h-64 w-[600px] -translate-x-1/2 rounded-full opacity-[0.12] blur-[100px]" style={{ background: brandColor }} />
 
-        {/* Viewer identity pill — top right */}
+        {/* Top bar: viewer identity */}
         {identity && (
-          <div className="relative flex justify-end px-5 pt-4 sm:px-10">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-3 py-1.5 backdrop-blur-sm">
+          <div className="relative flex justify-end px-5 pt-4 sm:px-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
               <div
                 className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-black"
-                style={{ backgroundColor: `${brandColor}30`, color: brandColor }}
+                style={{ backgroundColor: `${brandColor}28`, color: brandColor }}
               >
                 {initials(identity.name)}
               </div>
-              <span className="text-[11px] font-medium text-white/70">{identity.name}</span>
-              {identity.company && <span className="text-[10px] text-white/35">· {identity.company}</span>}
+              <span className="text-[11px] font-medium text-white/60">{identity.name}</span>
+              {identity.company && <span className="text-[10px] text-white/30">· {identity.company}</span>}
             </div>
           </div>
         )}
 
-        {/* Main two-column grid */}
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-8 px-5 pb-16 pt-8 sm:px-10 lg:grid-cols-[1fr_300px] lg:gap-14 lg:items-center lg:pt-12">
+        {/* Hero content — centered */}
+        <div className="relative mx-auto max-w-[1100px] px-5 pb-12 pt-8 text-center sm:px-8 sm:pb-14 sm:pt-10">
 
-          {/* ── Left: brand identity + presentation info ── */}
-          <div className="flex flex-col">
-
-            {/* Agency block: logo + name + tagline */}
-            <div className="mb-8 flex items-start gap-5">
-              {ws.logoUrl ? (
-                <div
-                  className="flex-shrink-0 rounded-[24px] p-2"
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    boxShadow: `0 0 0 1px rgba(255,255,255,0.08), 0 16px 48px ${brandColor}28`,
-                  }}
-                >
-                  <img
-                    src={ws.logoUrl}
-                    alt={ws.name}
-                    className="h-[76px] w-[76px] rounded-xl object-contain sm:h-[92px] sm:w-[92px]"
-                  />
-                </div>
-              ) : (
-                <div
-                  className="flex h-[76px] w-[76px] flex-shrink-0 items-center justify-center rounded-[24px] text-[24px] font-black text-white sm:h-[92px] sm:w-[92px]"
-                  style={{
-                    background: `linear-gradient(135deg, ${brandColor}, ${accentColor})`,
-                    boxShadow: `0 16px 48px ${brandColor}35`,
-                  }}
-                >
-                  {ws.name.slice(0, 2).toUpperCase()}
-                </div>
-              )}
-
-              <div className="min-w-0 pt-1">
-                <p
-                  className="text-[11px] font-black uppercase tracking-[0.18em]"
-                  style={{ color: brandColor }}
-                >
-                  {ws.name}
-                </p>
-                {ws.welcomeMessage ? (
-                  <p className="mt-2 text-[13px] leading-relaxed text-white/50 max-w-xs">
-                    {ws.welcomeMessage}
-                  </p>
-                ) : (
-                  <p className="mt-1 text-[11px] text-white/35">Apresentação de talentos</p>
-                )}
-              </div>
-            </div>
-
-            {/* Brand divider */}
-            <div
-              className="mb-7 h-[2px] w-10 rounded-full"
-              style={{ background: `linear-gradient(90deg, ${brandColor}, transparent)` }}
-            />
-
-            {/* Presentation title */}
-            <h1 className="text-[2.6rem] font-black leading-[1.08] tracking-[-0.02em] text-white sm:text-[3.4rem]">
-              {data.title}
-            </h1>
-
-            {/* Intro */}
-            {data.intro && (
-              <p className="mt-5 max-w-xl text-[14px] leading-[1.75] text-white/55 whitespace-pre-wrap">
-                {data.intro}
-              </p>
-            )}
-
-            {/* Stats chips */}
-            <div className="mt-7 flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/6 px-3.5 py-1.5 text-[12px] font-semibold text-white/75 backdrop-blur-sm">
-                <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: brandColor }} />
-                {data.candidates.length} talento{data.candidates.length !== 1 ? "s" : ""}
-              </span>
-              {approvedCount > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1.5 text-[12px] font-semibold text-emerald-400">
-                  ✓ {approvedCount} aprovado{approvedCount !== 1 ? "s" : ""}
-                </span>
-              )}
-              {favoriteCount > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1.5 text-[12px] font-semibold text-amber-400">
-                  ★ {favoriteCount} favorito{favoriteCount !== 1 ? "s" : ""}
-                </span>
-              )}
-              {rejectedCount > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-white/6 px-3 py-1.5 text-[12px] font-semibold text-white/40">
-                  ✕ {rejectedCount} rejeitado{rejectedCount !== 1 ? "s" : ""}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* ── Right: decorative visual (desktop only) ── */}
-          <div className="relative hidden items-center justify-center lg:flex">
-            <div className="relative h-72 w-72">
-              {/* Rings */}
+          {/* Logo */}
+          <div className="mb-5 flex justify-center">
+            {ws.logoUrl ? (
               <div
-                className="absolute inset-0 rounded-full border opacity-[0.12]"
-                style={{ borderColor: brandColor }}
-              />
-              <div
-                className="absolute inset-8 rounded-full border opacity-[0.08]"
-                style={{ borderColor: accentColor }}
-              />
-              <div className="absolute inset-16 rounded-full border border-white/5" />
-              {/* Center glow */}
-              <div
-                className="absolute inset-12 rounded-full opacity-20 blur-2xl"
-                style={{ background: brandColor }}
-              />
-              {/* Logo or initials */}
-              <div
-                className="absolute inset-0 flex items-center justify-center"
+                className="flex h-[80px] w-[80px] items-center justify-center rounded-2xl sm:h-[90px] sm:w-[90px]"
+                style={{ background: "rgba(255,255,255,0.06)", boxShadow: `0 0 0 1px rgba(255,255,255,0.08)` }}
               >
-                <div
-                  className="flex h-28 w-28 items-center justify-center rounded-[32px]"
-                  style={{
-                    background: "rgba(255,255,255,0.04)",
-                    boxShadow: `0 0 0 1px rgba(255,255,255,0.06), 0 0 60px ${brandColor}20`,
-                  }}
-                >
-                  {ws.logoUrl ? (
-                    <img src={ws.logoUrl} alt="" className="h-[72px] w-[72px] rounded-2xl object-contain opacity-50" />
-                  ) : (
-                    <span className="select-none text-[40px] font-black text-white opacity-15">
-                      {ws.name.slice(0, 2).toUpperCase()}
-                    </span>
-                  )}
-                </div>
+                <img
+                  src={ws.logoUrl}
+                  alt={ws.name}
+                  className="max-h-[64px] max-w-[64px] object-contain sm:max-h-[74px] sm:max-w-[74px]"
+                />
               </div>
-              {/* Accent dots */}
-              <div className="absolute right-10 top-10 h-2 w-2 rounded-full opacity-70" style={{ background: brandColor }} />
-              <div className="absolute bottom-14 left-8 h-1.5 w-1.5 rounded-full opacity-50" style={{ background: accentColor }} />
-              <div className="absolute bottom-10 right-16 h-1 w-1 rounded-full bg-white opacity-25" />
-            </div>
+            ) : (
+              <div
+                className="flex h-[80px] w-[80px] items-center justify-center rounded-2xl text-[22px] font-black text-white sm:h-[90px] sm:w-[90px]"
+                style={{ background: `linear-gradient(135deg, ${brandColor}, ${accentColor})` }}
+              >
+                {ws.name.slice(0, 2).toUpperCase()}
+              </div>
+            )}
           </div>
-        </div>
 
-        {/* Organic bottom curve */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 48" preserveAspectRatio="none" className="h-12 w-full fill-[#F2F3F5]">
-            <path d="M0,48 C480,0 960,0 1440,48 L1440,48 L0,48 Z" />
-          </svg>
+          {/* Agency name */}
+          <p
+            className="mb-1 text-[11px] font-black uppercase tracking-[0.2em]"
+            style={{ color: brandColor }}
+          >
+            {ws.name}
+          </p>
+
+          {/* Welcome message / tagline */}
+          {ws.welcomeMessage && (
+            <p className="mb-6 text-[13px] text-white/45">{ws.welcomeMessage}</p>
+          )}
+
+          {/* Divider */}
+          {!ws.welcomeMessage && <div className="mb-6" />}
+
+          {/* Presentation title */}
+          <h1 className="mx-auto max-w-2xl text-[2.6rem] font-black leading-[1.1] tracking-[-0.02em] text-white sm:text-[3.2rem]">
+            {data.title}
+          </h1>
+
+          {/* Intro */}
+          {data.intro && (
+            <p className="mx-auto mt-4 max-w-xl text-[14px] leading-[1.75] text-white/55 whitespace-pre-wrap">
+              {data.intro}
+            </p>
+          )}
+
+          {/* Stats row */}
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-[12px] font-semibold text-white/70">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: brandColor }} />
+              {data.candidates.length} talento{data.candidates.length !== 1 ? "s" : ""}
+            </span>
+            {approvedCount > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1.5 text-[12px] font-semibold text-emerald-400">
+                ✓ {approvedCount} aprovado{approvedCount !== 1 ? "s" : ""}
+              </span>
+            )}
+            {favoriteCount > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1.5 text-[12px] font-semibold text-amber-400">
+                ★ {favoriteCount} favorito{favoriteCount !== 1 ? "s" : ""}
+              </span>
+            )}
+            {rejectedCount > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/6 px-3 py-1.5 text-[12px] font-semibold text-white/40">
+                ✕ {rejectedCount} rejeitado{rejectedCount !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
         </div>
       </header>
 
       {/* ── Instruction hint (first visit) ── */}
       {totalVoted === 0 && data.candidates.length > 0 && (
-        <div className="mx-auto max-w-6xl px-5 pt-7 sm:px-10">
-          <div
-            className="flex items-center gap-3 rounded-2xl border px-4 py-3"
-            style={{ borderColor: `${brandColor}25`, background: `${brandColor}08` }}
-          >
+        <div className="mx-auto max-w-[1100px] px-5 pt-6 sm:px-8">
+          <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
             <div
-              className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full"
-              style={{ background: `${brandColor}20` }}
+              className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full"
+              style={{ background: `${brandColor}18` }}
             >
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: brandColor }}>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: brandColor }}>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <p className="text-[12px] font-medium text-zinc-700">
-              Use os botões <strong className="text-emerald-700">Aprovar</strong>, <strong className="text-amber-600">Favoritar</strong> e <strong className="text-zinc-500">Rejeitar</strong> em cada talento para enviar seu feedback à agência.
+            <p className="text-[12px] text-zinc-600">
+              Use <strong className="text-emerald-700">Aprovar</strong>, <strong className="text-amber-600">Favoritar</strong> ou <strong className="text-zinc-500">Rejeitar</strong> em cada talento para enviar seu feedback.
             </p>
           </div>
         </div>
       )}
 
       {/* ── Candidate grid ── */}
-      <main className="mx-auto max-w-6xl px-5 pb-20 pt-7 sm:px-10">
+      <main className="mx-auto max-w-[1100px] px-5 pb-20 pt-5 sm:px-8">
         {data.candidates.length === 0 ? (
-          <div className="rounded-3xl border border-zinc-200 bg-white py-24 text-center">
-            <p className="text-[15px] font-bold text-zinc-700">Nenhum talento nesta apresentação</p>
+          <div className="rounded-2xl border border-zinc-200 bg-white py-24 text-center">
+            <p className="text-[15px] font-semibold text-zinc-500">Nenhum talento nesta apresentação</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {data.candidates.map((c) => (
               <CandidateCard
                 key={c.id}
@@ -579,9 +499,9 @@ export default function ClientPresentation({ token }: { token: string }) {
       {/* ── Vote toast ── */}
       {toastMsg && (
         <div className="pointer-events-none fixed bottom-8 left-1/2 z-40 -translate-x-1/2">
-          <div className="rounded-2xl border border-[#1ABC9C]/20 bg-[#0B3C3D] px-5 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+          <div className="rounded-2xl border border-white/10 bg-zinc-900 px-5 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
             <p className="flex items-center gap-2 text-[13px] font-semibold text-white">
-              <span className="text-[#1ABC9C]">✓</span>
+              <span style={{ color: brandColor }}>✓</span>
               {toastMsg}
             </p>
           </div>
