@@ -343,16 +343,14 @@ export default function ClientPresentation({ token }: { token: string }) {
           <div className="mb-5 flex justify-center">
             {ws.logoUrl ? (
               <div
-                className="flex h-[88px] w-[88px] items-center justify-center rounded-full p-[3px]"
+                className="h-[88px] w-[88px] overflow-hidden rounded-full p-[3px]"
                 style={{ background: `linear-gradient(135deg, ${brandColor}, ${accentColor})` }}
               >
-                <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#0C0E0E]">
-                  <img
-                    src={ws.logoUrl}
-                    alt={ws.name}
-                    className="h-[68px] w-[68px] object-contain"
-                  />
-                </div>
+                <img
+                  src={ws.logoUrl}
+                  alt={ws.name}
+                  className="h-full w-full rounded-full object-cover"
+                />
               </div>
             ) : (
               <div
