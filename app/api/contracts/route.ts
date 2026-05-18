@@ -7,6 +7,10 @@ import { resolvePlanInfo, type Plan } from "@/lib/plans";
 import { getLivePlanSetting } from "@/lib/planSettings.server";
 import { isJobFull, JOB_FULL_MESSAGE, JOB_UNAVAILABLE_MESSAGE } from "@/lib/jobAvailability";
 import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
+import {
+  getExistingContractColumns,
+  resolveContractCreationAccess,
+} from "@/lib/contractCreationAccess.server";
 import { resolveWorkspaceLifecycleByJobId, talentWorkspaceContractsHref } from "@/lib/workspaceLifecycle";
 
 export async function POST(req: NextRequest) {
@@ -48,9 +52,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  if (agency_id !== user.id) {
-    return NextResponse.json({ error: "Cannot create contracts for another agency" }, { status: 403 });
+  const access = await resolveContractCreationAccess({
+    userId: user.id,
+    jobId: job_id ?? null,
+    requestedAgencyId: agency_id ?? null,
+  });
+  if (!access.allowed) {
+    return NextResponse.json({ error: access.error }, { status: access.status });
   }
+
+  const resolvedAgencyId = access.agencyId;
+  const resolvedWorkspaceId = access.kind === "workspace" ? access.workspaceId : null;
+  const resolvedCreatedByUserId = access.kind === "workspace" ? user.id : null;
 
   const workspaceAccess = await getUserPremiumWorkspace(user.id);
   let effectivePlan = "free" as Plan;
@@ -66,7 +79,7 @@ export async function POST(req: NextRequest) {
     if (jobOwnerErr || !jobOwner) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
-    if (jobOwner.agency_id !== agency_id) {
+    if (jobOwner.agency_id !== resolvedAgencyId) {
       return NextResponse.json({ error: "Job does not belong to this agency" }, { status: 403 });
     }
 
@@ -81,14 +94,14 @@ export async function POST(req: NextRequest) {
         : ((await supabase
             .from("profiles")
             .select("plan")
-            .eq("id", agency_id)
+            .eq("id", resolvedAgencyId)
             .single()).data?.plan ?? "free") as Plan;
 
     const liveSetting = await getLivePlanSetting(effectivePlan);
     const { count: activeHires } = await supabase
       .from("contracts")
       .select("id", { count: "exact", head: true })
-      .eq("agency_id", agency_id)
+      .eq("agency_id", resolvedAgencyId)
       .eq("job_id", job_id)
       .not("status", "in", '("cancelled","rejected")')
       .is("deleted_at", null);
@@ -110,14 +123,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (!job_id || effectivePlan !== "premium") {
-    const limited = await requireHireLimit(agency_id, job_id ?? null);
+    const limited = await requireHireLimit(resolvedAgencyId, job_id ?? null);
     if (limited) return limited;
   }
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("plan")
-    .eq("id", agency_id)
+    .eq("id", resolvedAgencyId)
     .single();
 
   if (!job_id) {
@@ -132,7 +145,8 @@ export async function POST(req: NextRequest) {
   const net_amount = amount - commission_amount;
 
   console.log("[plan] create_contract", {
-    agencyId: agency_id,
+    agencyId: resolvedAgencyId,
+    resolvedAgencyId,
     jobId: job_id ?? null,
     plan: planInfo.plan,
     amount,
@@ -150,11 +164,13 @@ export async function POST(req: NextRequest) {
     if (jobRow?.title) jobTitle = jobRow.title;
   }
 
+  const contractColumnSupport = await getExistingContractColumns();
+
   const { data: booking, error: bookingErr } = await supabase
     .from("bookings")
     .insert({
       job_id: job_id ?? null,
-      agency_id: agency_id ?? null,
+      agency_id: resolvedAgencyId,
       talent_user_id: talent_id,
       job_title: jobTitle,
       price: amount,
@@ -168,25 +184,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: bookingErr.message }, { status: 400 });
   }
 
+  const contractInsert: Record<string, unknown> = {
+    booking_id: booking.id,
+    job_id: job_id ?? null,
+    talent_id,
+    agency_id: resolvedAgencyId,
+    job_date: job_date ?? null,
+    job_time: job_time ?? null,
+    location: location ?? null,
+    job_description: job_description ?? null,
+    payment_amount: amount,
+    commission_amount,
+    net_amount,
+    payment_method: payment_method ?? null,
+    additional_notes: additional_notes ?? null,
+    contract_file_url: contract_file_url ?? null,
+    status: "sent",
+  };
+
+  if (contractColumnSupport.hasWorkspaceId) {
+    contractInsert.workspace_id = resolvedWorkspaceId;
+  }
+  if (contractColumnSupport.hasCreatedByUserId) {
+    contractInsert.created_by_user_id = resolvedCreatedByUserId;
+  }
+
   const { data: contract, error } = await supabase
     .from("contracts")
-    .insert({
-      booking_id: booking.id,
-      job_id: job_id ?? null,
-      talent_id,
-      agency_id,
-      job_date: job_date ?? null,
-      job_time: job_time ?? null,
-      location: location ?? null,
-      job_description: job_description ?? null,
-      payment_amount: amount,
-      commission_amount,
-      net_amount,
-      payment_method: payment_method ?? null,
-      additional_notes: additional_notes ?? null,
-      contract_file_url: contract_file_url ?? null,
-      status: "sent",
-    })
+    .insert(contractInsert)
     .select()
     .single();
 
@@ -203,7 +228,7 @@ export async function POST(req: NextRequest) {
     const { data: agencyProfile } = await supabase
       .from("profiles")
       .select("full_name")
-      .eq("id", agency_id)
+      .eq("id", resolvedAgencyId)
       .single();
     const agencyName = agencyProfile?.full_name ?? "a agencia";
     await notify(talent_id, "rehire", `Voce foi contratado novamente por ${agencyName}`, talentContractsHref);

@@ -99,6 +99,11 @@ type ContractSentPayload = {
   contractId: string | null;
 };
 
+type BoardToast = {
+  msg: string;
+  ok: boolean;
+};
+
 // ─── Pipeline stage config ────────────────────────────────────────────────────
 
 type StageId =
@@ -449,9 +454,15 @@ export default function WorkspacePipelineBoard({
   const [deletingPres, setDeletingPres] = useState<string | null>(null);
   const [noSelectionHint, setNoSelectionHint] = useState(false);
   const [highlightCheckboxes, setHighlightCheckboxes] = useState(false);
+  const [toast, setToast] = useState<BoardToast | null>(null);
 
   const canManage = isOwner || !readOnly;
   const liveJob = useMemo(() => ({ ...job, status: jobStatus }), [job, jobStatus]);
+
+  function showToast(msg: string, ok: boolean) {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 4000);
+  }
 
   useEffect(() => {
     setJobStatus(job.status);
@@ -917,9 +928,23 @@ export default function WorkspacePipelineBoard({
           onSent={({ bookingId, bookingStatus, contractId }) => {
             patchCandidateBooking(contractTarget.id, bookingId, bookingStatus, contractId);
             setContractTarget(null);
+            showToast("Contrato enviado com sucesso.", true);
             router.refresh();
           }}
         />
+      )}
+
+      {toast && (
+        <div className="fixed bottom-5 left-1/2 z-50 w-full max-w-sm -translate-x-1/2 px-4">
+          <div
+            className={[
+              "rounded-2xl px-4 py-3 text-center text-[13px] font-semibold text-white shadow-lg",
+              toast.ok ? "bg-emerald-600" : "bg-rose-600",
+            ].join(" ")}
+          >
+            {toast.msg}
+          </div>
+        </div>
       )}
 
       {/* Create presentation modal — only renders when candidates are actually selected */}
