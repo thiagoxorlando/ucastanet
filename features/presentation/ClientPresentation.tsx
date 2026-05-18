@@ -113,7 +113,6 @@ export default function ClientPresentation({ token }: { token: string }) {
 
   async function submitVote(candidateId: string, vote: Vote) {
     const prev = votes[candidateId];
-    // Toggle off if same vote
     const nextVote = prev === vote ? null : vote;
     setVotes((v) => {
       const next = { ...v };
@@ -122,7 +121,7 @@ export default function ClientPresentation({ token }: { token: string }) {
       return next;
     });
 
-    if (!nextVote) return; // toggled off — nothing to persist
+    if (!nextVote) return;
 
     fetch(`/api/presentation/${token}/feedback`, {
       method: "POST",
@@ -138,8 +137,11 @@ export default function ClientPresentation({ token }: { token: string }) {
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (state === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-200 border-t-[#1ABC9C]" />
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-[#E6F0FD] border-t-[#1ABC9C]" />
+          <p className="text-[13px] font-medium text-[#647B7B]">Carregando apresentação…</p>
+        </div>
       </div>
     );
   }
@@ -147,11 +149,16 @@ export default function ClientPresentation({ token }: { token: string }) {
   // ── Expired ──────────────────────────────────────────────────────────────────
   if (state === "expired") {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="text-center">
-          <div className="mb-4 text-5xl">⏰</div>
-          <h1 className="text-[1.4rem] font-bold text-zinc-900">Apresentação expirada</h1>
-          <p className="mt-2 text-[14px] text-zinc-500">O link desta apresentação não está mais ativo.</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4">
+        <div className="w-full max-w-sm rounded-3xl border border-[#E6F0FD] bg-white p-10 text-center shadow-[0_8px_40px_rgba(26,188,156,0.08)]">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E6F0FD]">
+            <svg className="h-8 w-8 text-[#0E7CB6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h1 className="text-[1.2rem] font-bold text-[#1F2D2E]">Apresentação expirada</h1>
+          <p className="mt-2 text-[13px] leading-relaxed text-[#647B7B]">O link desta apresentação não está mais ativo. Entre em contato com a agência.</p>
+          <p className="mt-6 text-[11px] text-[#7FA9A8]">Powered by BrisaHub</p>
         </div>
       </div>
     );
@@ -160,11 +167,16 @@ export default function ClientPresentation({ token }: { token: string }) {
   // ── Error ────────────────────────────────────────────────────────────────────
   if (state === "error") {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="text-center">
-          <div className="mb-4 text-5xl">🔍</div>
-          <h1 className="text-[1.4rem] font-bold text-zinc-900">Apresentação não encontrada</h1>
-          <p className="mt-2 text-[14px] text-zinc-500">Verifique o link e tente novamente.</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4">
+        <div className="w-full max-w-sm rounded-3xl border border-[#E6F0FD] bg-white p-10 text-center shadow-[0_8px_40px_rgba(26,188,156,0.08)]">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#E6F0FD]">
+            <svg className="h-8 w-8 text-[#0E7CB6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <h1 className="text-[1.2rem] font-bold text-[#1F2D2E]">Apresentação não encontrada</h1>
+          <p className="mt-2 text-[13px] leading-relaxed text-[#647B7B]">Verifique o link enviado pela agência e tente novamente.</p>
+          <p className="mt-6 text-[11px] text-[#7FA9A8]">Powered by BrisaHub</p>
         </div>
       </div>
     );
@@ -173,37 +185,40 @@ export default function ClientPresentation({ token }: { token: string }) {
   // ── Password gate ─────────────────────────────────────────────────────────────
   if (state === "gate") {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="w-full max-w-sm rounded-[24px] border border-zinc-200 bg-white p-8 shadow-[0_12px_40px_rgba(0,0,0,0.08)]">
-          <div className="mb-6 text-center">
-            <div className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100">
-              <svg className="h-5 w-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC] px-4">
+        <div className="w-full max-w-sm">
+          {/* Brand mark */}
+          <div className="mb-8 text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: "linear-gradient(135deg, #1ABC9C 0%, #0E7CB6 100%)" }}>
+              <svg className="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
-            <h2 className="text-[1.1rem] font-bold text-zinc-900">Apresentação protegida</h2>
-            <p className="mt-1 text-[13px] text-zinc-500">Insira a senha para acessar.</p>
+            <h2 className="text-[1.25rem] font-bold text-[#1F2D2E]">Apresentação protegida</h2>
+            <p className="mt-1.5 text-[13px] text-[#647B7B]">Insira a senha para visualizar os talentos.</p>
           </div>
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+          <form onSubmit={handlePasswordSubmit} className="space-y-3">
             <input
               type="password"
-              placeholder="Senha"
+              placeholder="Senha de acesso"
               value={gatePassword}
               onChange={(e) => setGatePassword(e.target.value)}
               autoFocus
-              className="h-11 w-full rounded-xl border border-zinc-200 px-4 text-[14px] text-zinc-800 placeholder:text-zinc-400 focus:border-zinc-400 focus:outline-none transition-colors"
+              className="h-12 w-full rounded-2xl border border-[#E6F0FD] bg-white px-4 text-[14px] text-[#1F2D2E] placeholder:text-[#7FA9A8] focus:border-[#1ABC9C] focus:outline-none focus:ring-2 focus:ring-[#1ABC9C]/20 transition-all"
             />
             {gateError && (
-              <p className="text-[12px] text-red-500">{gateError}</p>
+              <p className="rounded-xl bg-red-50 px-3 py-2 text-[12px] font-medium text-red-600">{gateError}</p>
             )}
             <button
               type="submit"
               disabled={gateLoading || !gatePassword.trim()}
-              className="h-11 w-full rounded-xl bg-[#1ABC9C] text-[14px] font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 cursor-pointer"
+              className="h-12 w-full rounded-2xl text-[14px] font-bold text-white transition-all disabled:opacity-50 cursor-pointer"
+              style={{ background: "linear-gradient(135deg, #1ABC9C 0%, #0E7CB6 100%)" }}
             >
-              {gateLoading ? "Verificando..." : "Acessar"}
+              {gateLoading ? "Verificando…" : "Acessar apresentação"}
             </button>
           </form>
+          <p className="mt-6 text-center text-[11px] text-[#7FA9A8]">Powered by BrisaHub</p>
         </div>
       </div>
     );
@@ -213,59 +228,128 @@ export default function ClientPresentation({ token }: { token: string }) {
 
   const ws = data.workspace;
   const brandColor = ws.brandColor || "#1ABC9C";
+  const totalVoted = Object.keys(votes).length;
+  const approvedCount  = Object.values(votes).filter((v) => v === "approved").length;
+  const favoriteCount  = Object.values(votes).filter((v) => v === "favorite").length;
+  const rejectedCount  = Object.values(votes).filter((v) => v === "rejected").length;
 
   // ── Presentation ──────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-[#F8FAFC]">
 
-      {/* Header */}
-      <header className="border-b border-zinc-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-4 sm:px-6">
-          {ws.logoUrl ? (
-            <Image
-              src={ws.logoUrl}
-              alt={ws.name}
-              width={40}
-              height={40}
-              className="h-10 w-10 rounded-xl object-contain"
-            />
-          ) : (
-            <div
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-[13px] font-bold text-white"
-              style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}cc)` }}
-            >
-              {ws.name.slice(0, 2).toUpperCase()}
+      {/* Hero header — brand gradient */}
+      <header className="relative overflow-hidden pb-10 pt-8" style={{ background: "radial-gradient(ellipse at top, #1ABC9C 0%, #0B3C3D 100%)" }}>
+
+        {/* Decorative rings */}
+        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full border border-white/10" />
+        <div className="pointer-events-none absolute -right-10 -top-10 h-44 w-44 rounded-full border border-white/8" />
+        <div className="pointer-events-none absolute -left-16 bottom-0 h-48 w-48 rounded-full border border-white/10" />
+
+        <div className="relative mx-auto max-w-4xl px-5 sm:px-8">
+          {/* Workspace identity */}
+          <div className="mb-6 flex items-center gap-3">
+            {ws.logoUrl ? (
+              <Image
+                src={ws.logoUrl}
+                alt={ws.name}
+                width={44}
+                height={44}
+                className="h-11 w-11 rounded-2xl object-contain ring-2 ring-white/20"
+              />
+            ) : (
+              <div
+                className="flex h-11 w-11 items-center justify-center rounded-2xl text-[13px] font-bold text-white ring-2 ring-white/20"
+                style={{ background: `linear-gradient(135deg, ${brandColor}dd, ${brandColor}88)` }}
+              >
+                {ws.name.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-[#6EE7E7]">
+                {ws.name}
+              </p>
             </div>
-          )}
-          <div>
-            <p className="text-[12px] font-medium text-zinc-500">{ws.name}</p>
-            <h1 className="text-[1.1rem] font-bold leading-tight text-zinc-900">{data.title}</h1>
           </div>
+
+          {/* Title */}
+          <h1 className="text-[2rem] font-black leading-tight tracking-tight text-white sm:text-[2.4rem]">
+            {data.title}
+          </h1>
+
+          {/* Intro */}
+          {data.intro && (
+            <p className="mt-3 max-w-xl text-[14px] leading-relaxed text-white/75 whitespace-pre-wrap">
+              {data.intro}
+            </p>
+          )}
+
+          {/* Stats row */}
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#6EE7E7]" />
+              {data.candidates.length} talento{data.candidates.length !== 1 ? "s" : ""}
+            </span>
+            {totalVoted > 0 && (
+              <>
+                {approvedCount > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-3 py-1.5 text-[12px] font-semibold text-emerald-200">
+                    ✓ {approvedCount} aprovado{approvedCount !== 1 ? "s" : ""}
+                  </span>
+                )}
+                {favoriteCount > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-3 py-1.5 text-[12px] font-semibold text-amber-200">
+                    ★ {favoriteCount} favorito{favoriteCount !== 1 ? "s" : ""}
+                  </span>
+                )}
+                {rejectedCount > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1.5 text-[12px] font-semibold text-white/60">
+                    ✕ {rejectedCount} rejeitado{rejectedCount !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Wave divider */}
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 32" preserveAspectRatio="none" className="h-8 w-full" fill="#F8FAFC">
+            <path d="M0,32 C360,0 1080,0 1440,32 L1440,32 L0,32 Z" />
+          </svg>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-
-        {/* Intro text */}
-        {data.intro && (
-          <div className="mb-8 rounded-2xl border border-zinc-200 bg-white px-6 py-5">
-            <p className="text-[14px] leading-relaxed text-zinc-600 whitespace-pre-wrap">{data.intro}</p>
+      {/* Feedback hint — shown until first vote */}
+      {totalVoted === 0 && data.candidates.length > 0 && (
+        <div className="mx-auto max-w-4xl px-5 pt-6 sm:px-8">
+          <div className="flex items-center gap-2.5 rounded-2xl border border-[#6EE7E7]/40 bg-[#E6F0FD]/60 px-4 py-3">
+            <svg className="h-4 w-4 flex-shrink-0 text-[#0E7CB6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-[12px] font-medium text-[#0B3C3D]">
+              Avalie cada talento usando os botões{" "}
+              <span className="font-bold text-emerald-700">Aprovar</span>,{" "}
+              <span className="font-bold text-amber-600">Favorito</span> e{" "}
+              <span className="font-bold text-zinc-600">Rejeitar</span> abaixo de cada card.
+            </p>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Candidate count */}
-        <p className="mb-4 text-[12px] text-zinc-400">
-          {data.candidates.length} candidato{data.candidates.length !== 1 ? "s" : ""} nesta apresentação
-        </p>
-
-        {/* Candidates grid */}
+      {/* Candidates grid */}
+      <main className="mx-auto max-w-4xl px-5 pb-16 pt-6 sm:px-8">
         {data.candidates.length === 0 ? (
-          <div className="rounded-2xl border border-zinc-100 bg-white py-16 text-center">
-            <p className="text-[15px] font-semibold text-zinc-800">Nenhum candidato</p>
-            <p className="mt-1 text-[13px] text-zinc-400">Esta apresentação ainda não possui candidatos.</p>
+          <div className="rounded-3xl border border-[#E6F0FD] bg-white py-20 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#E6F0FD]">
+              <svg className="h-7 w-7 text-[#0E7CB6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <p className="text-[15px] font-bold text-[#1F2D2E]">Nenhum talento</p>
+            <p className="mt-1 text-[13px] text-[#7FA9A8]">Esta apresentação ainda não possui candidatos.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {data.candidates.map((c) => (
               <CandidateCard
                 key={c.id}
@@ -281,9 +365,13 @@ export default function ClientPresentation({ token }: { token: string }) {
         )}
 
         {/* Footer */}
-        <p className="mt-10 text-center text-[11px] text-zinc-300">
-          Powered by BrisaHub
-        </p>
+        <div className="mt-14 flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2">
+            <div className="h-5 w-5 rounded-md" style={{ background: "linear-gradient(135deg, #1ABC9C 0%, #0E7CB6 100%)" }} />
+            <span className="text-[12px] font-bold text-[#0B3C3D]">BrisaHub</span>
+          </div>
+          <p className="text-[11px] text-[#7FA9A8]">Plataforma de casting e talentos</p>
+        </div>
       </main>
     </div>
   );
@@ -314,73 +402,128 @@ function CandidateCard({
   if (c.city) metaParts.push(c.city);
   if (c.gender) { const gl = genderLabel(c.gender); if (gl) metaParts.push(gl); }
 
-  return (
-    <div className="flex flex-col rounded-2xl border border-zinc-200 bg-white overflow-hidden shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)]">
+  const hasExpandable = !!(c.videoUrl || c.portfolioUrl || c.curriculumUrl || (c.bio && c.bio.length > 100));
 
-      {/* Photo / avatar area */}
-      <div className="relative aspect-[3/4] bg-zinc-100 overflow-hidden">
+  // Vote ring color on the card border
+  const voteRing =
+    vote === "approved" ? "ring-2 ring-emerald-400 ring-offset-2" :
+    vote === "favorite" ? "ring-2 ring-amber-400 ring-offset-2" :
+    vote === "rejected" ? "ring-2 ring-zinc-300 ring-offset-2" :
+    "";
+
+  return (
+    <div className={[
+      "group flex flex-col rounded-3xl bg-white overflow-hidden shadow-[0_2px_16px_rgba(11,60,61,0.08)] transition-all duration-200 hover:shadow-[0_8px_32px_rgba(11,60,61,0.14)] hover:-translate-y-0.5",
+      voteRing,
+    ].join(" ")}>
+
+      {/* Photo area */}
+      <div className="relative aspect-[3/4] overflow-hidden bg-[#E6F0FD]">
         {photos.length > 0 ? (
           <>
             <img
               src={photos[photoIdx]}
               alt={c.name}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
             />
+
+            {/* Gradient overlay bottom */}
+            <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-black/50 to-transparent" />
+
+            {/* Photo nav — arrows */}
             {photos.length > 1 && (
-              <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
-                {photos.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={(e) => { e.stopPropagation(); setPhotoIdx(i); }}
-                    className={[
-                      "h-1.5 rounded-full transition-all cursor-pointer",
-                      i === photoIdx ? "w-4 bg-white" : "w-1.5 bg-white/50",
-                    ].join(" ")}
-                  />
-                ))}
+              <>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setPhotoIdx((i) => (i - 1 + photos.length) % photos.length); }}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-all hover:bg-black/50 cursor-pointer opacity-0 group-hover:opacity-100"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setPhotoIdx((i) => (i + 1) % photos.length); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-all hover:bg-black/50 cursor-pointer opacity-0 group-hover:opacity-100"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+
+                {/* Dot indicators */}
+                <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+                  {photos.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={(e) => { e.stopPropagation(); setPhotoIdx(i); }}
+                      className={[
+                        "rounded-full transition-all cursor-pointer",
+                        i === photoIdx ? "h-1.5 w-5 bg-white" : "h-1.5 w-1.5 bg-white/50 hover:bg-white/80",
+                      ].join(" ")}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Vote badge overlaid on photo when voted */}
+            {vote && (
+              <div className={[
+                "absolute top-3 right-3 flex h-8 w-8 items-center justify-center rounded-full text-[15px] shadow-md",
+                vote === "approved" ? "bg-emerald-500" :
+                vote === "favorite" ? "bg-amber-400" :
+                "bg-zinc-500",
+              ].join(" ")}>
+                {vote === "approved" ? "✓" : vote === "favorite" ? "★" : "✕"}
               </div>
             )}
           </>
         ) : (
-          <div className="flex h-full items-center justify-center">
+          // No photo — avatar placeholder
+          <div className="flex h-full flex-col items-center justify-center gap-3">
             <div
-              className="flex h-20 w-20 items-center justify-center rounded-full text-3xl font-bold text-white"
-              style={{ background: `linear-gradient(135deg, ${brandColor}, ${brandColor}cc)` }}
+              className="flex h-24 w-24 items-center justify-center rounded-full text-4xl font-black text-white shadow-lg"
+              style={{ background: `linear-gradient(135deg, ${brandColor} 0%, #0E7CB6 100%)` }}
             >
               {initials(c.name)}
             </div>
+            <p className="text-[11px] font-medium text-[#7FA9A8]">Sem foto</p>
           </div>
         )}
       </div>
 
-      {/* Info */}
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="text-[15px] font-bold text-zinc-900 leading-snug">{c.name}</h3>
+      {/* Info section */}
+      <div className="flex flex-1 flex-col px-4 pb-4 pt-3.5">
+
+        {/* Name + meta */}
+        <h3 className="text-[15px] font-black leading-tight text-[#1F2D2E]">{c.name}</h3>
         {metaParts.length > 0 && (
-          <p className="mt-0.5 text-[12px] text-zinc-500">{metaParts.join(" · ")}</p>
+          <p className="mt-1 text-[12px] font-medium text-[#647B7B]">{metaParts.join(" · ")}</p>
         )}
+
+        {/* Bio preview */}
         {c.bio && (
-          <p className="mt-2 text-[12px] leading-relaxed text-zinc-600 line-clamp-3">
+          <p className="mt-2.5 text-[12px] leading-relaxed text-[#647B7B] line-clamp-2">
             {c.bio}
           </p>
         )}
 
         {/* Expand toggle */}
-        {(c.videoUrl || c.portfolioUrl || c.curriculumUrl || c.bio.length > 100) && (
+        {hasExpandable && (
           <button
             onClick={onToggleExpand}
-            className="mt-2 text-left text-[11px] font-medium transition-colors cursor-pointer"
+            className="mt-2 inline-flex items-center gap-1 text-left text-[11px] font-bold transition-colors cursor-pointer"
             style={{ color: brandColor }}
           >
             {expanded ? "Ver menos ↑" : "Ver mais ↓"}
           </button>
         )}
 
-        {/* Expanded content */}
+        {/* Expanded section */}
         {expanded && (
-          <div className="mt-3 space-y-2 border-t border-zinc-100 pt-3">
-            {c.bio.length > 100 && (
-              <p className="text-[12px] leading-relaxed text-zinc-600 whitespace-pre-wrap">
+          <div className="mt-3 space-y-2 border-t border-[#E6F0FD] pt-3">
+            {c.bio && c.bio.length > 100 && (
+              <p className="text-[12px] leading-relaxed text-[#647B7B] whitespace-pre-wrap">
                 {c.bio}
               </p>
             )}
@@ -389,7 +532,7 @@ function CandidateCard({
                 href={c.videoUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+                className="flex items-center gap-2 rounded-xl border border-[#E6F0FD] bg-[#F8FAFC] px-3 py-2.5 text-[12px] font-semibold text-[#0E7CB6] transition-colors hover:bg-[#E6F0FD]"
               >
                 <VideoIcon />
                 Assistir vídeo
@@ -400,7 +543,7 @@ function CandidateCard({
                 href={c.portfolioUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+                className="flex items-center gap-2 rounded-xl border border-[#E6F0FD] bg-[#F8FAFC] px-3 py-2.5 text-[12px] font-semibold text-[#0E7CB6] transition-colors hover:bg-[#E6F0FD]"
               >
                 <LinkIcon />
                 Ver portfólio
@@ -411,7 +554,7 @@ function CandidateCard({
                 href={c.curriculumUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-[12px] font-medium text-zinc-700 hover:bg-zinc-50 transition-colors"
+                className="flex items-center gap-2 rounded-xl border border-[#E6F0FD] bg-[#F8FAFC] px-3 py-2.5 text-[12px] font-semibold text-[#0E7CB6] transition-colors hover:bg-[#E6F0FD]"
               >
                 <DocIcon />
                 Ver currículo
@@ -420,32 +563,31 @@ function CandidateCard({
           </div>
         )}
 
-        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Feedback buttons */}
-        <div className="mt-4 flex gap-2 border-t border-zinc-100 pt-3">
+        {/* Vote buttons */}
+        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-[#E6F0FD] pt-3.5">
           <VoteBtn
             active={vote === "approved"}
             label="Aprovar"
-            activeClass="bg-emerald-50 border-emerald-200 text-emerald-700"
-            inactiveClass="border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:text-zinc-700"
+            activeClass="bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-200"
+            inactiveClass="border-[#E6F0FD] text-[#647B7B] hover:border-emerald-300 hover:text-emerald-700 hover:bg-emerald-50"
             onClick={() => onVote("approved")}
             icon={<ThumbUpIcon />}
           />
           <VoteBtn
             active={vote === "favorite"}
             label="Favorito"
-            activeClass="bg-amber-50 border-amber-200 text-amber-700"
-            inactiveClass="border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:text-zinc-700"
+            activeClass="bg-amber-400 border-amber-400 text-white shadow-sm shadow-amber-200"
+            inactiveClass="border-[#E6F0FD] text-[#647B7B] hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50"
             onClick={() => onVote("favorite")}
             icon={<StarIcon />}
           />
           <VoteBtn
             active={vote === "rejected"}
             label="Rejeitar"
-            activeClass="bg-red-50 border-red-200 text-red-600"
-            inactiveClass="border-zinc-200 text-zinc-500 hover:border-zinc-300 hover:text-zinc-700"
+            activeClass="bg-zinc-500 border-zinc-500 text-white shadow-sm"
+            inactiveClass="border-[#E6F0FD] text-[#647B7B] hover:border-zinc-300 hover:text-zinc-700 hover:bg-zinc-50"
             onClick={() => onVote("rejected")}
             icon={<ThumbDownIcon />}
           />
@@ -477,12 +619,12 @@ function VoteBtn({
       onClick={onClick}
       title={label}
       className={[
-        "flex flex-1 items-center justify-center gap-1 rounded-lg border py-2 text-[11px] font-semibold transition-all cursor-pointer",
+        "flex flex-col items-center justify-center gap-1 rounded-xl border py-2.5 text-[10px] font-bold transition-all cursor-pointer",
         active ? activeClass : inactiveClass,
       ].join(" ")}
     >
       {icon}
-      <span className="hidden sm:inline">{label}</span>
+      <span>{label}</span>
     </button>
   );
 }
