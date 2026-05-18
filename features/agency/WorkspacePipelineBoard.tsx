@@ -184,6 +184,7 @@ export default function WorkspacePipelineBoard({
   const [createdToken, setCreatedToken] = useState<string | null>(null);
   const [deletingPres, setDeletingPres] = useState<string | null>(null);
   const [noSelectionHint, setNoSelectionHint] = useState(false);
+  const [highlightCheckboxes, setHighlightCheckboxes] = useState(false);
 
   const canManage = isOwner || !readOnly;
 
@@ -192,7 +193,9 @@ export default function WorkspacePipelineBoard({
       setShowCreatePresentation(true);
     } else {
       setNoSelectionHint(true);
+      setHighlightCheckboxes(true);
       setTimeout(() => setNoSelectionHint(false), 3500);
+      setTimeout(() => setHighlightCheckboxes(false), 3000);
     }
   }
 
@@ -578,6 +581,7 @@ export default function WorkspacePipelineBoard({
                     presentations={presentations}
                     canManage={canManage}
                     isSelected={selected.has(c.id)}
+                    highlightCheckbox={highlightCheckboxes}
                     onToggleSelect={() => toggleSelect(c.id)}
                     onStatusChange={patchCandidateStatus}
                     onNoteAdded={patchCandidateNote}
@@ -604,6 +608,7 @@ export default function WorkspacePipelineBoard({
               presentations={presentations}
               canManage={canManage}
               isSelected={selected.has(c.id)}
+              highlightCheckbox={highlightCheckboxes}
               onToggleSelect={() => toggleSelect(c.id)}
               onStatusChange={patchCandidateStatus}
               onNoteAdded={patchCandidateNote}
@@ -764,28 +769,46 @@ function PresentationsPanel({
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white overflow-hidden">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-5 py-4 cursor-pointer hover:bg-zinc-50 transition-colors"
-      >
-        <div className="flex items-center gap-2">
+      {/* Header row — collapse toggle + always-visible create button */}
+      <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-100">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity"
+        >
           <span className="text-[13px] font-semibold text-zinc-800">Apresentações para clientes</span>
           {presentations.length > 0 && (
             <span className="rounded-full bg-zinc-100 px-2 py-px text-[10px] font-bold text-zinc-500">
               {presentations.length}
             </span>
           )}
-        </div>
-        <svg
-          className={`h-4 w-4 text-zinc-400 transition-transform ${open ? "rotate-180" : ""}`}
-          fill="none" stroke="currentColor" viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+          <svg
+            className={`h-4 w-4 text-zinc-400 transition-transform ${open ? "rotate-180" : ""}`}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {canManage && (
+          <button
+            onClick={onCreateClick}
+            className={[
+              "inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[12px] font-semibold transition-all cursor-pointer",
+              hasSelection
+                ? "bg-[#1ABC9C] text-white hover:bg-[#17A58A] shadow-sm"
+                : "bg-[#1ABC9C]/10 text-[#1ABC9C] hover:bg-[#1ABC9C]/20",
+            ].join(" ")}
+          >
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            + Criar apresentação
+          </button>
+        )}
+      </div>
 
       {open && (
-        <div className="border-t border-zinc-100 px-5 pb-5 pt-4 space-y-3">
+        <div className="px-5 pb-5 pt-4 space-y-3">
           {presentations.length === 0 && (
             <div className="space-y-4 py-1">
               {/* 3-step guide */}
@@ -985,6 +1008,7 @@ function CandidateCard({
   presentations,
   canManage,
   isSelected,
+  highlightCheckbox,
   onToggleSelect,
   onStatusChange,
   onNoteAdded,
@@ -995,6 +1019,7 @@ function CandidateCard({
   presentations: PresentationSummary[];
   canManage: boolean;
   isSelected: boolean;
+  highlightCheckbox?: boolean;
   onToggleSelect: () => void;
   onStatusChange: (id: string, status: string) => void;
   onNoteAdded: (id: string, note: PipelineNote) => void;
@@ -1067,20 +1092,22 @@ function CandidateCard({
             className="flex-shrink-0 flex flex-col items-center gap-1 cursor-pointer group self-center"
           >
             <span className={[
-              "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
+              "w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all",
               isSelected
-                ? "bg-[#1ABC9C] border-[#1ABC9C] shadow-sm"
-                : "border-zinc-300 group-hover:border-[#1ABC9C] group-hover:bg-[#1ABC9C]/8",
+                ? "bg-[#1ABC9C] border-[#1ABC9C] shadow-md"
+                : highlightCheckbox
+                  ? "border-[#1ABC9C] bg-[#1ABC9C]/10 animate-pulse"
+                  : "border-zinc-300 group-hover:border-[#1ABC9C] group-hover:bg-[#1ABC9C]/10",
             ].join(" ")}>
               {isSelected && (
-                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
               )}
             </span>
             <span className={[
               "text-[10px] font-semibold leading-none whitespace-nowrap transition-colors",
-              isSelected ? "text-[#1ABC9C]" : "text-zinc-400 group-hover:text-[#1ABC9C]",
+              isSelected ? "text-[#1ABC9C]" : highlightCheckbox ? "text-[#1ABC9C]" : "text-zinc-400 group-hover:text-[#1ABC9C]",
             ].join(" ")}>
               {isSelected ? "Selecionado" : "Selecionar"}
             </span>
