@@ -139,11 +139,11 @@ export async function GET(req: NextRequest) {
       .in("presentation_id", presentationIds),
     supabase
       .from("presentation_feedback")
-      .select("presentation_id, vote")
-      .in("presentation_id", presentationIds),
+      .select("presentation_id, vote, viewer_name, viewer_company")
+      .in("presentation_id", presentationIds)
+      .order("created_at", { ascending: true }),
   ]);
 
-  // Count candidates and collect submission IDs per presentation
   const candCount  = new Map<string, number>();
   const subIdsMap  = new Map<string, string[]>();
   for (const c of candsResult.data ?? []) {
@@ -153,14 +153,18 @@ export async function GET(req: NextRequest) {
     subIdsMap.set(c.presentation_id, list);
   }
 
-  // Aggregate feedback per presentation
-  const fbMap = new Map<string, { approved: number; rejected: number; favorite: number }>();
+  const fbMap      = new Map<string, { approved: number; rejected: number; favorite: number }>();
+  const fbEntries  = new Map<string, Array<{ viewerName: string; viewerCompany: string | null; vote: string }>>();
   for (const f of feedbackResult.data ?? []) {
     const cur = fbMap.get(f.presentation_id) ?? { approved: 0, rejected: 0, favorite: 0 };
     if (f.vote === "approved")  cur.approved++;
     if (f.vote === "rejected")  cur.rejected++;
     if (f.vote === "favorite")  cur.favorite++;
     fbMap.set(f.presentation_id, cur);
+
+    const entries = fbEntries.get(f.presentation_id) ?? [];
+    entries.push({ viewerName: f.viewer_name ?? "Cliente", viewerCompany: f.viewer_company ?? null, vote: f.vote });
+    fbEntries.set(f.presentation_id, entries);
   }
 
   const presentations = rows.map((r) => ({
@@ -173,6 +177,7 @@ export async function GET(req: NextRequest) {
     hasPassword:     !!r.password_hash,
     candidateCount:  candCount.get(r.id) ?? 0,
     feedbackSummary: fbMap.get(r.id) ?? { approved: 0, rejected: 0, favorite: 0 },
+    feedbackEntries: fbEntries.get(r.id) ?? [],
     submissionIds:   subIdsMap.get(r.id) ?? [],
   }));
 

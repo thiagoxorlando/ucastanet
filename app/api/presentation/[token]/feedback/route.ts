@@ -12,9 +12,12 @@ export async function POST(
     submissionId?: string;
     vote?: string;
     clientToken?: string;
+    viewerName?: string;
+    viewerCompany?: string;
+    viewerEmail?: string;
   };
 
-  const { submissionId, vote, clientToken } = body;
+  const { submissionId, vote, clientToken, viewerName, viewerCompany, viewerEmail } = body;
 
   if (!submissionId || !clientToken) {
     return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
@@ -49,6 +52,7 @@ export async function POST(
   if (!pCand) return NextResponse.json({ error: "Candidato não encontrado." }, { status: 404 });
 
   // UPSERT: one vote per (presentation, submission, client_token)
+  // Persist viewer identity alongside the vote for agency attribution.
   const { error } = await supabase
     .from("presentation_feedback")
     .upsert(
@@ -57,6 +61,9 @@ export async function POST(
         submission_id:   submissionId,
         client_token:    clientToken,
         vote,
+        viewer_name:    viewerName?.trim()    || null,
+        viewer_company: viewerCompany?.trim() || null,
+        viewer_email:   viewerEmail?.trim()   || null,
       },
       { onConflict: "presentation_id,submission_id,client_token" }
     );

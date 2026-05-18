@@ -125,9 +125,10 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
     presIds.length
       ? supabase
           .from("presentation_feedback")
-          .select("presentation_id, vote")
+          .select("presentation_id, vote, viewer_name, viewer_company")
           .in("presentation_id", presIds)
-      : Promise.resolve({ data: [] as Array<{ presentation_id: string; vote: string }> }),
+          .order("created_at", { ascending: true })
+      : Promise.resolve({ data: [] as Array<{ presentation_id: string; vote: string; viewer_name: string | null; viewer_company: string | null }> }),
     // Per-submission feedback — used to show client approval badges directly on candidate cards
     submissionIds.length
       ? supabase
@@ -231,13 +232,22 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
     presSubIds.set(c.presentation_id, list);
   }
 
-  const presFbMap = new Map<string, PresentationSummary["feedbackSummary"]>();
+  const presFbMap     = new Map<string, PresentationSummary["feedbackSummary"]>();
+  const presFbEntries = new Map<string, PresentationSummary["feedbackEntries"]>();
   for (const f of feedbackResult.data ?? []) {
     const cur = presFbMap.get(f.presentation_id) ?? { approved: 0, rejected: 0, favorite: 0 };
     if (f.vote === "approved")  cur.approved++;
     if (f.vote === "rejected")  cur.rejected++;
     if (f.vote === "favorite")  cur.favorite++;
     presFbMap.set(f.presentation_id, cur);
+
+    const entries = presFbEntries.get(f.presentation_id) ?? [];
+    entries.push({
+      viewerName:    f.viewer_name    ?? "Cliente",
+      viewerCompany: f.viewer_company ?? null,
+      vote:          f.vote as "approved" | "favorite" | "rejected",
+    });
+    presFbEntries.set(f.presentation_id, entries);
   }
 
   const presentations: PresentationSummary[] = presRows.map((p) => ({
@@ -250,6 +260,7 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
     hasPassword:     !!(p as { password_hash?: string | null }).password_hash,
     candidateCount:  presCandCount.get(p.id) ?? 0,
     feedbackSummary: presFbMap.get(p.id) ?? { approved: 0, rejected: 0, favorite: 0 },
+    feedbackEntries: presFbEntries.get(p.id) ?? [],
     submissionIds:   presSubIds.get(p.id) ?? [],
   }));
 

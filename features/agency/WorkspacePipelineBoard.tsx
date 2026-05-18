@@ -63,6 +63,12 @@ export type PipelineJob = {
   agencyId: string;
 };
 
+export type FeedbackEntry = {
+  viewerName: string;
+  viewerCompany: string | null;
+  vote: "approved" | "favorite" | "rejected";
+};
+
 export type PresentationSummary = {
   id: string;
   title: string;
@@ -73,6 +79,7 @@ export type PresentationSummary = {
   hasPassword: boolean;
   candidateCount: number;
   feedbackSummary: { approved: number; rejected: number; favorite: number };
+  feedbackEntries: FeedbackEntry[];
   submissionIds: string[];
 };
 
@@ -892,21 +899,46 @@ function PresentationsPanel({
                   )}
                 </div>
 
-                {/* Feedback summary — prominent */}
-                <div className="mb-3 flex items-center gap-4">
-                  <div className="flex items-center gap-1">
-                    <span className={`text-[18px] font-bold leading-none ${fb.approved > 0 ? "text-emerald-600" : "text-zinc-200"}`}>{fb.approved}</span>
-                    <span className={`text-[11px] font-medium ${fb.approved > 0 ? "text-emerald-600" : "text-zinc-300"}`}>✓ aprovado{fb.approved !== 1 ? "s" : ""}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className={`text-[18px] font-bold leading-none ${fb.favorite > 0 ? "text-amber-500" : "text-zinc-200"}`}>{fb.favorite}</span>
-                    <span className={`text-[11px] font-medium ${fb.favorite > 0 ? "text-amber-500" : "text-zinc-300"}`}>★ favorito{fb.favorite !== 1 ? "s" : ""}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className={`text-[18px] font-bold leading-none ${fb.rejected > 0 ? "text-red-400" : "text-zinc-200"}`}>{fb.rejected}</span>
-                    <span className={`text-[11px] font-medium ${fb.rejected > 0 ? "text-red-400" : "text-zinc-300"}`}>✕ rejeitado{fb.rejected !== 1 ? "s" : ""}</span>
-                  </div>
-                  {!hasFb && (
+                {/* Feedback — aggregate counts + named entries */}
+                <div className="mb-3">
+                  {hasFb ? (
+                    <>
+                      {/* Summary chips */}
+                      <div className="mb-2.5 flex flex-wrap gap-1.5">
+                        {fb.approved > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                            ✓ {fb.approved} aprovado{fb.approved !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                        {fb.favorite > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600 ring-1 ring-amber-100">
+                            ★ {fb.favorite} favorito{fb.favorite !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                        {fb.rejected > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] font-semibold text-zinc-500 ring-1 ring-zinc-200">
+                            ✕ {fb.rejected} rejeitado{fb.rejected !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                      {/* Named entries */}
+                      <div className="space-y-1">
+                        {p.feedbackEntries.map((entry, ei) => {
+                          const icon  = entry.vote === "approved" ? "✓" : entry.vote === "favorite" ? "★" : "✕";
+                          const color = entry.vote === "approved" ? "text-emerald-600" : entry.vote === "favorite" ? "text-amber-600" : "text-zinc-400";
+                          const verb  = entry.vote === "approved" ? "aprovou" : entry.vote === "favorite" ? "favoritou" : "rejeitou";
+                          return (
+                            <div key={ei} className="flex items-center gap-1.5 text-[11px]">
+                              <span className={`font-bold ${color}`}>{icon}</span>
+                              <span className="font-semibold text-zinc-800">{entry.viewerName}</span>
+                              {entry.viewerCompany && <span className="text-zinc-400">— {entry.viewerCompany}</span>}
+                              <span className="text-zinc-400">{verb}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
                     <span className="text-[11px] text-zinc-400 italic">Aguardando feedback do cliente</span>
                   )}
                 </div>
