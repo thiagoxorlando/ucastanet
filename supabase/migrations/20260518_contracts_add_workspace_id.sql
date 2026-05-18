@@ -20,3 +20,18 @@ CREATE INDEX IF NOT EXISTS contracts_workspace_id_idx
 CREATE INDEX IF NOT EXISTS contracts_talent_workspace_idx
   ON public.contracts (talent_user_id, workspace_id)
   WHERE workspace_id IS NOT NULL;
+
+-- Extend talent RLS to also cover talent_user_id (legacy policy only covered talent_id)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename  = 'contracts'
+      AND policyname = 'talent_read_own_contracts_by_user_id'
+  ) THEN
+    CREATE POLICY talent_read_own_contracts_by_user_id
+      ON public.contracts
+      FOR SELECT
+      USING (talent_user_id = auth.uid());
+  END IF;
+END $$;

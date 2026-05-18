@@ -129,71 +129,50 @@ export default async function WorkspaceContractsPage({ params }: Props) {
   const jobMap = new Map((allJobs ?? []).map((j) => [String(j.id), String(j.title ?? "Vaga")]));
 
   const CONTRACT_SELECT = "id, agency_id, talent_user_id, talent_id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at";
-  const ownerUserId = workspace.owner_user_id as string | null;
+  const ownerUserId     = workspace.owner_user_id as string | null;
+  const workspaceIdStr  = workspace.id as string;
+  const workspaceJobIdSet = new Set(workspaceJobIds.map(String));
 
-  const [
-    agencyResult,
-    directCountResult,
-    workspaceScopedResult,
-    jobScopedResult,
-    legacyJobScopedResult,
-    ownerFallbackResult,
-  ] = await Promise.all([
-    workspace.agency_id
-      ? supabase.from("agencies").select("company_name").eq("id", workspace.agency_id).maybeSingle()
-      : workspace.owner_user_id
-        ? supabase.from("agencies").select("company_name").eq("user_id", workspace.owner_user_id).maybeSingle()
-        : Promise.resolve({ data: null }),
+  const agencyResult = workspace.agency_id
+    ? await supabase.from("agencies").select("company_name").eq("id", workspace.agency_id).maybeSingle()
+    : workspace.owner_user_id
+      ? await supabase.from("agencies").select("company_name").eq("user_id", workspace.owner_user_id).maybeSingle()
+      : { data: null };
 
-    // Diagnostic: total contracts ever for this talent
-    supabase.from("contracts").select("id", { count: "exact", head: true })
-      .or(`talent_user_id.eq.${user.id},talent_id.eq.${user.id}`),
-
-    // Primary: workspace_id direct match (new rows after migration)
-    supabase.from("contracts").select(CONTRACT_SELECT)
-      .or(`talent_user_id.eq.${user.id},talent_id.eq.${user.id}`)
-      .eq("workspace_id", workspace.id),
-
-    // Fallback A: job_id in workspace jobs (covers rows before migration)
-    workspaceJobIds.length
-      ? supabase.from("contracts").select(CONTRACT_SELECT)
-          .or(`talent_user_id.eq.${user.id},talent_id.eq.${user.id}`)
-          .in("job_id", workspaceJobIds)
-      : Promise.resolve({ data: [] as never[] }),
-
-    // Fallback B: legacy talent_id job-scoped
-    workspaceJobIds.length
-      ? supabase.from("contracts").select(CONTRACT_SELECT)
-          .eq("talent_id", user.id)
-          .in("job_id", workspaceJobIds)
-      : Promise.resolve({ data: [] as never[] }),
-
-    // Fallback C: agency_id = workspace owner (catches null workspace_id + null job_id)
-    ownerUserId
-      ? supabase.from("contracts").select(CONTRACT_SELECT)
-          .eq("agency_id", ownerUserId)
-          .or(`talent_user_id.eq.${user.id},talent_id.eq.${user.id}`)
-      : Promise.resolve({ data: [] as never[] }),
-  ]);
+  // Fetch ALL contracts for this talent in one query — avoids workspace_id schema-cache issues.
+  // Service role bypasses RLS entirely.
+  const { data: allTalentContracts, error: contractsFetchError } = await supabase
+    .from("contracts")
+    .select(CONTRACT_SELECT)
+    .or(`talent_user_id.eq.${user.id},talent_id.eq.${user.id}`)
+    .order("created_at", { ascending: false });
 
   console.log("[talent workspace contracts]", {
-    userId:         user.id,
-    workspaceId:    workspace.id,
+    userId:          user.id,
+    workspaceId:     workspaceIdStr,
     ownerUserId,
-    totalForTalent: directCountResult.count ?? 0,
-    byWorkspaceId:  workspaceScopedResult.data?.length ?? 0,
-    byJobId:        jobScopedResult.data?.length ?? 0,
-    byOwnerFallback: ownerFallbackResult.data?.length ?? 0,
+    workspaceJobCount: workspaceJobIds.length,
+    allTalentContractsCount: allTalentContracts?.length ?? 0,
+    fetchError:      contractsFetchError?.message ?? null,
+    fetchErrorCode:  contractsFetchError?.code     ?? null,
+    sampleIds:       (allTalentContracts ?? []).slice(0, 5).map((c) => ({
+      id:           c.id,
+      job_id:       c.job_id,
+      agency_id:    c.agency_id,
+      // workspace_id may not be in schema cache yet — read via cast
+      workspace_id: (c as Record<string, unknown>).workspace_id ?? "NOT_IN_SELECT",
+      status:       c.status,
+    })),
   });
 
-  const contracts = [
-    ...(workspaceScopedResult.data ?? []),
-    ...(jobScopedResult.data ?? []),
-    ...(legacyJobScopedResult.data ?? []),
-    ...(ownerFallbackResult.data ?? []),
-  ]
-    .filter((contract, index, rows) => rows.findIndex((row) => row.id === contract.id) === index)
-    .sort((a, b) => {
+  // Filter server-side: keep contracts that belong to this workspace
+  const contracts = (allTalentContracts ?? []).filter((c) => {
+    const contractWorkspaceId = String((c as Record<string, unknown>).workspace_id ?? "");
+    if (contractWorkspaceId === workspaceIdStr) return true;
+    if (c.job_id && workspaceJobIdSet.has(String(c.job_id))) return true;
+    if (c.agency_id && ownerUserId && String(c.agency_id) === ownerUserId) return true;
+    return false;
+  }).sort((a, b) => {
       const aTime = new Date(a.created_at ?? 0).getTime();
       const bTime = new Date(b.created_at ?? 0).getTime();
       return bTime - aTime;
