@@ -183,8 +183,18 @@ export default function WorkspacePipelineBoard({
   const [showCreatePresentation, setShowCreatePresentation] = useState(false);
   const [createdToken, setCreatedToken] = useState<string | null>(null);
   const [deletingPres, setDeletingPres] = useState<string | null>(null);
+  const [noSelectionHint, setNoSelectionHint] = useState(false);
 
   const canManage = isOwner || !readOnly;
+
+  function handleCreatePresentationClick() {
+    if (selectedCandidates.length > 0) {
+      setShowCreatePresentation(true);
+    } else {
+      setNoSelectionHint(true);
+      setTimeout(() => setNoSelectionHint(false), 3500);
+    }
+  }
 
   // Stage counts from effective stage
   const stageCounts = useMemo(() => {
@@ -396,9 +406,9 @@ export default function WorkspacePipelineBoard({
         </div>
       </div>
 
-      {/* Search + bulk bar */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
+      {/* Search + primary action row */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[160px] max-w-xs">
           <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
@@ -418,7 +428,39 @@ export default function WorkspacePipelineBoard({
             {selected.size === visible.length ? "Desmarcar todos" : "Selecionar todos"}
           </button>
         )}
+        {/* Always-visible create presentation CTA */}
+        {canManage && candidates.length > 0 && (
+          <button
+            onClick={handleCreatePresentationClick}
+            className={[
+              "ml-auto inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[12px] font-semibold transition-all cursor-pointer whitespace-nowrap",
+              selectedCandidates.length > 0
+                ? "bg-[#1ABC9C] text-white hover:bg-[#17A58A] shadow-sm"
+                : "border border-dashed border-[#1ABC9C]/60 text-[#1ABC9C] hover:bg-[#1ABC9C]/5",
+            ].join(" ")}
+          >
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {selectedCandidates.length > 0
+              ? `Criar apresentação (${selectedCandidates.length})`
+              : "Criar apresentação para cliente"}
+          </button>
+        )}
       </div>
+
+      {/* No-selection hint — shown briefly when user clicks "Criar apresentação" without selecting */}
+      {noSelectionHint && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-800">
+          <svg className="h-4 w-4 flex-shrink-0 mt-px text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>
+            <strong>Selecione um ou mais candidatos primeiro.</strong>{" "}
+            Clique na caixa de seleção ao lado de cada candidato que deseja incluir na apresentação.
+          </span>
+        </div>
+      )}
 
       {/* Client feedback filter — only shown when there is feedback to filter on */}
       {(feedbackCounts.approved + feedbackCounts.favorite + feedbackCounts.rejected) > 0 && (
@@ -454,20 +496,20 @@ export default function WorkspacePipelineBoard({
 
       {/* Bulk action bar — sticky floating */}
       {selected.size > 0 && (
-        <div className="sticky bottom-4 z-30 rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.14)]">
+        <div className="sticky bottom-4 z-30 rounded-2xl border border-[#1ABC9C]/30 bg-white px-4 py-3 shadow-[0_8px_32px_rgba(26,188,156,0.18)]">
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className="text-[12px] font-semibold text-zinc-900">
+            <span className="text-[12px] font-semibold text-zinc-900 mr-1">
               {selected.size} candidato{selected.size !== 1 ? "s" : ""} selecionado{selected.size !== 1 ? "s" : ""}
             </span>
 
             {/* Primary: Criar apresentação */}
-            {canManage && selectedCandidates.length > 0 && (
+            {canManage && (
               <button
-                onClick={() => setShowCreatePresentation(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[#1ABC9C] px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-[#17A58A] transition-colors cursor-pointer"
+                onClick={handleCreatePresentationClick}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#1ABC9C] px-3.5 py-2 text-[12px] font-semibold text-white hover:bg-[#17A58A] transition-colors cursor-pointer shadow-sm"
               >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Criar apresentação
               </button>
@@ -475,7 +517,7 @@ export default function WorkspacePipelineBoard({
 
             {/* Move stage dropdown */}
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-zinc-500 whitespace-nowrap">Mover para:</span>
+              <span className="text-[11px] text-zinc-400 whitespace-nowrap">Mover para:</span>
               <select
                 defaultValue=""
                 onChange={(e) => { if (e.target.value) { void bulkMove(e.target.value); e.currentTarget.value = ""; } }}
@@ -488,10 +530,8 @@ export default function WorkspacePipelineBoard({
               </select>
             </div>
 
-            {/* Rejeitar */}
             <BulkBtn label="Rejeitar" danger onClick={() => bulkMove("rejeitado")} />
 
-            {/* Clear */}
             <button
               onClick={clearSelect}
               className="ml-auto text-[11px] text-zinc-400 hover:text-zinc-600 cursor-pointer transition-colors whitespace-nowrap"
@@ -581,9 +621,7 @@ export default function WorkspacePipelineBoard({
         hasSelection={selectedCandidates.length > 0}
         deletingId={deletingPres}
         onDelete={handleDeletePresentation}
-        onCreateClick={() => {
-          if (selectedCandidates.length > 0) setShowCreatePresentation(true);
-        }}
+        onCreateClick={handleCreatePresentationClick}
       />
 
       {/* Contract modal */}
@@ -749,13 +787,42 @@ function PresentationsPanel({
       {open && (
         <div className="border-t border-zinc-100 px-5 pb-5 pt-4 space-y-3">
           {presentations.length === 0 && (
-            <div className="space-y-2.5">
-              <p className="text-[13px] font-semibold text-zinc-700">Nenhuma apresentação criada</p>
-              <p className="text-[12px] text-zinc-500 leading-relaxed">
-                Selecione um ou mais candidatos acima e crie uma apresentação privada para enviar ao cliente.
-              </p>
-              <p className="text-[11px] text-zinc-400 bg-zinc-50 rounded-xl px-3 py-2.5 leading-relaxed">
-                As apresentações mostram apenas materiais públicos dos talentos — sem notas internas, pagamentos ou dados operacionais.
+            <div className="space-y-4 py-1">
+              {/* 3-step guide */}
+              <div className="flex items-start gap-3">
+                {[
+                  { n: "1", text: "Selecione candidatos usando a caixa ao lado de cada card" },
+                  { n: "2", text: "Clique em \"Criar apresentação\" e dê um título" },
+                  { n: "3", text: "Copie o link e envie direto para o cliente" },
+                ].map(({ n, text }) => (
+                  <div key={n} className="flex-1 text-center">
+                    <div className="w-7 h-7 rounded-full bg-[#1ABC9C]/10 text-[#1ABC9C] text-[12px] font-bold flex items-center justify-center mx-auto mb-1.5">
+                      {n}
+                    </div>
+                    <p className="text-[11px] text-zinc-500 leading-snug">{text}</p>
+                  </div>
+                ))}
+              </div>
+
+              {canManage && (
+                <button
+                  onClick={onCreateClick}
+                  className={[
+                    "w-full inline-flex items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-semibold transition-all cursor-pointer",
+                    hasSelection
+                      ? "bg-[#1ABC9C] text-white hover:bg-[#17A58A] shadow-sm"
+                      : "border-2 border-dashed border-[#1ABC9C]/40 text-[#1ABC9C]/70 hover:border-[#1ABC9C]/70 hover:text-[#1ABC9C]",
+                  ].join(" ")}
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  {hasSelection ? "Criar apresentação para cliente" : "Selecione candidatos para criar apresentação"}
+                </button>
+              )}
+
+              <p className="text-[10px] text-zinc-400 text-center leading-relaxed">
+                Os clientes veem apenas materiais públicos — sem notas internas, pagamentos ou dados operacionais.
               </p>
             </div>
           )}
@@ -840,29 +907,21 @@ function PresentationsPanel({
             );
           })}
 
-          {canManage && (
-            <div className="space-y-1.5">
-              <button
-                onClick={onCreateClick}
-                disabled={!hasSelection}
-                className={[
-                  "inline-flex items-center gap-1.5 rounded-xl border border-dashed px-4 py-2.5 text-[12px] font-medium transition-colors w-full justify-center",
-                  hasSelection
-                    ? "border-[#1ABC9C] text-[#1ABC9C] hover:bg-[#1ABC9C]/5 cursor-pointer"
-                    : "border-zinc-200 text-zinc-400 cursor-not-allowed",
-                ].join(" ")}
-              >
-                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Nova apresentação
-              </button>
-              {!hasSelection && (
-                <p className="text-center text-[11px] text-zinc-400">
-                  Selecione um ou mais candidatos acima para criar uma apresentação.
-                </p>
-              )}
-            </div>
+          {canManage && presentations.length > 0 && (
+            <button
+              onClick={onCreateClick}
+              className={[
+                "inline-flex items-center gap-1.5 rounded-xl border border-dashed px-4 py-2.5 text-[12px] font-semibold transition-all w-full justify-center cursor-pointer",
+                hasSelection
+                  ? "border-[#1ABC9C] text-[#1ABC9C] hover:bg-[#1ABC9C]/5"
+                  : "border-zinc-200 text-zinc-400 hover:border-[#1ABC9C]/50 hover:text-[#1ABC9C]/70",
+              ].join(" ")}
+            >
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              {hasSelection ? "Nova apresentação" : "Selecione candidatos para nova apresentação"}
+            </button>
           )}
         </div>
       )}
@@ -1005,23 +1064,23 @@ function CandidateCard({
           <button
             onClick={onToggleSelect}
             aria-label={isSelected ? "Desmarcar candidato" : "Selecionar candidato"}
-            className="mt-0.5 flex-shrink-0 flex flex-col items-center gap-1 cursor-pointer group"
+            className="flex-shrink-0 flex flex-col items-center gap-1 cursor-pointer group self-center"
           >
             <span className={[
-              "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all",
+              "w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all",
               isSelected
                 ? "bg-[#1ABC9C] border-[#1ABC9C] shadow-sm"
-                : "border-zinc-300 group-hover:border-[#1ABC9C]/70 group-hover:bg-[#1ABC9C]/5",
+                : "border-zinc-300 group-hover:border-[#1ABC9C] group-hover:bg-[#1ABC9C]/8",
             ].join(" ")}>
               {isSelected && (
-                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
               )}
             </span>
             <span className={[
-              "text-[9px] font-semibold leading-none whitespace-nowrap transition-colors",
-              isSelected ? "text-[#1ABC9C]" : "text-zinc-400 group-hover:text-zinc-600",
+              "text-[10px] font-semibold leading-none whitespace-nowrap transition-colors",
+              isSelected ? "text-[#1ABC9C]" : "text-zinc-400 group-hover:text-[#1ABC9C]",
             ].join(" ")}>
               {isSelected ? "Selecionado" : "Selecionar"}
             </span>
