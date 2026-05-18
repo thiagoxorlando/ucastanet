@@ -280,7 +280,7 @@ export default function WorkspacePipelineBoard({
     setCandidates((prev) =>
       prev.map((c) =>
         c.id === submissionId
-          ? { ...c, bookingId, bookingStatus, pipelineStatus: "aprovado" }
+          ? { ...c, bookingId, bookingStatus, pipelineStatus: "contrato_enviado" }
           : c
       )
     );
@@ -1063,14 +1063,17 @@ function CandidateCard({
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
 
-  const stage      = effectiveStage(c);
-  const stageCfg   = STAGE_MAP.get(stage);
-  const hasPhotos  = !!(c.photoFrontUrl || c.photoLeftUrl || c.photoRightUrl);
-  const photos     = [c.photoFrontUrl, c.photoLeftUrl, c.photoRightUrl].filter(Boolean) as string[];
-  const uploadBits = [hasPhotos, !!c.videoUrl, !!c.curriculumUrl, !!c.portfolioUrl];
-  const uploadDone = uploadBits.filter(Boolean).length;
-  const canContract = canManage && c.pipelineStatus === "aprovado" && !c.bookingId && job.status === "open";
-  const canMove = canManage && !!stageCfg?.movable;
+  const stage         = effectiveStage(c);
+  const stageCfg      = STAGE_MAP.get(stage);
+  const hasPhotos     = !!(c.photoFrontUrl || c.photoLeftUrl || c.photoRightUrl);
+  const photos        = [c.photoFrontUrl, c.photoLeftUrl, c.photoRightUrl].filter(Boolean) as string[];
+  const uploadBits    = [hasPhotos, !!c.videoUrl, !!c.curriculumUrl, !!c.portfolioUrl];
+  const uploadDone    = uploadBits.filter(Boolean).length;
+  const canContract   = canManage && !c.bookingId && job.status === "open" && !!c.talentId;
+  const canMove       = canManage && !!stageCfg?.movable;
+  const fbStatus      = clientFeedbackStatus(c.clientFeedback);
+  const clientApproved = fbStatus === "approved" || fbStatus === "mixed";
+  const clientRejected = fbStatus === "rejected";
 
   async function handleMove(nextStatus: string) {
     if (nextStatus === c.pipelineStatus) return;
@@ -1110,7 +1113,13 @@ function CandidateCard({
   return (
     <div className={[
       "rounded-2xl border bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all",
-      isSelected ? "border-[#1ABC9C] ring-1 ring-[#1ABC9C]/30" : "border-zinc-200 hover:border-zinc-300",
+      isSelected
+        ? "border-[#1ABC9C] ring-1 ring-[#1ABC9C]/30"
+        : clientApproved
+        ? "border-emerald-200 ring-1 ring-emerald-100"
+        : clientRejected
+        ? "border-zinc-200 opacity-70"
+        : "border-zinc-200 hover:border-zinc-300",
     ].join(" ")}>
 
       {/* Main row */}
@@ -1252,66 +1261,44 @@ function CandidateCard({
             </div>
           )}
 
-          {/* Actions */}
+          {/* ── Inline client feedback ── */}
+          {c.clientFeedback && (c.clientFeedback.approved + c.clientFeedback.favorite + c.clientFeedback.rejected) > 0 && (
+            <div className={[
+              "mb-2.5 flex flex-wrap items-center gap-2 rounded-xl px-3 py-2 text-[11px]",
+              clientApproved ? "bg-emerald-50 border border-emerald-100" : "bg-zinc-50 border border-zinc-100",
+            ].join(" ")}>
+              <span className="font-bold text-zinc-500 whitespace-nowrap">Feedback do cliente</span>
+              {c.clientFeedback.approved > 0 && (
+                <span className="font-bold text-emerald-600">✓ {c.clientFeedback.approved} aprovou</span>
+              )}
+              {c.clientFeedback.favorite > 0 && (
+                <span className="font-bold text-amber-500">★ {c.clientFeedback.favorite} favoritou</span>
+              )}
+              {c.clientFeedback.rejected > 0 && (
+                <span className="font-bold text-zinc-400">✕ {c.clientFeedback.rejected} rejeitou</span>
+              )}
+              {/* Auto-suggest hire when client approved */}
+              {clientApproved && canContract && (
+                <button
+                  onClick={onContractOpen}
+                  className="ml-auto inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-emerald-700 cursor-pointer shadow-sm transition-colors whitespace-nowrap"
+                >
+                  Contratar agora →
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* ── Actions ── */}
           <div className="flex flex-wrap items-center gap-1.5">
 
-            {/* View media / expand — always available */}
             <button
               onClick={() => setExpanded((v) => !v)}
               className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
             >
-              {expanded ? "Fechar" : "Ver perfil"}
+              {expanded ? "Fechar ↑" : "Ver perfil ↓"}
             </button>
 
-            {/* Client-approved shortcut: move to Aprovado stage */}
-            {canManage && c.clientFeedback && c.clientFeedback.approved > 0 &&
-              effectiveStage(c) !== "aprovado" && !c.bookingId && (
-              <button
-                onClick={() => handleMove("aprovado")}
-                disabled={moving}
-                className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                ↑ Mover para Aprovado
-              </button>
-            )}
-
-            {/* Client-rejected shortcut: archive candidate */}
-            {canManage && c.clientFeedback && c.clientFeedback.rejected > 0 &&
-              c.clientFeedback.approved === 0 && effectiveStage(c) !== "rejeitado" && (
-              <button
-                onClick={() => handleMove("rejeitado")}
-                disabled={moving}
-                className="inline-flex items-center gap-1 rounded-lg bg-zinc-50 border border-zinc-200 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-500 hover:bg-zinc-100 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                Arquivar candidato
-              </button>
-            )}
-
-            {/* Move status */}
-            {canMove && (
-              <select
-                value={c.pipelineStatus || "novo"}
-                onChange={(e) => handleMove(e.target.value)}
-                disabled={moving}
-                className="h-7 rounded-lg border border-zinc-200 bg-white px-2 text-[11px] font-semibold text-zinc-700 focus:outline-none appearance-none cursor-pointer disabled:opacity-50"
-              >
-                {STAGES.filter((s) => s.movable).map((s) => (
-                  <option key={s.id} value={s.id}>{s.label}</option>
-                ))}
-              </select>
-            )}
-
-            {/* Send contract */}
-            {canContract && (
-              <button
-                onClick={onContractOpen}
-                className="inline-flex items-center rounded-lg bg-gradient-to-r from-[#1ABC9C] to-[#27C1D6] px-2.5 py-1.5 text-[11px] font-semibold text-white hover:from-[#17A58A] hover:to-[#22B5C2] transition-all cursor-pointer"
-              >
-                Contratar
-              </button>
-            )}
-
-            {/* Note toggle */}
             <button
               onClick={() => setNotesOpen((v) => !v)}
               className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
@@ -1323,6 +1310,52 @@ function CandidateCard({
                 </span>
               )}
             </button>
+
+            {/* Status dropdown */}
+            {canMove && (
+              <div className="flex items-center gap-1">
+                <select
+                  value={c.pipelineStatus || "novo"}
+                  onChange={(e) => handleMove(e.target.value)}
+                  disabled={moving}
+                  className="h-7 rounded-lg border border-zinc-200 bg-white px-2 text-[11px] font-semibold text-zinc-700 focus:outline-none cursor-pointer disabled:opacity-50"
+                >
+                  {STAGES.filter((s) => s.movable).map((s) => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
+                </select>
+                {moving && <span className="text-[10px] text-zinc-400">…</span>}
+              </div>
+            )}
+
+            {/* Client-rejected shortcut */}
+            {canManage && clientRejected && !clientApproved && effectiveStage(c) !== "rejeitado" && (
+              <button
+                onClick={() => handleMove("rejeitado")}
+                disabled={moving}
+                className="inline-flex items-center gap-1 rounded-lg bg-zinc-50 border border-zinc-200 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-500 hover:bg-zinc-100 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Arquivar
+              </button>
+            )}
+
+            {/* Primary hire CTA — always visible when eligible */}
+            {canContract && (
+              <button
+                onClick={onContractOpen}
+                className={[
+                  "ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-bold transition-all cursor-pointer shadow-sm",
+                  clientApproved
+                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                    : "bg-zinc-900 text-white hover:bg-zinc-700",
+                ].join(" ")}
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Contratar talento
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1330,6 +1363,65 @@ function CandidateCard({
       {/* Expanded: media + bio — always shows all sections */}
       {expanded && (
         <div className="border-t border-zinc-100 bg-zinc-50/60 px-4 py-4 space-y-4">
+
+          {/* ── Quick action bar ── */}
+          {canManage && (
+            <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-zinc-100">
+              {c.talentId && (
+                <a
+                  href={`/talent/profile/${c.talentId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Ver perfil
+                </a>
+              )}
+              <button
+                onClick={() => setNotesOpen((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Adicionar nota
+              </button>
+              {canMove && (
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] text-zinc-400">Etapa:</span>
+                  <select
+                    value={c.pipelineStatus || "novo"}
+                    onChange={(e) => handleMove(e.target.value)}
+                    disabled={moving}
+                    className="h-7 rounded-lg border border-zinc-200 bg-white px-2 text-[11px] font-semibold text-zinc-700 focus:outline-none cursor-pointer disabled:opacity-50"
+                  >
+                    {STAGES.filter((s) => s.movable).map((s) => (
+                      <option key={s.id} value={s.id}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {canContract && (
+                <button
+                  onClick={onContractOpen}
+                  className={[
+                    "ml-auto inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-bold transition-all cursor-pointer shadow-sm",
+                    clientApproved
+                      ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                      : "bg-zinc-900 text-white hover:bg-zinc-700",
+                  ].join(" ")}
+                >
+                  <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Contratar talento
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Photos */}
           <div>
@@ -1398,20 +1490,62 @@ function CandidateCard({
           {/* Client feedback summary */}
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400 mb-2">Feedback do cliente</p>
-            {c.clientFeedback ? (
-              <div className="flex flex-wrap gap-3">
-                <span className={`text-[12px] font-semibold ${c.clientFeedback.approved > 0 ? "text-emerald-600" : "text-zinc-300"}`}>
-                  ✓ {c.clientFeedback.approved} aprovação{c.clientFeedback.approved !== 1 ? "ões" : ""}
-                </span>
-                <span className={`text-[12px] font-semibold ${c.clientFeedback.favorite > 0 ? "text-amber-600" : "text-zinc-300"}`}>
-                  ★ {c.clientFeedback.favorite} favorito{c.clientFeedback.favorite !== 1 ? "s" : ""}
-                </span>
-                <span className={`text-[12px] font-semibold ${c.clientFeedback.rejected > 0 ? "text-red-400" : "text-zinc-300"}`}>
-                  ✕ {c.clientFeedback.rejected} rejeição{c.clientFeedback.rejected !== 1 ? "ões" : ""}
-                </span>
+            {c.clientFeedback && (c.clientFeedback.approved + c.clientFeedback.favorite + c.clientFeedback.rejected) > 0 ? (
+              <div className="space-y-2">
+                {/* Aggregate counts */}
+                <div className="flex flex-wrap gap-2">
+                  {c.clientFeedback.approved > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-100">
+                      ✓ {c.clientFeedback.approved} aprovação{c.clientFeedback.approved !== 1 ? "ões" : ""}
+                    </span>
+                  )}
+                  {c.clientFeedback.favorite > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-600 ring-1 ring-amber-100">
+                      ★ {c.clientFeedback.favorite} favorito{c.clientFeedback.favorite !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                  {c.clientFeedback.rejected > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-bold text-zinc-500 ring-1 ring-zinc-200">
+                      ✕ {c.clientFeedback.rejected} rejeição{c.clientFeedback.rejected !== 1 ? "ões" : ""}
+                    </span>
+                  )}
+                </div>
+                {/* Named attribution — from presentations that include this candidate */}
+                {(() => {
+                  const entries = presentations
+                    .filter((p) => p.submissionIds.includes(c.id))
+                    .flatMap((p) => p.feedbackEntries);
+                  if (!entries.length) return null;
+                  return (
+                    <div className="space-y-1 pt-1">
+                      {entries.map((entry, i) => {
+                        const icon  = entry.vote === "approved" ? "✓" : entry.vote === "favorite" ? "★" : "✕";
+                        const color = entry.vote === "approved" ? "text-emerald-600" : entry.vote === "favorite" ? "text-amber-500" : "text-zinc-400";
+                        const verb  = entry.vote === "approved" ? "aprovou" : entry.vote === "favorite" ? "favoritou" : "rejeitou";
+                        return (
+                          <div key={i} className="flex items-center gap-1.5 text-[11px]">
+                            <span className={`font-bold ${color}`}>{icon}</span>
+                            <span className="font-semibold text-zinc-800">{entry.viewerName}</span>
+                            {entry.viewerCompany && <span className="text-zinc-400">({entry.viewerCompany})</span>}
+                            <span className="text-zinc-400">{verb}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+                {/* Hire prompt if client approved and contract not sent */}
+                {clientApproved && canContract && (
+                  <button
+                    onClick={onContractOpen}
+                    className="mt-1 w-full rounded-xl bg-emerald-600 py-2.5 text-[13px] font-bold text-white hover:bg-emerald-700 transition-colors cursor-pointer shadow-sm"
+                  >
+                    ✓ Cliente aprovou — Contratar talento agora
+                  </button>
+                )}
               </div>
             ) : (
-              <p className="text-[12px] text-zinc-400 italic">Nenhum feedback recebido ainda.</p>
+              <p className="text-[12px] text-zinc-400 italic">Nenhum feedback do cliente ainda.</p>
             )}
           </div>
 
