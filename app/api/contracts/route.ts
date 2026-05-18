@@ -6,6 +6,7 @@ import { requireHireLimit } from "@/lib/requireActiveSubscription";
 import { resolvePlanInfo, type Plan } from "@/lib/plans";
 import { getLivePlanSetting } from "@/lib/planSettings.server";
 import { isJobFull, JOB_FULL_MESSAGE, JOB_UNAVAILABLE_MESSAGE } from "@/lib/jobAvailability";
+import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
 import { resolveWorkspaceLifecycleByJobId, talentWorkspaceContractsHref } from "@/lib/workspaceLifecycle";
 
 export async function POST(req: NextRequest) {
@@ -51,12 +52,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Cannot create contracts for another agency" }, { status: 403 });
   }
 
+  const workspaceAccess = await getUserPremiumWorkspace(user.id);
+  let effectivePlan = "free" as Plan;
   let jobCapacityInfo: { status: string | null; talentsNeeded: number | null; maxHiresPerJob: number | null; activeHires: number } | null = null;
 
   if (job_id) {
     const { data: jobOwner, error: jobOwnerErr } = await supabase
       .from("jobs")
-      .select("agency_id, status, deleted_at, number_of_talents_required")
+      .select("agency_id, status, deleted_at, number_of_talents_required, workspace_id")
       .eq("id", job_id)
       .single();
 
@@ -71,12 +74,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: JOB_UNAVAILABLE_MESSAGE }, { status: 409 });
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("plan")
-      .eq("id", agency_id)
-      .single();
-    const liveSetting = await getLivePlanSetting((profile?.plan ?? "free") as Plan);
+    const workspaceId = (jobOwner as { workspace_id?: string | null }).workspace_id ?? null;
+    effectivePlan =
+      workspaceId && workspaceAccess?.workspace.id === workspaceId && workspaceAccess.membership.status === "active"
+        ? "premium"
+        : ((await supabase
+            .from("profiles")
+            .select("plan")
+            .eq("id", agency_id)
+            .single()).data?.plan ?? "free") as Plan;
+
+    const liveSetting = await getLivePlanSetting(effectivePlan);
     const { count: activeHires } = await supabase
       .from("contracts")
       .select("id", { count: "exact", head: true })
@@ -101,18 +109,25 @@ export async function POST(req: NextRequest) {
     };
   }
 
-  const limited = await requireHireLimit(agency_id, job_id ?? null);
-  if (limited) return limited;
+  if (!job_id || effectivePlan !== "premium") {
+    const limited = await requireHireLimit(agency_id, job_id ?? null);
+    if (limited) return limited;
+  }
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("plan")
     .eq("id", agency_id)
     .single();
-  const planInfo = resolvePlanInfo(profile);
+
+  if (!job_id) {
+    effectivePlan = (profile?.plan ?? "free") as Plan;
+  }
+
+  const planInfo = resolvePlanInfo({ plan: effectivePlan });
 
   const amount = Number(payment_amount);
-  const liveSetting = await getLivePlanSetting(planInfo.plan);
+  const liveSetting = await getLivePlanSetting(effectivePlan);
   const commission_amount = Math.round(amount * liveSetting.commission_rate * 100) / 100;
   const net_amount = amount - commission_amount;
 

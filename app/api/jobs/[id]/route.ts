@@ -7,6 +7,19 @@ import { isJobFull, JOB_FULL_MESSAGE } from "@/lib/jobAvailability";
 import type { Plan } from "@/lib/plans";
 import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
 
+const JOB_STATUS_ALIASES: Record<string, "open" | "closed" | "draft" | "inactive" | "paused"> = {
+  open: "open",
+  aberta: "open",
+  paused: "paused",
+  pausada: "paused",
+  closed: "closed",
+  fechada: "closed",
+  draft: "draft",
+  rascunho: "draft",
+  inactive: "inactive",
+  inativa: "inactive",
+};
+
 const PATCH_ALLOWED = [
   "title",
   "description",
@@ -90,6 +103,14 @@ export async function PATCH(
     return NextResponse.json({ error: "Você não tem permissão para alterar esta vaga." }, { status: 403 });
   }
 
+  if (typeof update.status === "string") {
+    const normalizedStatus = JOB_STATUS_ALIASES[String(update.status).trim().toLowerCase()];
+    if (!normalizedStatus) {
+      return NextResponse.json({ error: "Status invÃ¡lido." }, { status: 400 });
+    }
+    update.status = normalizedStatus;
+  }
+
   if (workspaceId && "visibility" in update) {
     update.visibility = update.visibility === "public" ? "public" : "private_invite";
     update.invite_only = update.visibility === "private_invite";
@@ -101,7 +122,8 @@ export async function PATCH(
   // A future task can add delta-check if needed.
 
   const ownerAgencyId = workspaceId ? existingJob.agency_id : user.id;
-  const liveSetting = await getLivePlanSetting((caller.plan ?? "free") as Plan);
+  const effectivePlan = (workspaceId && belongsToWorkspace ? "premium" : (caller.plan ?? "free")) as Plan;
+  const liveSetting = await getLivePlanSetting(effectivePlan);
   const nextTalentsNeeded = Number(update.number_of_talents_required ?? existingJob.number_of_talents_required ?? 1);
   const { count: activeHireCount } = await supabase
     .from("contracts")
@@ -165,7 +187,7 @@ export async function PATCH(
     }
   }
 
-  if (typeof update.number_of_talents_required === "number") {
+  if (typeof update.number_of_talents_required === "number" && !workspaceId) {
     const hiresLimited = await requireTalentsNeededForJob(
       String(ownerAgencyId ?? user.id),
       update.number_of_talents_required

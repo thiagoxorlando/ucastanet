@@ -157,18 +157,33 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
     notesMap.set(n.submission_id, list);
   }
 
-  // Index bookings by talent_user_id (most recent booking wins for this job)
+  function isActiveBookingStatus(status: string | null | undefined): boolean {
+    return !!status && !["cancelled", "rejected"].includes(status);
+  }
+
+  // Index bookings by talent_user_id.
+  // Prefer an active booking if one exists; otherwise keep the most recent row.
   const bookingByTalent = new Map<string, { bookingId: string; bookingStatus: string; contractId: string | null }>();
   for (const b of bookings) {
     if (!b.talent_user_id) continue;
     const contractArr = Array.isArray((b as { contracts?: Array<{ id?: string | null }> }).contracts)
       ? ((b as { contracts?: Array<{ id?: string | null }> }).contracts ?? [])
       : [];
-    bookingByTalent.set(b.talent_user_id, {
+    const nextBooking = {
       bookingId:     String(b.id),
       bookingStatus: b.status ?? "pending",
       contractId:    contractArr[0]?.id ?? null,
-    });
+    };
+
+    const currentBooking = bookingByTalent.get(b.talent_user_id);
+    if (!currentBooking) {
+      bookingByTalent.set(b.talent_user_id, nextBooking);
+      continue;
+    }
+
+    if (!isActiveBookingStatus(currentBooking.bookingStatus) && isActiveBookingStatus(nextBooking.bookingStatus)) {
+      bookingByTalent.set(b.talent_user_id, nextBooking);
+    }
   }
 
   function legacyStatusToStage(status: string | null | undefined): string {

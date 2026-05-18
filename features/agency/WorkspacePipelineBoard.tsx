@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { brl } from "@/lib/brl";
@@ -91,6 +91,14 @@ export type PresentationSummary = {
   submissionIds: string[];
 };
 
+type JobStatusValue = "open" | "paused" | "closed" | "draft" | "inactive";
+
+type ContractSentPayload = {
+  bookingId: string | null;
+  bookingStatus: string;
+  contractId: string | null;
+};
+
 // ─── Pipeline stage config ────────────────────────────────────────────────────
 
 type StageId =
@@ -172,6 +180,16 @@ function relTime(iso: string): string {
 }
 
 // ─── Job status badge ─────────────────────────────────────────────────────────
+
+function normalizeJobStatus(value: string): JobStatusValue | null {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "open" || normalized === "aberta") return "open";
+  if (normalized === "paused" || normalized === "pausada") return "paused";
+  if (normalized === "closed" || normalized === "fechada") return "closed";
+  if (normalized === "draft" || normalized === "rascunho") return "draft";
+  if (normalized === "inactive" || normalized === "inativa") return "inactive";
+  return null;
+}
 
 function StBadge({ status }: { status: string }) {
   const cfg =
@@ -433,9 +451,15 @@ export default function WorkspacePipelineBoard({
   const [highlightCheckboxes, setHighlightCheckboxes] = useState(false);
 
   const canManage = isOwner || !readOnly;
+  const liveJob = useMemo(() => ({ ...job, status: jobStatus }), [job, jobStatus]);
+
+  useEffect(() => {
+    setJobStatus(job.status);
+  }, [job.status]);
 
   async function handleJobStatusChange(nextStatus: string) {
-    if (nextStatus === jobStatus) return;
+    const normalizedStatus = normalizeJobStatus(nextStatus);
+    if (!normalizedStatus || normalizedStatus === jobStatus) return;
 
     setSavingStatus(true);
     setStatusFeedback(null);
@@ -444,11 +468,11 @@ export default function WorkspacePipelineBoard({
       const res = await fetch(`/api/jobs/${job.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
+        body: JSON.stringify({ status: normalizedStatus }),
       });
 
       if (res.ok) {
-        setJobStatus(nextStatus);
+        setJobStatus(normalizedStatus);
         setStatusFeedback({ ok: true, msg: "Status da vaga atualizado." });
         router.refresh();
       } else {
@@ -543,11 +567,16 @@ export default function WorkspacePipelineBoard({
     );
   }
 
-  function patchCandidateBooking(submissionId: string, bookingId: string, bookingStatus: string) {
+  function patchCandidateBooking(
+    submissionId: string,
+    bookingId: string | null,
+    bookingStatus: string,
+    contractId: string | null,
+  ) {
     setCandidates((prev) =>
       prev.map((c) =>
         c.id === submissionId
-          ? { ...c, bookingId, bookingStatus, pipelineStatus: "contrato_enviado" }
+          ? { ...c, bookingId, bookingStatus, contractId, pipelineStatus: "contrato_enviado" }
           : c
       )
     );
@@ -826,7 +855,7 @@ export default function WorkspacePipelineBoard({
                   <CandidateCard
                     key={c.id}
                     candidate={c}
-                    job={job}
+                    job={liveJob}
                     presentations={presentations}
                     canManage={canManage}
                     isSelected={selected.has(c.id)}
@@ -853,7 +882,7 @@ export default function WorkspacePipelineBoard({
             <CandidateCard
               key={c.id}
               candidate={c}
-              job={job}
+              job={liveJob}
               presentations={presentations}
               canManage={canManage}
               isSelected={selected.has(c.id)}
@@ -881,13 +910,14 @@ export default function WorkspacePipelineBoard({
       {/* Contract modal */}
       {contractTarget && (
         <ContractModal
-          job={job}
+          job={liveJob}
           candidate={contractTarget}
           agencyId={job.agencyId}
           onClose={() => setContractTarget(null)}
-          onSent={(bookingId) => {
-            patchCandidateBooking(contractTarget.id, bookingId, "pending");
+          onSent={({ bookingId, bookingStatus, contractId }) => {
+            patchCandidateBooking(contractTarget.id, bookingId, bookingStatus, contractId);
             setContractTarget(null);
+            router.refresh();
           }}
         />
       )}
@@ -1292,7 +1322,8 @@ function CandidateCard({
   const uploadBits    = [hasPhotos, !!c.videoUrl, !!c.curriculumUrl, !!c.portfolioUrl];
   const uploadDone    = uploadBits.filter(Boolean).length;
   const hasActiveBooking = !!c.bookingId && !["cancelled", "rejected"].includes(c.bookingStatus ?? "");
-  const canContract   = canManage && !hasActiveBooking && !!c.talentId && !["closed", "draft", "inactive"].includes(job.status);
+  const canOpenContractModal = canManage && !hasActiveBooking && !!c.talentId;
+  const showContractButton = canManage;
   const canMove       = canManage && !!stageCfg?.movable;
   const fbStatus      = clientFeedbackStatus(c.clientFeedback);
   const clientApproved = fbStatus === "approved" || fbStatus === "mixed";
@@ -1501,7 +1532,7 @@ function CandidateCard({
                 <span className="font-bold text-zinc-400">✕ {c.clientFeedback.rejected} rejeitou</span>
               )}
               {/* Auto-suggest hire when client approved */}
-              {clientApproved && canContract && (
+              {clientApproved && canOpenContractModal && (
                 <button
                   onClick={onContractOpen}
                   className="ml-auto inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-emerald-700 cursor-pointer shadow-sm transition-colors whitespace-nowrap"
@@ -1563,14 +1594,17 @@ function CandidateCard({
             )}
 
             {/* Primary hire CTA — always visible when eligible */}
-            {canContract && (
+            {showContractButton && (
               <button
                 onClick={onContractOpen}
+                disabled={!canOpenContractModal}
                 className={[
-                  "ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-bold transition-all cursor-pointer shadow-sm",
-                  clientApproved
+                  "ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-bold transition-all shadow-sm",
+                  canOpenContractModal && clientApproved
                     ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                    : "bg-zinc-900 text-white hover:bg-zinc-700",
+                    : canOpenContractModal
+                      ? "cursor-pointer bg-zinc-900 text-white hover:bg-zinc-700"
+                      : "cursor-not-allowed bg-zinc-100 text-zinc-400 shadow-none",
                 ].join(" ")}
               >
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1627,14 +1661,17 @@ function CandidateCard({
                   </select>
                 </div>
               )}
-              {canContract && (
+              {showContractButton && (
                 <button
                   onClick={onContractOpen}
+                  disabled={!canOpenContractModal}
                   className={[
-                    "ml-auto inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-bold transition-all cursor-pointer shadow-sm",
-                    clientApproved
+                    "ml-auto inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[12px] font-bold transition-all shadow-sm",
+                    canOpenContractModal && clientApproved
                       ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                      : "bg-zinc-900 text-white hover:bg-zinc-700",
+                      : canOpenContractModal
+                        ? "cursor-pointer bg-zinc-900 text-white hover:bg-zinc-700"
+                        : "cursor-not-allowed bg-zinc-100 text-zinc-400 shadow-none",
                   ].join(" ")}
                 >
                   <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1758,7 +1795,7 @@ function CandidateCard({
                   );
                 })()}
                 {/* Hire prompt if client approved and contract not sent */}
-                {clientApproved && canContract && (
+                {clientApproved && canOpenContractModal && (
                   <button
                     onClick={onContractOpen}
                     className="mt-1 w-full rounded-xl bg-emerald-600 py-2.5 text-[13px] font-bold text-white hover:bg-emerald-700 transition-colors cursor-pointer shadow-sm"
@@ -1877,7 +1914,7 @@ function ContractModal({
   candidate: PipelineCandidate;
   agencyId: string;
   onClose: () => void;
-  onSent: (bookingId: string) => void;
+  onSent: (payload: ContractSentPayload) => void;
 }) {
   const [form, setForm] = useState({
     job_date:        job.jobDate        ?? "",
@@ -1911,7 +1948,7 @@ function ContractModal({
       uploadedPath = path;
     }
 
-    const res = await fetch("/api/bookings", {
+    const res = await fetch("/api/contracts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -1931,8 +1968,12 @@ function ContractModal({
 
     setSending(false);
     if (res.ok) {
-      const data = await res.json() as { booking?: { id?: string } };
-      onSent(data.booking?.id ?? "");
+      const data = await res.json() as { contract?: { id?: string; booking_id?: string | null; status?: string | null } };
+      onSent({
+        bookingId: data.contract?.booking_id ?? null,
+        bookingStatus: "pending",
+        contractId: data.contract?.id ?? null,
+      });
     } else {
       const d = await res.json().catch(() => ({})) as { error?: string; message?: string };
       setError(d.error ?? d.message ?? "Falha ao enviar contrato.");
