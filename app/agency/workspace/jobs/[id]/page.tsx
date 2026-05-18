@@ -177,10 +177,21 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
     return "novo";
   }
 
+  // Aggregate per-submission feedback for candidate card badges — must be built BEFORE candidates map
+  const subFeedbackMap = new Map<string, { approved: number; rejected: number; favorite: number }>();
+  for (const f of subFbResult.data ?? []) {
+    const cur = subFeedbackMap.get(f.submission_id) ?? { approved: 0, rejected: 0, favorite: 0 };
+    if (f.vote === "approved") cur.approved++;
+    if (f.vote === "rejected") cur.rejected++;
+    if (f.vote === "favorite") cur.favorite++;
+    subFeedbackMap.set(f.submission_id, cur);
+  }
+
   const candidates: PipelineCandidate[] = submissions.map((s) => {
     const profile  = s.talent_user_id ? profileMap.get(s.talent_user_id) : null;
     const booking  = s.talent_user_id ? bookingByTalent.get(s.talent_user_id) : null;
     const rawPipelineStatus = (s as { pipeline_status?: string | null }).pipeline_status;
+    const rawFb = subFeedbackMap.get(String(s.id));
     return {
       id:            String(s.id),
       talentId:      s.talent_user_id ?? null,
@@ -205,25 +216,12 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
       bookingStatus: booking?.bookingStatus ?? null,
       contractId:    booking?.contractId    ?? null,
       notes:         notesMap.get(String(s.id)) ?? [],
-      clientFeedback: (() => {
-        const fb = subFeedbackMap.get(String(s.id));
-        return fb && (fb.approved + fb.rejected + fb.favorite) > 0 ? fb : null;
-      })(),
+      clientFeedback: rawFb && (rawFb.approved + rawFb.rejected + rawFb.favorite) > 0 ? rawFb : null,
     };
   });
 
   // Build presentations list with counts + feedback
   const presRows = presResult.data ?? [];
-
-  // Aggregate per-submission feedback for candidate card badges
-  const subFeedbackMap = new Map<string, { approved: number; rejected: number; favorite: number }>();
-  for (const f of subFbResult.data ?? []) {
-    const cur = subFeedbackMap.get(f.submission_id) ?? { approved: 0, rejected: 0, favorite: 0 };
-    if (f.vote === "approved") cur.approved++;
-    if (f.vote === "rejected") cur.rejected++;
-    if (f.vote === "favorite") cur.favorite++;
-    subFeedbackMap.set(f.submission_id, cur);
-  }
 
   const presCandCount = new Map<string, number>();
   const presSubIds    = new Map<string, string[]>();
