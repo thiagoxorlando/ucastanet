@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Job does not belong to this agency" }, { status: 403 });
     }
 
-    if (jobOwner.deleted_at || jobOwner.status !== "open") {
+    if (jobOwner.deleted_at || ["closed", "draft", "inactive"].includes(jobOwner.status ?? "")) {
       return NextResponse.json({ error: JOB_UNAVAILABLE_MESSAGE }, { status: 409 });
     }
 
@@ -167,8 +167,6 @@ export async function POST(req: NextRequest) {
     if (jobRow?.title) jobTitle = jobRow.title;
   }
 
-  const contractColumnSupport = await getExistingContractColumns();
-
   const { data: booking, error: bookingErr } = await supabase
     .from("bookings")
     .insert({
@@ -188,30 +186,25 @@ export async function POST(req: NextRequest) {
   }
 
   const contractInsert: Record<string, unknown> = {
-    booking_id: booking.id,
-    job_id: job_id ?? null,
-    talent_id: resolvedTalentUserId,
-    talent_user_id: resolvedTalentUserId,
-    agency_id: resolvedAgencyId,
-    job_date: job_date ?? null,
-    job_time: job_time ?? null,
-    location: location ?? null,
-    job_description: job_description ?? null,
-    payment_amount: amount,
+    booking_id:         booking.id,
+    job_id:             job_id             ?? null,
+    talent_id:          resolvedTalentUserId,
+    talent_user_id:     resolvedTalentUserId,
+    agency_id:          resolvedAgencyId,
+    workspace_id:       resolvedWorkspaceId,
+    created_by_user_id: resolvedCreatedByUserId,
+    job_date:           job_date           ?? null,
+    job_time:           job_time           ?? null,
+    location:           location           ?? null,
+    job_description:    job_description    ?? null,
+    payment_amount:     amount,
     commission_amount,
     net_amount,
-    payment_method: payment_method ?? null,
-    additional_notes: additional_notes ?? null,
-    contract_file_url: contract_file_url ?? null,
-    status: "sent",
+    payment_method:     payment_method     ?? null,
+    additional_notes:   additional_notes   ?? null,
+    contract_file_url:  contract_file_url  ?? null,
+    status:             "sent",
   };
-
-  if (contractColumnSupport.hasWorkspaceId) {
-    contractInsert.workspace_id = resolvedWorkspaceId;
-  }
-  if (contractColumnSupport.hasCreatedByUserId) {
-    contractInsert.created_by_user_id = resolvedCreatedByUserId;
-  }
 
   const { data: contract, error } = await supabase
     .from("contracts")
