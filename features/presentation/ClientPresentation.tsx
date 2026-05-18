@@ -300,20 +300,33 @@ export default function ClientPresentation({ token }: { token: string }) {
     <div className="min-h-screen bg-[#F0F1F3]">
 
       {/* ── Hero ── */}
-      <header className="bg-[#0A0F0F]">
-        {/* Thin brand accent line */}
-        <div className="h-[3px]" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}, transparent)` }} />
+      <header
+        className="relative overflow-hidden"
+        style={{
+          background: "#0C0E0E",
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.032) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.032) 1px, transparent 1px)
+          `,
+          backgroundSize: "48px 48px",
+        }}
+      >
+        {/* Brand color wash over grid */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ background: `radial-gradient(ellipse 80% 60% at 50% 0%, ${brandColor}18 0%, transparent 70%)` }}
+        />
 
-        {/* Subtle centered glow behind content */}
-        <div className="pointer-events-none absolute left-1/2 top-0 h-64 w-[600px] -translate-x-1/2 rounded-full opacity-[0.12] blur-[100px]" style={{ background: brandColor }} />
+        {/* Top border in brand color */}
+        <div className="relative h-[3px]" style={{ background: `linear-gradient(90deg, transparent, ${brandColor} 30%, ${accentColor} 70%, transparent)` }} />
 
-        {/* Top bar: viewer identity */}
+        {/* Viewer identity — top right */}
         {identity && (
           <div className="relative flex justify-end px-5 pt-4 sm:px-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 backdrop-blur-sm">
               <div
                 className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-black"
-                style={{ backgroundColor: `${brandColor}28`, color: brandColor }}
+                style={{ backgroundColor: `${brandColor}30`, color: brandColor }}
               >
                 {initials(identity.name)}
               </div>
@@ -324,24 +337,26 @@ export default function ClientPresentation({ token }: { token: string }) {
         )}
 
         {/* Hero content — centered */}
-        <div className="relative mx-auto max-w-[1100px] px-5 pb-12 pt-8 text-center sm:px-8 sm:pb-14 sm:pt-10">
+        <div className="relative mx-auto max-w-[1100px] px-5 pb-14 pt-10 text-center sm:px-8 sm:pt-12">
 
-          {/* Logo */}
+          {/* Round logo */}
           <div className="mb-5 flex justify-center">
             {ws.logoUrl ? (
               <div
-                className="flex h-[80px] w-[80px] items-center justify-center rounded-2xl sm:h-[90px] sm:w-[90px]"
-                style={{ background: "rgba(255,255,255,0.06)", boxShadow: `0 0 0 1px rgba(255,255,255,0.08)` }}
+                className="flex h-[88px] w-[88px] items-center justify-center rounded-full p-[3px]"
+                style={{ background: `linear-gradient(135deg, ${brandColor}, ${accentColor})` }}
               >
-                <img
-                  src={ws.logoUrl}
-                  alt={ws.name}
-                  className="max-h-[64px] max-w-[64px] object-contain sm:max-h-[74px] sm:max-w-[74px]"
-                />
+                <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#0C0E0E]">
+                  <img
+                    src={ws.logoUrl}
+                    alt={ws.name}
+                    className="h-[68px] w-[68px] object-contain"
+                  />
+                </div>
               </div>
             ) : (
               <div
-                className="flex h-[80px] w-[80px] items-center justify-center rounded-2xl text-[22px] font-black text-white sm:h-[90px] sm:w-[90px]"
+                className="flex h-[88px] w-[88px] items-center justify-center rounded-full text-[24px] font-black text-white"
                 style={{ background: `linear-gradient(135deg, ${brandColor}, ${accentColor})` }}
               >
                 {ws.name.slice(0, 2).toUpperCase()}
@@ -351,55 +366,60 @@ export default function ClientPresentation({ token }: { token: string }) {
 
           {/* Agency name */}
           <p
-            className="mb-1 text-[11px] font-black uppercase tracking-[0.2em]"
+            className="mb-1 text-[11px] font-black uppercase tracking-[0.22em]"
             style={{ color: brandColor }}
           >
             {ws.name}
           </p>
 
           {/* Welcome message / tagline */}
-          {ws.welcomeMessage && (
-            <p className="mb-6 text-[13px] text-white/45">{ws.welcomeMessage}</p>
+          {ws.welcomeMessage ? (
+            <p className="mb-7 mt-1.5 text-[13px] text-white/40">{ws.welcomeMessage}</p>
+          ) : (
+            <div className="mb-7 mt-1.5 h-[1px] w-8 mx-auto rounded-full" style={{ background: `${brandColor}50` }} />
           )}
 
-          {/* Divider */}
-          {!ws.welcomeMessage && <div className="mb-6" />}
-
           {/* Presentation title */}
-          <h1 className="mx-auto max-w-2xl text-[2.6rem] font-black leading-[1.1] tracking-[-0.02em] text-white sm:text-[3.2rem]">
+          <h1 className="mx-auto max-w-2xl text-[2.8rem] font-black leading-[1.08] tracking-[-0.025em] text-white sm:text-[3.4rem]">
             {data.title}
           </h1>
 
           {/* Intro */}
           {data.intro && (
-            <p className="mx-auto mt-4 max-w-xl text-[14px] leading-[1.75] text-white/55 whitespace-pre-wrap">
+            <p className="mx-auto mt-4 max-w-lg text-[14px] leading-[1.8] text-white/50 whitespace-pre-wrap">
               {data.intro}
             </p>
           )}
 
-          {/* Stats row */}
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-[12px] font-semibold text-white/70">
+          {/* Stats */}
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-[12px] font-bold text-white"
+              style={{ background: `${brandColor}22`, border: `1px solid ${brandColor}40` }}
+            >
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: brandColor }} />
               {data.candidates.length} talento{data.candidates.length !== 1 ? "s" : ""}
             </span>
             {approvedCount > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3 py-1.5 text-[12px] font-semibold text-emerald-400">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-3.5 py-1.5 text-[12px] font-bold text-emerald-400" style={{ border: "1px solid rgba(52,211,153,0.2)" }}>
                 ✓ {approvedCount} aprovado{approvedCount !== 1 ? "s" : ""}
               </span>
             )}
             {favoriteCount > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3 py-1.5 text-[12px] font-semibold text-amber-400">
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-3.5 py-1.5 text-[12px] font-bold text-amber-400" style={{ border: "1px solid rgba(251,191,36,0.2)" }}>
                 ★ {favoriteCount} favorito{favoriteCount !== 1 ? "s" : ""}
               </span>
             )}
             {rejectedCount > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/6 px-3 py-1.5 text-[12px] font-semibold text-white/40">
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-3.5 py-1.5 text-[12px] font-bold text-white/35 border border-white/10">
                 ✕ {rejectedCount} rejeitado{rejectedCount !== 1 ? "s" : ""}
               </span>
             )}
           </div>
         </div>
+
+        {/* Hard bottom edge — no fade, just a clean line */}
+        <div className="h-[1px] w-full" style={{ background: `linear-gradient(90deg, transparent, ${brandColor}30, transparent)` }} />
       </header>
 
       {/* ── Instruction hint (first visit) ── */}
