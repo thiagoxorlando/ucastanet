@@ -732,25 +732,6 @@ export default function WorkspacePipelineBoard({
             {selected.size === visible.length ? "Desmarcar todos" : "Selecionar todos"}
           </button>
         )}
-        {/* Always-visible create presentation CTA */}
-        {canManage && candidates.length > 0 && (
-          <button
-            onClick={handleCreatePresentationClick}
-            className={[
-              "ml-auto inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-[12px] font-semibold transition-all cursor-pointer whitespace-nowrap",
-              selectedCandidates.length > 0
-                ? "bg-[#1ABC9C] text-white hover:bg-[#17A58A] shadow-sm"
-                : "border border-dashed border-[#1ABC9C]/60 text-[#1ABC9C] hover:bg-[#1ABC9C]/5",
-            ].join(" ")}
-          >
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            {selectedCandidates.length > 0
-              ? `Criar apresentação (${selectedCandidates.length})`
-              : "Criar apresentação para cliente"}
-          </button>
-        )}
       </div>
 
       {/* No-selection hint — shown briefly when user clicks "Criar apresentação" without selecting */}
