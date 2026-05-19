@@ -2006,7 +2006,12 @@ function ContractModal({
 
     setSending(false);
     if (res.ok) {
-      const data = await res.json() as { contract?: { id?: string; booking_id?: string | null; status?: string | null } };
+      const data = await res.json() as { contract?: { id?: string; booking_id?: string | null; status?: string | null; talent_user_id?: string | null } };
+      console.log("[contract sent]", {
+        talentName:       candidate.talentName,
+        talentId:         candidate.talentId,
+        contractTalentUserId: data.contract?.talent_user_id ?? null,
+      });
       onSent({
         bookingId: data.contract?.booking_id ?? null,
         bookingStatus: "pending",

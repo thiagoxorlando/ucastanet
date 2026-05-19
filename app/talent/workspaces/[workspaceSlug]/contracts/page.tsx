@@ -15,7 +15,6 @@ export const metadata: Metadata = { title: "Contratos — BrisaHub" };
 
 type Props = { params: Promise<{ workspaceSlug: string }> };
 
-// Progress stepper from the talent's perspective
 function TalentContractProgress({
   status,
   signedAt,
@@ -39,10 +38,10 @@ function TalentContractProgress({
   }
 
   const steps = [
-    { label: "Enviado",         done: true,          date: null },
-    { label: "Você assinou",    done: youSigned,     date: fmt(signedAt) },
-    { label: "Depósito",        done: agencyDeposited, date: null },
-    { label: "Pago na carteira", done: isPaid,        date: fmt(paidAt) },
+    { label: "Enviado",          done: true,            date: null },
+    { label: "Você assinou",     done: youSigned,       date: fmt(signedAt) },
+    { label: "Depósito",         done: agencyDeposited, date: null },
+    { label: "Pago na carteira", done: isPaid,          date: fmt(paidAt) },
   ];
   const connectors = [youSigned, agencyDeposited, isPaid];
 
@@ -82,7 +81,6 @@ function TalentContractProgress({
   );
 }
 
-// Human-readable action hint based on contract status
 function StatusHint({ status }: { status: string }) {
   const hints: Record<string, { text: string; cls: string }> = {
     sent:      { text: "Aguardando sua assinatura.", cls: "text-violet-600 bg-violet-50 border-violet-100" },
@@ -101,12 +99,10 @@ function StatusHint({ status }: { status: string }) {
 export default async function WorkspaceContractsPage({ params }: Props) {
   const { workspaceSlug } = await params;
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
   if (!user) notFound();
 
-  // ── Workspace (service role — safe, no user data) ─────────────────────────
   const supabaseAdmin = createServerClient({ useServiceRole: true });
   const { data: workspace } = await supabaseAdmin
     .from("premium_workspaces")
@@ -118,64 +114,25 @@ export default async function WorkspaceContractsPage({ params }: Props) {
 
   if (!workspace) notFound();
 
-  // ── Contracts — authenticated session client, full select, no filtering ───
   const { data: rawContracts, error: contractsError } = await session
     .from("contracts")
     .select("*")
     .or(`talent_user_id.eq.${user.id},talent_id.eq.${user.id}`);
 
-  console.log("[DEBUG workspace contracts]", {
-    userId:          user.id,
-    workspaceId:     workspace.id,
-    contractsLength: rawContracts?.length ?? 0,
-    error:           contractsError?.message ?? null,
-    errorCode:       contractsError?.code    ?? null,
-    rows: (rawContracts ?? []).map((c) => ({
-      id:            c.id,
-      status:        c.status,
-      workspace_id:  (c as Record<string,unknown>).workspace_id ?? null,
-      talent_user_id: (c as Record<string,unknown>).talent_user_id ?? null,
-    })),
-  });
+  if (contractsError) {
+    console.warn("[workspace contracts] query error", {
+      userId: user.id,
+      workspaceId: workspace.id,
+      error: contractsError.message,
+      code: contractsError.code,
+    });
+  }
 
-  // ── DIAGNOSTIC RENDER — temporary ─────────────────────────────────────────
-  return (
-    <div className="space-y-4 p-4">
-      <p className="text-xs text-zinc-400 font-mono">
-        DEBUG — user: {user.id} · workspace: {workspace.id as string}
-      </p>
-      <p className="text-xs text-zinc-400 font-mono">
-        contracts found: {rawContracts?.length ?? 0}
-        {contractsError && ` · error: ${contractsError.message}`}
-      </p>
-      {(rawContracts ?? []).length === 0 && (
-        <p className="text-sm text-red-500 font-semibold">
-          {contractsError ? `Supabase error: ${contractsError.message}` : "No contracts returned — RLS is blocking or wrong user.id"}
-        </p>
-      )}
-      <ul className="space-y-2">
-        {(rawContracts ?? []).map((c) => {
-          const row = c as Record<string, unknown>;
-          return (
-            <li key={String(row.id)} className="rounded-xl border border-zinc-200 bg-white p-4 font-mono text-xs space-y-1">
-              <p><span className="text-zinc-400">id:</span> {String(row.id)}</p>
-              <p><span className="text-zinc-400">status:</span> {String(row.status)}</p>
-              <p><span className="text-zinc-400">workspace_id:</span> {String(row.workspace_id ?? "null")}</p>
-              <p><span className="text-zinc-400">talent_user_id:</span> {String(row.talent_user_id ?? "null")}</p>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-
-  /* eslint-disable no-unreachable */
-  if (!workspace) return null;
   const lang       = await getServerLang();
   const locale     = lang === "en" ? "en-US" : "pt-BR";
   const statusLang = lang === "en" ? "en" : "pt-BR";
 
-  const ws = workspace!;
+  const ws                = workspace;
   const { data: allJobs } = await supabaseAdmin.from("jobs").select("id, title").eq("workspace_id", ws.id);
   const workspaceJobIds   = (allJobs ?? []).map((j) => j.id);
   const jobMap            = new Map((allJobs ?? []).map((j) => [String(j.id), String(j.title ?? "Vaga")]));
@@ -195,14 +152,24 @@ export default async function WorkspaceContractsPage({ params }: Props) {
     if (row.job_id && workspaceJobIdSet.has(String(row.job_id))) return true;
     if (row.agency_id && ownerUserId && String(row.agency_id) === ownerUserId) return true;
     return false;
-  }).sort((a, b) => new Date(String((b as Record<string,unknown>).created_at ?? 0)).getTime() - new Date(String((a as Record<string,unknown>).created_at ?? 0)).getTime());
+  }).sort((a, b) =>
+    new Date(String((b as Record<string,unknown>).created_at ?? 0)).getTime() -
+    new Date(String((a as Record<string,unknown>).created_at ?? 0)).getTime()
+  );
 
-  const agencyName = agencyResult.data?.company_name ?? (ws.name as string);
-  const active = contracts.filter((c) => ["sent","signed","confirmed"].includes(String((c as Record<string,unknown>).status ?? "")));
-  const paid   = contracts.filter((c) => (c as Record<string,unknown>).status === "paid");
-  const other  = contracts.filter((c) => ["cancelled","rejected"].includes(String((c as Record<string,unknown>).status ?? "")));
-  const primary = (ws.brand_primary_color as string | null) ?? "#1ABC9C";
-  const accent  = (ws.brand_accent_color  as string | null) ?? "#27C1D6";
+  if ((rawContracts ?? []).length === 0 && !contractsError) {
+    console.warn("[workspace contracts] no contracts returned for user — check RLS policy talent_read_own_contracts_by_user_id", {
+      userId: user.id,
+      workspaceId: ws.id,
+    });
+  }
+
+  const agencyName  = agencyResult.data?.company_name ?? (ws.name as string);
+  const active      = contracts.filter((c) => ["sent","signed","confirmed"].includes(String((c as Record<string,unknown>).status ?? "")));
+  const paid        = contracts.filter((c) => (c as Record<string,unknown>).status === "paid");
+  const other       = contracts.filter((c) => ["cancelled","rejected"].includes(String((c as Record<string,unknown>).status ?? "")));
+  const primary     = (ws.brand_primary_color as string | null) ?? "#1ABC9C";
+  const accent      = (ws.brand_accent_color  as string | null) ?? "#27C1D6";
   const totalEarned = paid.reduce((s, c) => { const { net } = resolveContractAmounts(c as Parameters<typeof resolveContractAmounts>[0]); return s + net; }, 0);
   const totalActive = active.reduce((s, c) => { const { net } = resolveContractAmounts(c as Parameters<typeof resolveContractAmounts>[0]); return s + net; }, 0);
 
@@ -233,7 +200,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Summary */}
+      {/* Summary chips */}
       {contracts.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-[12px] font-medium text-zinc-600">
@@ -276,10 +243,12 @@ export default async function WorkspaceContractsPage({ params }: Props) {
           <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Em andamento</p>
           <ul className="flex flex-col gap-3">
             {active.map((contract) => {
+              const row   = contract as Record<string, unknown>;
               const ps    = getContractPaymentStatus(contract as Parameters<typeof getContractPaymentStatus>[0]);
               const label = contractStatusLabel(ps, statusLang);
               const tone  = contractStatusTone(ps);
               const { net, gross } = resolveContractAmounts(contract as Parameters<typeof resolveContractAmounts>[0]);
+              const fileUrl = row.contract_file_url as string | null;
               return (
                 <li key={contract.id}>
                   <div className="overflow-hidden rounded-[20px] border border-amber-200 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
@@ -288,7 +257,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="truncate text-[15px] font-semibold text-zinc-900">
-                            {jobMap.get(String(contract.job_id)) ?? "Vaga"}
+                            {jobMap.get(String(contract.job_id)) ?? (row.job_description as string | null)?.slice(0, 60) ?? "Vaga"}
                           </p>
                           <p className="mt-0.5 text-[11px] text-zinc-400">{agencyName}</p>
                           {contract.job_date && (
@@ -296,19 +265,18 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                               {new Date(`${contract.job_date}T00:00:00`).toLocaleDateString(locale, {
                                 weekday: "short", day: "numeric", month: "short",
                               })}
+                              {contract.job_time && ` · ${String(contract.job_time).slice(0, 5)}`}
                             </p>
                           )}
                         </div>
                         <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{label}</span>
                       </div>
 
-                      {/* Action hint */}
                       <StatusHint status={contract.status ?? ""} />
 
-                      {/* Progress stepper */}
                       <TalentContractProgress
                         status={contract.status ?? ""}
-                        signedAt={(contract as { signed_at?: string | null }).signed_at ?? null}
+                        signedAt={(row.signed_at as string | null) ?? null}
                         paidAt={contract.paid_at ?? null}
                         locale={locale}
                       />
@@ -329,6 +297,34 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                           </span>
                         )}
                       </div>
+
+                      {/* File / sign actions */}
+                      {fileUrl && (
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <a
+                            href={fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-100 transition-colors"
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Ver contrato
+                          </a>
+                          {contract.status === "sent" && (
+                            <a
+                              href={`/talent/workspaces/${workspaceSlug}/contracts/${contract.id}/sign`}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-violet-700 transition-colors"
+                            >
+                              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                              Assinar contrato
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </li>
@@ -344,10 +340,12 @@ export default async function WorkspaceContractsPage({ params }: Props) {
           <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Pagos</p>
           <ul className="flex flex-col gap-3">
             {paid.map((contract) => {
+              const row   = contract as Record<string, unknown>;
               const ps    = getContractPaymentStatus(contract as Parameters<typeof getContractPaymentStatus>[0]);
               const label = contractStatusLabel(ps, statusLang);
               const tone  = contractStatusTone(ps);
               const { net, gross, commissionPct } = resolveContractAmounts(contract as Parameters<typeof resolveContractAmounts>[0]);
+              const fileUrl = row.contract_file_url as string | null;
               return (
                 <li key={contract.id}>
                   <div className="overflow-hidden rounded-[20px] border border-emerald-200 bg-white shadow-[0_4px_16px_rgba(15,23,42,0.04)]">
@@ -359,7 +357,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="truncate text-[15px] font-semibold text-zinc-900">
-                            {jobMap.get(String(contract.job_id)) ?? "Vaga"}
+                            {jobMap.get(String(contract.job_id)) ?? (row.job_description as string | null)?.slice(0, 60) ?? "Vaga"}
                           </p>
                           <p className="mt-0.5 text-[11px] text-zinc-400">{agencyName}</p>
                           {contract.job_date && (
@@ -367,6 +365,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                               {new Date(`${contract.job_date}T00:00:00`).toLocaleDateString(locale, {
                                 weekday: "short", day: "numeric", month: "short",
                               })}
+                              {contract.job_time && ` · ${String(contract.job_time).slice(0, 5)}`}
                             </p>
                           )}
                         </div>
@@ -402,6 +401,21 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                           Pago em {new Date(contract.paid_at).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })}
                         </p>
                       )}
+                      {fileUrl && (
+                        <div className="mt-3">
+                          <a
+                            href={fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-100 transition-colors"
+                          >
+                            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Ver contrato
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </li>
@@ -417,6 +431,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
           <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Cancelados / Rejeitados</p>
           <ul className="flex flex-col gap-2.5">
             {other.map((contract) => {
+              const row   = contract as Record<string, unknown>;
               const ps    = getContractPaymentStatus(contract as Parameters<typeof getContractPaymentStatus>[0]);
               const label = contractStatusLabel(ps, statusLang);
               const tone  = contractStatusTone(ps);
@@ -426,7 +441,7 @@ export default async function WorkspaceContractsPage({ params }: Props) {
                   <div className="rounded-[20px] border border-zinc-200 bg-zinc-50 p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="truncate text-[13px] font-semibold text-zinc-500">
-                        {jobMap.get(String(contract.job_id)) ?? "Vaga"}
+                        {jobMap.get(String(contract.job_id)) ?? (row.job_description as string | null)?.slice(0, 60) ?? "Vaga"}
                       </p>
                       <p className="text-[11px] text-zinc-400">{agencyName}</p>
                       <span className={`flex-shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{label}</span>
