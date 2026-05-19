@@ -26,7 +26,7 @@ export default async function WorkspaceContractsPage() {
   const jobTitleMap = new Map(allWorkspaceJobs.map((job) => [job.id, job.title ?? "Vaga do workspace"]));
 
   const contractSelect =
-    "id, workspace_id, job_id, talent_id, talent_user_id, job_date, job_time, location, job_description, payment_amount, commission_amount, net_amount, commission_percent, payment_method, additional_notes, status, payment_status, contract_file_url, signed_contract_url, created_at, signed_at, agency_signed_at, deposit_paid_at, paid_at";
+    "id, workspace_id, job_id, talent_id, talent_user_id, job_date, job_time, location, job_description, payment_amount, commission_amount, net_amount, payment_method, additional_notes, status, payment_status, contract_file_url, signed_contract_url, created_at, signed_at, agency_signed_at, deposit_paid_at, paid_at";
 
   const [workspaceContractsResult, jobJoinContractsResult] = await Promise.all([
     supabase
