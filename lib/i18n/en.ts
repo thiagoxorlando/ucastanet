@@ -1255,6 +1255,7 @@ export const en: Record<string, string> = {
   workspace_wallet_tx_job_settlement: "Talent payment settled",
   workspace_wallet_tx_refund: "Commitment refund / reversal",
   workspace_wallet_tx_adjustment: "Manual adjustment",
+  workspace_wallet_tx_escrow_lock: "Contract escrow",
   portal_job_fallback: "Job",
   portal_earnings_in_portal: "Earnings in this portal",
   portal_available_jobs: "Available jobs",

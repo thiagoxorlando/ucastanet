@@ -47,7 +47,6 @@ type WorkspaceLedgerContractRow = {
   payment_amount: number | null;
   commission_amount: number | null;
   net_amount: number | null;
-  commission_percent: number | null;
   status: string;
   paid_at: string | null;
 };
@@ -97,6 +96,7 @@ function txLabel(type: string, t: TFn): string {
     job_settlement: t("workspace_wallet_tx_job_settlement"),
     refund: t("workspace_wallet_tx_refund"),
     adjustment: t("workspace_wallet_tx_adjustment"),
+    escrow_lock: t("workspace_wallet_tx_escrow_lock"),
   };
 
   return map[type] ?? type;
@@ -111,6 +111,7 @@ function txTypeTone(type: string): string {
     job_settlement: "border-rose-200 bg-rose-50 text-rose-700",
     refund: "border-zinc-200 bg-zinc-100 text-zinc-700",
     adjustment: "border-zinc-200 bg-zinc-100 text-zinc-700",
+    escrow_lock: "border-amber-200 bg-amber-50 text-amber-700",
   };
 
   return map[type] ?? "border-zinc-200 bg-zinc-100 text-zinc-700";
@@ -119,6 +120,7 @@ function txTypeTone(type: string): string {
 function txAmountTone(type: string): string {
   if (type === "job_settlement") return "text-rose-600";
   if (type === "job_commitment") return "text-amber-700";
+  if (type === "escrow_lock") return "text-amber-700";
   if (type === "allocation_reversal") return "text-indigo-700";
   if (type === "job_release") return "text-sky-700";
   if (type === "allocation") return "text-emerald-700";
@@ -126,7 +128,7 @@ function txAmountTone(type: string): string {
 }
 
 function txAmountPrefix(type: string): string {
-  if (["job_commitment", "job_settlement", "allocation_reversal"].includes(type)) return "-";
+  if (["job_commitment", "job_settlement", "allocation_reversal", "escrow_lock"].includes(type)) return "-";
   if (["allocation", "job_release", "refund"].includes(type)) return "+";
   return "";
 }
@@ -274,9 +276,11 @@ async function buildLedgerRows(
   privateJobLabel: string,
   unknownAgentLabel: string,
   agentUserId?: string,
+  ownerUserId?: string,
 ): Promise<LedgerRow[]> {
   const supabase = createServerClient({ useServiceRole: true });
 
+  // Round 1: agent virtual ledger + workspace contract IDs for escrow lookup
   let query = supabase
     .from("premium_agent_wallet_transactions")
     .select("id, type, amount, status, note, created_at, related_job_id, related_contract_id, agent_user_id")
@@ -286,7 +290,14 @@ async function buildLedgerRows(
 
   if (agentUserId) query = query.eq("agent_user_id", agentUserId);
 
-  const { data } = await query;
+  const [{ data }, wsContractIdsResult] = await Promise.all([
+    query,
+    // Only needed for owner view to surface escrow_lock entries from wallet_transactions
+    ownerUserId
+      ? supabase.from("contracts").select("id").eq("workspace_id", workspaceId)
+      : Promise.resolve({ data: [] as Array<{ id: string }> }),
+  ]);
+
   const rows: LedgerTxBase[] = (data ?? []).map((row) => ({
     id: String(row.id),
     type: String(row.type),
@@ -299,30 +310,43 @@ async function buildLedgerRows(
     agent_user_id: String(row.agent_user_id),
   }));
 
-  if (rows.length === 0) return [];
+  const wsContractIds = (wsContractIdsResult.data ?? []).map((c) => c.id);
+  const escrowKeys = wsContractIds.map((id) => `escrow_${id}`);
 
-  const jobIds = [...new Set(rows.map((row) => row.related_job_id).filter((value): value is string => Boolean(value)))];
-  const contractIds = [...new Set(rows.map((row) => row.related_contract_id).filter((value): value is string => Boolean(value)))];
-  const agentIds = [...new Set(rows.map((row) => row.agent_user_id))];
+  if (rows.length === 0 && wsContractIds.length === 0) return [];
 
-  const [jobsResult, contractsResult, payoutResult, membersResult] = await Promise.all([
+  // Merge contract IDs from agent txs + all workspace contracts so enrichment covers both
+  const contractIdsFromTxs = [...new Set(rows.map((row) => row.related_contract_id).filter((v): v is string => Boolean(v)))];
+  const allContractIds = [...new Set([...contractIdsFromTxs, ...wsContractIds])];
+  const jobIds = [...new Set(rows.map((row) => row.related_job_id).filter((v): v is string => Boolean(v)))];
+
+  // Round 2: enrichment data + escrow wallet_transactions for workspace contracts
+  const [jobsResult, contractsResult, payoutResult, membersResult, escrowTxsResult] = await Promise.all([
     jobIds.length > 0
       ? supabase.from("jobs").select("id, title").in("id", jobIds)
       : Promise.resolve({ data: [] as Array<{ id: string; title: string | null }> }),
-    contractIds.length > 0
+    allContractIds.length > 0
       ? supabase
           .from("contracts")
-          .select("id, job_id, payment_amount, commission_amount, net_amount, commission_percent, status, paid_at")
-          .in("id", contractIds)
+          .select("id, job_id, payment_amount, commission_amount, net_amount, status, paid_at")
+          .in("id", allContractIds)
       : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
-    contractIds.length > 0
+    allContractIds.length > 0
       ? supabase
           .from("wallet_transactions")
           .select("reference_id, amount")
           .eq("type", "payout")
-          .in("reference_id", contractIds)
+          .in("reference_id", allContractIds)
       : Promise.resolve({ data: [] as Array<{ reference_id: string | null; amount: number | null }> }),
     getWorkspaceMembers(workspaceId),
+    // Fetch actual escrow_lock entries from wallet_transactions for workspace contracts (owner view only)
+    escrowKeys.length > 0
+      ? supabase
+          .from("wallet_transactions")
+          .select("id, amount, status, created_at, idempotency_key")
+          .in("idempotency_key", escrowKeys)
+          .eq("type", "escrow_lock")
+      : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
   ]);
 
   const jobTitleMap = new Map<string, string>();
@@ -341,8 +365,11 @@ async function buildLedgerRows(
     memberNameMap.set(member.userId, member.displayName || member.email || unknownAgentLabel);
   }
 
+  // contract.job_id lookup for escrow row enrichment
+  const contractJobMap = new Map<string, string | null>();
+
   const contractMap = new Map<string, ContractLedgerRow>();
-  for (const contract of (contractsResult.data ?? []) as WorkspaceLedgerContractRow[]) {
+  for (const contract of (contractsResult.data ?? []) as (WorkspaceLedgerContractRow & { job_id: string | null })[]) {
     const paymentStatus = getContractPaymentStatus(contract);
     const { gross, commission, net } = resolveContractAmounts(contract);
     const paidToTalent =
@@ -360,17 +387,44 @@ async function buildLedgerRows(
       paidAt: (contract.paid_at as string | null) ?? null,
     });
 
+    contractJobMap.set(String(contract.id), contract.job_id ?? null);
+
     if (contract.job_id && !jobTitleMap.has(String(contract.job_id))) {
       jobTitleMap.set(String(contract.job_id), privateJobLabel);
     }
   }
 
-  return rows.map((row) => ({
+  // Build escrow_lock LedgerRows from wallet_transactions (owner money locked for workspace contracts)
+  const escrowRows: LedgerRow[] = (escrowTxsResult.data ?? []).map((tx) => {
+    const key = String((tx as Record<string, unknown>).idempotency_key ?? "");
+    const contractId = key.startsWith("escrow_") ? key.slice("escrow_".length) : key;
+    const jobId = contractJobMap.get(contractId) ?? null;
+    return {
+      id: String((tx as Record<string, unknown>).id),
+      type: "escrow_lock",
+      amount: Math.abs(Number((tx as Record<string, unknown>).amount ?? 0)),
+      status: String((tx as Record<string, unknown>).status ?? "completed"),
+      note: null,
+      created_at: String((tx as Record<string, unknown>).created_at),
+      related_job_id: jobId,
+      related_contract_id: contractId,
+      agent_user_id: ownerUserId ?? "",
+      agentName: null,
+      jobTitle: jobId ? (jobTitleMap.get(jobId) ?? null) : null,
+      contract: contractMap.get(contractId) ?? null,
+    };
+  });
+
+  const mappedRows: LedgerRow[] = rows.map((row) => ({
     ...row,
     agentName: memberNameMap.get(row.agent_user_id) ?? null,
     jobTitle: row.related_job_id ? jobTitleMap.get(row.related_job_id) ?? null : null,
     contract: row.related_contract_id ? contractMap.get(row.related_contract_id) ?? null : null,
   }));
+
+  return [...mappedRows, ...escrowRows].sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
 }
 
 export default async function WorkspaceWalletPage() {
@@ -419,7 +473,7 @@ export default async function WorkspaceWalletPage() {
     getOwnerAllocationSummary(context.workspace.id, context.workspace.ownerUserId),
     getWorkspaceMembers(context.workspace.id),
     getWorkspaceAgentLedgerBalances(context.workspace.id),
-    buildLedgerRows(context.workspace.id, 250, statusLang, t("workspace_private_job"), t("workspace_role_agent")),
+    buildLedgerRows(context.workspace.id, 250, statusLang, t("workspace_private_job"), t("workspace_role_agent"), undefined, context.workspace.ownerUserId),
   ]);
 
   const agents = members.filter((member) => member.role === "agent");

@@ -455,6 +455,7 @@ export const ptBR: Record<string, string> = {
   workspace_wallet_tx_job_settlement: "Pagamento ao talento liquidado",
   workspace_wallet_tx_refund: "Reembolso / estorno de compromisso",
   workspace_wallet_tx_adjustment: "Ajuste manual",
+  workspace_wallet_tx_escrow_lock: "Custódia do contrato",
   portal_job_fallback: "Vaga",
   portal_earnings_in_portal: "Ganhos neste portal",
   portal_available_jobs: "Vagas disponíveis",

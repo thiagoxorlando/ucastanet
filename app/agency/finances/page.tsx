@@ -73,12 +73,6 @@ export default async function AgencyFinancesPage() {
   );
   const openBookings = rows.filter((booking) => !booking.job_id || openJobIds.has(String(booking.job_id)));
   const openContracts = (contracts ?? []).filter((contract) => !contract.job_id || openJobIds.has(String(contract.job_id)));
-  const premiumContractIds = new Set(
-    (contracts ?? [])
-      .filter((contract) => contract.job_id && !openJobIds.has(String(contract.job_id)))
-      .map((contract) => String(contract.id)),
-  );
-
   // Resolve talent names
   const talentIds = [...new Set(openBookings.map((b) => b.talent_user_id).filter((id): id is string => !!id))];
   const nameMap = new Map<string, string>();
@@ -125,12 +119,6 @@ export default async function AgencyFinancesPage() {
   }
 
   const walletRows: AgencyTransaction[] = (walletTxs ?? [])
-    .filter((w) => {
-      const escrowContractId = typeof w.idempotency_key === "string" && w.idempotency_key.startsWith("escrow_")
-        ? w.idempotency_key.slice("escrow_".length)
-        : null;
-      return !escrowContractId || !premiumContractIds.has(escrowContractId);
-    })
     .map((w) => {
     let status = w.type ?? "payment";
     let description = (w.description ?? "").replace(/ \(pendente\)/gi, "").trim() || undefined;
