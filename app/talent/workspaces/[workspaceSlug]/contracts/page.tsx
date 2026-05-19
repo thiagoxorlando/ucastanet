@@ -100,17 +100,15 @@ function StatusHint({ status }: { status: string }) {
 
 export default async function WorkspaceContractsPage({ params }: Props) {
   const { workspaceSlug } = await params;
-  const lang   = await getServerLang();
-  const locale = lang === "en" ? "en-US" : "pt-BR";
-  const statusLang = lang === "en" ? "en" : "pt-BR";
 
+  // ── Auth ──────────────────────────────────────────────────────────────────
   const session = await createSessionClient();
   const { data: { user } } = await session.auth.getUser();
   if (!user) notFound();
 
-  const supabase = createServerClient({ useServiceRole: true });
-
-  const { data: workspace } = await supabase
+  // ── Workspace (service role — safe, no user data) ─────────────────────────
+  const supabaseAdmin = createServerClient({ useServiceRole: true });
+  const { data: workspace } = await supabaseAdmin
     .from("premium_workspaces")
     .select("id, agency_id, owner_user_id, name, logo_url, brand_primary_color, brand_accent_color")
     .eq("slug", workspaceSlug)
@@ -120,92 +118,103 @@ export default async function WorkspaceContractsPage({ params }: Props) {
 
   if (!workspace) notFound();
 
-  const { data: allJobs } = await supabase
-    .from("jobs")
-    .select("id, title")
-    .eq("workspace_id", workspace.id);
-
-  const workspaceJobIds = (allJobs ?? []).map((j) => j.id);
-  const jobMap = new Map((allJobs ?? []).map((j) => [String(j.id), String(j.title ?? "Vaga")]));
-
-  const CONTRACT_SELECT = "id, agency_id, talent_user_id, talent_id, job_id, status, payment_amount, net_amount, commission_amount, commission_percent, paid_at, signed_at, job_date, location, created_at";
-  const ownerUserId     = workspace.owner_user_id as string | null;
-  const workspaceIdStr  = workspace.id as string;
-  const workspaceJobIdSet = new Set(workspaceJobIds.map(String));
-
-  const agencyResult = workspace.agency_id
-    ? await supabase.from("agencies").select("company_name").eq("id", workspace.agency_id).maybeSingle()
-    : workspace.owner_user_id
-      ? await supabase.from("agencies").select("company_name").eq("user_id", workspace.owner_user_id).maybeSingle()
-      : { data: null };
-
-  // Fetch ALL contracts for this talent in one query — avoids workspace_id schema-cache issues.
-  // Service role bypasses RLS entirely.
-  const { data: allTalentContracts, error: contractsFetchError } = await supabase
+  // ── Contracts — authenticated session client, full select, no filtering ───
+  const { data: rawContracts, error: contractsError } = await session
     .from("contracts")
-    .select(CONTRACT_SELECT)
-    .or(`talent_user_id.eq.${user.id},talent_id.eq.${user.id}`)
-    .order("created_at", { ascending: false });
+    .select("*")
+    .or(`talent_user_id.eq.${user.id},talent_id.eq.${user.id}`);
 
-  console.log("[talent workspace contracts]", {
+  console.log("[DEBUG workspace contracts]", {
     userId:          user.id,
-    workspaceId:     workspaceIdStr,
-    ownerUserId,
-    workspaceJobCount: workspaceJobIds.length,
-    allTalentContractsCount: allTalentContracts?.length ?? 0,
-    fetchError:      contractsFetchError?.message ?? null,
-    fetchErrorCode:  contractsFetchError?.code     ?? null,
-    sampleIds:       (allTalentContracts ?? []).slice(0, 5).map((c) => ({
-      id:           c.id,
-      job_id:       c.job_id,
-      agency_id:    c.agency_id,
-      // workspace_id may not be in schema cache yet — read via cast
-      workspace_id: (c as Record<string, unknown>).workspace_id ?? "NOT_IN_SELECT",
-      status:       c.status,
+    workspaceId:     workspace.id,
+    contractsLength: rawContracts?.length ?? 0,
+    error:           contractsError?.message ?? null,
+    errorCode:       contractsError?.code    ?? null,
+    rows: (rawContracts ?? []).map((c) => ({
+      id:            c.id,
+      status:        c.status,
+      workspace_id:  (c as Record<string,unknown>).workspace_id ?? null,
+      talent_user_id: (c as Record<string,unknown>).talent_user_id ?? null,
     })),
   });
 
-  // Filter server-side: keep contracts that belong to this workspace
-  const contracts = (allTalentContracts ?? []).filter((c) => {
-    const contractWorkspaceId = String((c as Record<string, unknown>).workspace_id ?? "");
-    if (contractWorkspaceId === workspaceIdStr) return true;
-    if (c.job_id && workspaceJobIdSet.has(String(c.job_id))) return true;
-    if (c.agency_id && ownerUserId && String(c.agency_id) === ownerUserId) return true;
+  // ── DIAGNOSTIC RENDER — temporary ─────────────────────────────────────────
+  return (
+    <div className="space-y-4 p-4">
+      <p className="text-xs text-zinc-400 font-mono">
+        DEBUG — user: {user.id} · workspace: {workspace.id as string}
+      </p>
+      <p className="text-xs text-zinc-400 font-mono">
+        contracts found: {rawContracts?.length ?? 0}
+        {contractsError && ` · error: ${contractsError.message}`}
+      </p>
+      {(rawContracts ?? []).length === 0 && (
+        <p className="text-sm text-red-500 font-semibold">
+          {contractsError ? `Supabase error: ${contractsError.message}` : "No contracts returned — RLS is blocking or wrong user.id"}
+        </p>
+      )}
+      <ul className="space-y-2">
+        {(rawContracts ?? []).map((c) => {
+          const row = c as Record<string, unknown>;
+          return (
+            <li key={String(row.id)} className="rounded-xl border border-zinc-200 bg-white p-4 font-mono text-xs space-y-1">
+              <p><span className="text-zinc-400">id:</span> {String(row.id)}</p>
+              <p><span className="text-zinc-400">status:</span> {String(row.status)}</p>
+              <p><span className="text-zinc-400">workspace_id:</span> {String(row.workspace_id ?? "null")}</p>
+              <p><span className="text-zinc-400">talent_user_id:</span> {String(row.talent_user_id ?? "null")}</p>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+
+  /* eslint-disable no-unreachable */
+  if (!workspace) return null;
+  const lang       = await getServerLang();
+  const locale     = lang === "en" ? "en-US" : "pt-BR";
+  const statusLang = lang === "en" ? "en" : "pt-BR";
+
+  const ws = workspace!;
+  const { data: allJobs } = await supabaseAdmin.from("jobs").select("id, title").eq("workspace_id", ws.id);
+  const workspaceJobIds   = (allJobs ?? []).map((j) => j.id);
+  const jobMap            = new Map((allJobs ?? []).map((j) => [String(j.id), String(j.title ?? "Vaga")]));
+  const ownerUserId       = ws.owner_user_id as string | null;
+  const workspaceIdStr    = ws.id as string;
+  const workspaceJobIdSet = new Set(workspaceJobIds.map(String));
+
+  const agencyResult = ws.agency_id
+    ? await supabaseAdmin.from("agencies").select("company_name").eq("id", ws.agency_id).maybeSingle()
+    : ownerUserId
+      ? await supabaseAdmin.from("agencies").select("company_name").eq("user_id", ownerUserId).maybeSingle()
+      : { data: null };
+
+  const contracts = (rawContracts ?? []).filter((c) => {
+    const row = c as Record<string, unknown>;
+    if (String(row.workspace_id ?? "") === workspaceIdStr) return true;
+    if (row.job_id && workspaceJobIdSet.has(String(row.job_id))) return true;
+    if (row.agency_id && ownerUserId && String(row.agency_id) === ownerUserId) return true;
     return false;
-  }).sort((a, b) => {
-      const aTime = new Date(a.created_at ?? 0).getTime();
-      const bTime = new Date(b.created_at ?? 0).getTime();
-      return bTime - aTime;
-    });
+  }).sort((a, b) => new Date(String((b as Record<string,unknown>).created_at ?? 0)).getTime() - new Date(String((a as Record<string,unknown>).created_at ?? 0)).getTime());
 
-  const agencyName = agencyResult.data?.company_name ?? (workspace.name as string);
-
-  const active = contracts.filter((c) => ["sent", "signed", "confirmed"].includes(c.status ?? ""));
-  const paid   = contracts.filter((c) => c.status === "paid");
-  const other  = contracts.filter((c) => ["cancelled", "rejected"].includes(c.status ?? ""));
-
-  const primary = (workspace.brand_primary_color as string | null) ?? "#1ABC9C";
-  const accent  = (workspace.brand_accent_color  as string | null) ?? "#27C1D6";
-
-  const totalEarned = paid.reduce((s, c) => {
-    const { net } = resolveContractAmounts(c as Parameters<typeof resolveContractAmounts>[0]);
-    return s + net;
-  }, 0);
-
-  const totalActive = active.reduce((s, c) => {
-    const { net } = resolveContractAmounts(c as Parameters<typeof resolveContractAmounts>[0]);
-    return s + net;
-  }, 0);
+  const agencyName = agencyResult.data?.company_name ?? (ws.name as string);
+  const active = contracts.filter((c) => ["sent","signed","confirmed"].includes(String((c as Record<string,unknown>).status ?? "")));
+  const paid   = contracts.filter((c) => (c as Record<string,unknown>).status === "paid");
+  const other  = contracts.filter((c) => ["cancelled","rejected"].includes(String((c as Record<string,unknown>).status ?? "")));
+  const primary = (ws.brand_primary_color as string | null) ?? "#1ABC9C";
+  const accent  = (ws.brand_accent_color  as string | null) ?? "#27C1D6";
+  const totalEarned = paid.reduce((s, c) => { const { net } = resolveContractAmounts(c as Parameters<typeof resolveContractAmounts>[0]); return s + net; }, 0);
+  const totalActive = active.reduce((s, c) => { const { net } = resolveContractAmounts(c as Parameters<typeof resolveContractAmounts>[0]); return s + net; }, 0);
 
   return (
     <div className="space-y-6">
       {/* Branded header */}
       <div className="flex items-center gap-3.5">
-        {workspace.logo_url ? (
+        {ws.logo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={workspace.logo_url as string}
-            alt={workspace.name as string}
+            src={ws.logo_url as string}
+            alt={ws.name as string}
             className="h-10 w-10 flex-shrink-0 rounded-xl border border-zinc-200 object-cover shadow-sm"
           />
         ) : (
@@ -213,12 +222,12 @@ export default async function WorkspaceContractsPage({ params }: Props) {
             className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm"
             style={{ background: `linear-gradient(135deg, ${primary}, ${accent})` }}
           >
-            {(workspace.name as string).slice(0, 1).toUpperCase()}
+            {(ws.name as string).slice(0, 1).toUpperCase()}
           </div>
         )}
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.13em] text-zinc-400">
-            {workspace.name as string}
+            {ws.name as string}
           </p>
           <h1 className="text-[1.3rem] font-bold leading-tight text-zinc-950">Contratos</h1>
         </div>
