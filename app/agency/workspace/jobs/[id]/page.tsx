@@ -45,8 +45,8 @@ export default async function WorkspaceJobDetailPage({ params }: Props) {
   const workspaceId = (jobData as { workspace_id?: string | null }).workspace_id ?? null;
   if (!workspaceId || workspaceAccess.workspace.id !== workspaceId) notFound();
 
-  // All active workspace members (owners, agents, members) can manage the pipeline and create presentations.
-  const readOnly = false;
+  const isCreator = (jobData as { created_by_user_id?: string | null }).created_by_user_id === user.id;
+  const readOnly = !(isWorkspaceOwner || isCreator);
 
   // Try fetching submissions with pipeline_status (requires migration 20260517).
   // If the column doesn't exist yet PostgREST returns data:null — fall back to

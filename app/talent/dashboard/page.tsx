@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import TalentDashboard from "@/features/talent/TalentDashboard";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { resolvePortalOnlyTalentLanding } from "@/lib/talentPortalLanding";
 
 export const metadata: Metadata = { title: "Painel - BrisaHub" };
 
@@ -11,6 +13,12 @@ export default async function TalentDashboardPage() {
   const talentId = user?.id ?? "";
 
   const supabase = createServerClient({ useServiceRole: true });
+  if (talentId) {
+    const portalLanding = await resolvePortalOnlyTalentLanding(supabase, talentId);
+    if (portalLanding) {
+      redirect(portalLanding);
+    }
+  }
 
   const [
     { data: submissionsData },

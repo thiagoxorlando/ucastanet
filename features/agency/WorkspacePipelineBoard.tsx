@@ -218,6 +218,8 @@ function JobOverviewSection({
   savingStatus,
   statusFeedback,
   candidates,
+  canManage,
+  manageReason,
   onStatusChange,
 }: {
   job: PipelineJob;
@@ -225,6 +227,8 @@ function JobOverviewSection({
   savingStatus: boolean;
   statusFeedback: { ok: boolean; msg: string } | null;
   candidates: PipelineCandidate[];
+  canManage: boolean;
+  manageReason: string | null;
   onStatusChange: (s: string) => void;
 }) {
   // Stats
@@ -304,9 +308,9 @@ function JobOverviewSection({
                 onChange={(e) => {
                   void onStatusChange(e.target.value);
                 }}
-                disabled={savingStatus}
+                disabled={!canManage || savingStatus}
                 className={[
-                  "h-8 rounded-xl border px-2.5 text-[12px] font-semibold focus:outline-none cursor-pointer disabled:opacity-50 transition-colors",
+                  "h-8 rounded-xl border px-2.5 text-[12px] font-semibold focus:outline-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 transition-colors",
                   jobStatus === "open"   ? "border-emerald-200 bg-emerald-50 text-emerald-700" :
                   jobStatus === "paused" ? "border-blue-200 bg-blue-50 text-blue-700" :
                   jobStatus === "closed" ? "border-zinc-200 bg-zinc-100 text-zinc-500" :
@@ -322,20 +326,34 @@ function JobOverviewSection({
             </div>
 
             {/* Edit */}
-            <Link
-              href={`/agency/workspace/jobs/${job.id}/edit`}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3 py-1.5 text-[12px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              Editar vaga
-            </Link>
+            {canManage ? (
+              <Link
+                href={`/agency/workspace/jobs/${job.id}/edit`}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3 py-1.5 text-[12px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Editar vaga
+              </Link>
+            ) : (
+              <span
+                title={manageReason ?? undefined}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3 py-1.5 text-[12px] font-semibold text-zinc-400"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Editar vaga
+              </span>
+            )}
 
             {/* Copy invite */}
             <button
               onClick={copyInviteLink}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3 py-1.5 text-[12px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
+              disabled={!canManage}
+              title={!canManage ? (manageReason ?? undefined) : undefined}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3 py-1.5 text-[12px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors disabled:cursor-not-allowed disabled:text-zinc-400 disabled:hover:bg-white"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -366,6 +384,11 @@ function JobOverviewSection({
             <p className={`text-[12px] font-medium ${statusFeedback.ok ? "text-emerald-600" : "text-rose-600"}`}>
               {statusFeedback.msg}
             </p>
+          </div>
+        )}
+        {!canManage && manageReason && (
+          <div className="border-t border-zinc-100 px-5 py-3">
+            <p className="text-[12px] font-medium text-zinc-400">{manageReason}</p>
           </div>
         )}
       </div>
@@ -457,6 +480,9 @@ export default function WorkspacePipelineBoard({
   const [toast, setToast] = useState<BoardToast | null>(null);
 
   const canManage = isOwner || !readOnly;
+  const manageReason = canManage
+    ? null
+    : "Somente o owner ou o agente criador pode gerenciar esta vaga.";
   const liveJob = useMemo(() => ({ ...job, status: jobStatus }), [job, jobStatus]);
 
   function showToast(msg: string, ok: boolean) {
@@ -639,30 +665,16 @@ export default function WorkspacePipelineBoard({
     <div className="space-y-5">
 
       {/* Job overview */}
-      {canManage && (
-        <JobOverviewSection
-          job={job}
-          jobStatus={jobStatus}
-          savingStatus={savingStatus}
-          statusFeedback={statusFeedback}
-          candidates={candidates}
-          onStatusChange={handleJobStatusChange}
-        />
-      )}
-      {!canManage && (
-        <div>
-          <Link
-            href="/agency/workspace/jobs"
-            className="inline-flex items-center gap-1.5 text-[12px] text-zinc-400 hover:text-zinc-700 transition-colors mb-3"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Vagas do workspace
-          </Link>
-          <h1 className="text-[1.5rem] font-bold tracking-tight text-zinc-950">{job.title}</h1>
-        </div>
-      )}
+      <JobOverviewSection
+        job={job}
+        jobStatus={jobStatus}
+        savingStatus={savingStatus}
+        statusFeedback={statusFeedback}
+        candidates={candidates}
+        canManage={canManage}
+        manageReason={manageReason}
+        onStatusChange={handleJobStatusChange}
+      />
 
       {/* Stage tabs */}
       <div className="overflow-x-auto -mx-1 px-1 scrollbar-hide">

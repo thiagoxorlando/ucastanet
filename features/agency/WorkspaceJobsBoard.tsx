@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { brl } from "@/lib/brl";
+import { jobStatusLabel, jobStatusTone } from "@/lib/jobStatus";
 import WorkspacePrivateInviteButton from "@/features/agency/WorkspacePrivateInviteButton";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -111,24 +112,6 @@ function groupJobs(jobs: WorkspaceJob[], userId: string): Section[] {
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
-const STATUS_LABELS: Record<string, string> = {
-  open:      "Aberta",
-  draft:     "Rascunho",
-  paused:    "Pausada",
-  closed:    "Fechada",
-  inactive:  "Inativa",
-  cancelled: "Cancelada",
-};
-
-const STATUS_TONES: Record<string, string> = {
-  open:      "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
-  draft:     "bg-zinc-100 text-zinc-500",
-  paused:    "bg-blue-50 text-blue-600 ring-1 ring-blue-100",
-  closed:    "bg-zinc-100 text-zinc-500",
-  inactive:  "bg-zinc-100 text-zinc-400",
-  cancelled: "bg-red-50 text-red-500",
-};
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function initials(name: string): string {
@@ -179,7 +162,7 @@ export default function WorkspaceJobsBoard({
   const [typeF, setTypeF]         = useState("");
   const [categoryF, setCategoryF] = useState("");
   const [sort, setSort]           = useState("newest");
-  const [pausing, setPausing]     = useState<string | null>(null);
+  const [statusChanging, setStatusChanging] = useState<string | null>(null);
 
   const creators = useMemo(() => {
     const map = new Map<string, string>();
@@ -218,15 +201,14 @@ export default function WorkspaceJobsBoard({
 
   const hasFilters = !!(search || statusF || creatorF || typeF || categoryF);
 
-  async function handlePauseResume(job: WorkspaceJob) {
-    const next = job.status === "paused" ? "open" : "paused";
-    setPausing(job.id);
+  async function handleStatusChange(job: WorkspaceJob, next: "open" | "paused" | "closed") {
+    setStatusChanging(job.id);
     const res = await fetch(`/api/jobs/${job.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: next }),
     });
-    setPausing(null);
+    setStatusChanging(null);
     if (res.ok) {
       setJobs((prev) => prev.map((j) => j.id === job.id ? { ...j, status: next } : j));
     }
@@ -399,8 +381,8 @@ export default function WorkspaceJobsBoard({
                     job={job}
                     userId={userId}
                     isOwner={isOwner}
-                    pausing={pausing === job.id}
-                    onPauseResume={() => handlePauseResume(job)}
+                    statusChanging={statusChanging === job.id}
+                    onStatusChange={(next) => handleStatusChange(job, next)}
                   />
                 ))}
               </div>
@@ -416,8 +398,8 @@ export default function WorkspaceJobsBoard({
               job={job}
               userId={userId}
               isOwner={isOwner}
-              pausing={pausing === job.id}
-              onPauseResume={() => handlePauseResume(job)}
+              statusChanging={statusChanging === job.id}
+              onStatusChange={(next) => handleStatusChange(job, next)}
             />
           ))}
         </div>
@@ -432,26 +414,35 @@ function JobCard({
   job,
   userId,
   isOwner,
-  pausing,
-  onPauseResume,
+  statusChanging,
+  onStatusChange,
 }: {
   job: WorkspaceJob;
   userId: string;
   isOwner: boolean;
-  pausing: boolean;
-  onPauseResume: () => void;
+  statusChanging: boolean;
+  onStatusChange: (next: "open" | "paused" | "closed") => void;
 }) {
   const isCreator  = job.createdByUserId === userId;
   const canManage  = isOwner || isCreator;
-  const canEdit    = canManage && !["closed", "inactive"].includes(job.status);
-  const canPause   = canManage && job.status === "open";
-  const canResume  = canManage && job.status === "paused";
+  const activeContracts = job.contractCounts.sent + job.contractCounts.signed + job.contractCounts.confirmed + job.contractCounts.paid;
+  const hasPaidContracts = job.contractCounts.paid > 0;
+  const isFilled = activeContracts >= Math.max(1, Number(job.talentsRequired ?? 1) || 1);
+  const canEdit = canManage && !["closed", "inactive"].includes(job.status);
+  const canPause = canManage && job.status === "open";
+  const canClose = canManage && !["closed", "inactive"].includes(job.status);
+  const canResume = canManage && ["paused", "closed"].includes(job.status) && !hasPaidContracts && !isFilled;
   const canInvite  = canManage && job.visibility === "private_invite";
-
-  const activeContracts = job.contractCounts.sent + job.contractCounts.signed + job.contractCounts.confirmed;
   const days    = daysUntil(job.jobDate);
   const urgent  = days !== null && days >= 0 && days <= 7;
   const past    = days !== null && days < 0;
+  const manageReason = !canManage
+    ? "Somente o owner ou o agente criador pode gerenciar esta vaga."
+    : hasPaidContracts
+      ? "Esta vaga já possui reserva paga e não pode ser reaberta."
+      : isFilled
+        ? "A vaga já preencheu o número de talentos necessários."
+        : null;
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:border-zinc-300 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all">
@@ -472,8 +463,8 @@ function JobCard({
             >
               {job.title}
             </Link>
-            <span className={`rounded-full px-2 py-px text-[10px] font-semibold ${STATUS_TONES[job.status] ?? "bg-zinc-100 text-zinc-500"}`}>
-              {STATUS_LABELS[job.status] ?? job.status}
+            <span className={`rounded-full px-2 py-px text-[10px] font-semibold ${jobStatusTone(job.status)}`}>
+              {jobStatusLabel(job.status)}
             </span>
             {job.visibility === "private_invite" ? (
               <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-px text-[10px] font-semibold text-violet-700">
@@ -588,32 +579,66 @@ function JobCard({
               )}
             </Link>
 
-            {canEdit && (
+            {canEdit ? (
               <Link
                 href={`/agency/workspace/jobs/${job.id}/edit`}
                 className="inline-flex items-center rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
               >
                 Editar
               </Link>
-            )}
-
-            {(canPause || canResume) && (
-              <button
-                onClick={onPauseResume}
-                disabled={pausing}
-                className={[
-                  "inline-flex items-center rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-colors disabled:opacity-50 cursor-pointer",
-                  canPause
-                    ? "border-blue-200 text-blue-700 hover:bg-blue-50"
-                    : "border-emerald-200 text-emerald-700 hover:bg-emerald-50",
-                ].join(" ")}
+            ) : (
+              <span
+                title={manageReason ?? "A vaga fechada não pode ser editada."}
+                className="inline-flex items-center rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-400"
               >
-                {pausing ? "…" : canPause ? "Pausar" : "Reabrir"}
-              </button>
+                Editar
+              </span>
             )}
 
-            {canInvite && <WorkspacePrivateInviteButton jobId={job.id} />}
+            <button
+              type="button"
+              onClick={() => onStatusChange("paused")}
+              disabled={!canPause || statusChanging}
+              title={!canPause ? (manageReason ?? "Apenas vagas abertas podem ser pausadas.") : undefined}
+              className="inline-flex items-center rounded-lg border border-blue-200 px-2.5 py-1.5 text-[11px] font-semibold text-blue-700 transition-colors hover:bg-blue-50 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:text-zinc-400 disabled:hover:bg-white"
+            >
+              {statusChanging && job.status === "open" ? "..." : "Pausar"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onStatusChange("open")}
+              disabled={!canResume || statusChanging}
+              title={!canResume ? (manageReason ?? "A vaga não pode ser reaberta agora.") : undefined}
+              className="inline-flex items-center rounded-lg border border-emerald-200 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:text-zinc-400 disabled:hover:bg-white"
+            >
+              {statusChanging && ["paused", "closed"].includes(job.status) ? "..." : "Reabrir"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onStatusChange("closed")}
+              disabled={!canClose || statusChanging}
+              title={!canClose ? (manageReason ?? "A vaga já está fechada.") : undefined}
+              className="inline-flex items-center rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 disabled:cursor-not-allowed disabled:text-zinc-400 disabled:hover:bg-white"
+            >
+              {statusChanging && !["closed", "inactive"].includes(job.status) ? "..." : "Fechar vaga"}
+            </button>
+
+            {canInvite ? (
+              <WorkspacePrivateInviteButton jobId={job.id} />
+            ) : (
+              <span
+                title={job.visibility !== "private_invite" ? "Esta vaga não usa convite privado." : (manageReason ?? undefined)}
+                className="inline-flex items-center rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-400"
+              >
+                Copiar convite
+              </span>
+            )}
           </div>
+          {manageReason && (
+            <p className="mt-2 text-[11px] text-zinc-400">{manageReason}</p>
+          )}
         </div>
       </div>
     </div>

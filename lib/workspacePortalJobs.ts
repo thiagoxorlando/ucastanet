@@ -87,7 +87,6 @@ export async function hasPortalJobAccess({
 
   if (
     workspaceId &&
-    isWorkspacePortalJobVisibility(visibility) &&
     await hasActivePremiumWorkspaceTalentMembership(supabase, workspaceId, talentUserId)
   ) {
     return true;

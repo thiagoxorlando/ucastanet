@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
+import { getUserPremiumWorkspace } from "@/lib/premiumWorkspace.server";
 
 export async function DELETE(
   _req: NextRequest,
@@ -15,7 +16,7 @@ export async function DELETE(
 
   const { data: submission, error: fetchErr } = await supabase
     .from("submissions")
-    .select("id, job_id, talent_user_id, referrer_id")
+    .select("id, job_id, talent_user_id, referrer_id, status")
     .eq("id", id)
     .single();
 
@@ -30,22 +31,70 @@ export async function DELETE(
     .single();
 
   let isOwningAgency = false;
+  let isWorkspaceOwner = false;
+  let isWorkspaceCreator = false;
+
   if (caller?.role === "agency" && submission.job_id) {
     const { data: job } = await supabase
       .from("jobs")
-      .select("agency_id")
+      .select("agency_id, workspace_id, created_by_user_id")
       .eq("id", submission.job_id)
       .single();
-    isOwningAgency = job?.agency_id === user.id;
+
+    if (job) {
+      isOwningAgency = !job.workspace_id && job.agency_id === user.id;
+
+      if (job.workspace_id) {
+        const workspaceAccess = await getUserPremiumWorkspace(user.id);
+        const belongsToWorkspace =
+          workspaceAccess?.workspace.id === job.workspace_id &&
+          workspaceAccess?.membership.status === "active";
+
+        isWorkspaceOwner = Boolean(belongsToWorkspace && workspaceAccess?.membership.role === "owner");
+        isWorkspaceCreator = Boolean(belongsToWorkspace && job.created_by_user_id === user.id);
+      }
+    }
+  }
+
+  let talentCanDelete = false;
+  let talentDeleteReason: string | null = null;
+
+  if (submission.talent_user_id === user.id) {
+    const submissionStatus = String(submission.status ?? "").toLowerCase();
+    const cancellableStatuses = new Set(["pending", "in_review"]);
+
+    if (!cancellableStatuses.has(submissionStatus)) {
+      talentDeleteReason = "Esta candidatura não pode mais ser cancelada.";
+    } else {
+      const { data: activeContract } = await supabase
+        .from("contracts")
+        .select("id")
+        .eq("job_id", submission.job_id)
+        .or(`talent_user_id.eq.${user.id},talent_id.eq.${user.id}`)
+        .not("status", "in", '("cancelled","rejected")')
+        .is("deleted_at", null)
+        .maybeSingle();
+
+      if (activeContract) {
+        talentDeleteReason = "Já existe contrato vinculado a esta candidatura.";
+      } else {
+        talentCanDelete = true;
+      }
+    }
   }
 
   const canDelete =
     caller?.role === "admin" ||
     isOwningAgency ||
-    submission.talent_user_id === user.id ||
+    isWorkspaceOwner ||
+    isWorkspaceCreator ||
+    talentCanDelete ||
     submission.referrer_id === user.id;
 
   if (!canDelete) {
+    if (submission.talent_user_id === user.id && talentDeleteReason) {
+      return NextResponse.json({ error: talentDeleteReason }, { status: 409 });
+    }
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

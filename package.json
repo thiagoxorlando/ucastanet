@@ -7,8 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "demo:seed": "node scripts/seed-demo.mjs",
-    "demo:reset": "node scripts/reset-demo.mjs"
+    "reset:demo": "node --experimental-strip-types scripts/reset-demo-data.ts reset",
+    "seed:demo": "node --experimental-strip-types scripts/reset-demo-data.ts seed",
+    "demo:reset": "npm run reset:demo",
+    "demo:seed": "npm run seed:demo"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.0",
