@@ -1224,7 +1224,7 @@ export const en: Record<string, string> = {
   workspace_wallet_available_new_jobs: "Can be used in new jobs",
   workspace_wallet_settled_paid_contracts: "Settled in paid contracts",
   workspace_wallet_owner_balance_label: "Agency wallet balance",
-  workspace_wallet_owner_balance_hint: "Current real balance in BrisaHub",
+  workspace_wallet_owner_balance_hint: "Available balance after agent allocations",
   workspace_wallet_allocated_to_agents: "Allocated to agents",
   workspace_wallet_allocated_to_agents_hint: "Still reserved in agent operations",
   workspace_wallet_committed_escrow: "Committed / escrow",

@@ -424,7 +424,7 @@ export const ptBR: Record<string, string> = {
   workspace_wallet_available_new_jobs: "Pode ser usado em novas vagas",
   workspace_wallet_settled_paid_contracts: "Liquidado em contratos pagos",
   workspace_wallet_owner_balance_label: "Saldo da carteira da agência",
-  workspace_wallet_owner_balance_hint: "Saldo real atual em BrisaHub",
+  workspace_wallet_owner_balance_hint: "Saldo disponível após alocações aos agentes",
   workspace_wallet_allocated_to_agents: "Alocado aos agentes",
   workspace_wallet_allocated_to_agents_hint: "Ainda reservado na operação dos agentes",
   workspace_wallet_committed_escrow: "Comprometido / escrow",

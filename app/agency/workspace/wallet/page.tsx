@@ -439,7 +439,7 @@ export default async function WorkspaceWalletPage() {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <StatCard
           label={t("workspace_wallet_owner_balance_label")}
-          value={brl(summary.ownerWalletBalance)}
+          value={brl(summary.ownerUnallocatedAvailable)}
           hint={t("workspace_wallet_owner_balance_hint")}
         />
         <StatCard
