@@ -742,6 +742,35 @@ export async function getOwnerAllocationSummary(
   };
 }
 
+/**
+ * Returns total actively allocated funds across ALL workspaces owned by this user.
+ * activelyAllocated = sum(allocation) - sum(allocation_reversal) - sum(job_settlement)
+ *
+ * Used by Open Space finances page and withdrawal API to compute the owner's
+ * true usable balance. Agent allocations do not touch profiles.wallet_balance,
+ * so this must be subtracted explicitly.
+ */
+export async function getOwnerTotalActiveAllocations(ownerUserId: string): Promise<number> {
+  const supabase = createServerClient({ useServiceRole: true });
+  const { data: txs } = await supabase
+    .from("premium_agent_wallet_transactions")
+    .select("type, amount")
+    .eq("owner_user_id", ownerUserId)
+    .eq("status", "completed")
+    .is("reversed_at", null)
+    .in("type", ["allocation", "allocation_reversal", "job_settlement"]);
+
+  let totalAllocated = 0;
+  let totalSettled = 0;
+  for (const tx of txs ?? []) {
+    const amt = Number(tx.amount);
+    if (tx.type === "allocation")               totalAllocated += amt;
+    else if (tx.type === "allocation_reversal") totalAllocated -= amt;
+    else if (tx.type === "job_settlement")      totalSettled   += amt;
+  }
+  return Math.max(0, totalAllocated - totalSettled);
+}
+
 // -- Internal mappers --------------------------------------------------------
 
 function mapWorkspace(row: Record<string, unknown>): PremiumWorkspace {

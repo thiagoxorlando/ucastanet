@@ -4,6 +4,7 @@ import { createSessionClient } from "@/lib/supabase.server";
 import AgencyFinances from "@/features/agency/AgencyFinances";
 import type { AgencyTransaction, AgencyFinanceSummary } from "@/features/agency/AgencyFinances";
 import { WITHDRAWAL_MIN_AMOUNT } from "@/lib/withdrawal-fee";
+import { getOwnerTotalActiveAllocations } from "@/lib/premiumWorkspace.server";
 
 export const metadata: Metadata = { title: "Financeiro — BrisaHub" };
 
@@ -15,7 +16,7 @@ export default async function AgencyFinancesPage() {
 
   const supabase = createServerClient({ useServiceRole: true });
 
-  const [{ data: bookings }, { data: walletTxs }, { data: profile }, { data: contracts }, { data: agencyRow }] = await Promise.all([
+  const [{ data: bookings }, { data: walletTxs }, { data: profile }, { data: contracts }, { data: agencyRow }, { data: agentAllocTxs }, activelyAllocated] = await Promise.all([
     supabase
       .from("bookings")
       .select("id, talent_user_id, job_id, job_title, price, status, created_at")
@@ -44,6 +45,18 @@ export default async function AgencyFinancesPage() {
       .select("pix_key_type, pix_key_value, pix_holder_name")
       .eq("id", user?.id ?? "")
       .single(),
+    // Agent allocation history entries for the Open Space transaction ledger
+    supabase
+      .from("premium_agent_wallet_transactions")
+      .select("id, type, amount, note, created_at")
+      .eq("owner_user_id", user?.id ?? "")
+      .eq("status", "completed")
+      .is("reversed_at", null)
+      .in("type", ["allocation", "allocation_reversal"])
+      .order("created_at", { ascending: false })
+      .limit(50),
+    // Total actively allocated — used to compute the owner's real usable balance
+    getOwnerTotalActiveAllocations(user?.id ?? ""),
   ]);
 
   const rows = bookings ?? [];
@@ -165,7 +178,21 @@ export default async function AgencyFinancesPage() {
     };
   });
 
-  const transactions: AgencyTransaction[] = walletRows
+  // Agent allocation/reclaim entries for the transaction ledger
+  const allocationRows: AgencyTransaction[] = (agentAllocTxs ?? []).map((tx) => ({
+    id:          tx.id,
+    kind:        "wallet" as const,
+    talent:      "",
+    job:         "",
+    amount:      Number(tx.amount),
+    status:      tx.type === "allocation" ? "agent_allocation" : "agent_allocation_reversal",
+    date:        tx.created_at,
+    description: tx.type === "allocation"
+      ? (tx.note ? `Alocação para agente · ${tx.note}` : "Alocação para agente")
+      : (tx.note ? `Retorno de saldo do agente · ${tx.note}` : "Retorno de saldo do agente"),
+  }));
+
+  const transactions: AgencyTransaction[] = [...walletRows, ...allocationRows]
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const completed = bookingTxs.filter((t) => t.status === "paid" || t.status === "confirmed");
@@ -179,6 +206,7 @@ export default async function AgencyFinancesPage() {
     pendingPayments:   pendingTotal,
     completedPayments: completedTotal,
     walletBalance:     profile?.wallet_balance ?? 0,
+    allocatedToAgents: activelyAllocated,
   };
 
   const agencyPix = agencyRow?.pix_key_value

@@ -3,6 +3,7 @@ import { createPixTransfer } from "@/lib/asaas";
 import { createServerClient } from "@/lib/supabase";
 import { createSessionClient } from "@/lib/supabase.server";
 import { notifyAdmins } from "@/lib/notify";
+import { getOwnerTotalActiveAllocations } from "@/lib/premiumWorkspace.server";
 
 export const runtime = "nodejs";
 
@@ -126,7 +127,10 @@ export async function POST(req: NextRequest) {
   }
 
   const walletBalance = Number(profile.wallet_balance ?? 0);
-  if (roundedAmount > walletBalance) {
+  // Subtract money already locked in agent virtual wallets — owner cannot withdraw those funds.
+  const activelyAllocated = await getOwnerTotalActiveAllocations(user.id);
+  const effectiveBalance = Math.max(0, walletBalance - activelyAllocated);
+  if (roundedAmount > effectiveBalance) {
     return NextResponse.json({ error: "Saldo insuficiente." }, { status: 400 });
   }
 

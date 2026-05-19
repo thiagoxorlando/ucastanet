@@ -51,6 +51,7 @@ export type AgencyFinanceSummary = {
   pendingPayments: number;
   completedPayments: number;
   walletBalance?: number;
+  allocatedToAgents?: number;
 };
 
 
@@ -76,6 +77,8 @@ const STATUS_CLS: Record<string, string> = {
   escrow_released: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100",
   escrow_refunded: "bg-rose-50 text-rose-700 ring-1 ring-rose-100",
   refund: "bg-rose-50 text-rose-700 ring-1 ring-rose-100",
+  agent_allocation: "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100",
+  agent_allocation_reversal: "bg-teal-50 text-teal-700 ring-1 ring-teal-100",
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -92,6 +95,8 @@ const STATUS_LABEL: Record<string, string> = {
   escrow_released: "Liberado",
   escrow_refunded: "Estornado",
   refund: "Reembolso",
+  agent_allocation: "Alocação a agente",
+  agent_allocation_reversal: "Retorno de agente",
 };
 
 
@@ -143,6 +148,9 @@ export default function AgencyFinances({
   const router = useRouter();
 
   const walletBalance = summary.walletBalance ?? 0;
+  const allocatedToAgents = summary.allocatedToAgents ?? 0;
+  // Real usable balance: gross wallet minus money locked in agent virtual wallets
+  const availableBalance = Math.max(0, walletBalance - allocatedToAgents);
 
   const { refreshing: walletRefreshing } = useRealtimeRefresh(
     [{ table: "wallet_transactions" }, { table: "profiles" }],
@@ -182,7 +190,7 @@ export default function AgencyFinances({
   const withdrawAmountNum = Math.round(Number(withdrawAmount) * 100) / 100;
   const canWithdraw = Boolean(
     withdrawAmountNum >= withdrawalMinAmount &&
-    withdrawAmountNum <= walletBalance,
+    withdrawAmountNum <= availableBalance,
   );
   const pendingWithdrawals = transactions.filter(
     (transaction) =>
@@ -370,8 +378,12 @@ export default function AgencyFinances({
                     </span>
                   )}
                 </div>
-                <p className="text-[3rem] font-black tracking-[-0.07em] text-white leading-none">{brl(walletBalance)}</p>
-                <p className="text-[12px] text-white/70 mt-1">Saldo total na carteira: {brl(walletBalance)}</p>
+                <p className="text-[3rem] font-black tracking-[-0.07em] text-white leading-none">{brl(availableBalance)}</p>
+                <p className="text-[12px] text-white/70 mt-1">
+                  {allocatedToAgents > 0
+                    ? `Disponível · ${brl(allocatedToAgents)} alocado a agentes`
+                    : "Saldo disponível para saque"}
+                </p>
               </div>
               {withdrawDone && (
                 <div className="flex items-center gap-1.5 text-[12px] text-white font-semibold mt-1">
@@ -383,14 +395,14 @@ export default function AgencyFinances({
               )}
             </div>
 
-            {walletBalance > 0 && !withdrawDone && (
+            {availableBalance > 0 && !withdrawDone && (
               <div className="space-y-2">
                 <div className="flex gap-1.5">
                   {([0.25, 0.5, 1] as const).map((pct) => (
                     <button
                       key={pct}
                       type="button"
-                      onClick={() => setWithdrawAmount(String(Math.floor(walletBalance * pct * 100) / 100))}
+                      onClick={() => setWithdrawAmount(String(Math.floor(availableBalance * pct * 100) / 100))}
                       className="text-[11px] font-bold px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors cursor-pointer"
                     >
                       {pct === 1 ? "100%" : pct === 0.5 ? "50%" : "25%"}
@@ -418,7 +430,7 @@ export default function AgencyFinances({
                     Solicitar Saque
                   </button>
                 </div>
-                {withdrawAmountNum > walletBalance && (
+                {withdrawAmountNum > availableBalance && (
                   <p className="text-[11px] text-rose-100">Valor superior ao saldo disponível.</p>
                 )}
                 {withdrawAmountNum > 0 && withdrawAmountNum < withdrawalMinAmount && (
@@ -617,8 +629,8 @@ export default function AgencyFinances({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <StatCard label="Saldo Total" value={brl(walletBalance)} sub="Saldo atual em carteira" stripe="from-indigo-500 to-violet-500" />
-        <StatCard label="Disponível para Saque" value={brl(walletBalance)} sub="Saldo disponível em carteira" stripe="from-emerald-400 to-teal-500" />
+        <StatCard label="Saldo Total" value={brl(walletBalance)} sub="Saldo bruto em carteira" stripe="from-indigo-500 to-violet-500" />
+        <StatCard label="Disponível para Saque" value={brl(availableBalance)} sub={allocatedToAgents > 0 ? `${brl(allocatedToAgents)} alocado a agentes` : "Saldo disponível em carteira"} stripe="from-emerald-400 to-teal-500" />
         <StatCard label="Pagamentos Pendentes" value={brl(summary.pendingPayments)} sub="Aguardando confirmacao" stripe="from-amber-400 to-orange-500" />
         <StatCard label="Pagamentos Realizados" value={brl(summary.completedPayments)} sub="Reservas confirmadas" stripe="from-cyan-400 to-sky-500" />
       </div>
