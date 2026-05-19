@@ -16,31 +16,65 @@ export default async function WorkspaceContractsPage() {
     .select("id, title, created_by_user_id")
     .eq("workspace_id", context.workspace.id);
 
+  const allWorkspaceJobs = workspaceJobs ?? [];
   const visibleJobs = context.isOwner
     ? (workspaceJobs ?? [])
     : (workspaceJobs ?? []).filter((job) => job.created_by_user_id === context.userId);
 
-  const jobIds = visibleJobs.map((job) => job.id);
-  const jobTitleMap = new Map(visibleJobs.map((job) => [job.id, job.title ?? "Vaga do workspace"]));
+  const visibleJobIds = new Set(visibleJobs.map((job) => job.id));
+  const workspaceJobIds = allWorkspaceJobs.map((job) => job.id);
+  const jobTitleMap = new Map(allWorkspaceJobs.map((job) => [job.id, job.title ?? "Vaga do workspace"]));
 
-  if (jobIds.length === 0) {
-    return (
-      <div className="rounded-[28px] border border-zinc-200 bg-white px-6 py-10 text-center shadow-[0_12px_34px_rgba(15,23,42,0.05)]">
-        <p className="text-[15px] font-semibold text-zinc-900">Nenhum contrato Premium ainda.</p>
-        <p className="mt-2 text-[13px] leading-6 text-zinc-500">
-          Os contratos ligados as vagas privadas do workspace aparecerao aqui.
-        </p>
-      </div>
-    );
+  const contractSelect =
+    "id, workspace_id, job_id, talent_id, talent_user_id, job_date, job_time, location, job_description, payment_amount, commission_amount, net_amount, commission_percent, payment_method, additional_notes, status, payment_status, contract_file_url, signed_contract_url, created_at, signed_at, agency_signed_at, deposit_paid_at, paid_at";
+
+  const [workspaceContractsResult, jobJoinContractsResult] = await Promise.all([
+    supabase
+      .from("contracts")
+      .select(contractSelect)
+      .eq("workspace_id", context.workspace.id)
+      .order("created_at", { ascending: false }),
+    workspaceJobIds.length > 0
+      ? supabase
+        .from("contracts")
+        .select(contractSelect)
+        .in("job_id", workspaceJobIds)
+        .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+
+  const rawWorkspaceContracts = workspaceContractsResult.data ?? [];
+  const rawJobJoinContracts = jobJoinContractsResult.data ?? [];
+  const contractMap = new Map<string, (typeof rawWorkspaceContracts)[number]>();
+
+  for (const contract of rawWorkspaceContracts) {
+    contractMap.set(contract.id, contract);
+  }
+  for (const contract of rawJobJoinContracts) {
+    if (!contractMap.has(contract.id)) {
+      contractMap.set(contract.id, contract);
+    }
   }
 
-  const { data: rows } = await supabase
-    .from("contracts")
-    .select("id, job_id, talent_id, talent_user_id, job_date, job_time, location, job_description, payment_amount, commission_amount, net_amount, commission_percent, payment_method, additional_notes, status, payment_status, contract_file_url, signed_contract_url, created_at, signed_at, agency_signed_at, deposit_paid_at, paid_at")
-    .in("job_id", jobIds)
-    .order("created_at", { ascending: false });
+  const contractsData = [...contractMap.values()]
+    .filter((contract) => {
+      if (context.isOwner) return true;
+      if (!contract.job_id) return false;
+      return visibleJobIds.has(contract.job_id);
+    })
+    .sort((a, b) => {
+      const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return bTime - aTime;
+    });
 
-  const contractsData = rows ?? [];
+  console.log("[workspace contracts]", {
+    workspaceId: context.workspace.id,
+    userId: context.userId,
+    rawContractsByWorkspaceId: rawWorkspaceContracts.length,
+    rawContractsByJobJoin: rawJobJoinContracts.length,
+    filteredContractsRendered: contractsData.length,
+  });
   const talentIds = [...new Set(
     contractsData
       .map((contract) => contract.talent_user_id ?? contract.talent_id)
