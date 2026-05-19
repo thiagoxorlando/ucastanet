@@ -1662,17 +1662,15 @@ function CandidateCard({
           {canManage && (
             <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-zinc-100">
               {c.talentId && (
-                <a
-                  href={`/talent/profile/${c.talentId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  href={`/agency/talent/${c.talentId}`}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-zinc-700 hover:bg-zinc-50 transition-colors"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                   Ver perfil
-                </a>
+                </Link>
               )}
               <button
                 onClick={() => setNotesOpen((v) => !v)}
